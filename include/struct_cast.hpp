@@ -76,26 +76,22 @@ char* byte_addressof(fixed_string<N>& obj) {
 template <fixed_string id, typename T, std::size_t size>
 struct field_base {
     static constexpr auto field_id = id;
-    using field_type = T;
     static constexpr std::size_t field_size = size;
+    T value;
 };
+
 
 // Field implementation
 template <fixed_string id, typename T, std::size_t size/*, auto constraint = no_constraint{}*/> 
     requires (arithmetic<T> || FixedSizedBufferLike<T>) /*&& StrictlyCallableWith<decltype(constraint), T>*/
-struct field {
-    static constexpr auto field_id = id;
-    using field_type = T;
-    static constexpr std::size_t field_size = size;
-    T value;
-
+struct field: public field_base<id, T, size> {
     void read(const char* buffer, std::size_t size_to_read) {
-        std::memcpy(to_void_ptr(value), buffer, size_to_read);
+        std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
         // assert(constraint(value));
     }
 
     void read(std::ifstream& ifs, std::size_t size_to_read) {
-        ifs.read(byte_addressof(value), size_to_read);
+        ifs.read(byte_addressof(this->value), size_to_read);
         // assert(constraint(value));
     }
 };
@@ -119,12 +115,42 @@ constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
 // StructField implementation
 template <fixed_string id, typename T>
   requires is_struct_field_list_v<T>
-struct struct_field : field_base<id, T, sizeof(T)> {
-    static constexpr auto field_id = id;
-    using field_type = T;
-    static constexpr std::size_t field_size = sizeof(T);
-    T value;
+struct struct_field : field_base<id, T, sizeof(T)> {};
+
+
+// template <fixed_string id, typename field_type, std::size_t size>
+// struct field;
+struct not_a_field;
+
+template <typename T>
+struct extract_type_from_field;
+
+template <fixed_string id, typename field_type, std::size_t size>
+struct extract_type_from_field<field<id, field_type, size>> {
+  using type = field_type;
 };
+
+template <fixed_string id, typename field_type>
+struct extract_type_from_field<struct_field<id, field_type>> {
+  using type = field_type;
+};
+
+template <typename T>
+struct extract_type_from_field {
+  using type = not_a_field;
+};
+
+template <typename T>
+using extract_type_from_field_v = typename extract_type_from_field<T>::type;
+
+static_assert(std::is_same_v<extract_type_from_field_v<field<"x", int, 4>>, int>);
+static_assert(std::is_same_v<extract_type_from_field_v<field<"x", float, 4>>, float>);
+static_assert(std::is_same_v<extract_type_from_field_v<std::array<char, 10>>, not_a_field>);
+static_assert(
+  std::is_same_v<extract_type_from_field_v<
+    struct_field<"d", struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>>, 
+    struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>
+  );
 
 
 // FieldAccessor implementation
@@ -200,7 +226,7 @@ constexpr void struct_cast(struct_field_list<fields...>& field_list, const unsig
     ([&](auto& field) {
         using field_type = std::decay_t<decltype(field)>;
         prefix_sum[index + 1] = prefix_sum[index] + field_type::field_size;
-        if constexpr (is_struct_field_list_v<typename field_type::field_type>) {
+        if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
             struct_cast(field.value, buffer + prefix_sum[index]);
         } else {
             field.read(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_type::field_size);
@@ -213,7 +239,7 @@ template <typename... fields>
 constexpr void struct_cast(struct_field_list<fields...>& field_list, std::ifstream& stream) {
     ([&](auto& field) {
         using field_type = std::decay_t<decltype(field)>;
-        if constexpr (is_struct_field_list_v<typename field_type::field_type>) {
+        if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
             struct_cast(field.value, stream);
         } else {
             field.read(stream, field_type::field_size);
