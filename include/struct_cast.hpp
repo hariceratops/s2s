@@ -153,6 +153,11 @@ struct field_lookup<field_list<field<id, T, size>, rest...>, id> {
     using type = field<id, T, size>;
 };
 
+template <fixed_string id, typename T, typename... rest>
+struct field_lookup<field_list<struct_field<id, T>, rest...>, id> {
+    using type = struct_field<id, T>;
+};
+
 template <fixed_string id, typename head, typename... rest>
 struct field_lookup<field_list<head, rest...>, id> {
     using type = typename field_lookup<field_list<rest...>, id>::type;
@@ -187,33 +192,33 @@ struct struct_field_list : fields... {
 
 
 // Struct cast function
-template <typename... Fields>
-constexpr void struct_cast(struct_field_list<Fields...>& field_list, const unsigned char* buffer) {
-    std::size_t prefix_sum[sizeof...(Fields) + 1] = {0};
+template <typename... fields>
+constexpr void struct_cast(struct_field_list<fields...>& field_list, const unsigned char* buffer) {
+    std::size_t prefix_sum[sizeof...(fields) + 1] = {0};
     std::size_t index = 0;
 
     ([&](auto& field) {
         using field_type = std::decay_t<decltype(field)>;
         prefix_sum[index + 1] = prefix_sum[index] + field_type::field_size;
-        if constexpr (is_struct_field_list_v<field_type>) {
+        if constexpr (is_struct_field_list_v<typename field_type::field_type>) {
             struct_cast(field.value, buffer + prefix_sum[index]);
         } else {
             field.read(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_type::field_size);
         }
         ++index;
-    }(static_cast<Fields&>(field_list)), ...);
+    }(static_cast<fields&>(field_list)), ...);
 }
 
-template <typename... Fields>
-constexpr void struct_cast(struct_field_list<Fields...>& field_list, std::ifstream& stream) {
+template <typename... fields>
+constexpr void struct_cast(struct_field_list<fields...>& field_list, std::ifstream& stream) {
     ([&](auto& field) {
-        using FieldType = std::decay_t<decltype(field)>;
-        if constexpr (is_struct_field_list_v<FieldType>) {
+        using field_type = std::decay_t<decltype(field)>;
+        if constexpr (is_struct_field_list_v<typename field_type::field_type>) {
             struct_cast(field.value, stream);
         } else {
-            field.read(stream, FieldType::field_size);
+            field.read(stream, field_type::field_size);
         }
-    }(static_cast<Fields&>(field_list)), ...);
+    }(static_cast<fields&>(field_list)), ...);
 }
 
 #endif // STRUCT_CAST_HPP
