@@ -94,7 +94,7 @@ struct field {
         // assert(constraint(value));
     }
 
-    void read(const std::ifstream& ifs, std::size_t size_to_read) {
+    void read(std::ifstream& ifs, std::size_t size_to_read) {
         ifs.read(byte_addressof(value), size_to_read);
         // assert(constraint(value));
     }
