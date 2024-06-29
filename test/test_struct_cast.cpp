@@ -33,7 +33,8 @@ void test_buffer_read_TC01(void);
 void test_fstream_read_TC01(void);
 void test_buffer_nested_read_TC01(void);
 void test_fstream_nested_read_TC01(void);
-
+void test_fixed_buffer_TC01(void);
+void test_aliased_fixed_buffer_TC01(void);
 
 // todo: Decide how to organise compile time tests
 using test_struct_field_list = 
@@ -55,6 +56,21 @@ using test_nested_struct_field_list =
     >
   >;
 
+using test_fixed_buffer_struct = 
+  struct_field_list<
+    field<"a", char[11], 11>,
+    field<"b", fixed_string<11>, 11>,
+    field<"c", std::array<int, 3>, 12>
+  >;
+
+using test_aliased_fixed_buffer_struct = 
+  struct_field_list<
+    c_str_field<"a", 10>,
+    fixed_string_field<"b", 10>,
+    fixed_array_field<"c", int, 3>
+  >;
+
+
 static_assert(std::is_same_v<field_lookup_v<to_field_list_v<test_struct_field_list>, field_accessor<"a">::field_id>, field<"a", u32, 4>>);
 static_assert(std::is_same_v<field_lookup_v<to_field_list_v<test_struct_field_list>, field_accessor<"c">::field_id>, field_lookup_failed>);
 static_assert(is_struct_field_list_v<test_struct_field_list>);
@@ -66,6 +82,8 @@ auto main(void) -> int {
   test_fstream_read_TC01();
   test_buffer_nested_read_TC01();
   test_fstream_nested_read_TC01();
+  test_fixed_buffer_TC01();
+  test_aliased_fixed_buffer_TC01();
   return 0;
 }
 
@@ -158,3 +176,65 @@ void test_fstream_nested_read_TC01(void) {
   assert(expected_x == 0xbeefbeef);
   assert(expected_y == 0xdeadbeef);
 }
+
+
+void test_fixed_buffer_TC01(void) {
+  std::ofstream ofs("test_bin_input_3.bin", std::ios::out | std::ios::binary);
+  constexpr std::size_t str_len = 10;
+  const u8 str[] = "foo in bar";
+  const u32 u32_arr[] = {0xdeadbeef, 0xcafed00d, 0xbeefbeef};
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_3.bin", std::ios::in | std::ios::binary);
+  test_fixed_buffer_struct sfl;
+  struct_cast(sfl, ifs);
+  ifs.close();
+  
+  std::string_view expected{"foo in bar"};
+  assert(std::string_view{sfl["a"_f]} == expected);
+  assert(std::string_view{sfl["b"_f].data()} == expected);
+  // todo assert array
+
+  auto a = sfl["a"_f];
+  auto b = sfl["b"_f];
+  auto c = sfl["c"_f];
+  std::cout << a << '\n';
+  std::cout << b.data() << '\n';
+  print_hex(c[0]);
+  print_hex(c[1]);
+  print_hex(c[2]);
+};
+
+
+void test_aliased_fixed_buffer_TC01(void) {
+  std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
+  constexpr std::size_t str_len = 10;
+  const u8 str[] = "foo in bar";
+  const u32 u32_arr[] = {0xdeadbeef, 0xcafed00d, 0xbeefbeef};
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
+  test_aliased_fixed_buffer_struct sfl;
+  struct_cast(sfl, ifs);
+  ifs.close();
+  
+  std::string_view expected{"foo in bar"};
+  assert(std::string_view{sfl["a"_f]} == expected);
+  assert(std::string_view{sfl["b"_f].data()} == expected);
+  // todo assert array
+  
+  auto a = sfl["a"_f];
+  auto b = sfl["b"_f];
+  auto c = sfl["c"_f];
+  std::cout << a << '\n';
+  std::cout << b.data() << '\n';
+  print_hex(c[0]);
+  print_hex(c[1]);
+  print_hex(c[2]);
+};

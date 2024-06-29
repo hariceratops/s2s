@@ -14,10 +14,12 @@
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N> value;
+  constexpr fixed_string(): value{} {};
   constexpr fixed_string(const char (&str)[N + 1]) {
     std::copy_n(str, N, value.data());
   }
   constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
 };
 
 template <std::size_t N>
@@ -27,12 +29,66 @@ fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
 template <typename T>
 concept arithmetic = std::is_arithmetic_v<T>;
 
-// FixedSizedBufferLike concept
 template <typename T>
-concept FixedSizedBufferLike = requires(T t) {
-  { std::tuple_size<T>::value } -> std::convertible_to<std::size_t>;
-  { t.data() } -> std::convertible_to<const char*>;
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
 };
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+
+template <typename T>
+concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 // Concept for strict callable
 template <typename T, typename Arg>
@@ -82,8 +138,7 @@ struct field_base {
 
 
 // Field implementation
-template <fixed_string id, typename T, std::size_t size/*, auto constraint = no_constraint{}*/> 
-  requires (arithmetic<T> || FixedSizedBufferLike<T>) /*&& StrictlyCallableWith<decltype(constraint), T>*/
+template <fixed_string id, field_containable T, std::size_t size/*, auto constraint = no_constraint{}*/> 
 struct field: public field_base<id, T, size> {
   void read(const char* buffer, std::size_t size_to_read) {
     std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
@@ -111,10 +166,12 @@ struct is_struct_field_list<struct_field_list<Entries...>> : std::true_type {};
 template <typename T>
 constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
 
+template <typename T>
+concept field_list_like = is_struct_field_list_v<T>;
+
 
 // StructField implementation
-template <fixed_string id, typename T>
-  requires is_struct_field_list_v<T>
+template <fixed_string id, field_list_like T>
 struct struct_field : field_base<id, T, sizeof(T)> {};
 
 
@@ -167,12 +224,38 @@ constexpr auto operator""_f() {
 
 // Field lookup metafunction
 template <typename... ts>
-struct field_list {};
+struct field_list{};
 
 struct field_lookup_failed {};
-
 template <typename ls, fixed_string id>
 struct field_lookup;
+template <typename ls, fixed_string id>
+using field_lookup_v = typename field_lookup<ls, id>::type;
+
+template <typename... ts>
+struct are_all_fields;
+template <typename T>
+inline constexpr bool are_all_fields_v = are_all_fields<T>::all_same;
+
+// todo constraint all types shall be field_like
+template <typename... fields>
+struct struct_field_list : fields... {
+  static_assert(are_all_fields_v<field_list<fields...>>, "struct_field_list shall be templated with field like types only");
+
+  template <typename field_accessor, 
+            typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
+    requires (!std::is_same_v<field_lookup_failed, field>)
+  constexpr auto& operator[](field_accessor)  {
+    return static_cast<field&>(*this).value;
+  }
+
+  template <typename field_accessor,
+            typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
+    requires (!std::is_same_v<field_lookup_failed, field>)
+  constexpr const auto& operator[](field_accessor) const {
+    return static_cast<const field&>(*this).value;
+  }
+};
 
 template <fixed_string id, typename T, std::size_t size, typename... rest>
 struct field_lookup<field_list<field<id, T, size>, rest...>, id> {
@@ -194,27 +277,71 @@ struct field_lookup<field_list<>, id> {
   using type = field_lookup_failed;
 };
 
-template <typename ls, fixed_string id>
-using field_lookup_v = typename field_lookup<ls, id>::type;
+template <typename... ts>
+struct are_all_fields;
 
+template <>
+struct are_all_fields<field_list<>> { static constexpr bool all_same = true; };
 
-// StructFieldList implementation
-template <typename... fields>
-struct struct_field_list : fields... {
-  template <typename field_accessor, 
-            typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
-    requires (!std::is_same_v<field_lookup_failed, field>)
-  constexpr auto& operator[](field_accessor)  {
-    return static_cast<field&>(*this).value;
-  }
-
-  template <typename field_accessor,
-            typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
-    requires (!std::is_same_v<field_lookup_failed, field>)
-  constexpr const auto& operator[](field_accessor) const {
-    return static_cast<const field&>(*this).value;
-  }
+template <fixed_string id, field_containable T, std::size_t size>
+struct are_all_fields<field_list<field<id, T, size>>> {
+  static constexpr bool all_same = true;
 };
+
+template <fixed_string id, typename T>
+struct are_all_fields<field_list<struct_field<id, T>>> {
+  static constexpr bool all_same = true;
+};
+
+template <typename T, typename... rest>
+struct are_all_fields<field_list<T, rest...>> {
+  static constexpr bool all_same = false;
+};
+
+template <typename T>
+struct are_all_fields<T> {
+  static constexpr bool all_same = false;
+};
+
+template <fixed_string first_id, field_containable T, std::size_t size_first,
+          typename... rest>
+struct are_all_fields<field_list<field<first_id, T, size_first>, rest...>> {
+  static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
+};
+
+template <fixed_string first_id, typename T, typename... rest>
+struct are_all_fields<field_list<struct_field<first_id, T>, rest...>> {
+  static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
+};
+
+
+static_assert(are_all_fields_v<field_list<field<"a", int, 4>>>);
+static_assert(!are_all_fields_v<field_list<field<"a", int, 4>, int>>);
+static_assert(!are_all_fields_v<field_list<int, int>>);
+static_assert(are_all_fields_v<field_list<>>);
+static_assert(are_all_fields_v<field_list<field<"a", int, 4>, field<"b", int, 4>>>);
+static_assert(are_all_fields_v<field_list<field<"a", int, 4>, field<"b", fixed_string<4>, 4>>>);
+static_assert(!are_all_fields_v<field_list<field<"a", int, 4>, field<"b", fixed_string<4>, 4>, float>>);
+
+
+// Aliases
+template <fixed_string id, typename T, std::size_t N>
+using fixed_array_field = field<id, std::array<T, N>, N * sizeof(T)>;
+
+template <fixed_string id, std::size_t N>
+using fixed_string_field = field<id, fixed_string<N + 1>, N + 1>;
+
+template <fixed_string id, typename T, std::size_t N>
+using c_arr_field = field<id, T[N], N * sizeof(T)>;
+
+template <fixed_string id, std::size_t N>
+using c_str_field = field<id, char[N + 1], N * sizeof(char) + 1>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <fixed_string id, floating_point T>
+using float_point_field = field<id, T, sizeof(T)>;
 
 
 // Struct cast function
