@@ -35,6 +35,9 @@ void test_buffer_nested_read_TC01(void);
 void test_fstream_nested_read_TC01(void);
 void test_fixed_buffer_TC01(void);
 void test_aliased_fixed_buffer_TC01(void);
+void test_md_fixed_buffer_TC01(void);
+void test_array_of_records_TC01(void);
+
 
 // todo: Decide how to organise compile time tests
 using test_struct_field_list = 
@@ -84,6 +87,9 @@ auto main(void) -> int {
   test_fstream_nested_read_TC01();
   test_fixed_buffer_TC01();
   test_aliased_fixed_buffer_TC01();
+  test_md_fixed_buffer_TC01();
+  test_array_of_records_TC01();
+
   return 0;
 }
 
@@ -238,3 +244,66 @@ void test_aliased_fixed_buffer_TC01(void) {
   print_hex(c[1]);
   print_hex(c[2]);
 };
+
+void test_md_fixed_buffer_TC01(void) {
+  using md_struct = 
+    struct_field_list<
+      fixed_array_field<"a", std::array<u32, 3>, 3>
+    >;
+  std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);
+  const u32 u32_arr[3][3] = { 
+    {0xdeadbeef, 0xcafed00d, 0xbeefbeef},
+    {0xdeadbeef, 0xcafed00d, 0xbeefbeef}, 
+    {0xdeadbeef, 0xcafed00d, 0xbeefbeef} 
+  };
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_5.bin", std::ios::in | std::ios::binary);
+  md_struct sfl;
+  struct_cast(sfl, ifs);
+  ifs.close();
+  
+  // todo assert array
+  
+  auto a = sfl["a"_f];
+  for(auto row: a) {
+    for(auto cell: row) {
+      print_hex(cell);
+    }
+  }
+};
+
+void test_array_of_records_TC01(void) {
+  using test_struct = 
+    struct_field_list <
+      field<"a", u32, 4>,
+      field<"b", u32, 4>
+    >;
+  using md_struct = 
+    struct_field_list<
+      fixed_array_field<"buffer", test_struct, 3>
+    >;
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  const u32 u32_arr[3][2] = { 
+    {0xdeadbeef, 0xbeefbeef},
+    {0xdeadbeef, 0xbeefbeef}, 
+    {0xdeadbeef, 0xbeefbeef} 
+  };
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+  md_struct sfl;
+  struct_cast(sfl, ifs);
+  ifs.close();
+  
+  // todo assert array
+  
+  auto buffer = sfl["buffer"_f];
+  for(auto row: buffer) {
+    print_hex(row["a"_f]);
+    print_hex(row["b"_f]);
+  }
+};
+

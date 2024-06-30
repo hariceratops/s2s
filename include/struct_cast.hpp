@@ -22,6 +22,23 @@ struct fixed_string {
   constexpr char* data() { return value.data(); }
 };
 
+// Forward declaration
+template <typename... fields>
+struct struct_field_list;
+
+// Metafunction to check if a type is a struct_field_list
+template <typename T>
+struct is_struct_field_list : std::false_type {};
+
+template <typename... Entries>
+struct is_struct_field_list<struct_field_list<Entries...>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
+
+template <typename T>
+concept field_list_like = is_struct_field_list_v<T>;
+
 template <std::size_t N>
 fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
 
@@ -48,7 +65,11 @@ inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
 template <typename T>
 struct is_fixed_array;
 
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
 template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array_v<T>)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -59,12 +80,13 @@ struct is_fixed_array {
 };
 
 template <typename T>
-inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
-
-template <typename T>
 struct is_c_array;
 
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
 template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_c_array_v<T>)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -74,12 +96,10 @@ struct is_c_array {
   static constexpr bool is_same = false;
 };
 
-template <typename T>
-inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
-
 // fixed_buffer_like concept
 // todo constrain to array of primitives 
 // todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
 template <typename T>
 concept fixed_buffer_like = 
   is_fixed_array_v<T> ||
@@ -151,23 +171,6 @@ struct field: public field_base<id, T, size> {
   }
 };
 
-
-// Forward declaration
-template <typename... fields>
-struct struct_field_list;
-
-// Metafunction to check if a type is a struct_field_list
-template <typename T>
-struct is_struct_field_list : std::false_type {};
-
-template <typename... Entries>
-struct is_struct_field_list<struct_field_list<Entries...>> : std::true_type {};
-
-template <typename T>
-constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
-
-template <typename T>
-concept field_list_like = is_struct_field_list_v<T>;
 
 
 // StructField implementation
