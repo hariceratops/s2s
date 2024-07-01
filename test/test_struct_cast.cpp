@@ -1,5 +1,4 @@
-#include "../include/struct_cast.hpp"
-#include "../include/value_constraints.hpp"
+#include "../single_header/struct_cast.hpp"
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
