@@ -7,14 +7,19 @@
 #include <cassert>
 #include <cstdio>
 #include <type_traits>
+#include "sc_type_traits.hpp"
 #include "fixed_string.hpp"
+#include "typelist.hpp"
+
+
+namespace tl = typelist;
 
 
 // Concept for strict callable
 template <typename T, typename Arg>
-concept StrictlyCallableWith = requires(T t, Arg arg) {
+concept strict_callable = requires(T t, Arg arg) {
   { t(arg) } -> std::convertible_to<bool>;
-} && std::is_same_v<Arg, typename std::remove_cvref_t<Arg>>;
+} && std::is_same_v<T, typename std::remove_cvref_t<Arg>>;
 
 
 // Concepts
@@ -32,9 +37,9 @@ concept comparable = requires(T a, T b) {
     { a >= b } -> std::same_as<bool>;
 };
 
-template <typename T, std::size_t N>
+template <typename T>
 concept inequality_comparable = comparable<T> && 
-    (std::is_integral_v<T> || std::is_same_v<T, fixed_string<N>>);
+    (std::is_integral_v<T> || is_fixed_string_v<T>);
 
 // Structs for predefined constraints
 template <equality_comparable T>
@@ -77,7 +82,7 @@ struct lte {
   constexpr bool operator()(const T& actual_v) const { return actual_v <= v; }
 };
 
-template <typename T>
+template <inequality_comparable T>
 struct gte {
   T v;
   constexpr gte(T value) : v(value) {}
@@ -93,19 +98,16 @@ struct no_constraint {
 };
 
 template <typename T, typename... Ts>
+  requires (tl::all_are_same_v<tl::typelist<T, Ts...>>)
 struct any_of {
-  static_assert((std::same_as<T, Ts> && ...), "All template parameters must be of the same type");
-  std::array<T, sizeof...(Ts) + 1> possible_values;
+  std::array<T, 1 + sizeof...(Ts)> possible_values;
 
   constexpr any_of(T first, Ts... rest) : possible_values{first, rest...} {}
 
   constexpr bool operator()(const T& actual_v) const {
-    for (const auto& value : possible_values) {
-      if (actual_v == value) {
-        return true;
-      }
-    }
-    return false;
+    return std::find(possible_values.begin(), 
+                     possible_values.end(), 
+                     actual_v);
   }
 };
 
@@ -125,18 +127,19 @@ template <typename T>
 range(T, T) -> range<T>;
 
 // Struct to check if a value is in any of the open intervals
-template <typename T, std::size_t N>
+template <typename t, typename... ts>
+  requires (tl::all_are_same_v<tl::typelist<ts...>>)
 struct is_in_open_range {
-  std::array<range<T>, N> open_ranges;
+  std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
 
-  constexpr is_in_open_range(std::array<range<T>, N> ranges) : open_ranges(ranges) {
-    std::sort(open_ranges.begin(), open_ranges.end(), [](const range<T>& r1, const range<T>& r2) {
+  constexpr is_in_open_range(range<t> range, ::range<ts>... ranges) : open_ranges{range, ranges...} {
+    std::sort(open_ranges.begin(), open_ranges.end(), [](const ::range<t>& r1, const ::range<t>& r2) {
       return r1.a < r2.a;
     });
   }
 
-  constexpr bool operator()(const T& value) const {
-    auto it = std::lower_bound(open_ranges.begin(), open_ranges.end(), value, [](const range<T>& r, const T& v) {
+  constexpr bool operator()(const t& value) const {
+    auto it = std::lower_bound(open_ranges.begin(), open_ranges.end(), value, [](const range<t>& r, const t& v) {
       return r.b < v;
     });
     if (it != open_ranges.begin() && (it == open_ranges.end() || it->a > value)) {
@@ -187,11 +190,11 @@ lte(T) -> lte<T>;
 template <typename T>
 gte(T) -> gte<T>;
 
-template <typename T, typename... Ts>
-any_of(T, Ts...) -> any_of<T, Ts...>;
+template <typename t, typename... ts> 
+any_of(t, ts...) -> any_of<t, ts...>;
 
-template <typename T, std::size_t N>
-is_in_open_range(std::array<range<T>, N>) -> is_in_open_range<T, N>;
+template <typename t, typename... ts> 
+is_in_open_range(range<t>, range<ts>...) -> is_in_open_range<t, ts...>;
 
 template <typename T, std::size_t N>
 is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
