@@ -1,4 +1,5 @@
 #include <iostream>
+#include "../single_header/struct_cast.hpp"
 
 // Helper metafunctions
 template <typename... ts>
