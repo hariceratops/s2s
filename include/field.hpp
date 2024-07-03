@@ -20,12 +20,12 @@ template <fixed_string id,
 struct field: public field_base<id, T, size> {
   void read(const char* buffer, std::size_t size_to_read) {
     std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
-    assert(constraint(value));
+    assert(constraint(this->value));
   }
 
   void read(std::ifstream& ifs, std::size_t size_to_read) {
     ifs.read(byte_addressof(this->value), size_to_read);
-    assert(constraint(value));
+    assert(constraint(this->value));
   }
 };
 
@@ -46,10 +46,16 @@ using c_arr_field = field<id, T[N], N * sizeof(T)>;
 template <fixed_string id, std::size_t N>
 using c_str_field = field<id, char[N + 1], N * sizeof(char) + 1>;
 
-template <typename T>
-concept floating_point = std::is_floating_point_v<T>;
-
 template <fixed_string id, floating_point T>
 using float_point_field = field<id, T, sizeof(T)>;
+
+template <fixed_string id, std::size_t N, std::array<char, N> expected>
+using magic_byte_array = field<id, std::array<char, N>, N, eq{expected}>;
+
+template <fixed_string id, std::size_t N, fixed_string<N + 1> expected>
+using magic_string = field<id, fixed_string<N + 1>, N + 1, eq{expected}>;
+
+template <fixed_string id, integral T, std::size_t size, T expected>
+using magic_number = field<id, T, size, eq{expected}>;
 
 #endif

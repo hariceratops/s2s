@@ -11,6 +11,12 @@ template <typename T>
 concept arithmetic = std::is_arithmetic_v<T>;
 
 template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
 struct is_fixed_string;
 
 template <std::size_t N>

@@ -15,8 +15,8 @@ struct are_all_fields;
 template <>
 struct are_all_fields<field_list<>> { static constexpr bool all_same = true; };
 
-template <fixed_string id, field_containable T, std::size_t size>
-struct are_all_fields<field_list<field<id, T, size>>> {
+template <fixed_string id, field_containable T, std::size_t size, auto field_constraint>
+struct are_all_fields<field_list<field<id, T, size, field_constraint>>> {
   static constexpr bool all_same = true;
 };
 
@@ -35,9 +35,9 @@ struct are_all_fields<T> {
   static constexpr bool all_same = false;
 };
 
-template <fixed_string first_id, field_containable T, std::size_t size_first,
+template <fixed_string first_id, field_containable T, std::size_t size_first, auto field_constraint,
           typename... rest>
-struct are_all_fields<field_list<field<first_id, T, size_first>, rest...>> {
+struct are_all_fields<field_list<field<first_id, T, size_first, field_constraint>, rest...>> {
   static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
 };
 

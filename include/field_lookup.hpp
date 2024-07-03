@@ -12,9 +12,9 @@ struct field_lookup_failed {};
 template <typename ls, fixed_string id>
 struct field_lookup;
 
-template <fixed_string id, typename T, std::size_t size, typename... rest>
-struct field_lookup<field_list<field<id, T, size>, rest...>, id> {
-  using type = field<id, T, size>;
+template <fixed_string id, typename T, std::size_t size, auto field_constraint, typename... rest>
+struct field_lookup<field_list<field<id, T, size, field_constraint>, rest...>, id> {
+  using type = field<id, T, size, field_constraint>;
 };
 
 template <fixed_string id, typename T, typename... rest>
