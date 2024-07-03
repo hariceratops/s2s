@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <algorithm>
+#include <string_view>
 
 
 template <std::size_t N>
@@ -20,6 +21,17 @@ struct fixed_string {
 
 template <std::size_t N>
 fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
 
 namespace static_test {
 static_assert(fixed_string("hello").size() == 5);
