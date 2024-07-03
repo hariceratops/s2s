@@ -312,3 +312,61 @@ TEST_CASE("Test open range interval check") {
   // constexpr auto r = range{2u, 4u};
 }
 
+
+TEST_CASE("Test magic number") {
+  using test_struct_field_list = 
+    struct_field_list<
+      magic_number<"magic_num", u32, 4, 0xdeadbeef>,
+      field<"p", u32, 4>
+    >;
+  const u8 buffer[] = {
+    0xef, 0xbe, 0xad, 0xde,
+    0x0d, 0xd0, 0xfe, 0xca,
+    0xef, 0xbe, 0xef, 0xbe
+  };
+  test_struct_field_list fields;
+
+  struct_cast(fields, buffer);
+
+  REQUIRE(fields["magic_num"_f] == 0xdeadbeef);
+  REQUIRE(fields["p"_f] == 0xcafed00d);
+}
+
+
+TEST_CASE("Test magic array") {
+  using test_struct_field_list = 
+    struct_field_list<
+      magic_byte_array<"magic_arr", 10, std::array<unsigned char, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd}>,
+      field<"size", u32, 4>
+    >;
+  const u8 buffer[] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
+    0x0d, 0xd0, 0xfe, 0xca
+  };
+  test_struct_field_list fields;
+
+  struct_cast(fields, buffer);
+
+  REQUIRE(fields["magic_arr"_f] == std::array<u8, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd});
+  REQUIRE(fields["size"_f] == 0xcafed00d);
+}
+
+
+TEST_CASE("Test magic string") {
+  using test_struct_field_list = 
+    struct_field_list<
+      magic_string<"magic_str", "GIF">,
+      field<"size", u32, 4>
+    >;
+  const u8 buffer[] = {
+    0xef, 0xbe, 0xad,
+    0x0d, 0xd0, 0xfe, 0xc
+  };
+  test_struct_field_list fields;
+
+  struct_cast(fields, buffer);
+
+  REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{fixed_string("GIF").data()});
+  REQUIRE(fields["size"_f] == 0xcafed00d);
+}
+
