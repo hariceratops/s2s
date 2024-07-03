@@ -107,7 +107,7 @@ struct any_of {
   constexpr bool operator()(const T& actual_v) const {
     return std::find(possible_values.begin(), 
                      possible_values.end(), 
-                     actual_v);
+                     actual_v) != possible_values.end();
   }
 };
 
