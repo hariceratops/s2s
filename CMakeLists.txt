@@ -13,13 +13,14 @@ FetchContent_MakeAvailable(catch2)
 
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAS_RELEASE "-O3")
-
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 
 # Set the paths
 set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
@@ -28,13 +29,14 @@ set(TEST_DIR "${CMAKE_SOURCE_DIR}/test")
 # Define the input and output for quom
 set(INPUT_HEADER "${INCLUDE_DIR}/struct_cast.hpp")
 set(OUTPUT_HEADER "${SINGLE_HEADER_DIR}/struct_cast.hpp")
+# Get all header files in the include directory
+file(GLOB_RECURSE HEADER_FILES "${INCLUDE_DIR}/*.hpp")
 
 # Custom command to run quom
 add_custom_command(
     OUTPUT ${OUTPUT_HEADER}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${SINGLE_HEADER_DIR}
     COMMAND python -m quom ${INPUT_HEADER} ${OUTPUT_HEADER}
-    DEPENDS ${INPUT_HEADER}
+    DEPENDS ${HEADER_FILES}
     COMMENT "Generating single header using quom"
     VERBATIM
 )
