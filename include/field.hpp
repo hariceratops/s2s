@@ -20,7 +20,7 @@ template <fixed_string id,
 struct field: public field_base<id, T, size> {
   void read(const char* buffer, std::size_t size_to_read) {
     std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
-    // assert(constraint(this->value));
+    assert(constraint(this->value));
   }
 
   void read(std::ifstream& ifs, std::size_t size_to_read) {

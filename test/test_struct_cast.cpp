@@ -359,8 +359,8 @@ TEST_CASE("Test magic string") {
       field<"size", u32, 4>
     >;
   const u8 buffer[] = {
-    0xef, 0xbe, 0xad,
-    0x0d, 0xd0, 0xfe, 0xc
+    'G', 'I', 'F',
+    0x0d, 0xd0, 0xfe, 0xca
   };
   test_struct_field_list fields;
 
