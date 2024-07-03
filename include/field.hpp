@@ -15,9 +15,9 @@ concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 template <fixed_string id,
           field_containable T,
-          std::size_t size,
+          typename size_type,
           auto constraint = no_constraint<T>{}> 
-struct field: public field_base<id, T, size> {
+struct field: public field_base<id, T, size_type> {
   void read(const char* buffer, std::size_t size_to_read) {
     std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
     assert(constraint(this->value));
@@ -31,31 +31,31 @@ struct field: public field_base<id, T, size> {
 
 
 template <fixed_string id, field_list_like T>
-struct struct_field : field_base<id, T, sizeof(T)> {};
+struct struct_field : field_base<id, T, field_size<sizeof(T)>> {};
 
 // Aliases
 template <fixed_string id, typename T, std::size_t N>
-using fixed_array_field = field<id, std::array<T, N>, N * sizeof(T)>;
+using fixed_array_field = field<id, std::array<T, N>, field_size<N * sizeof(T)>>;
 
 template <fixed_string id, std::size_t N>
-using fixed_string_field = field<id, fixed_string<N + 1>, N + 1>;
+using fixed_string_field = field<id, fixed_string<N + 1>, field_size<N + 1>>;
 
 template <fixed_string id, typename T, std::size_t N>
-using c_arr_field = field<id, T[N], N * sizeof(T)>;
+using c_arr_field = field<id, T[N], field_size<N * sizeof(T)>>;
 
 template <fixed_string id, std::size_t N>
-using c_str_field = field<id, char[N + 1], N * sizeof(char) + 1>;
+using c_str_field = field<id, char[N + 1], field_size<N * sizeof(char) + 1>>;
 
 template <fixed_string id, floating_point T>
-using float_point_field = field<id, T, sizeof(T)>;
+using float_point_field = field<id, T, field_size<sizeof(T)>>;
 
 template <fixed_string id, std::size_t N, std::array<unsigned char, N> expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, N, eq{expected}>;
+using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<N>, eq{expected}>;
 
 template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, expected.size(), eq{expected}>;
+using magic_string = field<id, fixed_string<expected.size()>, field_size<expected.size()>, eq{expected}>;
 
 template <fixed_string id, integral T, std::size_t size, T expected>
-using magic_number = field<id, T, size, eq{expected}>;
+using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
 #endif

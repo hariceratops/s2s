@@ -17,6 +17,9 @@ template <typename T>
 concept floating_point = std::is_floating_point_v<T>;
 
 template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
 struct is_fixed_string;
 
 template <std::size_t N>
@@ -31,6 +34,9 @@ struct is_fixed_string {
 
 template <typename T>
 inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
 
 template <typename T>
 struct is_fixed_array;

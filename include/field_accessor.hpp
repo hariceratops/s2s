@@ -13,4 +13,9 @@ constexpr auto operator""_f() {
   return field_accessor<id>{};
 }
 
+// template <std::size_t N>
+// constexpr auto from_field(const char (&str)[N]) {
+//   return field_accessor<fixed_string(str)>{};
+// }
+
 #endif // _FIELD_ACCESSOR_HPP_

@@ -2,11 +2,14 @@
 #define _FIELD_BASE_HPP_
 
 #include "fixed_string.hpp"
+#include "field_size.hpp"
 
-template <fixed_string id, typename T, std::size_t size>
+// todo: constrain size_type
+// template <fixed_string id, typename T, field_size_like size_type>
+template <fixed_string id, typename T, typename size_type>
 struct field_base {
   static constexpr auto field_id = id;
-  static constexpr std::size_t field_size = size;
+  static constexpr auto field_size = size_type::size;
   T value;
 };
 

@@ -2,6 +2,7 @@
 #define _STRUCT_FIELD_LIST_HPP_
 
 
+#include "field_accessor.hpp"
 #include "typelist.hpp"
 #include "struct_field_list_base.hpp"
 #include "fixed_string.hpp"
@@ -15,7 +16,7 @@ struct are_all_fields;
 template <>
 struct are_all_fields<field_list<>> { static constexpr bool all_same = true; };
 
-template <fixed_string id, field_containable T, std::size_t size, auto field_constraint>
+template <fixed_string id, field_containable T, typename size, auto field_constraint>
 struct are_all_fields<field_list<field<id, T, size, field_constraint>>> {
   static constexpr bool all_same = true;
 };
@@ -35,9 +36,9 @@ struct are_all_fields<T> {
   static constexpr bool all_same = false;
 };
 
-template <fixed_string first_id, field_containable T, std::size_t size_first, auto field_constraint,
+template <fixed_string first_id, field_containable T, field_size_like size, auto field_constraint,
           typename... rest>
-struct are_all_fields<field_list<field<first_id, T, size_first, field_constraint>, rest...>> {
+struct are_all_fields<field_list<field<first_id, T, size, field_constraint>, rest...>> {
   static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
 };
 
@@ -48,6 +49,68 @@ struct are_all_fields<field_list<struct_field<first_id, T>, rest...>> {
 
 template <typename T>
 inline constexpr bool are_all_fields_v = are_all_fields<T>::all_same;
+
+template <typename flist, typename glist>
+struct size_indices_resolved;
+
+// if the second list is empty, we have processed all the fields without short circuiting
+// so we can treat that we have checked all the fields and all checks have passed
+template <typename... xs>
+struct size_indices_resolved<
+  field_list<xs...>, 
+  field_list<>> {
+  static constexpr bool is_resolved = true;
+};
+
+template <fixed_string id, typename T, std::size_t size, auto constraint, typename... rest>
+struct size_indices_resolved<
+  field_list<>, 
+  field_list<field<id, T, field_size<size>, constraint>, rest...>> {
+  static constexpr bool is_resolved = 
+    true && 
+    size_indices_resolved<
+      field_list<field<id, T, field_size<size>, constraint>>, 
+      field_list<rest...>
+    >::is_resolved;
+};
+
+// a struct nested inside a struct shall not have a size dependant on another field, so we can skip
+template <fixed_string id, typename T, typename... head, typename... rest>
+struct size_indices_resolved<
+  field_list<head...>, 
+  field_list<struct_field<id, T>, rest...>> {
+  static constexpr bool is_resolved = 
+    true &&
+    size_indices_resolved<
+      field_list<head..., struct_field<id, T>>, 
+      field_list<rest...>
+    >::is_resolved;
+};
+
+// if the first field has the size dependant on a field, then its size cannot be deduced
+template <fixed_string id, typename T, fixed_string size_source, auto constraint, typename... rest>
+struct size_indices_resolved<
+  field_list<>, 
+  field_list<field<id, T, field_size<size_source>, constraint>, rest...>> {
+  static constexpr bool is_resolved = false;
+};
+
+template <fixed_string id, typename T, fixed_string size_source, auto constraint, typename... head, typename... rest>
+struct size_indices_resolved<
+  field_list<head...>, 
+  field_list<field<id, T, field_size<size_source>, constraint>, rest...>> {
+  using f = field_lookup_v<field_list<head...>, size_source>;
+  static constexpr bool is_resolved =
+    !std::is_same_v<f, field_lookup_failed> &&
+    std::is_same_v<typename f::field_type, std::size_t> &&
+    size_indices_resolved<
+      field_list<head..., field<id, T, field_size<size_source>, constraint>>, 
+      field_list<rest...>
+    >::is_resolved;
+};
+
+template <typename list>
+inline constexpr bool size_indices_resolved_v = size_indices_resolved<field_list<>, list>::is_resolved;
 
 
 template <typename... fields>
@@ -70,13 +133,14 @@ struct struct_field_list : struct_field_list_base, fields... {
 };
 
 namespace static_test {
-static_assert(are_all_fields_v<field_list<field<"a", int, 4>>>);
-static_assert(!are_all_fields_v<field_list<field<"a", int, 4>, int>>);
+static_assert(are_all_fields_v<field_list<field<"a", int, field_size<4u>>>>);
+static_assert(!are_all_fields_v<field_list<field<"a", int, field_size<4u>>, int>>);
 static_assert(!are_all_fields_v<field_list<int, int>>);
 static_assert(are_all_fields_v<field_list<>>);
-static_assert(are_all_fields_v<field_list<field<"a", int, 4>, field<"b", int, 4>>>);
-static_assert(are_all_fields_v<field_list<field<"a", int, 4>, field<"b", fixed_string<4>, 4>>>);
-static_assert(!are_all_fields_v<field_list<field<"a", int, 4>, field<"b", fixed_string<4>, 4>, float>>);
+static_assert(are_all_fields_v<field_list<field<"a", int, field_size<4u>>, field<"b", int, field_size<4u>>>>);
+static_assert(are_all_fields_v<field_list<field<"a", int, field_size<4u>>, field<"b", fixed_string<4>, field_size<4u>>>>);
+static_assert(!are_all_fields_v<field_list<field<"a", int, field_size<4u>>, field<"b", fixed_string<4>, field_size<4u>>, float>>);
+static_assert(size_indices_resolved_v<field_list<field<"a", int, field_size<4u>>, field<"b", fixed_string<4>, field_size<4u>>>>);
 }
 
 #endif // _STRUCT_FIELD_LIST_HPP_
