@@ -3,6 +3,9 @@
 
 #include "fixed_string.hpp"
 #include <array>
+#include <string>
+#include <vector>
+
 
 // Function to void pointer cast
 template <typename T>
@@ -20,6 +23,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -33,6 +46,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 

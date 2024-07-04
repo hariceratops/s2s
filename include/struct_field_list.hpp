@@ -128,7 +128,7 @@ struct size_indices_resolved<
     // todo ensure that the field type is integral
     // std::is_same_v<extract_type_from_field_v<f>, std::size_t> &&
     size_indices_resolved<
-      field_list<x, xs..., field<id, T, runtime_size<from_field<size_source>>, constraint>>, 
+      field_list<x, xs..., runtime_field<id, T, runtime_size<from_field<size_source>>, constraint>>, 
       field_list<rest...>
     >::is_resolved;
 };

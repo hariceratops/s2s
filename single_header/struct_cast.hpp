@@ -45,6 +45,8 @@ static_assert(fixed_string("hello").size() == 5);
 #endif // _FIXED_STRING_HPP_
 
 #include <array>
+#include <string>
+#include <vector>
 
 // Function to void pointer cast
 template <typename T>
@@ -62,6 +64,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -75,6 +87,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -482,6 +499,8 @@ static_assert(fixed_string("hello").size() == 5);
 #endif // _FIXED_STRING_HPP_
 
 #include <array>
+#include <string>
+#include <vector>
 
 // Function to void pointer cast
 template <typename T>
@@ -499,6 +518,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -512,6 +541,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -2232,6 +2266,8 @@ static_assert(fixed_string("hello").size() == 5);
 #endif // _FIXED_STRING_HPP_
 
 #include <array>
+#include <string>
+#include <vector>
 
 // Function to void pointer cast
 template <typename T>
@@ -2249,6 +2285,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -2262,6 +2308,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -3446,6 +3497,8 @@ static_assert(fixed_string("hello").size() == 5);
 #endif // _FIXED_STRING_HPP_
 
 #include <array>
+#include <string>
+#include <vector>
 
 // Function to void pointer cast
 template <typename T>
@@ -3463,6 +3516,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -3476,6 +3539,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -4803,6 +4871,8 @@ static_assert(fixed_string("hello").size() == 5);
 #endif // _FIXED_STRING_HPP_
 
 #include <array>
+#include <string>
+#include <vector>
 
 // Function to void pointer cast
 template <typename T>
@@ -4820,6 +4890,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -4833,6 +4913,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -5676,7 +5761,7 @@ struct size_indices_resolved<
     // todo ensure that the field type is integral
     // std::is_same_v<extract_type_from_field_v<f>, std::size_t> &&
     size_indices_resolved<
-      field_list<x, xs..., field<id, T, runtime_size<from_field<size_source>>, constraint>>, 
+      field_list<x, xs..., runtime_field<id, T, runtime_size<from_field<size_source>>, constraint>>, 
       field_list<rest...>
     >::is_resolved;
 };
@@ -6325,6 +6410,8 @@ static_assert(fixed_string("hello").size() == 5);
 #endif // _FIXED_STRING_HPP_
 
 #include <array>
+#include <string>
+#include <vector>
 
 // Function to void pointer cast
 template <typename T>
@@ -6342,6 +6429,16 @@ void* to_void_ptr(fixed_string<N>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
 // Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
@@ -6355,6 +6452,11 @@ char* byte_addressof(std::array<T, N>& obj) {
 
 template <std::size_t N>
 char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -7107,6 +7209,11 @@ struct is_field_with_runtime_size<runtime_field<id, T, field_size, constraint>>:
 template <typename T>
 constexpr bool is_field_with_runtime_size_v = is_field_with_runtime_size<T>::value;
 
+static_assert(is_field_with_runtime_size_v<runtime_field<"hello", int, runtime_size<from_field<"a">>>>);
+static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
+static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
+static_assert(!is_field_v<runtime_field<"hello", int, runtime_size<from_field<"a">>>>);
+
 template <typename... fields>
 struct struct_field_list;
 
@@ -7130,9 +7237,9 @@ constexpr void struct_cast(struct_field_list<fields...>& field_list, const unsig
     prefix_sum[index + 1] = prefix_sum[index] + field_type::field_size;
     if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
       struct_cast(field.value, buffer + prefix_sum[index]);
-    } else if(is_field_v<field_type>) {
+    } else if constexpr (is_field_v<field_type>) {
       field.read(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_type::field_size);
-    } else if(is_field_with_runtime_size_v<field_type>) {
+    } else if constexpr (is_field_with_runtime_size_v<field_type>) {
       field.read(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_list[field_type::field_accessor]);
     }
     ++index;
@@ -7145,9 +7252,9 @@ constexpr void struct_cast(struct_field_list<fields...>& field_list, std::ifstre
     using field_type = std::decay_t<decltype(field)>;
     if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
       struct_cast(field.value, stream);
-    } else if(is_field_v<field_type>) {
+    } else if constexpr (is_field_v<field_type>) {
       field.read(stream, field_type::field_size);
-    } else if(is_field_with_runtime_size_v<field_type>) {
+    } else if constexpr (is_field_with_runtime_size_v<field_type>) {
       field.read(stream, field_list[field_type::field_accessor]);
     }
 
