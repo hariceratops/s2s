@@ -22,6 +22,11 @@ struct field_lookup<field_list<struct_field<id, T>, rest...>, id> {
   using type = struct_field<id, T>;
 };
 
+template <fixed_string id, typename T, typename size, auto field_constraint, typename... rest>
+struct field_lookup<field_list<runtime_field<id, T, size, field_constraint>, rest...>, id> {
+  using type = struct_field<id, T>;
+};
+
 template <fixed_string id, typename head, typename... rest>
 struct field_lookup<field_list<head, rest...>, id> {
   using type = typename field_lookup<field_list<rest...>, id>::type;

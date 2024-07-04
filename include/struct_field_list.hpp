@@ -2,6 +2,7 @@
 #define _STRUCT_FIELD_LIST_HPP_
 
 
+#include "field_size.hpp"
 #include "typelist.hpp"
 #include "field_accessor.hpp"
 #include "struct_field_list_base.hpp"
@@ -9,6 +10,7 @@
 #include "field_base.hpp"
 #include "field.hpp"
 #include "field_lookup.hpp"
+#include "field_meta.hpp"
 
 
 template <typename... ts>
@@ -45,6 +47,12 @@ struct are_all_fields<field_list<field<first_id, T, size, field_constraint>, res
 
 template <fixed_string first_id, typename T, typename... rest>
 struct are_all_fields<field_list<struct_field<first_id, T>, rest...>> {
+  static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
+};
+
+template <fixed_string first_id, typename T, typename size, auto field_constraint,
+          typename... rest>
+struct are_all_fields<field_list<runtime_field<first_id, T, size, field_constraint>, rest...>> {
   static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
 };
 
@@ -92,7 +100,7 @@ struct size_indices_resolved<
 template <fixed_string id, typename T, fixed_string size_source, auto constraint, typename... rest>
 struct size_indices_resolved<
   field_list<>, 
-  field_list<field<id, T, field_size<size_source>, constraint>, rest...>> {
+  field_list<runtime_field<id, T, runtime_size<from_field<size_source>>, constraint>, rest...>> {
   static constexpr bool is_resolved = false;
 };
 
@@ -113,13 +121,14 @@ template <fixed_string id, typename T, fixed_string size_source, auto constraint
           typename x, typename... xs, typename... rest>
 struct size_indices_resolved<
   field_list<x, xs...>, 
-  field_list<field<id, T, field_size<size_source>, constraint>, rest...>> {
+  field_list<runtime_field<id, T, runtime_size<from_field<size_source>>, constraint>, rest...>> {
   using f = field_lookup_v<field_list<x, xs...>, size_source>;
   static constexpr bool is_resolved =
     !std::is_same_v<f, field_lookup_failed> &&
-    // std::is_same_v<typename f::field_type, std::size_t> &&
+    // todo ensure that the field type is integral
+    // std::is_same_v<extract_type_from_field_v<f>, std::size_t> &&
     size_indices_resolved<
-      field_list<x, xs..., field<id, T, field_size<size_source>, constraint>>, 
+      field_list<x, xs..., field<id, T, runtime_size<from_field<size_source>>, constraint>>, 
       field_list<rest...>
     >::is_resolved;
 };
@@ -160,9 +169,9 @@ static_assert(are_all_fields_v<field_list<field<"a", int, field_size<4u>>, field
 static_assert(are_all_fields_v<field_list<field<"a", int, field_size<4u>>, field<"b", fixed_string<4>, field_size<4u>>>>);
 static_assert(!are_all_fields_v<field_list<field<"a", int, field_size<4u>>, field<"b", fixed_string<4>, field_size<4u>>, float>>);
 static_assert(size_indices_resolved_v<field_list<field<"a", int, field_size<4ul>>, field<"b", fixed_string<4>, field_size<4ul>>>>);
-static_assert(!size_indices_resolved_v<field_list<field<"a", int, field_size<fixed_string("b")>>, field<"b", fixed_string<4>, field_size<4ul>>>>);
-static_assert(size_indices_resolved_v<field_list<field<"a", int, field_size<4ul>>, field<"b", fixed_string<4>, field_size<fixed_string("a")>>>>);
-static_assert(!size_indices_resolved_v<field_list<field<"a", int, field_size<4ul>>, field<"b", fixed_string<4>, field_size<4ul>>, field<"c", int, field_size<fixed_string("d")>>>>);
+static_assert(!size_indices_resolved_v<field_list<runtime_field<"a", int, runtime_size<from_field<"b">>>, field<"b", fixed_string<4>, field_size<4ul>>>>);
+static_assert(size_indices_resolved_v<field_list<field<"a", int, field_size<4ul>>, runtime_field<"b", fixed_string<4>, runtime_size<from_field<"a">>>>>);
+static_assert(!size_indices_resolved_v<field_list<field<"a", int, field_size<4ul>>, field<"b", fixed_string<4>, field_size<4ul>>, runtime_field<"c", int, runtime_size<from_field<"d">>>>>);
 }
 
 #endif // _STRUCT_FIELD_LIST_HPP_
