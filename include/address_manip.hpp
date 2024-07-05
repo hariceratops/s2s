@@ -28,6 +28,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());

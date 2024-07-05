@@ -1,12 +1,13 @@
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
+#include <iostream>
 #include "fixed_string.hpp"
 #include "field_base.hpp"
 #include "address_manip.hpp"
 #include "sc_type_traits.hpp"
 #include "field_constraints.hpp"
-// #include "field_size.hpp"
+#include "field_size.hpp"
 #include <fstream>
 #include <cstring>
 #include <array>
@@ -41,12 +42,24 @@ struct field: public basic_field<id, T> {
 
 // todo remove field_containable since value of T type shall
 // be either allocated or managed, constain accordingly
+// todo is contraint required? maybe.
 template <fixed_string id,
           typename T,
           typename runtime_size,
           auto constraint = no_constraint<T>{}> 
 struct runtime_field: public basic_field<id, T> {
   static constexpr auto field_accessor = runtime_size::accessor;
+  void read(const char* buffer, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
+    assert(constraint(this->value));
+  }
+
+  void read(std::ifstream& ifs, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    ifs.read(byte_addressof(this->value), size_to_read);
+    assert(constraint(this->value));
+  }
 };
 
 
@@ -81,10 +94,12 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<expecte
 template <fixed_string id, integral T, std::size_t size, T expected>
 using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
-// What if user wants a custom allocator
+// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
+// todo get vector length in bytes instead of size to read additional overload
 template <fixed_string id, typename T, typename runtime_size>
 using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
 
+// todo check if this will work for all char types like wstring
 template <fixed_string id, typename runtime_size>
 using str_field = runtime_field<id, std::string, runtime_size>;
 

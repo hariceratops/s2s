@@ -379,7 +379,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
       // str_field<"str", runtime_size<from_field<"len">>>
     >;
 
-  constexpr std::size_t str_len = 10;
+  constexpr std::size_t str_len = 40;
   const u8 str[] = "foo in bar";
   const u32 u32_arr[] = {
     0xdeadbeef, 0xcafed00d,
@@ -399,9 +399,11 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
   test_aliased_var_buffer_struct fields;
   struct_cast(fields, ifs);
   ifs.close();
-
+  
+  std::cout << fields["len"_f] << '\n';
+  std::cout << fields["vec"_f].size() << '\n';
   for(auto num: fields["vec"_f]) {
-    std::cout << num << '\n';
+    std::cout << std::hex << num << '\n';
   }
 
   // std::string_view expected{"foo in bar"};

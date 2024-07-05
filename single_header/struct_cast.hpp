@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -69,6 +70,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());
@@ -108,6 +110,7 @@ char* byte_addressof(std::vector<T>& obj) {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -155,6 +158,7 @@ constexpr auto operator""_f() {
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
+#include <iostream>
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -163,6 +167,7 @@ constexpr auto operator""_f() {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -206,6 +211,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -253,6 +259,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -386,6 +393,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -466,6 +474,7 @@ struct field_base {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -523,6 +532,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());
@@ -563,6 +573,7 @@ char* byte_addressof(std::vector<T>& obj) {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -706,6 +717,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -836,6 +848,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1156,7 +1169,217 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// #include "field_size.hpp"
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+
+#ifndef _SC_META_HPP_
+#define _SC_META_HPP_
+
+#include <concepts>
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
+
+#include <type_traits>
+
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+
+// Arithmetic concept
+template <typename T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
+template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+#endif // _SC_META_HPP_
+
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
+// todo enforce concept constraints for field_size
+template <std::size_t N>
+struct field_size {
+  static constexpr auto size = N;
+};
+
+template <fixed_string id>
+using from_field = field_accessor<id>;
+
+template <typename field_accessor>
+struct runtime_size {
+  // static constexpr auto accessor = field_accessor::field_id;
+  static constexpr auto accessor = field_accessor{};
+};
+
+#endif // _FIELD_SIZE_HPP_
+
 #include <fstream>
 #include <cstring>
 #include <array>
@@ -1191,12 +1414,24 @@ struct field: public basic_field<id, T> {
 
 // todo remove field_containable since value of T type shall
 // be either allocated or managed, constain accordingly
+// todo is contraint required? maybe.
 template <fixed_string id,
           typename T,
           typename runtime_size,
           auto constraint = no_constraint<T>{}> 
 struct runtime_field: public basic_field<id, T> {
   static constexpr auto field_accessor = runtime_size::accessor;
+  void read(const char* buffer, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
+    assert(constraint(this->value));
+  }
+
+  void read(std::ifstream& ifs, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    ifs.read(byte_addressof(this->value), size_to_read);
+    assert(constraint(this->value));
+  }
 };
 
 template <fixed_string id, field_list_like T>
@@ -1230,10 +1465,12 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<expecte
 template <fixed_string id, integral T, std::size_t size, T expected>
 using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
-// What if user wants a custom allocator
+// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
+// todo get vector length in bytes instead of size to read additional overload
 template <fixed_string id, typename T, typename runtime_size>
 using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
 
+// todo check if this will work for all char types like wstring
 template <fixed_string id, typename runtime_size>
 using str_field = runtime_field<id, std::string, runtime_size>;
 
@@ -1257,6 +1494,7 @@ using str_field = runtime_field<id, std::string, runtime_size>;
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1390,6 +1628,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1563,6 +1802,7 @@ static_assert(tl::all_are_same_v<tl::typelist<>>);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1627,6 +1867,7 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1670,6 +1911,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1717,6 +1959,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1850,6 +2093,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1922,6 +2166,7 @@ struct field_base {
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
+#include <iostream>
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -1930,6 +2175,7 @@ struct field_base {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -1973,6 +2219,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2020,6 +2267,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2153,6 +2401,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2233,6 +2482,7 @@ struct field_base {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2290,6 +2540,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());
@@ -2330,6 +2581,7 @@ char* byte_addressof(std::vector<T>& obj) {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2473,6 +2725,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2603,6 +2856,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -2923,7 +3177,217 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// #include "field_size.hpp"
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+
+#ifndef _SC_META_HPP_
+#define _SC_META_HPP_
+
+#include <concepts>
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
+
+#include <type_traits>
+
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+
+// Arithmetic concept
+template <typename T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
+template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+#endif // _SC_META_HPP_
+
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
+// todo enforce concept constraints for field_size
+template <std::size_t N>
+struct field_size {
+  static constexpr auto size = N;
+};
+
+template <fixed_string id>
+using from_field = field_accessor<id>;
+
+template <typename field_accessor>
+struct runtime_size {
+  // static constexpr auto accessor = field_accessor::field_id;
+  static constexpr auto accessor = field_accessor{};
+};
+
+#endif // _FIELD_SIZE_HPP_
+
 #include <fstream>
 #include <cstring>
 #include <array>
@@ -2958,12 +3422,24 @@ struct field: public basic_field<id, T> {
 
 // todo remove field_containable since value of T type shall
 // be either allocated or managed, constain accordingly
+// todo is contraint required? maybe.
 template <fixed_string id,
           typename T,
           typename runtime_size,
           auto constraint = no_constraint<T>{}> 
 struct runtime_field: public basic_field<id, T> {
   static constexpr auto field_accessor = runtime_size::accessor;
+  void read(const char* buffer, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
+    assert(constraint(this->value));
+  }
+
+  void read(std::ifstream& ifs, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    ifs.read(byte_addressof(this->value), size_to_read);
+    assert(constraint(this->value));
+  }
 };
 
 template <fixed_string id, field_list_like T>
@@ -2997,10 +3473,12 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<expecte
 template <fixed_string id, integral T, std::size_t size, T expected>
 using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
-// What if user wants a custom allocator
+// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
+// todo get vector length in bytes instead of size to read additional overload
 template <fixed_string id, typename T, typename runtime_size>
 using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
 
+// todo check if this will work for all char types like wstring
 template <fixed_string id, typename runtime_size>
 using str_field = runtime_field<id, std::string, runtime_size>;
 
@@ -3118,6 +3596,7 @@ static_assert(tl::all_are_same_v<tl::typelist<>>);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3153,6 +3632,7 @@ static_assert(fixed_string("hello").size() == 5);
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
+#include <iostream>
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -3161,6 +3641,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3204,6 +3685,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3251,6 +3733,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3384,6 +3867,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3464,6 +3948,7 @@ struct field_base {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3521,6 +4006,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());
@@ -3561,6 +4047,7 @@ char* byte_addressof(std::vector<T>& obj) {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3704,6 +4191,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -3834,6 +4322,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4154,7 +4643,217 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// #include "field_size.hpp"
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+
+#ifndef _SC_META_HPP_
+#define _SC_META_HPP_
+
+#include <concepts>
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
+
+#include <type_traits>
+
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+
+// Arithmetic concept
+template <typename T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
+template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+#endif // _SC_META_HPP_
+
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
+// todo enforce concept constraints for field_size
+template <std::size_t N>
+struct field_size {
+  static constexpr auto size = N;
+};
+
+template <fixed_string id>
+using from_field = field_accessor<id>;
+
+template <typename field_accessor>
+struct runtime_size {
+  // static constexpr auto accessor = field_accessor::field_id;
+  static constexpr auto accessor = field_accessor{};
+};
+
+#endif // _FIELD_SIZE_HPP_
+
 #include <fstream>
 #include <cstring>
 #include <array>
@@ -4189,12 +4888,24 @@ struct field: public basic_field<id, T> {
 
 // todo remove field_containable since value of T type shall
 // be either allocated or managed, constain accordingly
+// todo is contraint required? maybe.
 template <fixed_string id,
           typename T,
           typename runtime_size,
           auto constraint = no_constraint<T>{}> 
 struct runtime_field: public basic_field<id, T> {
   static constexpr auto field_accessor = runtime_size::accessor;
+  void read(const char* buffer, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
+    assert(constraint(this->value));
+  }
+
+  void read(std::ifstream& ifs, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    ifs.read(byte_addressof(this->value), size_to_read);
+    assert(constraint(this->value));
+  }
 };
 
 template <fixed_string id, field_list_like T>
@@ -4228,10 +4939,12 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<expecte
 template <fixed_string id, integral T, std::size_t size, T expected>
 using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
-// What if user wants a custom allocator
+// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
+// todo get vector length in bytes instead of size to read additional overload
 template <fixed_string id, typename T, typename runtime_size>
 using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
 
+// todo check if this will work for all char types like wstring
 template <fixed_string id, typename runtime_size>
 using str_field = runtime_field<id, std::string, runtime_size>;
 
@@ -4254,7 +4967,7 @@ struct field_lookup<field_list<struct_field<id, T>, rest...>, id> {
 
 template <fixed_string id, typename T, typename size, auto field_constraint, typename... rest>
 struct field_lookup<field_list<runtime_field<id, T, size, field_constraint>, rest...>, id> {
-  using type = struct_field<id, T>;
+  using type = runtime_field<id, T, size, field_constraint>;
 };
 
 template <fixed_string id, typename head, typename... rest>
@@ -4283,6 +4996,7 @@ using field_lookup_v = typename field_lookup<ls, id>::type;
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4330,6 +5044,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4463,6 +5178,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4527,6 +5243,7 @@ struct runtime_size {
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
+#include <iostream>
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -4535,6 +5252,7 @@ struct runtime_size {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4578,6 +5296,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4625,6 +5344,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4758,6 +5478,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4838,6 +5559,7 @@ struct field_base {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -4895,6 +5617,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());
@@ -4935,6 +5658,7 @@ char* byte_addressof(std::vector<T>& obj) {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -5078,6 +5802,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -5208,6 +5933,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -5528,7 +6254,217 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// #include "field_size.hpp"
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+
+#ifndef _SC_META_HPP_
+#define _SC_META_HPP_
+
+#include <concepts>
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
+
+#include <type_traits>
+
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+
+// Arithmetic concept
+template <typename T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
+template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+#endif // _SC_META_HPP_
+
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
+// todo enforce concept constraints for field_size
+template <std::size_t N>
+struct field_size {
+  static constexpr auto size = N;
+};
+
+template <fixed_string id>
+using from_field = field_accessor<id>;
+
+template <typename field_accessor>
+struct runtime_size {
+  // static constexpr auto accessor = field_accessor::field_id;
+  static constexpr auto accessor = field_accessor{};
+};
+
+#endif // _FIELD_SIZE_HPP_
+
 #include <fstream>
 #include <cstring>
 #include <array>
@@ -5563,12 +6499,24 @@ struct field: public basic_field<id, T> {
 
 // todo remove field_containable since value of T type shall
 // be either allocated or managed, constain accordingly
+// todo is contraint required? maybe.
 template <fixed_string id,
           typename T,
           typename runtime_size,
           auto constraint = no_constraint<T>{}> 
 struct runtime_field: public basic_field<id, T> {
   static constexpr auto field_accessor = runtime_size::accessor;
+  void read(const char* buffer, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
+    assert(constraint(this->value));
+  }
+
+  void read(std::ifstream& ifs, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    ifs.read(byte_addressof(this->value), size_to_read);
+    assert(constraint(this->value));
+  }
 };
 
 template <fixed_string id, field_list_like T>
@@ -5602,10 +6550,12 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<expecte
 template <fixed_string id, integral T, std::size_t size, T expected>
 using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
-// What if user wants a custom allocator
+// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
+// todo get vector length in bytes instead of size to read additional overload
 template <fixed_string id, typename T, typename runtime_size>
 using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
 
+// todo check if this will work for all char types like wstring
 template <fixed_string id, typename runtime_size>
 using str_field = runtime_field<id, std::string, runtime_size>;
 
@@ -5822,6 +6772,7 @@ static_assert(!size_indices_resolved_v<field_list<field<"a", int, field_size<4ul
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -5869,6 +6820,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6002,6 +6954,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6066,6 +7019,7 @@ struct runtime_size {
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
+#include <iostream>
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -6074,6 +7028,7 @@ struct runtime_size {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6117,6 +7072,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6164,6 +7120,7 @@ static_assert(fixed_string("hello").size() == 5);
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6297,6 +7254,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6377,6 +7335,7 @@ struct field_base {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6434,6 +7393,7 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+// todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
 //   return reinterpret_cast<void*>(obj.data());
@@ -6474,6 +7434,7 @@ char* byte_addressof(std::vector<T>& obj) {
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6617,6 +7578,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -6747,6 +7709,7 @@ concept fixed_buffer_like =
 #include <algorithm>
 #include <string_view>
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;
@@ -7067,7 +8030,217 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// #include "field_size.hpp"
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+
+#ifndef _SC_META_HPP_
+#define _SC_META_HPP_
+
+#include <concepts>
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
+
+#include <type_traits>
+
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+
+// Arithmetic concept
+template <typename T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
+template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+#endif // _SC_META_HPP_
+
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
+// todo enforce concept constraints for field_size
+template <std::size_t N>
+struct field_size {
+  static constexpr auto size = N;
+};
+
+template <fixed_string id>
+using from_field = field_accessor<id>;
+
+template <typename field_accessor>
+struct runtime_size {
+  // static constexpr auto accessor = field_accessor::field_id;
+  static constexpr auto accessor = field_accessor{};
+};
+
+#endif // _FIELD_SIZE_HPP_
+
 #include <fstream>
 #include <cstring>
 #include <array>
@@ -7102,12 +8275,24 @@ struct field: public basic_field<id, T> {
 
 // todo remove field_containable since value of T type shall
 // be either allocated or managed, constain accordingly
+// todo is contraint required? maybe.
 template <fixed_string id,
           typename T,
           typename runtime_size,
           auto constraint = no_constraint<T>{}> 
 struct runtime_field: public basic_field<id, T> {
   static constexpr auto field_accessor = runtime_size::accessor;
+  void read(const char* buffer, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
+    assert(constraint(this->value));
+  }
+
+  void read(std::ifstream& ifs, std::size_t size_to_read) {
+    this->value.resize(size_to_read);
+    ifs.read(byte_addressof(this->value), size_to_read);
+    assert(constraint(this->value));
+  }
 };
 
 template <fixed_string id, field_list_like T>
@@ -7141,10 +8326,12 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<expecte
 template <fixed_string id, integral T, std::size_t size, T expected>
 using magic_number = field<id, T, field_size<size>, eq{expected}>;
 
-// What if user wants a custom allocator
+// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
+// todo get vector length in bytes instead of size to read additional overload
 template <fixed_string id, typename T, typename runtime_size>
 using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
 
+// todo check if this will work for all char types like wstring
 template <fixed_string id, typename runtime_size>
 using str_field = runtime_field<id, std::string, runtime_size>;
 

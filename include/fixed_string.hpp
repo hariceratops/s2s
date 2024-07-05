@@ -7,6 +7,7 @@
 #include <string_view>
 
 
+// todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
   std::array<char, N + 1> value;

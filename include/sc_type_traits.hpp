@@ -1,7 +1,7 @@
 #ifndef _SC_META_HPP_
 #define _SC_META_HPP_
 
-
+#include <vector>
 #include <concepts>
 #include "fixed_string.hpp"
 #include "struct_field_list_base.hpp"
@@ -82,6 +82,22 @@ concept fixed_buffer_like =
   is_c_array_v<T> ||
   is_fixed_string_v<T>;
 
+struct not_a_vec{};
 
+template <typename T>
+struct extract_type_from_vec;
+
+template <typename T>
+struct extract_type_from_vec<std::vector<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_vec {
+  using type = not_a_vec;
+};
+
+template <typename T>
+using extract_type_from_vec_t = typename extract_type_from_vec<T>::type;
 
 #endif // _SC_META_HPP_
