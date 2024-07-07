@@ -5,6 +5,7 @@
 #include "field_accessor.hpp"
 #include "field.hpp"
 #include "struct_field_list.hpp"
+#include "compute_res.hpp"
 #include "cast.hpp"
 
 #endif // STRUCT_CAST_HPP

@@ -412,3 +412,24 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
   // REQUIRE(fields["c"_f] == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
 };
 
+
+TEST_CASE("Dummy test to verify runtime computation from fields") {
+  using u32 = unsigned int;
+  using sfl = struct_field_list<field<"a", u32, field_size<4>>, field<"b", u32, field_size<4>>>;
+  sfl fl;
+  unsigned char arr[] = {0x04, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00};
+  struct_cast(fl, arr);
+
+  auto callable = [](u32& a, u32& b) -> u32 { return a * b; };
+  using dep_fields = 
+    typelist::typelist<
+      field<"a", u32, field_size<4>>,
+      field<"b", u32, field_size<4>>
+    >;
+  auto res = compute<callable, dep_fields>()(fl);
+
+  REQUIRE(fl["a"_f] == 4);
+  REQUIRE(fl["b"_f] == 5);
+  REQUIRE(res == 20);
+  std::cout << std::dec << res << '\n';
+}
