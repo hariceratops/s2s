@@ -1,7 +1,7 @@
 #ifndef _SC_META_HPP_
 #define _SC_META_HPP_
 
-
+#include <vector>
 #include <concepts>
 #include "fixed_string.hpp"
 #include "struct_field_list_base.hpp"
@@ -15,6 +15,9 @@ concept integral = std::is_integral_v<T>;
 
 template <typename T>
 concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
 template <typename T>
 struct is_fixed_string;
@@ -31,6 +34,9 @@ struct is_fixed_string {
 
 template <typename T>
 inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
 
 template <typename T>
 struct is_fixed_array;
@@ -76,6 +82,22 @@ concept fixed_buffer_like =
   is_c_array_v<T> ||
   is_fixed_string_v<T>;
 
+struct not_a_vec{};
 
+template <typename T>
+struct extract_type_from_vec;
+
+template <typename T>
+struct extract_type_from_vec<std::vector<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_vec {
+  using type = not_a_vec;
+};
+
+template <typename T>
+using extract_type_from_vec_t = typename extract_type_from_vec<T>::type;
 
 #endif // _SC_META_HPP_

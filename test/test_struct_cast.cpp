@@ -17,8 +17,8 @@ using u8 = unsigned char;
 TEST_CASE("Test reading a meta_struct from a static buffer") {
   using test_struct_field_list = 
     struct_field_list<
-      field<"a", u32, 4>, 
-      field<"b", u32, 4>
+      field<"a", u32, field_size<4>>, 
+      field<"b", u32, field_size<4>>
     >;
 
   const u8 buffer[] = {
@@ -38,8 +38,8 @@ TEST_CASE("Test reading a meta_struct from a static buffer") {
 TEST_CASE("Test reading a meta_struct from a binary file") {
   using test_struct_field_list = 
    struct_field_list<
-     field<"a", u32, 4>, 
-     field<"b", u32, 4>
+     field<"a", u32, field_size<4>>, 
+     field<"b", u32, field_size<4>>
   >;
 
   std::ofstream ofs("test_bin_input_1.bin", std::ios::out | std::ios::binary);
@@ -62,13 +62,13 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
 TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") {
   using test_nested_struct_field_list = 
     struct_field_list<
-      field<"a", u32, 4>, 
-      field<"b", u32, 4>,
+      field<"a", u32, field_size<4>>, 
+      field<"b", u32, field_size<4>>,
       struct_field<
         "c", 
         struct_field_list<
-          field<"x", u32, 4>,
-          field<"y", u32, 4>
+          field<"x", u32, field_size<4>>,
+          field<"y", u32, field_size<4>>
         >
       >
     >;
@@ -93,13 +93,13 @@ TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") 
 TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
    using test_nested_struct_field_list = 
     struct_field_list<
-      field<"a", u32, 4>, 
-      field<"b", u32, 4>,
+      field<"a", u32, field_size<4>>, 
+      field<"b", u32, field_size<4>>,
       struct_field<
         "c", 
         struct_field_list<
-          field<"x", u32, 4>,
-          field<"y", u32, 4>
+          field<"x", u32, field_size<4>>,
+          field<"y", u32, field_size<4>>
         >
       >
     >;
@@ -131,9 +131,9 @@ TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
 TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file") {
   using test_fixed_buffer_struct = 
     struct_field_list<
-      field<"a", char[11], 11>,
-      field<"b", fixed_string<11>, 11>,
-      field<"c", std::array<u32, 3>, 12>
+      field<"a", char[11], field_size<11>>,
+      field<"b", fixed_string<11>, field_size<11>>,
+      field<"c", std::array<u32, 3>, field_size<12>>
     >;
 
   constexpr std::size_t str_len = 10;
@@ -224,8 +224,8 @@ TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field f
 TEST_CASE("Test reading a meta_struct with array of records from binary file") {
   using test_struct = 
     struct_field_list <
-      field<"a", u32, 4>,
-      field<"b", u32, 4>
+      field<"a", u32, field_size<4>>,
+      field<"b", u32, field_size<4>>
     >;
   using md_struct = 
     struct_field_list<
@@ -317,7 +317,7 @@ TEST_CASE("Test magic number") {
   using test_struct_field_list = 
     struct_field_list<
       magic_number<"magic_num", u32, 4, 0xdeadbeef>,
-      field<"p", u32, 4>
+      field<"p", u32, field_size<4>>
     >;
   const u8 buffer[] = {
     0xef, 0xbe, 0xad, 0xde,
@@ -337,7 +337,7 @@ TEST_CASE("Test magic array") {
   using test_struct_field_list = 
     struct_field_list<
       magic_byte_array<"magic_arr", 10, std::array<unsigned char, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd}>,
-      field<"size", u32, 4>
+      field<"size", u32, field_size<4>>
     >;
   const u8 buffer[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
@@ -356,7 +356,7 @@ TEST_CASE("Test magic string") {
   using test_struct_field_list = 
     struct_field_list<
       magic_string<"magic_str", "GIF">,
-      field<"size", u32, 4>
+      field<"size", u32, field_size<4>>
     >;
   const u8 buffer[] = {
     'G', 'I', 'F',
@@ -370,3 +370,66 @@ TEST_CASE("Test magic string") {
   REQUIRE(fields["size"_f] == 0xcafed00d);
 }
 
+
+TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
+  using test_aliased_var_buffer_struct = 
+    struct_field_list<
+      field<"len", std::size_t, field_size<8>>,
+      vec_field<"vec", int, runtime_size<from_field<"len">>>
+      // str_field<"str", runtime_size<from_field<"len">>>
+    >;
+
+  constexpr std::size_t str_len = 40;
+  const u8 str[] = "foo in bar";
+  const u32 u32_arr[] = {
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d
+  };
+
+  std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
+  ofs.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
+  test_aliased_var_buffer_struct fields;
+  struct_cast(fields, ifs);
+  ifs.close();
+  
+  std::cout << fields["len"_f] << '\n';
+  std::cout << fields["vec"_f].size() << '\n';
+  for(auto num: fields["vec"_f]) {
+    std::cout << std::hex << num << '\n';
+  }
+
+  // std::string_view expected{"foo in bar"};
+  // REQUIRE(std::string_view{fields["a"_f]} == expected);
+  // REQUIRE(std::string_view{fields["b"_f].data()} == expected);
+  // REQUIRE(fields["c"_f] == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
+};
+
+
+TEST_CASE("Dummy test to verify runtime computation from fields") {
+  using u32 = unsigned int;
+  using sfl = struct_field_list<field<"a", u32, field_size<4>>, field<"b", u32, field_size<4>>>;
+  sfl fl;
+  unsigned char arr[] = {0x04, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00};
+  struct_cast(fl, arr);
+
+  auto callable = [](u32& a, u32& b) -> u32 { return a * b; };
+  using dep_fields = 
+    typelist::typelist<
+      field<"a", u32, field_size<4>>,
+      field<"b", u32, field_size<4>>
+    >;
+  auto res = compute<callable, dep_fields>()(fl);
+
+  REQUIRE(fl["a"_f] == 4);
+  REQUIRE(fl["b"_f] == 5);
+  REQUIRE(res == 20);
+  std::cout << std::dec << res << '\n';
+}
