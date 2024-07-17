@@ -1,0 +1,63 @@
+template <fixed_string id,
+          typename T,
+          typename runtime_size,
+          auto constraint = no_constraint<T>{},
+          // auto variance = compute<[](){ return true; }, typelist::typelist<>>{}> 
+          auto variance = compute<no_variance, typelist::typelist<>>{}> 
+struct runtime_field: public basic_field<id, T> {
+ 
+[ 33%] Built target generate_single_header
+[ 66%] Building CXX object CMakeFiles/test_struct_cast.dir/test/test_struct_cast.cpp.o
+In file included from /home/hari/Code/struct_cast/test/test_struct_cast.cpp:4:
+/home/hari/Code/struct_cast/test/../single_header/struct_cast.hpp: In substitution of ‘template<fixed_string<...auto...> id, class T, fixed_string<...auto...> size_source, auto constraint, class ... rest> struct size_indices_resolved<field_list<>, field_list<runtime_field<id, T, runtime_size<field_accessor<size_source> >, constraint, compute<<lambda>, typelist::typelist<> >{}>, rest ...> > [with fixed_string<...auto...> id = fixed_string<1>{std::array<char, 2>{"a"}}; T = int; fixed_string<...auto...> size_source = fixed_string<1>{std::array<char, 2>{"b"}}; auto constraint = no_constraint<int>(); rest = {field<fixed_string<1>{std::array<char, 2>{"b"}}, fixed_string<4>, field_size<4>, no_constraint<fixed_string<4> >()>}]’:
+/home/hari/Code/struct_cast/test/../single_header/struct_cast.hpp:8237:92:   required from ‘constexpr const bool size_indices_resolved_v<field_list<runtime_field<fixed_string<1>{std::array<char, 2>{"a"}}, int, runtime_size<field_accessor<fixed_string<1>{std::array<char, 2>{"b"}}> >, no_constraint<int>(), compute<<lambda closure object><lambda()>(), typelist::typelist<> >()>, field<fixed_string<1>{std::array<char, 2>{"b"}}, fixed_string<4>, field_size<4>, no_constraint<fixed_string<4> >()> > >’
+/home/hari/Code/struct_cast/test/../single_header/struct_cast.hpp:8271:16:   required from here
+/home/hari/Code/struct_cast/test/../single_header/struct_cast.hpp:1786:35: internal compiler error: in tsubst, at cp/pt.cc:15869
+ 1786 |           auto variance = compute<[]{ return true; }, typelist::typelist<>>{}>
+      |                                   ^~~~~~~~~~~~~~~~~~
+0x19ea0c8 internal_error(char const*, ...)
+	???:0
+0x6543f0 fancy_abort(char const*, int, char const*)
+	???:0
+0x7e3e6d tsubst(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7f8194 tsubst_lambda_expr(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7e258f tsubst_copy_and_build(tree_node*, tree_node*, int, tree_node*, bool, bool)
+	???:0
+0x7e5c07 tsubst_template_arg(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7ed512 tsubst_template_args(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7e06e6 tsubst_copy_and_build(tree_node*, tree_node*, int, tree_node*, bool, bool)
+	???:0
+0x7e5c07 tsubst_template_arg(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7ed512 tsubst_template_args(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7ed512 tsubst_template_args(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7eda6c tsubst_argument_pack(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7ed674 tsubst_template_args(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7ed512 tsubst_template_args(tree_node*, tree_node*, int, tree_node*)
+	???:0
+0x7de9da most_specialized_partial_spec(tree_node*, int)
+	???:0
+0x7ed3c7 instantiate_class_template(tree_node*)
+	???:0
+0x83d2f5 complete_type(tree_node*)
+	???:0
+0x80ca05 lookup_member(tree_node*, tree_node*, int, bool, int, access_failure_info*)
+	???:0
+0x76ca64 lookup_qualified_name(tree_node*, tree_node*, LOOK_want, bool)
+	???:0
+0x7e1c67 tsubst_copy_and_build(tree_node*, tree_node*, int, tree_node*, bool, bool)
+	???:0
+Please submit a full bug report, with preprocessed source (by using -freport-bug).
+Please include the complete backtrace with any bug report.
+See <https://bugs.archlinux.org/> for instructions.
+make[2]: *** [CMakeFiles/test_struct_cast.dir/build.make:76: CMakeFiles/test_struct_cast.dir/test/test_struct_cast.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:128: CMakeFiles/test_struct_cast.dir/all] Error 2
+make: *** [Makefile:91: all] Error 2
