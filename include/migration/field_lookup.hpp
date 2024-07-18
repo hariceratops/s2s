@@ -2,20 +2,9 @@
 #define _FIELD_LOOKUP_HPP_
 
 
-#include "typelist.hpp"
-#include "fixed_string.hpp"
-#include "field_.hpp"
-
-
-
-// template <fixed_string id,
-//           typename T,
-//           typename size_type,
-//           auto constraint_on_value = no_constraint<T>{},
-//           auto present_only_if = compute<always, no_dependencies>{},
-//           auto type_deducer = compute<always, no_dependencies>{}>
-// struct field_: public field_base<id, T> {};
-//
+#include "../typelist.hpp"
+#include "../fixed_string.hpp"
+#include "field.hpp"
 
 
 struct field_lookup_failed {};
@@ -30,8 +19,8 @@ template <fixed_string id,
           auto present_only_if, 
           auto type_deducer, 
           typename... rest>
-struct field_lookup<field_list<field_<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
-  using type = field_<id, T, size, field_constraint, present_only_if, type_deducer>;
+struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
+  using type = field<id, T, size, field_constraint, present_only_if, type_deducer>;
 };
 
 template <fixed_string id, typename head, typename... rest>

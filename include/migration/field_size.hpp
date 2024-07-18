@@ -1,8 +1,8 @@
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
 
-#include "sc_type_traits.hpp"
-#include "field_accessor.hpp"
+#include "../sc_type_traits.hpp"
+#include "../field_accessor.hpp"
 
 
 // todo enforce concept constraints for field_size

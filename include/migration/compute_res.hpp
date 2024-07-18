@@ -1,11 +1,11 @@
 #ifndef _COMPUTE_RES_
 #define _COMPUTE_RES_
 
-#include "typelist.hpp"
-#include "struct_field_list_base.hpp"
+#include "../typelist.hpp"
+#include "../struct_field_list_base.hpp"
 #include <functional>
 #include <optional>
-#include "field_accessor.hpp"
+#include "../field_accessor.hpp"
 #include "field_reader.hpp"
 
 
@@ -20,6 +20,9 @@ struct compute<callable, typelist::typelist<req_fields...>> {
     return std::invoke(callable, field_list[field_accessor<req_fields::field_id>{}]...);
   }
 };
+
+
+// todo reader callable struct
 
 template <auto v, typename T>
 struct match_case {
