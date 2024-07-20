@@ -156,11 +156,6 @@ struct are_all_fields<field_list<T, rest...>> {
   static constexpr bool all_same = false;
 };
 
-template <typename T>
-struct are_all_fields<T> {
-  static constexpr bool all_same = false;
-};
-
 template <field_like T, typename... rest>
 struct are_all_fields<field_list<T, rest...>> {
   static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;

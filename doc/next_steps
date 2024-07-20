@@ -15,3 +15,5 @@
 [  ] Support for no_std and user defined optionals, variants, expected, containers
 [  ] Visualizer for the struct_field_list using Python, Graphviz
 [  ] Doxygen, MdDocs
+[  ] Bitfields
+[  ] Endianness
