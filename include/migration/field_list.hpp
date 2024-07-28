@@ -166,7 +166,7 @@ inline constexpr bool are_all_fields_v = are_all_fields<T>::all_same;
 
 
 template <typename... fields>
-struct struct_field_list_ : struct_field_list_base, fields... {
+struct struct_field_list : struct_field_list_base, fields... {
   static_assert(are_all_fields_v<field_list<fields...>>, 
                 "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution

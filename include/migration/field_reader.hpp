@@ -6,15 +6,18 @@
 
 
 template <typename T>
-auto read(T& dest, const char* buffer, std::size_t size_to_read) -> std::expected<void, std::string> {
-  std::memcpy(to_void_ptr(dest), buffer, size_to_read);
-  return {};
+auto read(const char* buffer, std::size_t size_to_read) 
+    -> std::expected<T, std::string> {
+  T obj;
+  std::memcpy(to_void_ptr(obj), buffer, size_to_read);
+  return obj;
 }
 
 template <typename T>
-auto read(T& dest, std::ifstream& ifs, std::size_t size_to_read) 
-     -> std::expected<void, std::string> {
-  if(!ifs.read(byte_addressof(dest), size_to_read))
+auto read(std::ifstream& ifs, std::size_t size_to_read) 
+     -> std::expected<T, std::string> {
+  T obj;
+  if(!ifs.read(byte_addressof(obj), size_to_read))
     return std::unexpected("buffer exhaustion");
-  return {};
+  return obj;
 }

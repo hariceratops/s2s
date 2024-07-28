@@ -8,25 +8,85 @@
 #include <optional>
 #include "../field_accessor.hpp"
 #include "field_reader.hpp"
+#include "field_list.hpp"
 
+
+template <fixed_string... fs>
+struct fixed_string_list {};
+
+template <fixed_string... fs>
+using with_fields = fixed_string_list<fs...>;
 
 // todo add constriants
-template <auto callable, fixed_string... req_fields>
+template <auto callable, typename T, typename fstr_list>
 struct compute;
 
-template <auto callable, fixed_string... req_fields>
-struct compute<callable, typelist::typelist<req_fields...>> {
-  template <field_list_like flist>
-  constexpr auto operator()(flist& field_list) {
-    return std::invoke(callable, field_list[field_accessor<req_fields::field_id>{}]...);
+// match<eval_result<expression<>, with_fields<>>, match_cases<match_case<val, type>>>;
+// match<type_switch<eval_result<expression<>, with_fields<>>, type>, ...>;
+/* 
+ * union_field<
+*   fixed_string, 
+*   type_switch<
+*     eval_result<
+*       expression<callable>, 
+*       with_fields<...>, 
+*     >,
+*     cases<
+*       match_case<.., t1>,
+*       match_case<.., t2>
+*     >
+*   >
+* >
+* union_field<
+*   fixed_string,
+*   type_ladder<
+*     cases<
+*       match_case<eval_result<
+*         expression<callable>,
+*         with_fields<...>,
+*       >, type>,
+*       ...
+*     >
+*   >
+* >
+* union_impl =>
+* field<fixed_string, 
+*       std::variant<eval_result::type...>,
+*       field_size<sizeof(eval_result::type)...>,
+*       no_constraint,
+*       always_present,
+*       ?>
+*template <fixed_string id,
+          typename T,
+          typename size_type,
+          auto constraint_on_value,
+          auto present_only_if,
+          auto type_eval> 
+struct field: public field_base<id, T> {};
+*/
+
+// todo: expression evaluation requested by user shall not be empty but default to empty by library
+// todo bring invocable compatibility at type level for strong type guarantee
+// todo simplified concept or requires clause
+// todo should cv qualification be removed
+template <auto callable, typename field_list, fixed_string... req_fields>
+    requires (std::invocable<decltype(callable), 
+                             decltype(field_list{}[field_accessor<req_fields>{}])...>)
+struct compute<callable, field_list, fixed_string_list<req_fields...>> {
+  using flist_type = field_list;
+
+  template <typename... fields>
+  constexpr auto operator()(struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
+
 
 template <typename T>
 struct is_compute_like;
 
-template <auto callable, fixed_string... req_fields>
-struct is_compute_like<compute<callable, req_fields...>> {
+template <auto callable, typename field_list, fixed_string... req_fields>
+struct is_compute_like<compute<callable, field_list, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 
@@ -38,74 +98,199 @@ struct is_compute_like {
 template <typename T>
 inline constexpr bool is_size_compute_like_v = is_compute_like<T>::res;
 
-template <typename T, typename U>
+// todo move to another[separate] file
+// Metafunction to check if a type is a struct_field_list
+template <typename T>
+struct is_struct_field_list : std::false_type {};
+
+template <typename... Entries>
+struct is_struct_field_list<struct_field_list<Entries...>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
+
+
+template <typename T>
 concept size_compute_like = 
   is_size_compute_like_v<T> &&
-  requires (T& compute_callable, U& field_list) {
-    { std::is_base_of_v<struct_field_list_base, U> };
+  requires (T& compute_callable, typename T::flist_type& field_list) {
     { compute_callable(field_list) } -> std::convertible_to<std::size_t>;
   };
 
-template <typename T, typename U>
+template <typename T>
 concept bool_compute_like = 
   is_size_compute_like_v<T> &&
-  requires (T& compute_callable, U& field_list) {
-    { std::is_base_of_v<struct_field_list_base, U> };
+  requires (T& compute_callable, typename T::flist_type& field_list) {
     { compute_callable(field_list) } -> std::convertible_to<bool>;
   };
 
+using u32 = unsigned int;
+using u8 = unsigned char;
+auto size_c = [](u32 a, u32 b) { return static_cast<std::size_t>(a * b); };
+auto size_str = [](u32 a, u32 b) { (void)a; (void)b; return std::string("hello"); };
+using str_flist = struct_field_list<field<"a", u32, field_size<4>, 0, 0, 0>, field<"b", u32, field_size<4>, 0, 0, 0>>;
+using co = compute<size_c, str_flist, fixed_string_list<"a", "b">>;
+static_assert(size_compute_like<compute<size_c, str_flist, fixed_string_list<"a", "b">>>);
+static_assert(!size_compute_like<compute<size_str, str_flist, fixed_string_list<"a", "b">>>);
+static_assert(std::invocable<
+  decltype(size_c), 
+  decltype(str_flist{}[field_accessor<"a">{}]),
+  decltype(str_flist{}[field_accessor<"b">{}])>
+);
+/*
+ * union_field<
+*   fixed_string, 
+*   type_switch<
+*     eval_result<
+*       expression<callable>, 
+*       with_fields<...>, 
+*     >,
+*     cases<
+*       match_case<.., t1>,
+*       match_case<.., t2>
+*     >
+*   >
+* >
+* union_field<
+*   fixed_string,
+*   type_ladder<
+*       clause<
+*         eval_result<
+*           expression<callable>,
+*           with_fields<...>,
+*         >, 
+*         type
+*       >,
+*       ...
+*   >
+* >
+  */
 
-// todo reader callable struct
 
+// todo constrain to data types possible for fields
+// todo constrain T?
 template <auto v, typename T>
 struct match_case {
   static constexpr auto value = v;
-  static constexpr auto reader = 
-    [](T& dst, const unsigned char* buffer, std::size_t size_to_read) {
-      read(dst, buffer, size_to_read);
-    };
+  using type_tag = T;
 };
 
-template <typename... Cases>
-struct match_and_read;
+
+template <typename T>
+struct is_match_case;
+
+template <auto v, typename h>
+struct is_match_case<match_case<v, h>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_match_case {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_match_case_v = is_match_case<T>::res;
+
+template <typename T>
+concept match_case_like = is_match_case_v<T>;
+
+// todo is this required
+template <typename T>
+struct type_tag {
+  using type = T;
+};
+
+/*
+ * union_field<
+*   fixed_string, 
+*   type_switch<
+*     eval_result<
+*       expression<callable>, 
+*       with_fields<...>, 
+*     >,
+*     cases<
+*       match_case<.., t1>,
+*       match_case<.., t2>
+*     >
+*   >
+* >
+*/
+
+
+template <typename... cases>
+struct type_switch_impl;
 
 template <>
-struct match_and_read<> {
-  constexpr void operator()(auto&, auto, const unsigned char*, std::size_t) const {
-      // No match found, do nothing or handle the case
+struct type_switch_impl<> {
+  constexpr auto operator()(auto) const -> 
+    std::expected<type_tag, std::string> 
+  {
+    return std::unexpected("no matches found");
   }
 };
 
-// Recursive case: check head and proceed to tail
-template <typename match_case_head, typename... match_case_rest>
-struct match_and_read<match_case_head, match_case_rest...> {
-  constexpr void operator()(auto& another, auto v, const unsigned char* buffer, std::size_t size_to_read) const {
-    (v == match_case_head::value ? match_case_head::reader(another, buffer, size_to_read)
-                                 : match_and_read<match_case_rest...>()(another, v, buffer, size_to_read));
+// todo check if case and eval result match in terms of types
+template <match_case_like match_case_head, match_case_like... match_case_rest>
+struct type_switch_impl<match_case_head, match_case_rest...> {
+  constexpr auto operator()(auto v) const -> 
+    std::expected<type_tag, std::string> 
+  {
+    if(v == match_case_head::value) return type_tag<typename match_case_head::type_tag>{};
+    else return type_switch_impl<match_case_rest...>{}(v);
   }
 };
 
-template <auto callable_ret_bool, typename T>
-struct match_case_by_callable {
-  static constexpr auto callable = callable_ret_bool;
-  constexpr void operator()(T& dst, const unsigned char* buffer, std::size_t size_to_read) {
-    read(dst, buffer, size_to_read);
-  }
-  constexpr void operator()(T& dst, std::ifstream& stream, std::size_t size_to_read) {
-    read(dst, stream, size_to_read);
-  }
+// atleast one type has to match? but anyways if nothing is matches we get 
+// std::unexpected
+template <typename eval, match_case_like case_head, match_case_like... case_rest>
+struct type_switch;
+
+// todo constrain eval to compute type, cases to match cases
+// todo constrain eval return type matches all match case values
+// todo return tag constructed with match
+template <typename eval, match_case_like case_head, match_case_like... case_rest>
+struct type_switch {
+  template <typename... fields>
+  constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
+    std::expected<type_tag, std::string> 
+  {
+    auto expression = eval{};
+    auto v = expression(field_list);
+    return type_switch_impl<case_head, case_rest...>{}(v);
+  } 
 };
 
-template <auto... cases>
-struct another_match_and_read;
+// todo constrain v to function like object returning bool
+template <bool_compute_like eval, typename T>
+struct clause {
+  static constexpr auto e = eval;
+  using type_tag = T;
+};
+
+// todo return type tag constructed from clause
+template <typename... clauses>
+struct type_ladder;
 
 template <>
-struct another_match_and_read<> {
-  constexpr void operator()(auto&, auto, const unsigned char*, std::size_t) const {}
+struct type_ladder<> {
+  constexpr auto operator()(auto) const -> 
+    std::expected<type_tag, std::string> 
+  {
+    return std::unexpected("no matches found");
+  }
 };
 
-template <auto callable_head, auto... callable_rest>
-struct another_match_and_read<callable_head, callable_rest...> {
+template <typename clause_head, typename... clause_rest>
+struct type_ladder<clause_head, clause_rest...> {
+  template <typename... fields>
+  constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
+    std::expected<type_tag, std::string> 
+  {
+    bool eval_result = clause_head{}(field_list);
+    if(eval_result) return type_tag<typename clause_head::type_tag>{};
+    else return type_ladder<clause_rest...>{}(field_list);
+  }
 };
 
 #endif // _COMPUTE_RES_
