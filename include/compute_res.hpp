@@ -15,6 +15,8 @@ struct compute;
 template <auto callable, typename... req_fields>
 struct compute<callable, typelist::typelist<req_fields...>> {
   template <typename... fields>
+    requires (std::invocable<decltype(callable), 
+                             decltype(struct_field_list<fields...>{}[field_accessor<req_fields::field_id>{}])...>)
   constexpr auto operator()(struct_field_list<fields...>& field_list) {
     return std::invoke(callable, field_list[field_accessor<req_fields::field_id>{}]...);
   }

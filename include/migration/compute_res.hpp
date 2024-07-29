@@ -7,6 +7,7 @@
 #include <functional>
 #include <optional>
 #include "../field_accessor.hpp"
+#include "catch2/catch.hpp"
 #include "field_reader.hpp"
 #include "field_list.hpp"
 
@@ -21,49 +22,6 @@ using with_fields = fixed_string_list<fs...>;
 template <auto callable, typename T, typename fstr_list>
 struct compute;
 
-// match<eval_result<expression<>, with_fields<>>, match_cases<match_case<val, type>>>;
-// match<type_switch<eval_result<expression<>, with_fields<>>, type>, ...>;
-/* 
- * union_field<
-*   fixed_string, 
-*   type_switch<
-*     eval_result<
-*       expression<callable>, 
-*       with_fields<...>, 
-*     >,
-*     cases<
-*       match_case<.., t1>,
-*       match_case<.., t2>
-*     >
-*   >
-* >
-* union_field<
-*   fixed_string,
-*   type_ladder<
-*     cases<
-*       match_case<eval_result<
-*         expression<callable>,
-*         with_fields<...>,
-*       >, type>,
-*       ...
-*     >
-*   >
-* >
-* union_impl =>
-* field<fixed_string, 
-*       std::variant<eval_result::type...>,
-*       field_size<sizeof(eval_result::type)...>,
-*       no_constraint,
-*       always_present,
-*       ?>
-*template <fixed_string id,
-          typename T,
-          typename size_type,
-          auto constraint_on_value,
-          auto present_only_if,
-          auto type_eval> 
-struct field: public field_base<id, T> {};
-*/
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
 // todo bring invocable compatibility at type level for strong type guarantee
@@ -137,35 +95,29 @@ static_assert(std::invocable<
   decltype(str_flist{}[field_accessor<"a">{}]),
   decltype(str_flist{}[field_accessor<"b">{}])>
 );
-/*
- * union_field<
-*   fixed_string, 
-*   type_switch<
-*     eval_result<
-*       expression<callable>, 
-*       with_fields<...>, 
-*     >,
-*     cases<
-*       match_case<.., t1>,
-*       match_case<.., t2>
-*     >
-*   >
-* >
-* union_field<
-*   fixed_string,
-*   type_ladder<
-*       clause<
-*         eval_result<
-*           expression<callable>,
-*           with_fields<...>,
-*         >, 
-*         type
-*       >,
-*       ...
-*   >
-* >
-  */
 
+// todo is this required
+template <typename T, typename size>
+struct type_tag {
+  using type = T;
+  using field_size = size;
+};
+
+template <typename T>
+struct is_type_tag;
+
+template <typename T, typename size>
+struct is_type_tag<type_tag<T, size>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_type_tag {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_type_tag_v = is_type_tag<T>::res;
 
 // todo constrain to data types possible for fields
 // todo constrain T?
@@ -195,49 +147,27 @@ inline constexpr bool is_match_case_v = is_match_case<T>::res;
 template <typename T>
 concept match_case_like = is_match_case_v<T>;
 
-// todo is this required
-template <typename T>
-struct type_tag {
-  using type = T;
-};
 
-/*
- * union_field<
-*   fixed_string, 
-*   type_switch<
-*     eval_result<
-*       expression<callable>, 
-*       with_fields<...>, 
-*     >,
-*     cases<
-*       match_case<.., t1>,
-*       match_case<.., t2>
-*     >
-*   >
-* >
-*/
-
-
-template <typename... cases>
+template <std::size_t idx, typename... cases>
 struct type_switch_impl;
 
-template <>
-struct type_switch_impl<> {
+template <std::size_t idx>
+struct type_switch_impl<idx> {
   constexpr auto operator()(auto) const -> 
-    std::expected<type_tag, std::string> 
+    std::expected<std::size_t, std::string> 
   {
     return std::unexpected("no matches found");
   }
 };
 
 // todo check if case and eval result match in terms of types
-template <match_case_like match_case_head, match_case_like... match_case_rest>
-struct type_switch_impl<match_case_head, match_case_rest...> {
+template <std::size_t idx, match_case_like match_case_head, match_case_like... match_case_rest>
+struct type_switch_impl<idx, match_case_head, match_case_rest...> {
   constexpr auto operator()(auto v) const -> 
     std::expected<type_tag, std::string> 
   {
-    if(v == match_case_head::value) return type_tag<typename match_case_head::type_tag>{};
-    else return type_switch_impl<match_case_rest...>{}(v);
+    if(v == match_case_head::value) return idx;
+    else return type_switch_impl<idx + 1, match_case_rest...>{}(v);
   }
 };
 
@@ -253,11 +183,11 @@ template <typename eval, match_case_like case_head, match_case_like... case_rest
 struct type_switch {
   template <typename... fields>
   constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
-    std::expected<type_tag, std::string> 
+    std::expected<std::size_t, std::string> 
   {
     auto expression = eval{};
     auto v = expression(field_list);
-    return type_switch_impl<case_head, case_rest...>{}(v);
+    return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 
 };
 
@@ -272,12 +202,28 @@ struct clause {
 template <typename... clauses>
 struct type_ladder;
 
-template <>
-struct type_ladder<> {
+template <std::size_t idx, typename... clauses>
+struct type_ladder_impl;
+
+template <std::size_t idx>
+struct type_ladder_impl<idx> {
   constexpr auto operator()(auto) const -> 
-    std::expected<type_tag, std::string> 
+    std::expected<std::size_t, std::string> 
   {
     return std::unexpected("no matches found");
+  }
+};
+
+// todo constrain clause head and clause_rest
+template <std::size_t idx, typename clause_head, typename... clause_rest>
+struct type_ladder_impl<idx, clause_head, clause_rest...> {
+  template <typename... fields>
+  constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
+    std::expected<std::size_t, std::string> 
+  {
+    bool eval_result = clause_head{}(field_list);
+    if(eval_result) return idx;
+    else return type_ladder_impl<idx + 1, clause_rest...>{}(field_list);
   }
 };
 
@@ -285,12 +231,19 @@ template <typename clause_head, typename... clause_rest>
 struct type_ladder<clause_head, clause_rest...> {
   template <typename... fields>
   constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
-    std::expected<type_tag, std::string> 
+    std::expected<std::size_t, std::string> 
   {
-    bool eval_result = clause_head{}(field_list);
-    if(eval_result) return type_tag<typename clause_head::type_tag>{};
-    else return type_ladder<clause_rest...>{}(field_list);
+    return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }
+};
+
+template <typename... clauses>
+struct clauses_to_typelist;
+
+template <typename... clauses>
+struct clauses_to_typelist {
+  using tlist = typelist::typelist<typename clauses::type_tag...>;
+  // todo aargh, variable length types might have to computed at cast function
 };
 
 #endif // _COMPUTE_RES_

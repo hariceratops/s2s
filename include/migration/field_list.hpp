@@ -3,7 +3,7 @@
 
 #include <optional>
 #include <variant>
-#include "../sc_type_traits.hpp"
+#include "sc_type_traits.hpp"
 #include "field_size.hpp"
 #include <type_traits>
 #include <concepts>
@@ -56,25 +56,25 @@ inline constexpr bool is_runtime_sized_field_v = is_runtime_sized_field<T>::res;
 // todo: move to sc_type_traits
 // todo: add constraints such that user defined optionals can also be used 
 // todo: also add constraint to permit var length fields
-template <typename T>
-struct is_optional_like;
-
-template <typename T>
-struct is_optional_like {
-  static inline constexpr bool res = false;
-};
-
-template <field_containable T>
-struct is_optional_like<std::optional<T>> {
-  static inline constexpr bool res = true;
-};
-
-template <typename T>
-inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
-
-template <typename T>
-concept optional_like = is_optional_like_v<T>;
-
+// template <typename T>
+// struct is_optional_like;
+//
+// template <typename T>
+// struct is_optional_like {
+//   static inline constexpr bool res = false;
+// };
+//
+// template <field_containable T>
+// struct is_optional_like<std::optional<T>> {
+//   static inline constexpr bool res = true;
+// };
+//
+// template <typename T>
+// inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
+//
+// template <typename T>
+// concept optional_like = is_optional_like_v<T>;
+//
 template <typename T>
 struct is_optional_field;
 
@@ -99,24 +99,24 @@ inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
 // todo: add constraints such that user defined optionals can also be used 
 // todo: move to sc_type_traits
 // todo: todo var buffer like field constraint
-template <typename T>
-struct is_variant_like;
-
-template <typename T>
-struct is_variant_like {
-  static constexpr bool res = false;
-};
-
-template <typename... ts>
-struct is_variant_like<std::variant<ts...>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-inline constexpr bool is_variant_like_v = is_variant_like<T>::res;
-
-template <typename T>
-concept variant_like = is_variant_like_v<T>;
+// template <typename T>
+// struct is_variant_like;
+//
+// template <typename T>
+// struct is_variant_like {
+//   static constexpr bool res = false;
+// };
+//
+// template <typename... ts>
+// struct is_variant_like<std::variant<ts...>> {
+//   static constexpr bool res = true;
+// };
+//
+// template <typename T>
+// inline constexpr bool is_variant_like_v = is_variant_like<T>::res;
+//
+// template <typename T>
+// concept variant_like = is_variant_like_v<T>;
 
 template <typename T>
 struct is_union_field;
@@ -165,10 +165,11 @@ template <typename T>
 inline constexpr bool are_all_fields_v = are_all_fields<T>::all_same;
 
 
-template <typename... fields>
+// template <typename... fields>
+template <field_like... fields>
 struct struct_field_list : struct_field_list_base, fields... {
-  static_assert(are_all_fields_v<field_list<fields...>>, 
-                "struct_field_list shall be templated with field like types only");
+  // static_assert(are_all_fields_v<field_list<fields...>>, 
+  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 

@@ -50,6 +50,21 @@ struct field: public field_base<id, T> {};
 *     >
 *   >
 * >
+* union_impl =>
+* field<fixed_string, 
+*       std::variant<eval_result::type...>,
+*       field_size<sizeof(eval_result::type)...>,
+*       no_constraint,
+*       always_present,
+*       ?>
+*template <fixed_string id,
+          typename T,
+          typename size_type,
+          auto constraint_on_value,
+          auto present_only_if,
+          auto type_eval> 
+struct field: public field_base<id, T> {};
+
 */
 
 #endif // _FIELD__HPP_

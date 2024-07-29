@@ -7119,6 +7119,9 @@ static_assert(!size_indices_resolved_v<field_list<field<"a", int, field_size<4ul
 
 #endif // _STRUCT_FIELD_LIST_HPP_
 
+#ifndef _COMPUTE_RES_
+#define _COMPUTE_RES_
+
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -15972,47 +15975,21 @@ constexpr void struct_cast(struct_field_list<fields...>& field_list, std::ifstre
 
 #endif // _CAST_HPP_
 
-// template <typename tlist, typename Callable>
-// struct is_callable_with_typelist;
-//
-// template <typename callable, typename... Ts>
-// struct is_callable_with_typelist<tl::typelist<Ts...>, callable>
-//     : std::is_invocable_r<std::size_t, callable, Ts...> {};
-//
-// template <typename tlist, typename callable>
-// constexpr bool is_callable_with_typelist_v = is_callable_with_typelist<tlist, callable>::value;
-//
-// // Function to get values from fields and pass to callable
-// template <typename Typelist, auto Callable, typename FieldList>
-// struct F;
-//
-// template <auto Callable, typename... Fields, typename FieldList>
-// struct F<typelist::typelist<Fields...>, Callable, FieldList> {
-//   static auto call(FieldList& field_list) {
-//     return std::invoke(Callable, field_list[Fields::field_id]...);
-//   }
-// };
-//
-//
-// template <auto callable, typename... fields, template <typename... req_fields> typename dep_fields>
-// constexpr auto compute_from_fields(struct_field_list<fields...>& field_list) {
-//   return std::invoke(callable, field_list[req_fields::field_id]...);
-// }
-//
+// todo add constriants
 template <auto callable, typename... req_fields>
 struct compute;
 
 template <auto callable, typename... req_fields>
 struct compute<callable, typelist::typelist<req_fields...>> {
   template <typename... fields>
+    requires (std::invocable<decltype(callable), 
+                             decltype(struct_field_list<fields...>{}[field_accessor<req_fields::field_id>{}])...>)
   constexpr auto operator()(struct_field_list<fields...>& field_list) {
     return std::invoke(callable, field_list[field_accessor<req_fields::field_id>{}]...);
   }
 };
 
-// auto callable(u32& a, u32& b) -> u32 { return a * b; }
-
-// static_assert(compute<callable, dep_fields>()(fl) == 20);
+#endif // _COMPUTE_RES_
 
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
