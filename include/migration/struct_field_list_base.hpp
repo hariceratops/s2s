@@ -1,6 +1,7 @@
-#ifndef _FIELD_LIST__HPP_
-#define _FIELD_LIST__HPP_
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
 
+#include <type_traits>
 #include "sc_type_traits.hpp"
 #include "field.hpp"
 #include "field_lookup.hpp"
@@ -9,7 +10,7 @@
 
 // template <are_all_fields... fields>
 template <typename... fields>
-struct struct_field_list : struct_field_list_base, fields... {
+struct struct_field_list_impl: fields... {
   // static_assert(are_all_fields_v<field_list<fields...>>, 
   //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
@@ -33,4 +34,9 @@ struct struct_field_list : struct_field_list_base, fields... {
   }
 };
 
-#endif // _FIELD_LIST__HPP_
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_

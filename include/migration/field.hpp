@@ -33,8 +33,8 @@ struct field: public field_base<id, T> {};
 *       with_fields<...>, 
 *     >,
 *     type_switch<
-*       match_case<.., t1>,
-*       match_case<.., t2>
+*       match_case<.., type_tag_1>,
+*       match_case<.., type_tag_2>
 *     >
 *   >
 * >
@@ -45,7 +45,7 @@ struct field: public field_base<id, T> {};
 *       eval_result<
 *         expression<callable>,
 *         with_fields<...>,
-*       >, type>,
+*       >, type_tag>,
 *       ...
 *     >
 *   >
@@ -66,5 +66,6 @@ struct field: public field_base<id, T> {};
 struct field: public field_base<id, T> {};
 
 */
+
 
 #endif // _FIELD__HPP_
