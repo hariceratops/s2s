@@ -406,4 +406,69 @@ struct clauses_to_typelist {
   // todo aargh, variable length types might have to computed at cast function
 };
 
+/*
+*   type<
+*     eval_result<
+*       expression<callable>, 
+*       with_fields<...>, 
+*     >,
+*     type_switch<
+*       match_case<.., type_tag_1>,
+*       match_case<.., type_tag_2>
+*     >
+*   >
+*   */
+/*
+*   type<
+*     type_switch<
+*       eval_result<
+*         expression<callable>,
+*         with_fields<...>,
+*       >, type_tag>,
+*       ...
+*     >
+*   >
+*   */
+struct no_type_deduction {};
+
+template <typename T>
+struct is_no_type_deduction;
+
+template <typename T>
+struct is_no_type_deduction {
+  static constexpr bool res = false;
+};
+
+template <>
+struct is_no_type_deduction<no_type_deduction> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_no_type_deduction_v = is_no_type_deduction<T>::res;
+
+template <typename T>
+concept no_type_deduction_like = is_no_type_deduction_v<T>;
+
+
+template <typename... Args>
+struct type;
+
+// todo constraints
+template <typename eval_result, typename typeswitch>
+struct type<eval_result, typeswitch> {
+  using type_x = eval_result;
+  using type_y = typeswitch;
+};
+
+template <no_type_deduction_like T>
+struct type<T> {};
+
+// todo constraints
+template <typename type_switch>
+struct type<type_switch> {
+  using type_x = type_switch;
+};
+
+
 #endif // _COMPUTE_RES_

@@ -8,51 +8,205 @@
 #include "compute_res.hpp"
 
 
+struct always_true {
+  constexpr auto operator()() -> bool {
+    return true;
+  }
+};
+
+using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 
 // Aliases
 // todo enforce constraints wherever applicable
-//
-template <fixed_string id, 
-          integral T, 
-          comptime_size_like size, 
-          auto expected = no_constraint<T>{}>
-using integral_field = field<id, T, size, expected>;
+// todo maybe make expected, present_only_if, type_deduce as types
+// todo rename expected -> value_constraint
 
-template <fixed_string id, 
-          typename T, 
-          std::size_t N, 
-          auto expected = no_constraint<T>{}>
-using fixed_array_field = field<id, std::array<T, N>, field_size<N * sizeof(T)>, expected>;
+// todo comptime_size_like
+template <
+  fixed_string id, 
+  integral T, 
+  typename size, 
+  auto expected = no_constraint<T>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using integral_field = 
+  field<id, T, size, expected, present_only_if, type_deducer>;
 
-template <fixed_string id, 
-          std::size_t N>
-using fixed_string_field = field<id, fixed_string<N + 1>, field_size<N + 1>>;
+template <
+  fixed_string id, 
+  typename T, 
+  std::size_t N, 
+  auto expected = no_constraint<std::array<T,N>>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using fixed_array_field = 
+  field<
+    id, 
+    std::array<T, N>, 
+    field_size<N * sizeof(T)>, 
+    expected, 
+    present_only_if, 
+    type_deducer
+  >;
 
-template <fixed_string id, typename T, std::size_t N>
-using c_arr_field = field<id, T[N], field_size<N * sizeof(T)>>;
+template <
+  fixed_string id, 
+  std::size_t N,
+  auto expected = no_constraint<fixed_string<N>>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using fixed_string_field = 
+  field<
+    id, 
+    fixed_string<N + 1>, 
+    field_size<N + 1>,
+    expected, 
+    present_only_if, 
+    type_deducer
+  >;
 
-template <fixed_string id, std::size_t N>
-using c_str_field = field<id, char[N + 1], field_size<N * sizeof(char) + 1>>;
+template <
+  fixed_string id, 
+  typename T, 
+  std::size_t N,
+  auto expected = no_constraint<T[N]>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using c_arr_field = 
+  field<
+    id, 
+    T[N], 
+    field_size<N * sizeof(T)>,
+    expected, 
+    present_only_if, 
+    type_deducer
+  >;
 
-template <fixed_string id, floating_point T>
-using float_point_field = field<id, T, field_size<sizeof(T)>>;
+template <
+  fixed_string id, 
+  std::size_t N,
+  auto expected = no_constraint<char[N + 1]>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using c_str_field = 
+  field<
+    id, 
+    char[N + 1], 
+    field_size<N * sizeof(char) + 1>,
+    expected, 
+    present_only_if, 
+    type_deducer
+  >;
 
-template <fixed_string id, std::size_t N, std::array<unsigned char, N> expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<N>, eq{expected}>;
+template <
+  fixed_string id, 
+  floating_point T,
+  auto expected = no_constraint<T>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using float_point_field = 
+  field<
+    id, 
+    T, 
+    field_size<sizeof(T)>,
+    expected, 
+    present_only_if, 
+    type_deducer
+  >;
 
-template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, field_size<expected.size()>, eq{expected}>;
+template <
+  fixed_string id, 
+  std::size_t N, 
+  std::array<unsigned char, N> expected,
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using magic_byte_array = 
+  field<
+    id, 
+    std::array<unsigned char, N>, 
+    field_size<N>, 
+    eq{expected},
+    present_only_if, 
+    type_deducer
+  >;
 
-template <fixed_string id, integral T, std::size_t size, T expected>
-using magic_number = field<id, T, field_size<size>, eq{expected}>;
+template <
+  fixed_string id, 
+  fixed_string expected,
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using magic_string = 
+  field<
+    id, 
+    fixed_string<expected.size()>, 
+    field_size<expected.size()>, 
+    eq{expected},
+    present_only_if, 
+    type_deducer
+  >;
+
+template <
+  fixed_string id, 
+  integral T, 
+  std::size_t size, 
+  T expected,
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using magic_number = 
+  field<
+    id, 
+    T, 
+    field_size<size>, 
+    eq{expected},
+    present_only_if, 
+    type_deducer
+  >;
 
 // digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
 // todo get vector length in bytes instead of size to read additional overload
-template <fixed_string id, typename T, typename runtime_size>
-using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
+template <
+  fixed_string id, 
+  typename T, 
+  typename runtime_size,
+  auto expected = no_constraint<T>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using vec_field = 
+  field<
+    id, 
+    std::vector<T>, 
+    runtime_size,
+    expected,
+    present_only_if, 
+    type_deducer
+>;
 
 // todo check if this will work for all char types like wstring
-template <fixed_string id, typename runtime_size>
-using str_field = runtime_field<id, std::string, runtime_size>;
+template <
+  fixed_string id, 
+  typename runtime_size,
+  auto expected = no_constraint<std::string>{},
+  auto present_only_if = always_present{},
+  auto type_deducer = type<no_type_deduction>{}
+>
+using str_field = 
+  field<
+    id, 
+    std::string, 
+    runtime_size,
+    expected,
+    present_only_if, 
+    type_deducer
+  >;
 
 #endif /* _FIELD_TYPE_HPP_ */
