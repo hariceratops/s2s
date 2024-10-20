@@ -209,4 +209,62 @@ using str_field =
     type_deducer
   >;
 
+// todo: decide if maybe type cannot have type deduction and expected?
+template <
+  fixed_string id, 
+  typename T,
+  typename size,
+  auto present_only_if,
+  auto expected = no_constraint<std::string>{}
+>
+using maybe_field = 
+  field<
+    id, 
+    std::optional<T>, 
+    size,
+    expected,
+    present_only_if, 
+    type<no_type_deduction>{}
+  >;
+
+// todo: decide if a variant field be optional
+template <
+  fixed_string id, 
+  auto type_deducer,
+  auto expected = no_constraint<std::string>{}
+>
+using union_field = 
+  field<
+    id, 
+    std::string, 
+    size,
+    expected,
+    always_present{}, 
+    type_deducer
+  >;
+
+/*
+*   type<
+*     eval_result<
+*       expression<callable>, 
+*       with_fields<...>, 
+*     >,
+*     type_switch<
+*       match_case<.., type_tag_1>,
+*       match_case<.., type_tag_2>
+*     >
+*   >
+*   */
+/*
+*   type<
+*     type_switch<
+*       eval_result<
+*         expression<callable>,
+*         with_fields<...>,
+*       >, type_tag>,
+*       ...
+*     >
+*   >
+*   */
+
 #endif /* _FIELD_TYPE_HPP_ */
