@@ -3,8 +3,66 @@
 #include <cstring>
 #include <fstream>
 #include <expected>
+#include "field.hpp"
 #include "sc_type_traits.hpp"
+#include "../typelist.hpp"
+#include "typelist_manip.hpp"
 
+
+template <std::size_t idx, typename T, typename U, typename V>
+struct variant_reader_impl;
+
+template <std::size_t idx, typename T>
+struct variant_reader_impl<idx, T, typelist::typelist<>, std::integer_sequence<std::size_t>> {
+  auto operator()([[maybe_unused]] std::size_t idx_r, const char* buf) 
+    -> std::expected<std::variant<T>, std::string> {
+    std::unexpected("Out of bounds");
+  }
+};
+
+template <std::size_t idx, typename T, typename... types, std::size_t... sizes>
+struct variant_reader_impl<idx, 
+                           T, 
+                           typelist::typelist<types...>, 
+                           std::integer_sequence<std::size_t, sizes...>> 
+{
+  using type_to_read = tl_front_t<typelist::typelist<types...>>;
+  static constexpr std::size_t size_to_read = iseq_front_v<std::integer_sequence<std::size_t, sizes...>>;
+
+  auto operator()(std::size_t idx_r, const char* buf) -> 
+    std::expected<std::variant<T>, std::string> {
+    if(idx_r == idx) {
+      if constexpr(is_struct_field_list_v<type_to_read>) {
+        auto res = struct_cast<front_t<types>>(buf);
+        return (res) ? *res : std::unexpected("error");
+      } else {
+        std::memcpy(to_void_ptr(obj), buffer, size_to_read);
+      }
+    } else {
+      return variant_reader_impl<
+               idx + 1, 
+               T, 
+               tl_pop_t<typelist::typelist<types...>, 
+               iseq_pop_t<std::integer_sequence<std::size_t, sizes...>>
+             >(idx_r, buf)
+    }
+  }
+};
+
+template <typename T, typename U>
+struct variant_reader;
+
+template <typename T, std::size_t... sizes>
+struct variant_reader<T, std::integer_sequence<std::size_t, sizes...>> {
+  using types = variant_to_typelist_t<T>;
+  static constexpr auto size_list = std::integer_sequence<std::size_t, sizes...>{};
+  using read_result = std::expected<T, std::string>;
+
+  template <std::size_t idx>
+  auto operator()(std::size_t idx_r, const char* buf) -> read_result {
+    variant_reader_impl<0, T, types, size_list>(idx_r, buf); 
+  }
+};
 
 template <typename T>
 auto read(const char* buffer, std::size_t size_to_read) 
@@ -12,28 +70,6 @@ auto read(const char* buffer, std::size_t size_to_read)
   T obj;
   std::memcpy(to_void_ptr(obj), buffer, size_to_read);
   return obj;
-}
-
-// todo how to deduce return type
-template <variant_like T, std::size_t idx, typename type_head, typename... type_tail>
-auto read(const char* buffer, std::size_t type_idx_r) 
-    -> std::expected<T, std::string> {
-  if(type_idx_r == idx) {
-    T variant_obj;
-    typename type_head::type obj;
-    std::memcpy(to_void_ptr(obj), buffer, type_head::size);
-    variant_obj = obj;
-    return variant_obj;
-  } else {
-    return read<T, idx - 1, type_tail...>(buffer, type_idx_r);
-  }
-}
-
-// todo constraint type_tag like 
-template <variant_like T, typename... types>
-auto read(const char* buffer, std::size_t type_idx_r) 
-    -> std::expected<T, std::string> {
-  return read_impl<T, 0, types...>(buffer, type_idx_r);
 }
 
 template <typename T>
@@ -45,25 +81,3 @@ auto read(std::ifstream& ifs, std::size_t size_to_read)
   return obj;
 }
 
-// todo swapt T and idx for better readability
-template <variant_like T, std::size_t idx, typename type_head, typename... type_tail>
-auto read(std::ifstream& ifs, std::size_t type_idx_r) 
-    -> std::expected<T, std::string> {
-  if(type_idx_r == idx) {
-    T variant_obj;
-    typename type_head::type obj;
-    if(!ifs.read(byte_addressof(obj), type_head::size))
-      return std::unexpected("buffer exhaustion");
-    variant_obj = obj;
-    return variant_obj;
-  } else {
-    return read<T, idx - 1, type_tail...>(ifs, type_idx_r);
-  }
-}
-
-// todo constraint type_tag like 
-template <variant_like T, typename... types>
-auto read(std::ifstream& ifs, std::size_t type_idx_r) 
-    -> std::expected<T, std::string> {
-  return read_impl<T, 0, types...>(ifs, type_idx_r);
-}

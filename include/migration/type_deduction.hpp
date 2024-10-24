@@ -66,19 +66,4 @@ struct type<tladder> {
   }
 };
 
-
-// todo typelist to variant?
-template <typename T>
-struct variant_from_tlist;
-
-template <typename... type>
-struct variant_from_tlist<typelist::typelist<type...>> {
-  using variant = std::variant<type...>;
-};
-
-template <typename T>
-using variant_from_tlist_v = typename variant_from_tlist<T>::variant;
-
-static_assert(std::is_same_v<variant_from_tlist_v<typelist::typelist<int, float>>, std::variant<int, float>>);
-
 #endif // _TYPE_DEDUCTION_HPP_
