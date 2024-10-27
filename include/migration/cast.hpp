@@ -94,19 +94,38 @@ constexpr auto struct_cast(const unsigned char* buffer)
   // return (res | read_node<field_list_type, fields>{} | ...);
   return (
     res | 
-    [&](res_type input) -> res_type {
-      auto field = static_cast<fields&>(input);
+    [&](field_list_type input) -> res_type {
+      // todo: is decay required?
       using field_type = std::decay_t<decltype(field)>;
-      if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
-        auto struct_read_res = struct_cast(field.value, buffer + prefix_sum[index]);
+
+      auto field = static_cast<fields&>(input);
+      std::expected<field_type, std::string> field_value;
+      auto buffer_pos = reinterpret_cast<const char*>(buffer + prefix_sum[index]);
+
+      // todo variant field: static constexpr auto type_deduction_guide = type_deducer;
+      if constexpr (is_optional_field_v<field_type>) {
+        if(field_type::field_presence_checker(input))
+        // todo impedence match variant and optional
+      } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
+        field_value = struct_cast(field.value, buffer_pos);
       } else if constexpr (is_field_v<field_type>) {
-        field.value = read<field_type>(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_type::field_size);
+        field_value = read<field_type>(buffer_pos, field_type::field_size);
       } else if constexpr (is_field_with_runtime_size_v<field_type>) {
-        field.value = read<field_type>(reinterpret_cast<const char*>(buffer + prefix_sum[index]), res[field_type::field_accessor]);
+        field_value = read<field_type>(buffer_pos, res[field_type::field_accessor]);
       }
+
       // todo fix bug in case of updating the prefic sum for var len field
       prefix_sum[index + 1] = prefix_sum[index] + field_type::field_size;
       ++index;
+      
+      // todo return std::unexpected to break the pipeline
+      // is this ok?
+      if(field_value) field = *field_value;
+      else res = field_value;
+      
+      // todo constraint checker
+      // static constexpr auto constraint_checker = constraint_on_value;
+      return res;
     } | 
   ...);
 }

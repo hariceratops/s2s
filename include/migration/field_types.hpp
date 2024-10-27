@@ -5,6 +5,7 @@
 #include "sc_type_traits.hpp"
 #include "field.hpp"
 #include "field_size.hpp"
+#include "type_deduction.hpp"
 #include "compute_res.hpp"
 
 

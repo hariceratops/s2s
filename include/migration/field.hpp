@@ -15,7 +15,11 @@ template <fixed_string id,
           auto constraint_on_value,
           auto present_only_if,
           auto type_deducer> 
-struct field: public field_base<id, T> {};
+struct field: public field_base<id, T> {
+  static constexpr auto constraint_checker = constraint_on_value;
+  static constexpr auto field_presence_checker = present_only_if;
+  static constexpr auto type_deduction_guide = type_deducer;
+};
 
 /*
 * user side types / metafunctions
