@@ -54,7 +54,7 @@ auto is_any_error(const expected_types&... expected_list) {
 
 // todo constraints
 template <typename expected_struct_field_list, typename error>
-auto operator|(const std::expected<expected_struct_field_list, error>& lhs, auto functor) {
+auto operator|(std::expected<expected_struct_field_list, error>& lhs, auto functor) {
   if(lhs) return functor(*lhs); else return lhs;
 }
 
@@ -91,10 +91,9 @@ constexpr auto struct_cast(const unsigned char* buffer)
   std::size_t prefix_sum[sizeof...(fields) + 1] = {0};
   std::size_t index = 0;
 
-  // return (res | read_node<field_list_type, fields>{} | ...);
   return (
     res | 
-    [&](field_list_type input) -> res_type {
+    [&prefix, &buffer, &index](field_list_type input) -> res_type {
       // todo: is decay required?
       using field_type = std::decay_t<decltype(field)>;
 
@@ -104,28 +103,36 @@ constexpr auto struct_cast(const unsigned char* buffer)
 
       // todo variant field: static constexpr auto type_deduction_guide = type_deducer;
       if constexpr (is_optional_field_v<field_type>) {
-        if(field_type::field_presence_checker(input))
         // todo impedence match variant and optional
+        // todo variable length optional field
+        field_value = field_type::field_presence_checker(input) ? 
+                      read<field_type>(buffer_pos, field_type::field_size) :
+                      res_type{std::nullopt{}};
+      } else if constexpr (is_variant_field_v<field_type>) {
+        std::size_t type_index = field_type::type_deduction_guide(input); 
+        auto reader = variant_reader<field_type, field_type::field_size>{};
+        field_value = reader(type_index, buffer_pos);
       } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
         field_value = struct_cast(field.value, buffer_pos);
       } else if constexpr (is_field_v<field_type>) {
         field_value = read<field_type>(buffer_pos, field_type::field_size);
       } else if constexpr (is_field_with_runtime_size_v<field_type>) {
-        field_value = read<field_type>(buffer_pos, res[field_type::field_accessor]);
+        field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
       }
 
       // todo fix bug in case of updating the prefic sum for var len field
+      // also handle optional field, both read and unread case and variant read
       prefix_sum[index + 1] = prefix_sum[index] + field_type::field_size;
       ++index;
       
       // todo return std::unexpected to break the pipeline
       // is this ok?
       if(field_value) field = *field_value;
-      else res = field_value;
+      else input = field_value;
       
       // todo constraint checker
       // static constexpr auto constraint_checker = constraint_on_value;
-      return res;
+      return input;
     } | 
   ...);
 }
