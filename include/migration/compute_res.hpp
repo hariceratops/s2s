@@ -2,14 +2,11 @@
 #define _COMPUTE_RES_
 
 #include <type_traits>
-#include "../typelist.hpp"
-#include "../struct_field_list_base.hpp"
 #include <functional>
-#include <optional>
 #include "../field_accessor.hpp"
-#include "field_reader.hpp"
 #include "field_list.hpp"
 #include "fixed_str_list.hpp"
+#include "typelist_manip.hpp"
 
 // todo add constriants
 template <auto callable, typename R, field_name_list fstr_list>

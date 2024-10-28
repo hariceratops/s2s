@@ -1,4 +1,4 @@
-#ifdef _TYPELIST_MANIP_HPP_
+#ifndef _TYPELIST_MANIP_HPP_
 #define _TYPELIST_MANIP_HPP_
 
 #include <variant>

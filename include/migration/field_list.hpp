@@ -1,10 +1,8 @@
 #ifndef _FIELD_LIST__HPP_
 #define _FIELD_LIST__HPP_
 
-#include "sc_type_traits.hpp"
-#include "field.hpp"
+#include "field_size.hpp"
 #include "field_lookup.hpp"
-#include "field_traits.hpp"
 
 
 // template <are_all_fields... fields>

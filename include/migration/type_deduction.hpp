@@ -2,6 +2,7 @@
 #define _TYPE_DEDUCTION_HPP_
 
 #include <variant>
+#include <expected>
 #include "../typelist.hpp"
 #include "type_ladder.hpp"
 #include "type_switch.hpp"

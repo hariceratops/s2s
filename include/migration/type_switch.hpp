@@ -1,6 +1,7 @@
 #ifndef _TYPE_SWITCH_HPP_
 #define _TYPE_SWITCH_HPP_
 
+#include <expected>
 #include "compute_res.hpp"
 #include "match_case.hpp"
 

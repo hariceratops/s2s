@@ -4,6 +4,7 @@
 #include "field_reader.hpp"
 #include "../field_meta.hpp"
 #include "sc_type_traits.hpp"
+#include <expected>
 
 template <typename T>
 struct is_field;
@@ -93,7 +94,7 @@ constexpr auto struct_cast(const unsigned char* buffer)
 
   return (
     res | 
-    [&prefix, &buffer, &index](field_list_type input) -> res_type {
+    [&prefix_sum, &buffer, &index](field_list_type input) -> res_type {
       // todo: is decay required?
       using field_type = std::decay_t<decltype(field)>;
 
