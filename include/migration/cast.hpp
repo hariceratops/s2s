@@ -1,10 +1,13 @@
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
 
+
+#include <expected>
+
 #include "field_reader.hpp"
 #include "../field_meta.hpp"
+#include "field_traits.hpp"
 #include "sc_type_traits.hpp"
-#include <expected>
 
 template <typename T>
 struct is_field;
@@ -59,28 +62,6 @@ auto operator|(std::expected<expected_struct_field_list, error>& lhs, auto funct
   if(lhs) return functor(*lhs); else return lhs;
 }
 
-// todo constraints
-template <typename field_list, typename field>
-struct read_node {
-  using result_type = std::expected<field_list, std::string>;
-  using field_type = extract_type_from_field_v<field>;
-
-  // todo how to bundle buf with the res. a new box will be helpful?
-  std::ifstream buf;
-  read_node(std::ifstream& buf): buf(buf) {}
-
-  // todo: for const buf how to track the index in prefix sum
-  // auto operator()(result_type input) -> result_type {}
-};
-
-
-template <typename... T>
-void func(const T&... expected_list) {
-    (([&]() {
-        std::cout << typeid(T{}).name() << '\n';
-    }()), ...);
-}
-
 template <typename... fields>
 constexpr auto struct_cast(const unsigned char* buffer)
   -> std::expected<struct_field_list<fields...>, std::string>
@@ -94,9 +75,8 @@ constexpr auto struct_cast(const unsigned char* buffer)
 
   return (
     res | 
-    [&prefix_sum, &buffer, &index](field_list_type input) -> res_type {
-      // todo: is decay required?
-      using field_type = std::decay_t<decltype(field)>;
+    ([&prefix_sum, &buffer, &index](field_list_type input) -> res_type {
+      using field_type = typename fields::field_type;
 
       auto field = static_cast<fields&>(input);
       std::expected<field_type, std::string> field_value;
@@ -109,9 +89,9 @@ constexpr auto struct_cast(const unsigned char* buffer)
         field_value = field_type::field_presence_checker(input) ? 
                       read<field_type>(buffer_pos, field_type::field_size) :
                       res_type{std::nullopt{}};
-      } else if constexpr (is_variant_field_v<field_type>) {
+      } else if constexpr (is_union_field_v<field_type>) {
         std::size_t type_index = field_type::type_deduction_guide(input); 
-        auto reader = variant_reader<field_type, field_type::field_size>{};
+        auto reader = variant_reader<field_type, typename field_type::field_size>{};
         field_value = reader(type_index, buffer_pos);
       } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
         field_value = struct_cast(field.value, buffer_pos);
@@ -135,7 +115,7 @@ constexpr auto struct_cast(const unsigned char* buffer)
       // static constexpr auto constraint_checker = constraint_on_value;
       return input;
     } | 
-  ...);
+  ...));
 }
 
 template <typename... fields>

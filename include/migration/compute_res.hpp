@@ -6,7 +6,6 @@
 #include "../field_accessor.hpp"
 #include "field_list.hpp"
 #include "fixed_str_list.hpp"
-#include "typelist_manip.hpp"
 
 // todo add constriants
 template <auto callable, typename R, field_name_list fstr_list>

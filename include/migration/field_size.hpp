@@ -1,7 +1,6 @@
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
 
-#include "../sc_type_traits.hpp"
 #include "../field_accessor.hpp"
 
 
@@ -57,6 +56,8 @@ concept comptime_size_like = is_comptime_size_v<T>;
 
 template <typename T>
 concept runtime_size_like = is_runtime_size_v<T>;
+
+// todo size type for holding multiple sizes in case of union fields
 
 namespace static_test {
 static_assert(is_runtime_size_v<runtime_size<field_accessor<"hello">>>);
