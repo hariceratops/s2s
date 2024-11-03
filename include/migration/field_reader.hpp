@@ -38,7 +38,7 @@ struct variant_reader_impl<idx,
     std::expected<std::variant<T>, std::string> {
     if(idx_r == idx) {
       if constexpr(is_struct_field_list_v<type_to_read>) {
-        auto res = struct_cast<front_t<types>>(buf);
+        auto res = struct_cast<front_t<typelist::typelist<types...>>>(ifs);
         return (res) ? *res : std::unexpected("error");
       } else {
         type_to_read obj;
@@ -51,9 +51,9 @@ struct variant_reader_impl<idx,
         variant_reader_impl<
          idx + 1, 
          T, 
-         tl_pop_t<typelist::typelist<types...>, 
+         tl_pop_t<1, typelist::typelist<types...>>, 
          iseq_pop_t<std::integer_sequence<std::size_t, sizes...>>
-       >(idx_r, buf)
+       >(idx_r, ifs);
     }
   }
 
@@ -61,20 +61,20 @@ struct variant_reader_impl<idx,
     std::expected<std::variant<T>, std::string> {
     if(idx_r == idx) {
       if constexpr(is_struct_field_list_v<type_to_read>) {
-        auto res = struct_cast<front_t<types>>(buf);
+        auto res = struct_cast<front_t<typelist::typelist<types...>>>(buf);
         return (res) ? *res : std::unexpected("error");
       } else {
         type_to_read obj;
-        std::memcpy(to_void_ptr(obj), buffer, size_to_read);
+        std::memcpy(to_void_ptr(obj), buf, size_to_read);
       }
     } else {
       return 
         variant_reader_impl<
          idx + 1, 
          T, 
-         tl_pop_t<typelist::typelist<types...>, 
+         tl_pop_t<1, typelist::typelist<types...>>, 
          iseq_pop_t<std::integer_sequence<std::size_t, sizes...>>
-       >(idx_r, buf)
+       >(idx_r, buf);
     }
   }
 };

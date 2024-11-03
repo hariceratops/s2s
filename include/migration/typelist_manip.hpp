@@ -3,6 +3,7 @@
 
 #include <variant>
 #include "../typelist.hpp"
+#include "fixed_str_list.hpp"
 
 // todo typelist to variant?
 template <typename T>
@@ -58,12 +59,12 @@ struct tl_get<key, key, count, typelist::typelist<head, tail...>> {
 };
 
 template <std::size_t idx, std::size_t key, std::size_t count, typename head, typename... tail>
-struct get<idx, key, count, typelist::typelist<head, tail...>> {
+struct tl_get<idx, key, count, typelist::typelist<head, tail...>> {
   using type = typename tl_get<idx + 1, key, count, typelist::typelist<tail...>>::type;
 };
 
 template <std::size_t key, typename T>
-using tl_get_t = typename get<0, key, size_v<T>, T>::type; 
+using tl_get_t = typename tl_get<0, key, tl_size_v<T>, T>::type; 
 
 template <std::size_t count, typename T>
 struct tl_pop;
