@@ -2,8 +2,8 @@
 #define _FIELD_LOOKUP_HPP_
 
 
-#include "../typelist.hpp"
-#include "../fixed_string.hpp"
+#include "typelist.hpp"
+#include "fixed_string.hpp"
 #include "field.hpp"
 
 

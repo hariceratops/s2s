@@ -1,11 +1,11 @@
-#pragma once
+#ifndef _FIELD_READER_HPP_
+#define _FIELD_READER_HPP_
 
 #include <cstring>
 #include <fstream>
 #include <expected>
-#include "field.hpp"
-#include "sc_type_traits.hpp"
-#include "../typelist.hpp"
+#include "struct_field_list_traits.hpp"
+#include "typelist.hpp"
 #include "typelist_manip.hpp"
 
 
@@ -85,7 +85,7 @@ struct variant_reader;
 template <typename T, std::size_t... sizes>
 struct variant_reader<T, std::integer_sequence<std::size_t, sizes...>> {
   using types = variant_to_typelist_t<T>;
-  static constexpr auto size_list = std::integer_sequence<std::size_t, sizes...>{};
+  using size_list = std::integer_sequence<std::size_t, sizes...>;
   using read_result = std::expected<T, std::string>;
 
   auto operator()(std::size_t idx_r, std::istream& ifs) -> read_result {
@@ -114,3 +114,4 @@ auto read(std::ifstream& ifs, std::size_t size_to_read)
   return obj;
 }
 
+#endif // _FIELD_READER_HPP_

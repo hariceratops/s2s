@@ -1,7 +1,7 @@
 #ifndef _FIXED_STR_LIST_HPP_
 #define _FIXED_STR_LIST_HPP_
 
-#include "../fixed_string.hpp"
+#include "fixed_string.hpp"
 
 
 template <fixed_string... fs>

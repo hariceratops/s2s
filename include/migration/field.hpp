@@ -2,12 +2,8 @@
 #define _FIELD__HPP_
 
 
-#include "../field_constraints.hpp"
-#include "../fixed_string.hpp"
-#include "../field_base.hpp"
-
-template <typename T>
-concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
+#include "field_constraints.hpp"
+#include "fixed_string.hpp"
 
 template <fixed_string id,
           typename T,
@@ -15,10 +11,14 @@ template <fixed_string id,
           auto constraint_on_value,
           auto present_only_if,
           auto type_deducer> 
-struct field: public field_base<id, T> {
+struct field {
+  using field_type = T;
+
+  static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
   static constexpr auto field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
+  field_type value;
 };
 
 #endif // _FIELD__HPP_

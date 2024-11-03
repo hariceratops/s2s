@@ -2,10 +2,9 @@
 #define _SC_META_HPP_
 
 #include <vector>
-#include <concepts>
 #include <variant>
 #include <optional>
-#include "../fixed_string.hpp"
+#include "fixed_string.hpp"
 #include "../struct_field_list_base.hpp"
 
 // Arithmetic concept
@@ -121,6 +120,8 @@ inline constexpr bool is_variant_like_v = is_variant_like<T>::res;
 template <typename T>
 concept variant_like = is_variant_like_v<T>;
 
+// todo: add constraints such that user defined optionals can also be used 
+// todo: also add constraint to permit var length fields
 template <typename T>
 struct is_optional_like;
 
@@ -140,5 +141,8 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 #endif // _SC_META_HPP_

@@ -2,9 +2,22 @@
 #define _FIELD_TRAITS_HPP_
 
 
-#include "sc_type_traits.hpp"
-#include "field_size.hpp"
 #include "field.hpp"
+#include "field_size.hpp"
+#include "sc_type_traits.hpp"
+
+
+template <typename T>
+struct is_field;
+
+template <typename T>
+struct is_field: std::false_type{};
+
+template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
+
+template <typename T>
+constexpr bool is_field_v = is_field<T>::value;
 
 
 template <typename T>
@@ -50,28 +63,6 @@ struct is_runtime_sized_field {
 template <typename T>
 inline constexpr bool is_runtime_sized_field_v = is_runtime_sized_field<T>::res;
 
-// todo: move to sc_type_traits
-// todo: add constraints such that user defined optionals can also be used 
-// todo: also add constraint to permit var length fields
-// template <typename T>
-// struct is_optional_like;
-//
-// template <typename T>
-// struct is_optional_like {
-//   static inline constexpr bool res = false;
-// };
-//
-// template <field_containable T>
-// struct is_optional_like<std::optional<T>> {
-//   static inline constexpr bool res = true;
-// };
-//
-// template <typename T>
-// inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
-//
-// template <typename T>
-// concept optional_like = is_optional_like_v<T>;
-//
 template <typename T>
 struct is_optional_field;
 
@@ -92,28 +83,6 @@ struct is_optional_field {
 
 template <typename T>
 inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
-
-// todo: add constraints such that user defined optionals can also be used 
-// todo: move to sc_type_traits
-// todo: todo var buffer like field constraint
-// template <typename T>
-// struct is_variant_like;
-//
-// template <typename T>
-// struct is_variant_like {
-//   static constexpr bool res = false;
-// };
-//
-// template <typename... ts>
-// struct is_variant_like<std::variant<ts...>> {
-//   static constexpr bool res = true;
-// };
-//
-// template <typename T>
-// inline constexpr bool is_variant_like_v = is_variant_like<T>::res;
-//
-// template <typename T>
-// concept variant_like = is_variant_like_v<T>;
 
 template <typename T>
 struct is_union_field;
@@ -142,23 +111,11 @@ concept field_like = is_comptime_sized_field_v<T> ||
                      is_optional_field_v<T>       ||
                      is_union_field_v<T>;
 
-template <typename... ts>
-struct are_all_fields;
-
-template <>
-struct are_all_fields<field_list<>> { static constexpr bool all_same = true; };
-
-template <typename T, typename... rest>
-struct are_all_fields<field_list<T, rest...>> {
-  static constexpr bool all_same = false;
-};
-
-template <field_like T, typename... rest>
-struct are_all_fields<field_list<T, rest...>> {
-  static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
-};
-
-template <typename T>
-inline constexpr bool are_all_fields_v = are_all_fields<T>::all_same;
+// namespace static_test {
+//   static_assert(is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
+//   static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
+//   static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
+//   static_assert(!is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
+// }
 
 #endif /*_FIELD_TRAITS_HPP_*/

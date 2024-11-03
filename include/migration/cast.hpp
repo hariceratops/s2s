@@ -3,54 +3,14 @@
 
 
 #include <expected>
-
 #include "field_reader.hpp"
-#include "../field_meta.hpp"
-#include "field_traits.hpp"
 #include "sc_type_traits.hpp"
+#include "field_traits.hpp"
+#include "struct_field_list_traits.hpp"
+#include "field_meta.hpp"
+#include "field_list.hpp"
 
-template <typename T>
-struct is_field;
-
-template <typename T>
-struct is_field: std::false_type{};
-
-template <fixed_string id, typename T, typename field_size, auto constraint>
-struct is_field<field<id, T, field_size, constraint>>: std::true_type{};
-
-template <typename T>
-constexpr bool is_field_v = is_field<T>::value;
-
-template <typename T>
-struct is_field_with_runtime_size;
-
-template <typename T>
-struct is_field_with_runtime_size: std::false_type{};
-
-template <fixed_string id, typename T, typename field_size, auto constraint>
-struct is_field_with_runtime_size<runtime_field<id, T, field_size, constraint>>: std::true_type{};
-
-template <typename T>
-constexpr bool is_field_with_runtime_size_v = is_field_with_runtime_size<T>::value;
-
-static_assert(is_field_with_runtime_size_v<runtime_field<"hello", int, runtime_size<from_field<"a">>>>);
-static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-static_assert(!is_field_v<runtime_field<"hello", int, runtime_size<from_field<"a">>>>);
-
-template <typename... fields>
-struct struct_field_list;
-
-// Metafunction to check if a type is a struct_field_list
-template <typename T>
-struct is_struct_field_list : std::false_type {};
-
-template <typename... Entries>
-struct is_struct_field_list<struct_field_list<Entries...>> : std::true_type {};
-
-template <typename T>
-constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
-
+// todo possible dead code
 template <typename... expected_types>
 auto is_any_error(const expected_types&... expected_list) {
   return (expected_list && ...);
@@ -62,6 +22,8 @@ auto operator|(std::expected<expected_struct_field_list, error>& lhs, auto funct
   if(lhs) return functor(*lhs); else return lhs;
 }
 
+// todo constraint with struct field list else user might have to provide all
+// fields as params to the function
 template <typename... fields>
 constexpr auto struct_cast(const unsigned char* buffer)
   -> std::expected<struct_field_list<fields...>, std::string>
@@ -76,6 +38,7 @@ constexpr auto struct_cast(const unsigned char* buffer)
   return (
     res | 
     ([&prefix_sum, &buffer, &index](field_list_type input) -> res_type {
+      using field_size = typename fields::field_size;
       using field_type = typename fields::field_type;
 
       auto field = static_cast<fields&>(input);
@@ -90,14 +53,16 @@ constexpr auto struct_cast(const unsigned char* buffer)
                       read<field_type>(buffer_pos, field_type::field_size) :
                       res_type{std::nullopt{}};
       } else if constexpr (is_union_field_v<field_type>) {
-        std::size_t type_index = field_type::type_deduction_guide(input); 
-        auto reader = variant_reader<field_type, typename field_type::field_size>{};
-        field_value = reader(type_index, buffer_pos);
+        using variant_reader_type_t = variant_reader<field_type, field_size>;
+        auto type_index = field_type::type_deduction_guide(input); 
+        field_value = *type_index ? 
+                      variant_reader_type_t{}(type_index, buffer_pos): 
+                      type_index;
       } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
         field_value = struct_cast(field.value, buffer_pos);
       } else if constexpr (is_field_v<field_type>) {
         field_value = read<field_type>(buffer_pos, field_type::field_size);
-      } else if constexpr (is_field_with_runtime_size_v<field_type>) {
+      } else if constexpr (is_runtime_sized_field_v<field_type>) {
         field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
       }
 
@@ -108,7 +73,7 @@ constexpr auto struct_cast(const unsigned char* buffer)
       
       // todo return std::unexpected to break the pipeline
       // is this ok?
-      if(field_value) field = *field_value;
+      if(field_value) field.value = *field_value;
       else input = field_value;
       
       // todo constraint checker
@@ -126,7 +91,7 @@ constexpr void struct_cast(struct_field_list<fields...>& field_list, std::ifstre
       struct_cast(field.value, stream);
     } else if constexpr (is_field_v<field_type>) {
       field.read(stream, field_type::field_size);
-    } else if constexpr (is_field_with_runtime_size_v<field_type>) {
+    } else if constexpr (is_runtime_sized_field_v<field_type>) {
       field.read(stream, field_list[field_type::field_accessor]);
     }
 

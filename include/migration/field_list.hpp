@@ -2,8 +2,28 @@
 #define _FIELD_LIST__HPP_
 
 #include "field_size.hpp"
+#include "field_traits.hpp"
 #include "field_lookup.hpp"
 
+
+template <typename... ts>
+struct are_all_fields;
+
+template <>
+struct are_all_fields<field_list<>> { static constexpr bool all_same = true; };
+
+template <typename T, typename... rest>
+struct are_all_fields<field_list<T, rest...>> {
+  static constexpr bool all_same = false;
+};
+
+template <field_like T, typename... rest>
+struct are_all_fields<field_list<T, rest...>> {
+  static constexpr bool all_same = true && are_all_fields<field_list<rest...>>::all_same;
+};
+
+template <typename T>
+inline constexpr bool are_all_fields_v = are_all_fields<T>::all_same;
 
 // template <are_all_fields... fields>
 template <typename... fields>
