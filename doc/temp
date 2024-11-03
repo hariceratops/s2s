@@ -26,25 +26,3 @@ union_field <
   >
 >;
 
-
-next steps:
-
-Static assert tests for sequence manipulation tests
-Field type update
-  Basic constraints
-  Type and size metafunction usage in union types
-Cast function
-Test cases
-Extend to fstream for variant read
-Concept check for dependency resolution
-
-Compilable byte and bit types
-Memstream update
-
-Generate stream handler based on struct list entries
-
-Alignment manipulation
-
-Enum support
-
-Delimiter support

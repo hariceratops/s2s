@@ -5,8 +5,10 @@
 [  ] Size dependency resolution checks
 [  ] Parse dependency resolution checks
 [  ] Updated field type aliases
+  - [  ] Usage of metafunctions to extract type and size for union fields
 [  ] Updated test cases, add new if required
 [  ] Static test cases for all type traits and concepts
+[  ] Compilable bit and byte type abstraction
 [  ] Memstream abstraction
 [  ] Constraint complaince with std::expected
 [  ] Improved fixed_string
@@ -17,3 +19,7 @@
 [  ] Doxygen, MdDocs
 [  ] Bitfields
 [  ] Endianness
+[  ] Alignment and packing manipulation for field list
+[  ] Instantition of memstream reader based on whether bit operations required or not
+[  ] Concepts for field dependency
+[  ] Concepts for field lookup
