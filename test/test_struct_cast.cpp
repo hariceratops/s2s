@@ -26,12 +26,15 @@ TEST_CASE("Test reading a meta_struct from a static buffer") {
     0x0d, 0xd0, 0xfe, 0xca,
     0xef, 0xbe, 0xef, 0xbe
   };
-  test_struct_field_list fields;
 
   auto result = struct_cast<test_struct_field_list>(buffer);
 
-  REQUIRE(fields["a"_f] == 0xdeadbeef);
-  REQUIRE(fields["b"_f] == 0xcafed00d);
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+  }
 }
 
 

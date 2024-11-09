@@ -35,6 +35,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)

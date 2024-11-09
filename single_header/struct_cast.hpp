@@ -2990,7 +2990,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -5305,7 +5305,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -7838,7 +7838,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -12085,7 +12085,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -15285,7 +15285,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -15311,7 +15311,7 @@ auto is_any_error(const expected_types&... expected_list) {
 
 // todo constraints
 template <typename expected_struct_field_list, typename error>
-auto operator|(std::expected<expected_struct_field_list, error>& lhs, auto functor) {
+auto operator|(std::expected<expected_struct_field_list, error> lhs, auto functor) {
   if(lhs) return functor(*lhs); else return lhs;
 }
 
@@ -15326,13 +15326,12 @@ struct struct_cast_impl<struct_field_list<fields...>> {
   using res_type = std::expected<struct_field_list<fields...>, std::string>;
 
   constexpr auto operator()(const unsigned char* buffer) -> res_type {
-    res_type res;
+    res_type res = field_list_type{};
     std::size_t prefix_sum[sizeof...(fields) + 1] = {0};
     std::size_t index = 0;
 
     return (
-      res | 
-      ([&prefix_sum, &buffer, &index](field_list_type input) -> res_type {
+      res | ... | ([&prefix_sum, &buffer, &index](field_list_type input) -> res_type {
         using field_size = typename fields::field_size;
         using field_type = typename fields::field_type;
 
@@ -15368,13 +15367,14 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         // todo return std::unexpected to break the pipeline
         // is this ok?
         if(field_value) field.value = *field_value;
-        else input = field_value.error();
+        // currently compile error
+        // else input = field_value;
         
         // todo constraint checker
         // static constexpr auto constraint_checker = constraint_on_value;
         return input;
-      } | 
-    ...));
+      }
+    ));
   }
 };
 
@@ -18866,7 +18866,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -21497,7 +21497,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
@@ -24246,7 +24246,7 @@ struct struct_field_list : struct_field_list_base, fields... {
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
   //   "sizes not resolved. check if any of the fields which depends on the value of another field, \
   //    is always to the left of the dependant field and the field it depends on exists ");
-
+  struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
