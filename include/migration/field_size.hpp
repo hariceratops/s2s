@@ -8,6 +8,9 @@
 template <typename size_type>
 struct field_size;
 
+template <typename size_type>
+struct field_size {};
+
 template <std::size_t N>
 struct fixed;
 

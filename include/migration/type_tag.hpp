@@ -3,6 +3,7 @@
 
 
 // todo is this required
+// todo constraint T and size
 template <typename T, typename size>
 struct type_tag {
   using type = T;

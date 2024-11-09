@@ -42,16 +42,18 @@ struct type;
 template <no_type_deduction_like T>
 struct type<T> {};
 
-// todo constraints
+// todo constraints compute like
 template <typename eval_expression, typename tswitch>
 struct type<eval_expression, tswitch> {
   using expression = eval_expression;
   using type_switch = tswitch;
+  using type_selection = tswitch::types_only;
+  using size_selection = tswitch::size_only;
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
-    type_switch(eval_expression{}(), sfl); 
+    type_switch(eval_expression{}(sfl)); 
   }
 };
 
@@ -59,6 +61,8 @@ struct type<eval_expression, tswitch> {
 template <typename tladder>
 struct type<tladder> {
   using type_ladder = tladder;
+  using type_selection = tladder::types_only;
+  using size_selection = tladder::size_only;
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
@@ -66,5 +70,7 @@ struct type<tladder> {
     return type_ladder(sfl);
   }
 };
+
+// todo metafunction and concepts for constraining type
 
 #endif // _TYPE_DEDUCTION_HPP_

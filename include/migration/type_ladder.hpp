@@ -28,7 +28,7 @@ struct type_ladder_impl<idx, clause_head, clause_rest...> {
   constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
     std::expected<std::size_t, std::string> 
   {
-    bool eval_result = clause_head{}(field_list);
+    bool eval_result = clause_head::e(field_list);
     if(eval_result) return idx;
     else return type_ladder_impl<idx + 1, clause_rest...>{}(field_list);
   }

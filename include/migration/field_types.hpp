@@ -26,12 +26,12 @@ using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 template <
   fixed_string id, 
   integral T, 
-  typename size, 
+  comptime_size_like size, 
   auto expected = no_constraint<T>{},
   auto present_only_if = always_present{},
   auto type_deducer = type<no_type_deduction>{}
 >
-using integral_field = 
+using basic_field = 
   field<id, T, size, expected, present_only_if, type_deducer>;
 
 template <
@@ -46,7 +46,7 @@ using fixed_array_field =
   field<
     id, 
     std::array<T, N>, 
-    field_size<N * sizeof(T)>, 
+    field_size<fixed<N * sizeof(T)>>, 
     expected, 
     present_only_if, 
     type_deducer
@@ -63,7 +63,7 @@ using fixed_string_field =
   field<
     id, 
     fixed_string<N + 1>, 
-    field_size<N + 1>,
+    field_size<fixed<N + 1>>,
     expected, 
     present_only_if, 
     type_deducer
@@ -81,7 +81,7 @@ using c_arr_field =
   field<
     id, 
     T[N], 
-    field_size<N * sizeof(T)>,
+    field_size<fixed<N * sizeof(T)>>,
     expected, 
     present_only_if, 
     type_deducer
@@ -98,24 +98,7 @@ using c_str_field =
   field<
     id, 
     char[N + 1], 
-    field_size<N * sizeof(char) + 1>,
-    expected, 
-    present_only_if, 
-    type_deducer
-  >;
-
-template <
-  fixed_string id, 
-  floating_point T,
-  auto expected = no_constraint<T>{},
-  auto present_only_if = always_present{},
-  auto type_deducer = type<no_type_deduction>{}
->
-using float_point_field = 
-  field<
-    id, 
-    T, 
-    field_size<sizeof(T)>,
+    field_size<fixed<N * sizeof(char) + 1>>,
     expected, 
     present_only_if, 
     type_deducer
@@ -132,7 +115,7 @@ using magic_byte_array =
   field<
     id, 
     std::array<unsigned char, N>, 
-    field_size<N>, 
+    field_size<fixed<N>>, 
     eq{expected},
     present_only_if, 
     type_deducer
@@ -148,7 +131,7 @@ using magic_string =
   field<
     id, 
     fixed_string<expected.size()>, 
-    field_size<expected.size()>, 
+    field_size<fixed<expected.size()>>, 
     eq{expected},
     present_only_if, 
     type_deducer
@@ -157,7 +140,7 @@ using magic_string =
 template <
   fixed_string id, 
   integral T, 
-  std::size_t size, 
+  comptime_size_like size, 
   T expected,
   auto present_only_if = always_present{},
   auto type_deducer = type<no_type_deduction>{}
@@ -166,7 +149,7 @@ using magic_number =
   field<
     id, 
     T, 
-    field_size<size>, 
+    size, 
     eq{expected},
     present_only_if, 
     type_deducer
@@ -177,7 +160,7 @@ using magic_number =
 template <
   fixed_string id, 
   typename T, 
-  typename runtime_size,
+  runtime_size_like runtime_size,
   auto expected = no_constraint<T>{},
   auto present_only_if = always_present{},
   auto type_deducer = type<no_type_deduction>{}
@@ -195,7 +178,7 @@ using vec_field =
 // todo check if this will work for all char types like wstring
 template <
   fixed_string id, 
-  typename runtime_size,
+  runtime_size_like runtime_size,
   auto expected = no_constraint<std::string>{},
   auto present_only_if = always_present{},
   auto type_deducer = type<no_type_deduction>{}
@@ -229,6 +212,7 @@ using maybe_field =
   >;
 
 // todo: decide if a variant field be optional
+// todo constrains on type_deducer
 template <
   fixed_string id, 
   auto type_deducer,
@@ -237,12 +221,23 @@ template <
 using union_field = 
   field<
     id, 
-    std::string, 
-    size,
+    typename decltype(type_deducer)::type_selection, 
+    typename decltype(type_deducer)::size_selection,
     expected,
     always_present{}, 
     type_deducer
   >;
+
+template <fixed_string id, field_list_like T, auto present_only_if>
+using struct_field = 
+  field<
+    id, 
+    T, 
+    field_size<fixed<sizeof(T)>>, 
+    no_constraint<T>{}, 
+    present_only_if, 
+    type<no_type_deduction>{}
+>;
 
 /*
 *   type<
