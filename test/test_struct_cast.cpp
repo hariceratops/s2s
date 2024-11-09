@@ -62,35 +62,38 @@ TEST_CASE("Test reading a meta_struct from a static buffer") {
 // }
 //
 //
-// TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") {
-//   using test_nested_struct_field_list = 
-//     struct_field_list<
-//       field<"a", u32, field_size<4>>, 
-//       field<"b", u32, field_size<4>>,
-//       struct_field<
-//         "c", 
-//         struct_field_list<
-//           field<"x", u32, field_size<4>>,
-//           field<"y", u32, field_size<4>>
-//         >
-//       >
-//     >;
-//
-//   const u8 buffer[] = {
-//     0xef, 0xbe, 0xad, 0xde,
-//     0x0d, 0xd0, 0xfe, 0xca,
-//     0xef, 0xbe, 0xef, 0xbe,
-//     0xef, 0xbe, 0xad, 0xde
-//   };
-//   test_nested_struct_field_list fields;
-//
-//   struct_cast(fields, buffer);
-//
-//   REQUIRE(fields["a"_f] == 0xdeadbeef);
-//   REQUIRE(fields["b"_f] == 0xcafed00d);
-//   REQUIRE(fields["c"_f]["x"_f] == 0xbeefbeef);
-//   REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
-// }
+TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") {
+  using test_nested_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      struct_field<
+        "c", 
+        struct_field_list<
+          basic_field<"x", u32, field_size<fixed<4>>>,
+          basic_field<"y", u32, field_size<fixed<4>>>
+        >
+      >
+    >;
+
+  const u8 buffer[] = {
+    0xef, 0xbe, 0xad, 0xde,
+    0x0d, 0xd0, 0xfe, 0xca,
+    0xef, 0xbe, 0xef, 0xbe,
+    0xef, 0xbe, 0xad, 0xde
+  };
+
+  auto result = struct_cast<test_nested_struct_field_list>(buffer);
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["c"_f]["x"_f] == 0xbeefbeef);
+    REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
+  }
+}
 //
 //
 // TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
@@ -436,3 +439,31 @@ TEST_CASE("Test reading a meta_struct from a static buffer") {
 //   REQUIRE(res == 20);
 //   std::cout << std::dec << res << '\n';
 // }
+//
+
+TEST_CASE("Test case to verify option field parsing") {
+  auto is_a_eq_1 = [](auto a){ INFO("hi"); return a == 1; };
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      maybe_field<"b", u32, field_size<fixed<4>>, 
+                  eval_bool_from_fields<is_a_eq_1, with_fields<"a">>{}>
+                  // eval_bool_from_fields<[](auto a){ return a == 1; }, with_fields<"a">>{}>
+    >;
+
+  const u8 buffer[] = {
+    0xef, 0xbe, 0xad, 0xde,
+    0x0d, 0xd0, 0xfe, 0xca,
+    0xef, 0xbe, 0xef, 0xbe
+  };
+
+  auto result = struct_cast<test_struct_field_list>(buffer);
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+  }
+}

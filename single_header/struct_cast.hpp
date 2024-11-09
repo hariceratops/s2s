@@ -15310,6 +15310,8 @@ auto is_any_error(const expected_types&... expected_list) {
 }
 
 // todo constraints
+// todo fix the copying by using reference currently error thrown due to 
+// non const lvalue being bound to rvalue
 template <typename expected_struct_field_list, typename error>
 auto operator|(std::expected<expected_struct_field_list, error> lhs, auto functor) {
   if(lhs) return functor(*lhs); else return lhs;
@@ -24748,7 +24750,11 @@ using union_field =
     type_deducer
   >;
 
-template <fixed_string id, field_list_like T, auto present_only_if>
+template <
+  fixed_string id,
+  field_list_like T, 
+  auto present_only_if = always_present{}
+>
 using struct_field = 
   field<
     id, 

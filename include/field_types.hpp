@@ -228,7 +228,11 @@ using union_field =
     type_deducer
   >;
 
-template <fixed_string id, field_list_like T, auto present_only_if>
+template <
+  fixed_string id,
+  field_list_like T, 
+  auto present_only_if = always_present{}
+>
 using struct_field = 
   field<
     id, 
