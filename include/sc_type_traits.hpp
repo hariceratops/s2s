@@ -2,7 +2,8 @@
 #define _SC_META_HPP_
 
 #include <vector>
-#include <concepts>
+#include <variant>
+#include <optional>
 #include "fixed_string.hpp"
 #include "struct_field_list_base.hpp"
 
@@ -99,5 +100,49 @@ struct extract_type_from_vec {
 
 template <typename T>
 using extract_type_from_vec_t = typename extract_type_from_vec<T>::type;
+
+template <typename T>
+struct is_variant_like;
+
+template <typename T>
+struct is_variant_like {
+  static constexpr bool res = false;
+};
+
+template <typename... ts>
+struct is_variant_like<std::variant<ts...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_variant_like_v = is_variant_like<T>::res;
+
+template <typename T>
+concept variant_like = is_variant_like_v<T>;
+
+// todo: add constraints such that user defined optionals can also be used 
+// todo: also add constraint to permit var length fields
+template <typename T>
+struct is_optional_like;
+
+template <typename T>
+struct is_optional_like {
+  static inline constexpr bool res = false;
+};
+
+// template <field_containable T>
+template <typename T>
+struct is_optional_like<std::optional<T>> {
+  static inline constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
+
+template <typename T>
+concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 #endif // _SC_META_HPP_

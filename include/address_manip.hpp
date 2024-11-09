@@ -1,10 +1,10 @@
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
 
-#include "fixed_string.hpp"
 #include <array>
 #include <string>
 #include <vector>
+#include "fixed_string.hpp"
 
 
 // Function to void pointer cast

@@ -57,7 +57,7 @@ struct variant_reader_impl<idx,
     }
   }
 
-  auto operator()(std::size_t idx_r, const char* buf) -> 
+  auto operator()(std::size_t idx_r, const unsigned char* buf) -> 
     std::expected<std::variant<T>, std::string> {
     if(idx_r == idx) {
       if constexpr(is_struct_field_list_v<type_to_read>) {
@@ -98,7 +98,7 @@ struct variant_reader<T, std::integer_sequence<std::size_t, sizes...>> {
 };
 
 template <typename T>
-auto read(const char* buffer, std::size_t size_to_read) 
+auto read(const unsigned char* buffer, std::size_t size_to_read) 
     -> std::expected<T, std::string> {
   T obj;
   std::memcpy(to_void_ptr(obj), buffer, size_to_read);

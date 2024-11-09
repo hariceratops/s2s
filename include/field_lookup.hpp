@@ -12,19 +12,15 @@ struct field_lookup_failed {};
 template <typename ls, fixed_string id>
 struct field_lookup;
 
-template <fixed_string id, typename T, typename size, auto field_constraint, typename... rest>
-struct field_lookup<field_list<field<id, T, size, field_constraint>, rest...>, id> {
-  using type = field<id, T, size, field_constraint>;
-};
-
-template <fixed_string id, typename T, typename... rest>
-struct field_lookup<field_list<struct_field<id, T>, rest...>, id> {
-  using type = struct_field<id, T>;
-};
-
-template <fixed_string id, typename T, typename size, auto field_constraint, typename... rest>
-struct field_lookup<field_list<runtime_field<id, T, size, field_constraint>, rest...>, id> {
-  using type = runtime_field<id, T, size, field_constraint>;
+template <fixed_string id, 
+          typename T, 
+          typename size, 
+          auto field_constraint, 
+          auto present_only_if, 
+          auto type_deducer, 
+          typename... rest>
+struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
+  using type = field<id, T, size, field_constraint, present_only_if, type_deducer>;
 };
 
 template <fixed_string id, typename head, typename... rest>

@@ -2,7 +2,7 @@
 #define _TYPELIST_MANIP_HPP_
 
 #include <variant>
-#include "../typelist.hpp"
+#include "typelist.hpp"
 #include "fixed_str_list.hpp"
 
 // todo typelist to variant?
