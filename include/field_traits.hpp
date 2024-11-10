@@ -13,7 +13,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -27,7 +27,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -49,7 +49,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -70,7 +70,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -96,7 +96,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;

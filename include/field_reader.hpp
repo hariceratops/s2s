@@ -2,6 +2,7 @@
 #define _FIELD_READER_HPP_
 
 #include <cstring>
+#include <iostream>
 #include <fstream>
 #include <expected>
 #include <utility>
@@ -15,6 +16,7 @@ auto read(const unsigned char* buffer, std::size_t size_to_read)
     -> std::expected<T, std::string> {
   T obj;
   std::memcpy(to_void_ptr(obj), buffer, size_to_read);
+  // std::cout << "p_1" << obj << '\n';
   return obj;
 }
 

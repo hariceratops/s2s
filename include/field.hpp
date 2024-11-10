@@ -9,7 +9,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -17,7 +17,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };

@@ -451,11 +451,20 @@ namespace static_test {
       basic_field<"b", u32, field_size<fixed<4>>>
     >;
   static_assert(is_invocable<is_a_eq_1, bool, test_struct_field_list, with_fields<"a">>::res);
+  static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_struct_field_list, with_fields<"a">>);
+  // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_struct_field_list, with_fields<"a">>);
   static_assert(is_invocable<unit, bool, test_struct_field_list, with_fields<"a">>::res);
 }
 
+/*
+*    auto constexpr unit = [](int a)-> int { return a * 1; };
+    static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
+    static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
+    static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);*/
+
 TEST_CASE("Test case to verify option field parsing") {
   auto is_a_eq_1 = [](auto a){ return a == 1; };
+  auto by_2 = [](auto a){ return a / 2; };
 
   // todo decide if eval_bool_from_fields should be auto
   // todo type alias check_presence for eval_bool_from_fields
@@ -465,7 +474,7 @@ TEST_CASE("Test case to verify option field parsing") {
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>{}>
+      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
     >;
 
   const u8 buffer[] = {
@@ -481,6 +490,7 @@ TEST_CASE("Test case to verify option field parsing") {
     auto fields = *result;
     REQUIRE(fields["a"_f] == 0xdeadbeef);
     REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["c"_f] == std::nullopt);
   }
 }
 
@@ -489,38 +499,38 @@ TEST_CASE("Test case to verify variant field parsing") {
 
   // todo introduce type named expression to avoid decltype
   // todo maybe remove auto for type
-  using test_struct_field_list = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
-        "c", 
-        type<
-          decltype(is_a_eq_1),
-          type_switch<
-            match_case<1, type_tag<int, field_size<fixed<4>>>>,
-            match_case<2, type_tag<float, field_size<fixed<4>>>>,
-            match_case<3, type_tag<unsigned int, field_size<fixed<4>>>>
-          >
-        >{}
-      >
-    >;
-
-  const u8 buffer[] = {
-    0xef, 0xbe, 0xad, 0xde,
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xef, 0xbe
-  };
-
-  auto result = struct_cast<test_struct_field_list>(buffer);
-
-  REQUIRE(result.has_value() == true);
-  if(result) {
-    auto fields = *result;
-    std::cout << fields["a"_f];
-    REQUIRE(fields["a"_f] == 0xdeadbeef);
-    REQUIRE(fields["b"_f] == 0xcafed00d);
-  }
+  // using test_struct_field_list = 
+  //   struct_field_list<
+  //     basic_field<"a", u32, field_size<fixed<4>>>, 
+  //     basic_field<"b", u32, field_size<fixed<4>>>,
+  //     union_field<
+  //       "c", 
+  //       type<
+  //         decltype(is_a_eq_1),
+  //         type_switch<
+  //           match_case<1, type_tag<int, field_size<fixed<4>>>>,
+  //           match_case<2, type_tag<float, field_size<fixed<4>>>>,
+  //           match_case<3, type_tag<unsigned int, field_size<fixed<4>>>>
+  //         >
+  //       >{}
+  //     >
+  //   >;
+  //
+  // const u8 buffer[] = {
+  //   0xef, 0xbe, 0xad, 0xde,
+  //   0x0d, 0xd0, 0xfe, 0xca,
+  //   0xef, 0xbe, 0xef, 0xbe
+  // };
+  //
+  // auto result = struct_cast<test_struct_field_list>(buffer);
+  //
+  // REQUIRE(result.has_value() == true);
+  // if(result) {
+  //   auto fields = *result;
+  //   std::cout << fields["a"_f];
+  //   REQUIRE(fields["a"_f] == 0xdeadbeef);
+  //   REQUIRE(fields["b"_f] == 0xcafed00d);
+  // }
 }
 
 

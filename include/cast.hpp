@@ -26,6 +26,9 @@ auto operator|(std::expected<expected_struct_field_list, error> lhs, auto functo
   if(lhs) return functor(*lhs); else return lhs;
 }
 
+template <field_list_like T>
+constexpr auto struct_cast(const unsigned char* buffer) -> std::expected<T, std::string>;
+
 // todo constraint with struct field list else user might have to provide all
 // fields as params to the function
 template <typename T>
@@ -50,11 +53,9 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         std::expected<field_type, std::string> field_value;
         auto buffer_pos = reinterpret_cast<const unsigned char*>(buffer + prefix_sum[index]);
 
-        std::cout << "paring field = " << '\n';
         if constexpr (is_optional_field_v<fields>) {
           // todo variable length optional field
-          std::cout << "optional field = " << '\n';
-          if(fields::field_presence_checker(input)) {
+          if(typename fields::field_presence_checker{}(input)) {
             auto read_res = read<field_type>(buffer_pos, field_size::size_type_t::count);
             if(read_res) field_value = *read_res;
             else {/*todo something has to be done*/}
@@ -72,8 +73,7 @@ struct struct_cast_impl<struct_field_list<fields...>> {
             // todo what to do, prob similar normal return case 
           }
         } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<fields>>) {
-          // field_value = struct_cast(field.value, buffer_pos);
-          std::cout << "struct_field = " << '\n';
+          field_value = struct_cast<extract_type_from_field_v<fields>>(buffer_pos);
         } else if constexpr (is_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
         } else if constexpr (is_runtime_sized_field_v<fields>) {
@@ -95,15 +95,15 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         
         // todo constraint checker
         // static constexpr auto constraint_checker = constraint_on_value;
-        std::cout << index << '\n';
         return input;
       }
     ));
   }
 };
 
-template <typename T>
-  requires is_struct_field_list_v<T>
+// template <typename T>
+//   requires is_struct_field_list_v<T>
+template <field_list_like T>
 constexpr auto struct_cast(const unsigned char* buffer) -> std::expected<T, std::string> {
   return struct_cast_impl<T>{}(buffer);
 }

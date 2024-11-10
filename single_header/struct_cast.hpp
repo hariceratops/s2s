@@ -739,7 +739,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -747,7 +747,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -1778,7 +1779,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -1786,7 +1787,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -2431,7 +2433,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -2444,7 +2446,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -2466,7 +2468,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -2487,7 +2489,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -2513,7 +2515,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -3267,7 +3269,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -3275,7 +3277,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -3291,7 +3294,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -4445,7 +4448,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -4453,7 +4456,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -5098,7 +5102,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -5111,7 +5115,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -5133,7 +5137,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -5154,7 +5158,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -5180,7 +5184,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -5934,7 +5938,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -5942,7 +5946,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -5958,7 +5963,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -6192,11 +6197,11 @@ struct is_invocable<callable,
                     struct_field_list_t, 
                     fixed_string_list<req_fields...>> {
   static constexpr bool res = 
-      std::is_invocable_r<
+      std::is_invocable_r_v<
         return_type, 
         decltype(callable),
         decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
-      >::value; 
+      >;
 };
 
 template <auto Func, 
@@ -6228,8 +6233,8 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) {
-    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
+  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+    return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -6300,6 +6305,7 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 #define _FIELD_READER_HPP_
 
 #include <cstring>
+#include <iostream>
 #include <fstream>
 #include <expected>
 #include <utility>
@@ -7331,7 +7337,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -7339,7 +7345,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -7984,7 +7991,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -7997,7 +8004,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -8019,7 +8026,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -8040,7 +8047,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -8066,7 +8073,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -8820,7 +8827,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -8828,7 +8835,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -8844,7 +8852,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -9430,6 +9438,7 @@ auto read(const unsigned char* buffer, std::size_t size_to_read)
     -> std::expected<T, std::string> {
   T obj;
   std::memcpy(to_void_ptr(obj), buffer, size_to_read);
+  // std::cout << "p_1" << obj << '\n';
   return obj;
 }
 
@@ -10300,7 +10309,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -10308,7 +10317,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -10953,7 +10963,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -10966,7 +10976,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -10988,7 +10998,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -11009,7 +11019,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -11035,7 +11045,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -12087,7 +12097,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -12095,7 +12105,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -12740,7 +12751,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -12753,7 +12764,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -12775,7 +12786,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -12796,7 +12807,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -12822,7 +12833,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -13576,7 +13587,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -13584,7 +13595,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -13600,7 +13612,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -14746,7 +14758,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -14754,7 +14766,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -14766,7 +14779,7 @@ struct not_a_field;
 template <typename T>
 struct extract_type_from_field;
 
-template <fixed_string id, typename field_type, typename size, auto constraint, auto present_only_if, auto type_deducer>
+template <fixed_string id, typename field_type, typename size, auto constraint, typename present_only_if, auto type_deducer>
 struct extract_type_from_field<field<id, field_type, field_size<size>, constraint, present_only_if, type_deducer>> {
   using type = field_type;
 };
@@ -15815,7 +15828,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -15823,7 +15836,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -16468,7 +16482,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -16481,7 +16495,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -16503,7 +16517,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -16524,7 +16538,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -16550,7 +16564,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -17304,7 +17318,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -17312,7 +17326,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -17328,7 +17343,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -18857,7 +18872,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -18865,7 +18880,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -19510,7 +19526,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -19523,7 +19539,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -19545,7 +19561,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -19566,7 +19582,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -19592,7 +19608,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -20346,7 +20362,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -20354,7 +20370,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -20370,7 +20387,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -21524,7 +21541,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -21532,7 +21549,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -22177,7 +22195,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -22190,7 +22208,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -22212,7 +22230,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -22233,7 +22251,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -22259,7 +22277,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -23013,7 +23031,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -23021,7 +23039,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -23037,7 +23056,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -23271,11 +23290,11 @@ struct is_invocable<callable,
                     struct_field_list_t, 
                     fixed_string_list<req_fields...>> {
   static constexpr bool res = 
-      std::is_invocable_r<
+      std::is_invocable_r_v<
         return_type, 
         decltype(callable),
         decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
-      >::value; 
+      >;
 };
 
 template <auto Func, 
@@ -23307,8 +23326,8 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) {
-    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
+  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+    return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -23457,6 +23476,9 @@ auto operator|(std::expected<expected_struct_field_list, error> lhs, auto functo
   if(lhs) return functor(*lhs); else return lhs;
 }
 
+template <field_list_like T>
+constexpr auto struct_cast(const unsigned char* buffer) -> std::expected<T, std::string>;
+
 // todo constraint with struct field list else user might have to provide all
 // fields as params to the function
 template <typename T>
@@ -23477,17 +23499,19 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         using field_size = typename fields::field_size;
         using field_type = typename fields::field_type;
 
-        auto field = static_cast<fields&>(input);
+        auto& field = static_cast<fields&>(input);
         std::expected<field_type, std::string> field_value;
         auto buffer_pos = reinterpret_cast<const unsigned char*>(buffer + prefix_sum[index]);
 
-        std::cout << "paring field = " << '\n';
         if constexpr (is_optional_field_v<fields>) {
           // todo variable length optional field
-          std::cout << "optional field = " << '\n';
-          field_value = fields::field_presence_checker(input) ? 
-                        read<field_type>(buffer_pos, field_size::size_type_t::count) :
-                        res_type{std::nullopt};
+          if(typename fields::field_presence_checker{}(input)) {
+            auto read_res = read<field_type>(buffer_pos, field_size::size_type_t::count);
+            if(read_res) field_value = *read_res;
+            else {/*todo something has to be done*/}
+          } else {
+            // field_value = res_type{std::nullopt};
+          }
         } else if constexpr (is_union_field_v<fields>) {
           std::cout << "variant field = " << '\n';
           using variant_reader_type_t = variant_reader<field_type>;
@@ -23499,11 +23523,9 @@ struct struct_cast_impl<struct_field_list<fields...>> {
             // todo what to do, prob similar normal return case 
           }
         } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<fields>>) {
-          field_value = struct_cast(field.value, buffer_pos);
-          std::cout << "struct_field = " << '\n';
+          field_value = struct_cast<extract_type_from_field_v<fields>>(buffer_pos);
         } else if constexpr (is_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
-          std::cout << "reg_field = " << '\n';
         } else if constexpr (is_runtime_sized_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
           std::cout << "runtime size field = " << '\n';
@@ -23523,15 +23545,15 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         
         // todo constraint checker
         // static constexpr auto constraint_checker = constraint_on_value;
-        std::cout << index << '\n';
         return input;
       }
     ));
   }
 };
 
-template <typename T>
-  requires is_struct_field_list_v<T>
+// template <typename T>
+//   requires is_struct_field_list_v<T>
+template <field_list_like T>
 constexpr auto struct_cast(const unsigned char* buffer) -> std::expected<T, std::string> {
   return struct_cast_impl<T>{}(buffer);
 }
@@ -24340,7 +24362,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -24348,7 +24370,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -25982,7 +26005,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -25990,7 +26013,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -26635,7 +26659,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -26648,7 +26672,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -26670,7 +26694,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -26691,7 +26715,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -26717,7 +26741,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -27471,7 +27495,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -27479,7 +27503,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -27495,7 +27520,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -27729,11 +27754,11 @@ struct is_invocable<callable,
                     struct_field_list_t, 
                     fixed_string_list<req_fields...>> {
   static constexpr bool res = 
-      std::is_invocable_r<
+      std::is_invocable_r_v<
         return_type, 
         decltype(callable),
         decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
-      >::value; 
+      >;
 };
 
 template <auto Func, 
@@ -27765,8 +27790,8 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) {
-    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
+  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+    return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -28963,7 +28988,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -28971,7 +28996,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -29616,7 +29642,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -29629,7 +29655,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -29651,7 +29677,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -29672,7 +29698,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -29698,7 +29724,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -30452,7 +30478,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -30460,7 +30486,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -30476,7 +30503,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -30710,11 +30737,11 @@ struct is_invocable<callable,
                     struct_field_list_t, 
                     fixed_string_list<req_fields...>> {
   static constexpr bool res = 
-      std::is_invocable_r<
+      std::is_invocable_r_v<
         return_type, 
         decltype(callable),
         decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
-      >::value; 
+      >;
 };
 
 template <auto Func, 
@@ -30746,8 +30773,8 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) {
-    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
+  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+    return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -32495,7 +32522,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -32503,7 +32530,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -33148,7 +33176,7 @@ struct is_field;
 template <typename T>
 struct is_field: std::false_type{};
 
-template <fixed_string id, typename T, typename field_size, auto constraint, auto presence_check, auto type_deducer>
+template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, auto type_deducer>
 struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
 
 template <typename T>
@@ -33161,7 +33189,7 @@ template <fixed_string id,
           field_containable T, 
           comptime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -33183,7 +33211,7 @@ template <fixed_string id,
           typename T, 
           runtime_size_like size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -33204,7 +33232,7 @@ template <fixed_string id,
           optional_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -33230,7 +33258,7 @@ template <fixed_string id,
           variant_like T, 
           typename size, 
           auto constraint_on_value, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer>
 struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
@@ -33984,7 +34012,7 @@ template <fixed_string id,
           typename T,
           typename size_type,
           auto constraint_on_value,
-          auto present_only_if,
+          typename present_only_if,
           auto type_deducer> 
 struct field {
   using field_type = T;
@@ -33992,7 +34020,8 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  static constexpr auto field_presence_checker = present_only_if;
+  // static constexpr auto field_presence_checker = present_only_if;
+  using field_presence_checker = present_only_if;
   static constexpr auto type_deduction_guide = type_deducer;
   field_type value;
 };
@@ -34008,7 +34037,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
@@ -34242,11 +34271,11 @@ struct is_invocable<callable,
                     struct_field_list_t, 
                     fixed_string_list<req_fields...>> {
   static constexpr bool res = 
-      std::is_invocable_r<
+      std::is_invocable_r_v<
         return_type, 
         decltype(callable),
         decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
-      >::value; 
+      >;
 };
 
 template <auto Func, 
@@ -34278,8 +34307,8 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) {
-    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
+  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+    return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -34359,7 +34388,7 @@ template <
   integral T, 
   comptime_size_like size, 
   auto expected = no_constraint<T>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using basic_field = 
@@ -34370,7 +34399,7 @@ template <
   typename T, 
   std::size_t N, 
   auto expected = no_constraint<std::array<T,N>>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using fixed_array_field = 
@@ -34387,7 +34416,7 @@ template <
   fixed_string id, 
   std::size_t N,
   auto expected = no_constraint<fixed_string<N>>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using fixed_string_field = 
@@ -34405,7 +34434,7 @@ template <
   typename T, 
   std::size_t N,
   auto expected = no_constraint<T[N]>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using c_arr_field = 
@@ -34422,7 +34451,7 @@ template <
   fixed_string id, 
   std::size_t N,
   auto expected = no_constraint<char[N + 1]>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using c_str_field = 
@@ -34439,7 +34468,7 @@ template <
   fixed_string id, 
   std::size_t N, 
   std::array<unsigned char, N> expected,
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using magic_byte_array = 
@@ -34455,7 +34484,7 @@ using magic_byte_array =
 template <
   fixed_string id, 
   fixed_string expected,
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using magic_string = 
@@ -34473,7 +34502,7 @@ template <
   integral T, 
   comptime_size_like size, 
   T expected,
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using magic_number = 
@@ -34493,7 +34522,7 @@ template <
   typename T, 
   runtime_size_like runtime_size,
   auto expected = no_constraint<T>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using vec_field = 
@@ -34511,7 +34540,7 @@ template <
   fixed_string id, 
   runtime_size_like runtime_size,
   auto expected = no_constraint<std::string>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using str_field = 
@@ -34529,7 +34558,7 @@ template <
   fixed_string id, 
   typename T,
   typename size,
-  auto present_only_if,
+  typename present_only_if,
   auto expected = no_constraint<std::string>{}
 >
 using maybe_field = 
@@ -34555,14 +34584,14 @@ using union_field =
     typename decltype(type_deducer)::type_selection, 
     typename decltype(type_deducer)::size_selection,
     expected,
-    always_present{}, 
+    always_present, 
     type_deducer
   >;
 
 template <
   fixed_string id,
   field_list_like T, 
-  auto present_only_if = always_present{}
+  typename present_only_if = always_present
 >
 using struct_field = 
   field<
@@ -34601,7 +34630,7 @@ using struct_field =
 namespace static_test {
   using u32 = unsigned int;
   static inline auto is_eq_1 = [](auto a){ return a == 1; };
-  static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>{}>>);
+  static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>>>);
   static_assert(!is_optional_field_v<basic_field<"a", u32, field_size<fixed<4>>>>);
 }
 #endif /* _FIELD_TYPE_HPP_ */

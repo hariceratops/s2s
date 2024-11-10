@@ -28,7 +28,7 @@ template <
   integral T, 
   comptime_size_like size, 
   auto expected = no_constraint<T>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using basic_field = 
@@ -39,7 +39,7 @@ template <
   typename T, 
   std::size_t N, 
   auto expected = no_constraint<std::array<T,N>>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using fixed_array_field = 
@@ -56,7 +56,7 @@ template <
   fixed_string id, 
   std::size_t N,
   auto expected = no_constraint<fixed_string<N>>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using fixed_string_field = 
@@ -74,7 +74,7 @@ template <
   typename T, 
   std::size_t N,
   auto expected = no_constraint<T[N]>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using c_arr_field = 
@@ -91,7 +91,7 @@ template <
   fixed_string id, 
   std::size_t N,
   auto expected = no_constraint<char[N + 1]>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using c_str_field = 
@@ -108,7 +108,7 @@ template <
   fixed_string id, 
   std::size_t N, 
   std::array<unsigned char, N> expected,
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using magic_byte_array = 
@@ -124,7 +124,7 @@ using magic_byte_array =
 template <
   fixed_string id, 
   fixed_string expected,
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using magic_string = 
@@ -142,7 +142,7 @@ template <
   integral T, 
   comptime_size_like size, 
   T expected,
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using magic_number = 
@@ -162,7 +162,7 @@ template <
   typename T, 
   runtime_size_like runtime_size,
   auto expected = no_constraint<T>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using vec_field = 
@@ -180,7 +180,7 @@ template <
   fixed_string id, 
   runtime_size_like runtime_size,
   auto expected = no_constraint<std::string>{},
-  auto present_only_if = always_present{},
+  typename present_only_if = always_present,
   auto type_deducer = type<no_type_deduction>{}
 >
 using str_field = 
@@ -198,7 +198,7 @@ template <
   fixed_string id, 
   typename T,
   typename size,
-  auto present_only_if,
+  typename present_only_if,
   auto expected = no_constraint<std::string>{}
 >
 using maybe_field = 
@@ -224,14 +224,14 @@ using union_field =
     typename decltype(type_deducer)::type_selection, 
     typename decltype(type_deducer)::size_selection,
     expected,
-    always_present{}, 
+    always_present, 
     type_deducer
   >;
 
 template <
   fixed_string id,
   field_list_like T, 
-  auto present_only_if = always_present{}
+  typename present_only_if = always_present
 >
 using struct_field = 
   field<
@@ -270,7 +270,7 @@ using struct_field =
 namespace static_test {
   using u32 = unsigned int;
   static inline auto is_eq_1 = [](auto a){ return a == 1; };
-  static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>{}>>);
+  static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>>>);
   static_assert(!is_optional_field_v<basic_field<"a", u32, field_size<fixed<4>>>>);
 }
 #endif /* _FIELD_TYPE_HPP_ */

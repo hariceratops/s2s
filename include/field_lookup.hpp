@@ -16,7 +16,7 @@ template <fixed_string id,
           typename T, 
           typename size, 
           auto field_constraint, 
-          auto present_only_if, 
+          typename present_only_if, 
           auto type_deducer, 
           typename... rest>
 struct field_lookup<field_list<field<id, T, size, field_constraint, present_only_if, type_deducer>, rest...>, id> {
