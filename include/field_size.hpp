@@ -2,7 +2,8 @@
 #define _FIELD_SIZE_HPP_
 
 #include "field_accessor.hpp"
-#include "bytes.hpp"
+#include "fixed_str_list.hpp"
+#include "typelist.hpp"
 
 
 template <typename size_type>
@@ -21,15 +22,6 @@ struct fixed {
   static constexpr auto size = N;
 };
 
-// todo size type for holding multiple sizes in case of union fields
-template <std::size_t... N>
-struct size_choices;
-
-template <std::size_t... N>
-struct size_choices {
-  static constexpr auto sizes = std::integer_sequence<std::size_t, N...>{};
-};
-
 template <typename T>
 struct runtime_size;
 
@@ -40,6 +32,25 @@ struct runtime_size {
 
 template <fixed_string id>
 using from_field = runtime_size<field_accessor<id>>;
+
+template <auto callable, field_name_list req_fields>
+struct size_from_fields;
+
+template <auto callable, field_name_list req_fields>
+struct size_from_fields {
+  static constexpr auto f = callable;
+  static constexpr auto req_field_list = req_fields{};
+};
+
+// todo size type for holding multiple sizes in case of union fields
+template <typename... size_type>
+struct size_choices;
+
+template <typename... size_type>
+struct size_choices {
+  using choices = typelist::typelist<size_type...>;
+  static auto constexpr num_of_choices = sizeof...(size_type);
+};
 
 // Metafunctions for checking if a type is a size type
 template <typename T>
@@ -74,11 +85,21 @@ struct is_runtime_size<field_size<from_field<field_accessor>>> {
 template <typename T>
 inline constexpr bool is_runtime_size_v = is_runtime_size<T>::res;
 
+// Concepts for checking if a type is a size type
+template <typename T>
+concept comptime_size_like = is_comptime_size_v<T>;
+
+template <typename T>
+concept runtime_size_like = is_runtime_size_v<T>;
+
 template <typename T>
 struct is_selectable_size;
 
-template <std::size_t... N>
-struct is_selectable_size<field_size<size_choices<N...>>> {
+template <typename T>
+concept atomic_size = comptime_size_like<T> || runtime_size_like<T>;
+
+template <atomic_size... size_type>
+struct is_selectable_size<field_size<size_choices<size_type...>>> {
   static constexpr bool res = true;
 };
 
@@ -89,13 +110,6 @@ struct is_selectable_size {
 
 template <typename T>
 inline constexpr bool is_selectable_size_v = is_comptime_size<T>::res;
-
-// Concepts for checking if a type is a size type
-template <typename T>
-concept comptime_size_like = is_comptime_size_v<T>;
-
-template <typename T>
-concept runtime_size_like = is_runtime_size_v<T>;
 
 template <typename T>
 concept selectable_size_like = is_selectable_size_v<T>;

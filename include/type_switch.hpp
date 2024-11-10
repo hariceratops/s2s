@@ -4,6 +4,7 @@
 #include <expected>
 #include "compute_res.hpp"
 #include "match_case.hpp"
+#include "field_size.hpp"
 
 
 template <std::size_t idx, typename... cases>
@@ -37,7 +38,7 @@ struct type_switch_impl<idx, match_case_head, match_case_rest...> {
 template <match_case_like case_head, match_case_like... case_rest>
 struct type_switch {
   using types_only = typelist::typelist<typename case_head::type_tag::type, typename case_rest::type_tag::type...>;
-  using size_only = std::integer_sequence<std::size_t, case_head::type_tag::size, case_rest::type_tag::size...>;
+  using size_only = size_choices<typename case_head::type_tag::field_size, typename case_rest::type_tag::field_size...>;
   
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 

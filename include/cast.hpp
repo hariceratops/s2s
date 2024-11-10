@@ -9,6 +9,7 @@
 #include "struct_field_list_traits.hpp"
 #include "field_meta.hpp"
 #include "field_list.hpp"
+#include "size_deduce.hpp"
 
 // todo possible dead code
 template <typename... expected_types>
@@ -54,11 +55,14 @@ struct struct_cast_impl<struct_field_list<fields...>> {
                         read<field_type>(buffer_pos, field_type::field_size) :
                         res_type{std::nullopt};
         } else if constexpr (is_union_field_v<field_type>) {
-          using variant_reader_type_t = variant_reader<field_type, field_size>;
+          using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = field_type::type_deduction_guide(input); 
-          field_value = *type_index ? 
-                        variant_reader_type_t{}(type_index, buffer_pos): 
-                        type_index;
+          if(type_index) {
+            auto size_to_read = deduce_field_size<field_size>(input);
+            field_value = variant_reader_type_t{}(type_index, buffer_pos, size_to_read);
+          } else {
+            // todo what to do, prob similar normal return case 
+          }
         } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
           field_value = struct_cast(field.value, buffer_pos);
         } else if constexpr (is_field_v<field_type>) {

@@ -442,14 +442,17 @@ TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") 
 //
 
 TEST_CASE("Test case to verify option field parsing") {
-  auto is_a_eq_1 = [](auto a){ INFO("hi"); return a == 1; };
+  auto is_a_eq_1 = [](auto a){ return a == 1; };
+
+  // todo decide if eval_bool_from_fields should be auto
+  // todo type alias check_presence for eval_bool_from_fields
+  // eval_bool_from_fields<[](auto a){ return a == 1; }, with_fields<"a">>{}>
+  // check_presence<is_a_eq_1, with_fields<"a">>{}>
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<"b", u32, field_size<fixed<4>>, 
-                  eval_bool_from_fields<is_a_eq_1, with_fields<"a">>{}>
-                  // eval_bool_from_fields<[](auto a){ return a == 1; }, with_fields<"a">>{}>
+      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>{}>
     >;
 
   const u8 buffer[] = {
@@ -467,3 +470,42 @@ TEST_CASE("Test case to verify option field parsing") {
     REQUIRE(fields["b"_f] == 0xcafed00d);
   }
 }
+
+TEST_CASE("Test case to verify variant field parsing") {
+  auto is_a_eq_1 = [](auto a){ return a == 1; };
+
+  // todo introduce type named expression to avoid decltype
+  // todo maybe remove auto for type
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          decltype(is_a_eq_1),
+          type_switch<
+            match_case<1, type_tag<int, field_size<fixed<4>>>>,
+            match_case<2, type_tag<float, field_size<fixed<4>>>>,
+            match_case<3, type_tag<unsigned int, field_size<fixed<4>>>>
+          >
+        >{}
+      >
+    >;
+
+  const u8 buffer[] = {
+    0xef, 0xbe, 0xad, 0xde,
+    0x0d, 0xd0, 0xfe, 0xca,
+    0xef, 0xbe, 0xef, 0xbe
+  };
+
+  auto result = struct_cast<test_struct_field_list>(buffer);
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+  }
+}
+
