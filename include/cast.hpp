@@ -46,7 +46,7 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         using field_size = typename fields::field_size;
         using field_type = typename fields::field_type;
 
-        auto field = static_cast<fields&>(input);
+        auto& field = static_cast<fields&>(input);
         std::expected<field_type, std::string> field_value;
         auto buffer_pos = reinterpret_cast<const unsigned char*>(buffer + prefix_sum[index]);
 
@@ -54,9 +54,13 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         if constexpr (is_optional_field_v<fields>) {
           // todo variable length optional field
           std::cout << "optional field = " << '\n';
-          field_value = fields::field_presence_checker(input) ? 
-                        read<field_type>(buffer_pos, field_size::size_type_t::count) :
-                        res_type{std::nullopt};
+          if(fields::field_presence_checker(input)) {
+            auto read_res = read<field_type>(buffer_pos, field_size::size_type_t::count);
+            if(read_res) field_value = *read_res;
+            else {/*todo something has to be done*/}
+          } else {
+            // field_value = res_type{std::nullopt};
+          }
         } else if constexpr (is_union_field_v<fields>) {
           std::cout << "variant field = " << '\n';
           using variant_reader_type_t = variant_reader<field_type>;
@@ -68,11 +72,10 @@ struct struct_cast_impl<struct_field_list<fields...>> {
             // todo what to do, prob similar normal return case 
           }
         } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<fields>>) {
-          field_value = struct_cast(field.value, buffer_pos);
+          // field_value = struct_cast(field.value, buffer_pos);
           std::cout << "struct_field = " << '\n';
         } else if constexpr (is_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
-          std::cout << "reg_field = " << '\n';
         } else if constexpr (is_runtime_sized_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
           std::cout << "runtime size field = " << '\n';
