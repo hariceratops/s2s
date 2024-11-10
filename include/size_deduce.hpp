@@ -14,7 +14,7 @@ struct deduce_field_size<field_size<fixed<N>>> {
   using field_size_type = field_size<fixed<N>>;
 
   constexpr auto operator()() -> std::size_t {
-    return field_size_type::size;
+    return field_size_type::size::count;
   }
 };
 

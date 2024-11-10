@@ -1071,7 +1071,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -1079,7 +1080,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -1184,6 +1185,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -2105,7 +2107,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -2113,7 +2116,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -2218,6 +2221,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -3734,7 +3738,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -3742,7 +3747,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -3847,6 +3852,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -4768,7 +4774,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -4776,7 +4783,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -4881,6 +4888,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -6169,27 +6177,25 @@ static_assert(size_v<typelist_ex> == 4);
 #endif // _FIXED_STR_LIST_HPP_
 
 // todo add constriants
-template <auto callable, typename R, field_name_list fstr_list>
-struct compute;
+// template <auto callable, typename R, field_name_list fstr_list>
+// struct compute;
 
-template <auto callable, typename R, typename struct_fields, typename field_list, typename indices>
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
 template <auto callable, 
-          typename R, 
-          typename struct_fields, 
-          fixed_string_like req_field_list, 
-          std::size_t... idx>
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
 struct is_invocable<callable, 
-                    R, 
-                    struct_fields, 
-                    req_field_list, 
-                    std::index_sequence<idx...>> {
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
   static constexpr bool res = 
       std::is_invocable_r<
-        R, 
+        return_type, 
         decltype(callable),
-        decltype(struct_fields{}[field_accessor<front_t<pop_t<idx, req_field_list>>>{}])...
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
       >::value; 
 };
 
@@ -6202,8 +6208,7 @@ concept can_eval_R_from_fields =
     Func, 
     R, 
     struct_fields, 
-    req_fields,
-    std::make_integer_sequence<std::size_t, size_v<req_fields>>
+    req_fields
   >::res;
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
@@ -6211,21 +6216,20 @@ concept can_eval_R_from_fields =
 // todo simplified concept or requires clause
 // todo should cv qualification be removed
 // todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
-template <auto callable, typename R, field_name_list req_fields>
-struct compute {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto invoke_impl(struct_field_list<fields...>& flist, std::index_sequence<idx...>) {
-    return std::invoke(callable, flist[field_accessor<front_t<pop_t<idx, req_fields>>>{}]...);
-  }
 
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
                 struct_field_list<fields...>,
-                req_fields>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) {
-    return invoke_impl(flist, std::make_integer_sequence<std::size_t, size_v<req_fields>>{});
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -6288,6 +6292,8 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
+
+#include <iostream>
 
 #include <expected>
 #ifndef _FIELD_READER_HPP_
@@ -6618,7 +6624,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -6626,7 +6633,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -6731,6 +6738,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -7652,7 +7660,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -7660,7 +7669,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -7765,6 +7774,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -10619,7 +10629,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -10627,7 +10638,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -10732,6 +10743,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -11368,7 +11380,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -11376,7 +11389,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -11481,6 +11494,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -12402,7 +12416,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -12410,7 +12425,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -12515,6 +12530,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -14026,7 +14042,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -14034,7 +14051,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -14139,6 +14156,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -15090,7 +15108,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -15098,7 +15117,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -15203,6 +15222,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -16124,7 +16144,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -16132,7 +16153,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -16237,6 +16258,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -17692,7 +17714,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -17700,7 +17723,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -17805,6 +17828,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -18126,7 +18150,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -18134,7 +18159,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -18239,6 +18264,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -19160,7 +19186,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -19168,7 +19195,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -19273,6 +19300,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -20789,7 +20817,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -20797,7 +20826,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -20902,6 +20931,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -21823,7 +21853,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -21831,7 +21862,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -21936,6 +21967,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -23224,27 +23256,25 @@ static_assert(size_v<typelist_ex> == 4);
 #endif // _FIXED_STR_LIST_HPP_
 
 // todo add constriants
-template <auto callable, typename R, field_name_list fstr_list>
-struct compute;
+// template <auto callable, typename R, field_name_list fstr_list>
+// struct compute;
 
-template <auto callable, typename R, typename struct_fields, typename field_list, typename indices>
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
 template <auto callable, 
-          typename R, 
-          typename struct_fields, 
-          fixed_string_like req_field_list, 
-          std::size_t... idx>
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
 struct is_invocable<callable, 
-                    R, 
-                    struct_fields, 
-                    req_field_list, 
-                    std::index_sequence<idx...>> {
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
   static constexpr bool res = 
       std::is_invocable_r<
-        R, 
+        return_type, 
         decltype(callable),
-        decltype(struct_fields{}[field_accessor<front_t<pop_t<idx, req_field_list>>>{}])...
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
       >::value; 
 };
 
@@ -23257,8 +23287,7 @@ concept can_eval_R_from_fields =
     Func, 
     R, 
     struct_fields, 
-    req_fields,
-    std::make_integer_sequence<std::size_t, size_v<req_fields>>
+    req_fields
   >::res;
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
@@ -23266,21 +23295,20 @@ concept can_eval_R_from_fields =
 // todo simplified concept or requires clause
 // todo should cv qualification be removed
 // todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
-template <auto callable, typename R, field_name_list req_fields>
-struct compute {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto invoke_impl(struct_field_list<fields...>& flist, std::index_sequence<idx...>) {
-    return std::invoke(callable, flist[field_accessor<front_t<pop_t<idx, req_fields>>>{}]...);
-  }
 
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
                 struct_field_list<fields...>,
-                req_fields>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) {
-    return invoke_impl(flist, std::make_integer_sequence<std::size_t, size_v<req_fields>>{});
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -23351,7 +23379,7 @@ struct deduce_field_size<field_size<fixed<N>>> {
   using field_size_type = field_size<fixed<N>>;
 
   constexpr auto operator()() -> std::size_t {
-    return field_size_type::size;
+    return field_size_type::size::count;
   }
 };
 
@@ -23451,14 +23479,17 @@ struct struct_cast_impl<struct_field_list<fields...>> {
 
         auto field = static_cast<fields&>(input);
         std::expected<field_type, std::string> field_value;
-        auto buffer_pos = reinterpret_cast<const char*>(buffer + prefix_sum[index]);
+        auto buffer_pos = reinterpret_cast<const unsigned char*>(buffer + prefix_sum[index]);
 
-        if constexpr (is_optional_field_v<field_type>) {
+        std::cout << "paring field = " << '\n';
+        if constexpr (is_optional_field_v<fields>) {
           // todo variable length optional field
-          field_value = field_type::field_presence_checker(input) ? 
-                        read<field_type>(buffer_pos, field_type::field_size) :
+          std::cout << "optional field = " << '\n';
+          field_value = fields::field_presence_checker(input) ? 
+                        read<field_type>(buffer_pos, field_size::size_type_t::count) :
                         res_type{std::nullopt};
-        } else if constexpr (is_union_field_v<field_type>) {
+        } else if constexpr (is_union_field_v<fields>) {
+          std::cout << "variant field = " << '\n';
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = field_type::type_deduction_guide(input); 
           if(type_index) {
@@ -23467,12 +23498,15 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           } else {
             // todo what to do, prob similar normal return case 
           }
-        } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
+        } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<fields>>) {
           field_value = struct_cast(field.value, buffer_pos);
-        } else if constexpr (is_field_v<field_type>) {
-          field_value = read<field_type>(buffer_pos, field_size::size::N);
-        } else if constexpr (is_runtime_sized_field_v<field_type>) {
+          std::cout << "struct_field = " << '\n';
+        } else if constexpr (is_field_v<fields>) {
+          field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
+          std::cout << "reg_field = " << '\n';
+        } else if constexpr (is_runtime_sized_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
+          std::cout << "runtime size field = " << '\n';
         }
 
         // todo fix bug in case of updating the prefic sum for var len field
@@ -23489,6 +23523,7 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         
         // todo constraint checker
         // static constexpr auto constraint_checker = constraint_on_value;
+        std::cout << index << '\n';
         return input;
       }
     ));
@@ -24634,7 +24669,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -24642,7 +24678,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -24747,6 +24783,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -25238,7 +25275,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -25246,7 +25284,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -25351,6 +25389,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -26272,7 +26311,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -26280,7 +26320,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -26385,6 +26425,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -27673,27 +27714,25 @@ static_assert(size_v<typelist_ex> == 4);
 #endif // _FIXED_STR_LIST_HPP_
 
 // todo add constriants
-template <auto callable, typename R, field_name_list fstr_list>
-struct compute;
+// template <auto callable, typename R, field_name_list fstr_list>
+// struct compute;
 
-template <auto callable, typename R, typename struct_fields, typename field_list, typename indices>
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
 template <auto callable, 
-          typename R, 
-          typename struct_fields, 
-          fixed_string_like req_field_list, 
-          std::size_t... idx>
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
 struct is_invocable<callable, 
-                    R, 
-                    struct_fields, 
-                    req_field_list, 
-                    std::index_sequence<idx...>> {
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
   static constexpr bool res = 
       std::is_invocable_r<
-        R, 
+        return_type, 
         decltype(callable),
-        decltype(struct_fields{}[field_accessor<front_t<pop_t<idx, req_field_list>>>{}])...
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
       >::value; 
 };
 
@@ -27706,8 +27745,7 @@ concept can_eval_R_from_fields =
     Func, 
     R, 
     struct_fields, 
-    req_fields,
-    std::make_integer_sequence<std::size_t, size_v<req_fields>>
+    req_fields
   >::res;
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
@@ -27715,21 +27753,20 @@ concept can_eval_R_from_fields =
 // todo simplified concept or requires clause
 // todo should cv qualification be removed
 // todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
-template <auto callable, typename R, field_name_list req_fields>
-struct compute {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto invoke_impl(struct_field_list<fields...>& flist, std::index_sequence<idx...>) {
-    return std::invoke(callable, flist[field_accessor<front_t<pop_t<idx, req_fields>>>{}]...);
-  }
 
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
                 struct_field_list<fields...>,
-                req_fields>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) {
-    return invoke_impl(flist, std::make_integer_sequence<std::size_t, size_v<req_fields>>{});
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -28219,7 +28256,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -28227,7 +28265,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -28332,6 +28370,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -29253,7 +29292,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -29261,7 +29301,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -29366,6 +29406,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -30654,27 +30695,25 @@ static_assert(size_v<typelist_ex> == 4);
 #endif // _FIXED_STR_LIST_HPP_
 
 // todo add constriants
-template <auto callable, typename R, field_name_list fstr_list>
-struct compute;
+// template <auto callable, typename R, field_name_list fstr_list>
+// struct compute;
 
-template <auto callable, typename R, typename struct_fields, typename field_list, typename indices>
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
 template <auto callable, 
-          typename R, 
-          typename struct_fields, 
-          fixed_string_like req_field_list, 
-          std::size_t... idx>
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
 struct is_invocable<callable, 
-                    R, 
-                    struct_fields, 
-                    req_field_list, 
-                    std::index_sequence<idx...>> {
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
   static constexpr bool res = 
       std::is_invocable_r<
-        R, 
+        return_type, 
         decltype(callable),
-        decltype(struct_fields{}[field_accessor<front_t<pop_t<idx, req_field_list>>>{}])...
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
       >::value; 
 };
 
@@ -30687,8 +30726,7 @@ concept can_eval_R_from_fields =
     Func, 
     R, 
     struct_fields, 
-    req_fields,
-    std::make_integer_sequence<std::size_t, size_v<req_fields>>
+    req_fields
   >::res;
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
@@ -30696,21 +30734,20 @@ concept can_eval_R_from_fields =
 // todo simplified concept or requires clause
 // todo should cv qualification be removed
 // todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
-template <auto callable, typename R, field_name_list req_fields>
-struct compute {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto invoke_impl(struct_field_list<fields...>& flist, std::index_sequence<idx...>) {
-    return std::invoke(callable, flist[field_accessor<front_t<pop_t<idx, req_fields>>>{}]...);
-  }
 
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
                 struct_field_list<fields...>,
-                req_fields>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) {
-    return invoke_impl(flist, std::make_integer_sequence<std::size_t, size_v<req_fields>>{});
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -31145,7 +31182,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -31153,7 +31191,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -31258,6 +31296,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -31749,7 +31788,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -31757,7 +31797,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -31862,6 +31902,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -32783,7 +32824,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -32791,7 +32833,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -32896,6 +32938,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_
@@ -34184,27 +34227,25 @@ static_assert(size_v<typelist_ex> == 4);
 #endif // _FIXED_STR_LIST_HPP_
 
 // todo add constriants
-template <auto callable, typename R, field_name_list fstr_list>
-struct compute;
+// template <auto callable, typename R, field_name_list fstr_list>
+// struct compute;
 
-template <auto callable, typename R, typename struct_fields, typename field_list, typename indices>
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
 template <auto callable, 
-          typename R, 
-          typename struct_fields, 
-          fixed_string_like req_field_list, 
-          std::size_t... idx>
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
 struct is_invocable<callable, 
-                    R, 
-                    struct_fields, 
-                    req_field_list, 
-                    std::index_sequence<idx...>> {
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
   static constexpr bool res = 
       std::is_invocable_r<
-        R, 
+        return_type, 
         decltype(callable),
-        decltype(struct_fields{}[field_accessor<front_t<pop_t<idx, req_field_list>>>{}])...
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
       >::value; 
 };
 
@@ -34217,8 +34258,7 @@ concept can_eval_R_from_fields =
     Func, 
     R, 
     struct_fields, 
-    req_fields,
-    std::make_integer_sequence<std::size_t, size_v<req_fields>>
+    req_fields
   >::res;
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
@@ -34226,21 +34266,20 @@ concept can_eval_R_from_fields =
 // todo simplified concept or requires clause
 // todo should cv qualification be removed
 // todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
-template <auto callable, typename R, field_name_list req_fields>
-struct compute {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto invoke_impl(struct_field_list<fields...>& flist, std::index_sequence<idx...>) {
-    return std::invoke(callable, flist[field_accessor<front_t<pop_t<idx, req_fields>>>{}]...);
-  }
 
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
                 struct_field_list<fields...>,
-                req_fields>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) {
-    return invoke_impl(flist, std::make_integer_sequence<std::size_t, size_v<req_fields>>{});
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
 
@@ -34559,6 +34598,12 @@ using struct_field =
 *   >
 *   */
 
+namespace static_test {
+  using u32 = unsigned int;
+  static inline auto is_eq_1 = [](auto a){ return a == 1; };
+  static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>{}>>);
+  static_assert(!is_optional_field_v<basic_field<"a", u32, field_size<fixed<4>>>>);
+}
 #endif /* _FIELD_TYPE_HPP_ */
 
 #endif // STRUCT_CAST_HPP

@@ -8,29 +8,27 @@
 #include "fixed_str_list.hpp"
 
 // todo add constriants
-template <auto callable, typename R, field_name_list fstr_list>
-struct compute;
+// template <auto callable, typename R, field_name_list fstr_list>
+// struct compute;
 
 
-template <auto callable, typename R, typename struct_fields, typename field_list, typename indices>
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
 template <auto callable, 
-          typename R, 
-          typename struct_fields, 
-          fixed_string_like req_field_list, 
-          std::size_t... idx>
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
 struct is_invocable<callable, 
-                    R, 
-                    struct_fields, 
-                    req_field_list, 
-                    std::index_sequence<idx...>> {
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
   static constexpr bool res = 
-      std::is_invocable_r<
-        R, 
+      std::is_invocable_r_v<
+        return_type, 
         decltype(callable),
-        decltype(struct_fields{}[field_accessor<front_t<pop_t<idx, req_field_list>>>{}])...
-      >::value; 
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
+      >;
 };
 
 template <auto Func, 
@@ -42,8 +40,7 @@ concept can_eval_R_from_fields =
     Func, 
     R, 
     struct_fields, 
-    req_fields,
-    std::make_integer_sequence<std::size_t, size_v<req_fields>>
+    req_fields
   >::res;
 
 // todo: expression evaluation requested by user shall not be empty but default to empty by library
@@ -51,21 +48,20 @@ concept can_eval_R_from_fields =
 // todo simplified concept or requires clause
 // todo should cv qualification be removed
 // todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
-template <auto callable, typename R, field_name_list req_fields>
-struct compute {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto invoke_impl(struct_field_list<fields...>& flist, std::index_sequence<idx...>) {
-    return std::invoke(callable, flist[field_accessor<front_t<pop_t<idx, req_fields>>>{}]...);
-  }
 
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
                 struct_field_list<fields...>,
-                req_fields>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) {
-    return invoke_impl(flist, std::make_integer_sequence<std::size_t, size_v<req_fields>>{});
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list<fields...>& flist) {
+    return std::invoke(callable, flist[field_accessor<req_fields>{}]...);
   }
 };
 

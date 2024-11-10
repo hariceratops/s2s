@@ -11,7 +11,8 @@ struct field_size;
 
 template <typename size_type>
 struct field_size {
-  static constexpr auto size = size_type{};
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
 };
 
 template <std::size_t N>
@@ -19,7 +20,7 @@ struct fixed;
 
 template <std::size_t N>
 struct fixed {
-  static constexpr auto size = N;
+  static constexpr auto count = N;
 };
 
 template <typename T>
@@ -124,6 +125,7 @@ static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
 static_assert(is_comptime_size_v<field_size<fixed<4>>>);
 static_assert(!is_comptime_size_v<int>);
 static_assert(!is_runtime_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 
 #endif // _FIELD_SIZE_HPP_

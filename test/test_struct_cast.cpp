@@ -440,6 +440,19 @@ TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") 
 //   std::cout << std::dec << res << '\n';
 // }
 //
+//
+
+namespace static_test {
+  auto unit = [](auto a){ return a * 1; };
+  auto is_a_eq_1 = [](auto a){ return a == 1; };
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>
+    >;
+  static_assert(is_invocable<is_a_eq_1, bool, test_struct_field_list, with_fields<"a">>::res);
+  static_assert(is_invocable<unit, bool, test_struct_field_list, with_fields<"a">>::res);
+}
 
 TEST_CASE("Test case to verify option field parsing") {
   auto is_a_eq_1 = [](auto a){ return a == 1; };
@@ -504,8 +517,10 @@ TEST_CASE("Test case to verify variant field parsing") {
   REQUIRE(result.has_value() == true);
   if(result) {
     auto fields = *result;
+    std::cout << fields["a"_f];
     REQUIRE(fields["a"_f] == 0xdeadbeef);
     REQUIRE(fields["b"_f] == 0xcafed00d);
   }
 }
+
 

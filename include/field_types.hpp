@@ -267,4 +267,10 @@ using struct_field =
 *   >
 *   */
 
+namespace static_test {
+  using u32 = unsigned int;
+  static inline auto is_eq_1 = [](auto a){ return a == 1; };
+  static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>{}>>);
+  static_assert(!is_optional_field_v<basic_field<"a", u32, field_size<fixed<4>>>>);
+}
 #endif /* _FIELD_TYPE_HPP_ */

@@ -1,6 +1,7 @@
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
 
+#include <iostream>
 
 #include <expected>
 #include "field_reader.hpp"
@@ -47,14 +48,17 @@ struct struct_cast_impl<struct_field_list<fields...>> {
 
         auto field = static_cast<fields&>(input);
         std::expected<field_type, std::string> field_value;
-        auto buffer_pos = reinterpret_cast<const char*>(buffer + prefix_sum[index]);
+        auto buffer_pos = reinterpret_cast<const unsigned char*>(buffer + prefix_sum[index]);
 
-        if constexpr (is_optional_field_v<field_type>) {
+        std::cout << "paring field = " << '\n';
+        if constexpr (is_optional_field_v<fields>) {
           // todo variable length optional field
-          field_value = field_type::field_presence_checker(input) ? 
-                        read<field_type>(buffer_pos, field_type::field_size) :
+          std::cout << "optional field = " << '\n';
+          field_value = fields::field_presence_checker(input) ? 
+                        read<field_type>(buffer_pos, field_size::size_type_t::count) :
                         res_type{std::nullopt};
-        } else if constexpr (is_union_field_v<field_type>) {
+        } else if constexpr (is_union_field_v<fields>) {
+          std::cout << "variant field = " << '\n';
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = field_type::type_deduction_guide(input); 
           if(type_index) {
@@ -63,12 +67,15 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           } else {
             // todo what to do, prob similar normal return case 
           }
-        } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
+        } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<fields>>) {
           field_value = struct_cast(field.value, buffer_pos);
-        } else if constexpr (is_field_v<field_type>) {
-          field_value = read<field_type>(buffer_pos, field_size::size::N);
-        } else if constexpr (is_runtime_sized_field_v<field_type>) {
+          std::cout << "struct_field = " << '\n';
+        } else if constexpr (is_field_v<fields>) {
+          field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
+          std::cout << "reg_field = " << '\n';
+        } else if constexpr (is_runtime_sized_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
+          std::cout << "runtime size field = " << '\n';
         }
 
         // todo fix bug in case of updating the prefic sum for var len field
@@ -85,6 +92,7 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         
         // todo constraint checker
         // static constexpr auto constraint_checker = constraint_on_value;
+        std::cout << index << '\n';
         return input;
       }
     ));
