@@ -37,8 +37,8 @@ struct type_switch_impl<idx, match_case_head, match_case_rest...> {
 // todo return tag constructed with match
 template <match_case_like case_head, match_case_like... case_rest>
 struct type_switch {
-  using types_only = typelist::typelist<typename case_head::type_tag::type, typename case_rest::type_tag::type...>;
-  using size_only = size_choices<typename case_head::type_tag::field_size, typename case_rest::type_tag::field_size...>;
+  using types_only = std::variant<typename case_head::type_tag::type, typename case_rest::type_tag::type...>;
+  using size_only = field_size<size_choices<typename case_head::type_tag::field_size, typename case_rest::type_tag::field_size...>>;
   
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 

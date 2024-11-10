@@ -53,7 +53,7 @@ struct type<eval_expression, tswitch> {
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
-    type_switch(eval_expression{}(sfl)); 
+    type_switch{}(eval_expression{}(sfl)); 
   }
 };
 
@@ -67,7 +67,7 @@ struct type<tladder> {
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
-    return type_ladder(sfl);
+    return type_ladder{}(sfl);
   }
 };
 

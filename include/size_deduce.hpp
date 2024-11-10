@@ -41,7 +41,7 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
 };
 
 // todo: decide on upcounting vs downcounting for this mess
-template <std::size_t size_idx, atomic_size... sizes>
+template <std::size_t size_idx, typename... sizes>
 struct deduce_field_size_switch;
 
 template <std::size_t size_idx>
@@ -52,7 +52,7 @@ struct deduce_field_size_switch<size_idx> {
   }
 };
 
-template <std::size_t size_idx, atomic_size head, atomic_size... tail>
+template <std::size_t size_idx, typename head, typename... tail>
 struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>>> {
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
@@ -60,19 +60,20 @@ struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>
       if constexpr(comptime_size_like<head>) return deduce_field_size<head>{}();
       else deduce_field_size<head>{}(struct_fields);
     } else {
-      deduce_field_size_switch<size_idx - 1, tail...>(size_idx_r, struct_fields);
+      deduce_field_size_switch<size_idx - 1, field_size<size_choices<tail...>>>(size_idx_r, struct_fields);
     } 
   }
 };
 
 // todo meta function for size_choice count
-template <atomic_size... sizes>
+// template <atomic_size... sizes>
+template <typename... sizes>
 struct deduce_field_size<field_size<size_choices<sizes...>>> {
   constexpr static auto num_of_choices = sizeof...(sizes);
 
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return deduce_field_size_switch<num_of_choices, sizes...>(size_idx_r, struct_fields);
+    return deduce_field_size_switch<num_of_choices, field_size<size_choices<sizes...>>>(size_idx_r, struct_fields);
   }
 };
 

@@ -61,7 +61,7 @@ struct variant_reader_impl<idx, variant_type, type_head, type_tail...> {
         return obj;
       }
     } else {
-      return variant_reader_impl<idx + 1, variant_type, type_tail...>(idx_r, ifs);
+      return variant_reader_impl<idx + 1, variant_type, type_tail...>{}(idx_r, ifs);
     }
   }
 
@@ -76,7 +76,7 @@ struct variant_reader_impl<idx, variant_type, type_head, type_tail...> {
         return obj;
       }
     } else {
-      return variant_reader_impl<idx + 1, variant_type, type_tail...>(idx_r, buf);
+      return variant_reader_impl<idx + 1, variant_type, type_tail...>{}(idx_r, buf);
     }
   }
 };
@@ -90,11 +90,11 @@ struct variant_reader<std::variant<types...>> {
   using read_result = std::expected<variant_type, std::string>;
 
   auto operator()(std::size_t idx_r, std::istream& ifs, std::size_t size_to_read) -> read_result {
-    variant_reader_impl<0, variant_type, types...>(idx_r, ifs, size_to_read); 
+    variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
   }
 
-  auto operator()(std::size_t idx_r, const char* buf, std::size_t size_to_read) -> read_result {
-    variant_reader_impl<0, variant_type, types...>(idx_r, buf, size_to_read); 
+  auto operator()(std::size_t idx_r, const unsigned char* buf, std::size_t size_to_read) -> read_result {
+    variant_reader_impl<0, variant_type, types...>{}(idx_r, buf, size_to_read); 
   }
 };
 

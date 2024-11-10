@@ -464,12 +464,7 @@ namespace static_test {
 
 TEST_CASE("Test case to verify option field parsing") {
   auto is_a_eq_1 = [](auto a){ return a == 1; };
-  auto by_2 = [](auto a){ return a / 2; };
 
-  // todo decide if eval_bool_from_fields should be auto
-  // todo type alias check_presence for eval_bool_from_fields
-  // eval_bool_from_fields<[](auto a){ return a == 1; }, with_fields<"a">>{}>
-  // check_presence<is_a_eq_1, with_fields<"a">>{}>
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
@@ -495,42 +490,42 @@ TEST_CASE("Test case to verify option field parsing") {
 }
 
 TEST_CASE("Test case to verify variant field parsing") {
-  auto is_a_eq_1 = [](auto a){ return a == 1; };
+  // todo a convinient type to get field "x"
+  auto get_a = [](auto a){ return a; };
 
   // todo introduce type named expression to avoid decltype
-  // todo maybe remove auto for type
-  // using test_struct_field_list = 
-  //   struct_field_list<
-  //     basic_field<"a", u32, field_size<fixed<4>>>, 
-  //     basic_field<"b", u32, field_size<fixed<4>>>,
-  //     union_field<
-  //       "c", 
-  //       type<
-  //         decltype(is_a_eq_1),
-  //         type_switch<
-  //           match_case<1, type_tag<int, field_size<fixed<4>>>>,
-  //           match_case<2, type_tag<float, field_size<fixed<4>>>>,
-  //           match_case<3, type_tag<unsigned int, field_size<fixed<4>>>>
-  //         >
-  //       >{}
-  //     >
-  //   >;
-  //
-  // const u8 buffer[] = {
-  //   0xef, 0xbe, 0xad, 0xde,
-  //   0x0d, 0xd0, 0xfe, 0xca,
-  //   0xef, 0xbe, 0xef, 0xbe
-  // };
-  //
-  // auto result = struct_cast<test_struct_field_list>(buffer);
-  //
-  // REQUIRE(result.has_value() == true);
-  // if(result) {
-  //   auto fields = *result;
-  //   std::cout << fields["a"_f];
-  //   REQUIRE(fields["a"_f] == 0xdeadbeef);
-  //   REQUIRE(fields["b"_f] == 0xcafed00d);
-  // }
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          decltype(get_a),
+          type_switch<
+            match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
+            match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
+            match_case<0xbeefbeef, type_tag<unsigned int, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  const u8 buffer[] = {
+    0xef, 0xbe, 0xad, 0xde,
+    0x0d, 0xd0, 0xfe, 0xca,
+    0xef, 0xbe, 0xef, 0xbe
+  };
+
+  auto result = struct_cast<test_struct_field_list>(buffer);
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    std::cout << fields["a"_f];
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+  }
 }
 
 

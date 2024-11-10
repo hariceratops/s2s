@@ -37,8 +37,8 @@ struct type_ladder_impl<idx, clause_head, clause_rest...> {
 template <typename clause_head, typename... clause_rest>
 struct type_ladder<clause_head, clause_rest...> {
   // ? is this ok
-  using types_only = typelist::typelist<typename clause_head::type_tag::type, typename clause_rest::type_tag::type...>;
-  using size_only = std::integer_sequence<std::size_t, clause_head::type_tag::size, clause_rest::type_tag::size...>;
+  using types_only = std::variant<typename clause_head::type_tag::type, typename clause_rest::type_tag::type...>;
+  using size_only = field_size<size_choices<typename clause_head::type_tag::size, typename clause_rest::type_tag::size...>>;
 
   template <typename... fields>
   constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 

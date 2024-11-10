@@ -58,17 +58,17 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           if(typename fields::field_presence_checker{}(input)) {
             auto read_res = read<field_type>(buffer_pos, field_size::size_type_t::count);
             if(read_res) field_value = *read_res;
-            else {/*todo something has to be done*/}
+            /*todo something has to be done*/
+            else {}
           } else {
             // field_value = res_type{std::nullopt};
           }
         } else if constexpr (is_union_field_v<fields>) {
-          std::cout << "variant field = " << '\n';
           using variant_reader_type_t = variant_reader<field_type>;
-          auto type_index = field_type::type_deduction_guide(input); 
+          auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
-            auto size_to_read = deduce_field_size<field_size>(input);
-            field_value = variant_reader_type_t{}(type_index, buffer_pos, size_to_read);
+            auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
+            field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
           } else {
             // todo what to do, prob similar normal return case 
           }
