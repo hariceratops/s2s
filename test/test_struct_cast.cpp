@@ -49,7 +49,7 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
   u32 a = 0xdeadbeef;
   u32 b = 0xcafed00d;
   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
   ofs.close();
 
   std::ifstream ifs("test_bin_input_1.bin", std::ios::in | std::ios::binary);
@@ -121,9 +121,9 @@ TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
   u32 y = 0xdeadbeef;
 
   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&x), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&y), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&x), sizeof(x));
+  ofs.write(reinterpret_cast<const char*>(&y), sizeof(y));
   ofs.close();
 
   std::ifstream ifs("test_bin_input_2.bin", std::ios::in | std::ios::binary);
@@ -550,8 +550,8 @@ namespace static_test {
 //   u32 b = 0xcafed00d;
 //   u32 c = 0xbeefbeef;
 //   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&c), sizeof(a));
+//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+//   ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
 //   ofs.close();
 //
 //   std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
@@ -582,8 +582,8 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
   u32 b = 0xcafed00d;
   u32 c = 0xbeefbeef;
   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&c), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
   ofs.close();
 
   std::ifstream ifs("test_bin_input_5.bin", std::ios::in | std::ios::binary);
@@ -625,8 +625,8 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
   u32 b = 0xcafed00d;
   u32 c = 0xbeefbeef;
   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&c), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
   ofs.close();
 
   std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
