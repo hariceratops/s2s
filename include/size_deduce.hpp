@@ -47,7 +47,7 @@ struct deduce_field_size_switch;
 template <std::size_t size_idx>
 struct deduce_field_size_switch<size_idx, field_size<size_choices<>>> {
   template <typename... fields>
-  constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
+  constexpr auto operator()(std::size_t, const struct_field_list<fields...>&) -> std::size_t {
     std::unreachable();
   }
 };

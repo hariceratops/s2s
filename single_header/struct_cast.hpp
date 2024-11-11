@@ -9431,7 +9431,6 @@ auto read(const unsigned char* buffer, std::size_t size_to_read)
     -> std::expected<T, std::string> {
   T obj;
   std::memcpy(to_void_ptr(obj), buffer, size_to_read);
-  // std::cout << "p_1" << obj << '\n';
   return obj;
 }
 
@@ -9451,11 +9450,11 @@ template <std::size_t idx, typename variant_type>
 struct variant_reader_impl<idx, variant_type> {
   using result_type = std::expected<variant_type, std::string>;
 
-  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]std::ifstream& ifs, std::size_t size_to_read) -> result_type {
+  auto operator()(std::size_t, std::ifstream&, std::size_t) -> result_type {
     std::unreachable();
   }
 
-  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]const unsigned char* buf, std::size_t size_to_read) -> result_type {
+  auto operator()(std::size_t, const unsigned char*, std::size_t) -> result_type {
     std::unreachable();
   }
 };
@@ -9505,11 +9504,11 @@ struct variant_reader<std::variant<types...>> {
   using read_result = std::expected<variant_type, std::string>;
 
   auto operator()(std::size_t idx_r, std::istream& ifs, std::size_t size_to_read) -> read_result {
-    variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
+    return variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
   }
 
   auto operator()(std::size_t idx_r, const unsigned char* buf, std::size_t size_to_read) -> read_result {
-    variant_reader_impl<0, variant_type, types...>{}(idx_r, buf, size_to_read); 
+    return variant_reader_impl<0, variant_type, types...>{}(idx_r, buf, size_to_read); 
   }
 };
 
@@ -23414,7 +23413,7 @@ struct deduce_field_size_switch;
 template <std::size_t size_idx>
 struct deduce_field_size_switch<size_idx, field_size<size_choices<>>> {
   template <typename... fields>
-  constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
+  constexpr auto operator()(std::size_t, const struct_field_list<fields...>&) -> std::size_t {
     std::unreachable();
   }
 };
@@ -23501,10 +23500,8 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
-            std::cout << "idx = " << *type_index << '\n';
             auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
-            std::cout << "idx = " << size_to_read << '\n';
-            // field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
+            field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
           } else {
             // todo what to do, prob similar normal return case 
           }
@@ -23514,7 +23511,6 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
         } else if constexpr (is_runtime_sized_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
-          std::cout << "runtime size field = " << '\n';
         }
 
         // todo fix bug in case of updating the prefic sum for var len field

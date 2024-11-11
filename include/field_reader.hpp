@@ -16,7 +16,6 @@ auto read(const unsigned char* buffer, std::size_t size_to_read)
     -> std::expected<T, std::string> {
   T obj;
   std::memcpy(to_void_ptr(obj), buffer, size_to_read);
-  // std::cout << "p_1" << obj << '\n';
   return obj;
 }
 
@@ -36,11 +35,11 @@ template <std::size_t idx, typename variant_type>
 struct variant_reader_impl<idx, variant_type> {
   using result_type = std::expected<variant_type, std::string>;
 
-  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]std::ifstream& ifs, std::size_t size_to_read) -> result_type {
+  auto operator()(std::size_t, std::ifstream&, std::size_t) -> result_type {
     std::unreachable();
   }
 
-  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]const unsigned char* buf, std::size_t size_to_read) -> result_type {
+  auto operator()(std::size_t, const unsigned char*, std::size_t) -> result_type {
     std::unreachable();
   }
 };
@@ -90,11 +89,11 @@ struct variant_reader<std::variant<types...>> {
   using read_result = std::expected<variant_type, std::string>;
 
   auto operator()(std::size_t idx_r, std::istream& ifs, std::size_t size_to_read) -> read_result {
-    variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
+    return variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
   }
 
   auto operator()(std::size_t idx_r, const unsigned char* buf, std::size_t size_to_read) -> read_result {
-    variant_reader_impl<0, variant_type, types...>{}(idx_r, buf, size_to_read); 
+    return variant_reader_impl<0, variant_type, types...>{}(idx_r, buf, size_to_read); 
   }
 };
 

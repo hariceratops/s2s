@@ -67,7 +67,6 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
-            std::cout << "idx = " << *type_index << '\n';
             auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
             field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
           } else {
@@ -79,7 +78,6 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           field_value = read<field_type>(buffer_pos, field_size::size_type_t::count);
         } else if constexpr (is_runtime_sized_field_v<fields>) {
           field_value = read<field_type>(buffer_pos, input[field_type::field_accessor]);
-          std::cout << "runtime size field = " << '\n';
         }
 
         // todo fix bug in case of updating the prefic sum for var len field
