@@ -14,20 +14,48 @@ using u32 = unsigned int;
 using u8 = unsigned char;
 
 
-TEST_CASE("Test reading a meta_struct from a static buffer") {
+// TEST_CASE("Test reading a meta_struct from a static buffer") {
+//   using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>
+//     >;
+//
+//   const u8 buffer[] = {
+//     0xef, 0xbe, 0xad, 0xde,
+//     0x0d, 0xd0, 0xfe, 0xca,
+//     0xef, 0xbe, 0xef, 0xbe
+//   };
+//
+//   auto result = struct_cast<test_struct_field_list>(buffer);
+//
+//   REQUIRE(result.has_value() == true);
+//   if(result) {
+//     auto fields = *result;
+//     REQUIRE(fields["a"_f] == 0xdeadbeef);
+//     REQUIRE(fields["b"_f] == 0xcafed00d);
+//   }
+// }
+
+
+TEST_CASE("Test reading a meta_struct from a binary file") {
   using test_struct_field_list = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>
-    >;
+   struct_field_list<
+     basic_field<"a", u32, field_size<fixed<4>>>, 
+     basic_field<"b", u32, field_size<fixed<4>>>
+  >;
 
-  const u8 buffer[] = {
-    0xef, 0xbe, 0xad, 0xde,
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xef, 0xbe
-  };
+  std::ofstream ofs("test_bin_input_1.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
+  ofs.close();
 
-  auto result = struct_cast<test_struct_field_list>(buffer);
+  std::ifstream ifs("test_bin_input_1.bin", std::ios::in | std::ios::binary);
+
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
 
   REQUIRE(result.has_value() == true);
   if(result) {
@@ -38,32 +66,42 @@ TEST_CASE("Test reading a meta_struct from a static buffer") {
 }
 
 
-// TEST_CASE("Test reading a meta_struct from a binary file") {
-//   using test_struct_field_list = 
-//    struct_field_list<
-//      field<"a", u32, field_size<4>>, 
-//      field<"b", u32, field_size<4>>
-//   >;
+// TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") {
+//   using test_nested_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>,
+//       struct_field<
+//         "c", 
+//         struct_field_list<
+//           basic_field<"x", u32, field_size<fixed<4>>>,
+//           basic_field<"y", u32, field_size<fixed<4>>>
+//         >
+//       >
+//     >;
 //
-//   std::ofstream ofs("test_bin_input_1.bin", std::ios::out | std::ios::binary);
-//   u32 a = 0xdeadbeef;
-//   u32 b = 0xcafed00d;
-//   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
-//   ofs.close();
+//   const u8 buffer[] = {
+//     0xef, 0xbe, 0xad, 0xde,
+//     0x0d, 0xd0, 0xfe, 0xca,
+//     0xef, 0xbe, 0xef, 0xbe,
+//     0xef, 0xbe, 0xad, 0xde
+//   };
 //
-//   std::ifstream ifs("test_bin_input_1.bin", std::ios::in | std::ios::binary);
-//   test_struct_field_list fields;
-//   struct_cast(fields, ifs);
-//   ifs.close();
+//   auto result = struct_cast<test_nested_struct_field_list>(buffer);
 //
-//   REQUIRE(fields["a"_f] == 0xdeadbeef);
-//   REQUIRE(fields["b"_f] == 0xcafed00d);
+//   REQUIRE(result.has_value() == true);
+//   if(result) {
+//     auto fields = *result;
+//     REQUIRE(fields["a"_f] == 0xdeadbeef);
+//     REQUIRE(fields["b"_f] == 0xcafed00d);
+//     REQUIRE(fields["c"_f]["x"_f] == 0xbeefbeef);
+//     REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
+//   }
 // }
-//
-//
-TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") {
-  using test_nested_struct_field_list = 
+
+
+TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
+   using test_nested_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
@@ -76,14 +114,21 @@ TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") 
       >
     >;
 
-  const u8 buffer[] = {
-    0xef, 0xbe, 0xad, 0xde,
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xef, 0xbe,
-    0xef, 0xbe, 0xad, 0xde
-  };
+  std::ofstream ofs("test_bin_input_2.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 x = 0xbeefbeef;
+  u32 y = 0xdeadbeef;
 
-  auto result = struct_cast<test_nested_struct_field_list>(buffer);
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&x), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&y), sizeof(a));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_2.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_nested_struct_field_list>(ifs);
+  ifs.close();
 
   REQUIRE(result.has_value() == true);
   if(result) {
@@ -94,44 +139,6 @@ TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") 
     REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
   }
 }
-//
-//
-// TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
-//    using test_nested_struct_field_list = 
-//     struct_field_list<
-//       field<"a", u32, field_size<4>>, 
-//       field<"b", u32, field_size<4>>,
-//       struct_field<
-//         "c", 
-//         struct_field_list<
-//           field<"x", u32, field_size<4>>,
-//           field<"y", u32, field_size<4>>
-//         >
-//       >
-//     >;
-//
-//   std::ofstream ofs("test_bin_input_2.bin", std::ios::out | std::ios::binary);
-//   u32 a = 0xdeadbeef;
-//   u32 b = 0xcafed00d;
-//   u32 x = 0xbeefbeef;
-//   u32 y = 0xdeadbeef;
-//
-//   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&x), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&y), sizeof(a));
-//   ofs.close();
-//
-//   std::ifstream ifs("test_bin_input_2.bin", std::ios::in | std::ios::binary);
-//   test_nested_struct_field_list fields;
-//   struct_cast(fields, ifs);
-//   ifs.close();
-//
-//   REQUIRE(fields["a"_f] == 0xdeadbeef);
-//   REQUIRE(fields["b"_f] == 0xcafed00d);
-//   REQUIRE(fields["c"_f]["x"_f] == 0xbeefbeef);
-//   REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
-// }
 //
 //
 // TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file") {
@@ -443,6 +450,13 @@ TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") 
 //
 
 namespace static_test {
+  // implicit conversion produces false positive in second static_assert, 
+  // must be checked with std::is_same_v additionally
+  // auto constexpr unit = [](int a)-> int { return a * 1; };
+  // static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
+  // static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
+  // static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);
+
   auto unit = [](auto a){ return a * 1; };
   auto is_a_eq_1 = [](auto a){ return a == 1; };
   using test_struct_field_list = 
@@ -456,40 +470,136 @@ namespace static_test {
   static_assert(is_invocable<unit, bool, test_struct_field_list, with_fields<"a">>::res);
 }
 
-/*
-*    auto constexpr unit = [](int a)-> int { return a * 1; };
-    static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
-    static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
-    static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);*/
+// TEST_CASE("Test case to verify option field parsing") {
+//   auto is_a_eq_1 = [](auto a){ return a == 1; };
+//
+//   using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>,
+//       maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
+//     >;
+//
+//   const u8 buffer[] = {
+//     0xef, 0xbe, 0xad, 0xde,
+//     0x0d, 0xd0, 0xfe, 0xca,
+//     0xef, 0xbe, 0xef, 0xbe
+//   };
+//
+//   auto result = struct_cast<test_struct_field_list>(buffer);
+//
+//   REQUIRE(result.has_value() == true);
+//   if(result) {
+//     auto fields = *result;
+//     REQUIRE(fields["a"_f] == 0xdeadbeef);
+//     REQUIRE(fields["b"_f] == 0xcafed00d);
+//     REQUIRE(fields["c"_f] == std::nullopt);
+//   }
+// }
+//
+// TEST_CASE("Test case to verify variant field parsing") {
+//   // todo a convinient type to get field "x"
+//   auto unit = [](auto a){ return a; };
+//
+//   // todo introduce type named expression to avoid decltype
+//   using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>,
+//       union_field<
+//         "c", 
+//         type<
+//           compute<unit, u32, with_fields<"a">>,
+//           type_switch<
+//             match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
+//             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
+//             match_case<0xbeefbeef, type_tag<unsigned int, field_size<fixed<4>>>>
+//           >
+//         >
+//       >
+//     >;
+//
+//   const u8 buffer[] = {
+//     0xef, 0xbe, 0xad, 0xde,
+//     0x0d, 0xd0, 0xfe, 0xca,
+//     0xef, 0xbe, 0xef, 0xbe
+//   };
+//
+//   auto result = struct_cast<test_struct_field_list>(buffer);
+//
+//   REQUIRE(result.has_value() == true);
+//   if(result) {
+//     auto fields = *result;
+//     REQUIRE(fields["a"_f] == 0xdeadbeef);
+//     REQUIRE(fields["b"_f] == 0xcafed00d);
+//   }
+// }
 
-TEST_CASE("Test case to verify option field parsing") {
-  auto is_a_eq_1 = [](auto a){ return a == 1; };
+// TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
+//   auto is_a_eq_1 = [](auto a){ return a == 1; };
+//
+//   using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>,
+//       maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
+//     >;
+//
+//   std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
+//   u32 a = 0xdeadbeef;
+//   u32 b = 0xcafed00d;
+//   u32 c = 0xbeefbeef;
+//   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
+//   ofs.write(reinterpret_cast<const char*>(&c), sizeof(a));
+//   ofs.close();
+//
+//   std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
+//   auto result = struct_cast<test_struct_field_list>(ifs);
+//   ifs.close();
+//
+//   REQUIRE(result.has_value() == true);
+//   if(result) {
+//     auto fields = *result;
+//     REQUIRE(fields["a"_f] == 0xdeadbeef);
+//     REQUIRE(fields["b"_f] == 0xcafed00d);
+//     REQUIRE(fields["c"_f] == std::nullopt);
+//   }
+// }
+
+TEST_CASE("Test case to verify option field parsing from binary file with successful parse predicate") {
+  auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
 
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
+      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  const u8 buffer[] = {
-    0xef, 0xbe, 0xad, 0xde,
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xef, 0xbe
-  };
+  std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 c = 0xbeefbeef;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(a));
+  ofs.close();
 
-  auto result = struct_cast<test_struct_field_list>(buffer);
+  std::ifstream ifs("test_bin_input_5.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
 
   REQUIRE(result.has_value() == true);
   if(result) {
     auto fields = *result;
     REQUIRE(fields["a"_f] == 0xdeadbeef);
     REQUIRE(fields["b"_f] == 0xcafed00d);
-    REQUIRE(fields["c"_f] == std::nullopt);
+    REQUIRE(*(fields["c"_f]) == 0xbeefbeef);
   }
 }
 
-TEST_CASE("Test case to verify variant field parsing") {
+TEST_CASE("Test case to verify variant field parsing from a binary file") {
   // todo a convinient type to get field "x"
   auto unit = [](auto a){ return a; };
 
@@ -503,29 +613,34 @@ TEST_CASE("Test case to verify variant field parsing") {
         type<
           compute<unit, u32, with_fields<"a">>,
           type_switch<
-            match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,
             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
-            match_case<0xbeefbeef, type_tag<unsigned int, field_size<fixed<4>>>>
+            match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
           >
         >
       >
     >;
 
-  const u8 buffer[] = {
-    0xef, 0xbe, 0xad, 0xde,
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xef, 0xbe
-  };
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 c = 0xbeefbeef;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(a));
+  ofs.close();
 
-  auto result = struct_cast<test_struct_field_list>(buffer);
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
 
   REQUIRE(result.has_value() == true);
   if(result) {
     auto fields = *result;
-    std::cout << fields["a"_f];
     REQUIRE(fields["a"_f] == 0xdeadbeef);
     REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
   }
 }
-
 
