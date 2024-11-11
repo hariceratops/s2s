@@ -9503,7 +9503,7 @@ struct variant_reader<std::variant<types...>> {
   using variant_type = std::variant<types...>;
   using read_result = std::expected<variant_type, std::string>;
 
-  auto operator()(std::size_t idx_r, std::istream& ifs, std::size_t size_to_read) -> read_result {
+  auto operator()(std::size_t idx_r, std::ifstream& ifs, std::size_t size_to_read) -> read_result {
     return variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
   }
 
@@ -23426,7 +23426,7 @@ struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>
       if constexpr(comptime_size_like<head>) return deduce_field_size<head>{}();
       else return deduce_field_size<head>{}(struct_fields);
     } else {
-      return deduce_field_size_switch<size_idx - 1, field_size<size_choices<tail...>>>{}(size_idx_r, struct_fields);
+      return deduce_field_size_switch<size_idx + 1, field_size<size_choices<tail...>>>{}(size_idx_r, struct_fields);
     } 
   }
 };
@@ -23439,7 +23439,7 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return deduce_field_size_switch<num_of_choices, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
+    return deduce_field_size_switch<0, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
   }
 };
 
@@ -23561,10 +23561,8 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
-            std::cout << *type_index << '\n';
             auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
-            std::cout << size_to_read << '\n';
-            // field_value = variant_reader_type_t{}(*type_index, ifs, size_to_read);
+            field_value = variant_reader_type_t{}(*type_index, ifs, size_to_read);
           } else {
             // todo what to do, prob similar normal return case 
           }
