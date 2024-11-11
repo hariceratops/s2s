@@ -603,7 +603,6 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
   // todo a convinient type to get field "x"
   auto unit = [](auto a){ return a; };
 
-  // todo introduce type named expression to avoid decltype
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
@@ -613,8 +612,8 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
         type<
           compute<unit, u32, with_fields<"a">>,
           type_switch<
-            match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,
             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,
             match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
           >
         >

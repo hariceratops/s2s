@@ -128,10 +128,8 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
-            std::cout << *type_index << '\n';
             auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
-            std::cout << size_to_read << '\n';
-            // field_value = variant_reader_type_t{}(*type_index, ifs, size_to_read);
+            field_value = variant_reader_type_t{}(*type_index, ifs, size_to_read);
           } else {
             // todo what to do, prob similar normal return case 
           }
