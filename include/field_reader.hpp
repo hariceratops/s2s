@@ -88,7 +88,7 @@ struct variant_reader<std::variant<types...>> {
   using variant_type = std::variant<types...>;
   using read_result = std::expected<variant_type, std::string>;
 
-  auto operator()(std::size_t idx_r, std::istream& ifs, std::size_t size_to_read) -> read_result {
+  auto operator()(std::size_t idx_r, std::ifstream& ifs, std::size_t size_to_read) -> read_result {
     return variant_reader_impl<0, variant_type, types...>{}(idx_r, ifs, size_to_read); 
   }
 
