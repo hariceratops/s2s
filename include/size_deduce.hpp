@@ -14,7 +14,7 @@ struct deduce_field_size<field_size<fixed<N>>> {
   using field_size_type = field_size<fixed<N>>;
 
   constexpr auto operator()() -> std::size_t {
-    return field_size_type::size::count;
+    return field_size_type::size_type_t::count;
   }
 };
 
@@ -45,7 +45,7 @@ template <std::size_t size_idx, typename... sizes>
 struct deduce_field_size_switch;
 
 template <std::size_t size_idx>
-struct deduce_field_size_switch<size_idx> {
+struct deduce_field_size_switch<size_idx, field_size<size_choices<>>> {
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
     std::unreachable();
@@ -58,9 +58,9 @@ struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
     if(size_idx_r == size_idx) {
       if constexpr(comptime_size_like<head>) return deduce_field_size<head>{}();
-      else deduce_field_size<head>{}(struct_fields);
+      else return deduce_field_size<head>{}(struct_fields);
     } else {
-      deduce_field_size_switch<size_idx - 1, field_size<size_choices<tail...>>>(size_idx_r, struct_fields);
+      return deduce_field_size_switch<size_idx - 1, field_size<size_choices<tail...>>>{}(size_idx_r, struct_fields);
     } 
   }
 };
@@ -73,7 +73,7 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return deduce_field_size_switch<num_of_choices, field_size<size_choices<sizes...>>>(size_idx_r, struct_fields);
+    return deduce_field_size_switch<num_of_choices, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
   }
 };
 

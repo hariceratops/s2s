@@ -491,7 +491,7 @@ TEST_CASE("Test case to verify option field parsing") {
 
 TEST_CASE("Test case to verify variant field parsing") {
   // todo a convinient type to get field "x"
-  auto get_a = [](auto a){ return a; };
+  auto unit = [](auto a){ return a; };
 
   // todo introduce type named expression to avoid decltype
   using test_struct_field_list = 
@@ -501,7 +501,7 @@ TEST_CASE("Test case to verify variant field parsing") {
       union_field<
         "c", 
         type<
-          decltype(get_a),
+          compute<unit, u32, with_fields<"a">>,
           type_switch<
             match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,

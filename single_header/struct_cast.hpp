@@ -6228,7 +6228,7 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+  constexpr auto operator()(const struct_field_list<fields...>& flist) -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
@@ -9451,11 +9451,11 @@ template <std::size_t idx, typename variant_type>
 struct variant_reader_impl<idx, variant_type> {
   using result_type = std::expected<variant_type, std::string>;
 
-  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]std::ifstream& ifs) -> result_type {
+  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]std::ifstream& ifs, std::size_t size_to_read) -> result_type {
     std::unreachable();
   }
 
-  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]const char* buf) -> result_type {
+  auto operator()([[maybe_unused]] std::size_t idx_r, [[maybe_unused]]const unsigned char* buf, std::size_t size_to_read) -> result_type {
     std::unreachable();
   }
 };
@@ -9476,7 +9476,7 @@ struct variant_reader_impl<idx, variant_type, type_head, type_tail...> {
         return obj;
       }
     } else {
-      return variant_reader_impl<idx + 1, variant_type, type_tail...>{}(idx_r, ifs);
+      return variant_reader_impl<idx + 1, variant_type, type_tail...>{}(idx_r, ifs, size_to_read);
     }
   }
 
@@ -9491,7 +9491,7 @@ struct variant_reader_impl<idx, variant_type, type_head, type_tail...> {
         return obj;
       }
     } else {
-      return variant_reader_impl<idx + 1, variant_type, type_tail...>{}(idx_r, buf);
+      return variant_reader_impl<idx + 1, variant_type, type_tail...>{}(idx_r, buf, size_to_read);
     }
   }
 };
@@ -23309,7 +23309,7 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+  constexpr auto operator()(const struct_field_list<fields...>& flist) -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
@@ -23381,7 +23381,7 @@ struct deduce_field_size<field_size<fixed<N>>> {
   using field_size_type = field_size<fixed<N>>;
 
   constexpr auto operator()() -> std::size_t {
-    return field_size_type::size::count;
+    return field_size_type::size_type_t::count;
   }
 };
 
@@ -23412,7 +23412,7 @@ template <std::size_t size_idx, typename... sizes>
 struct deduce_field_size_switch;
 
 template <std::size_t size_idx>
-struct deduce_field_size_switch<size_idx> {
+struct deduce_field_size_switch<size_idx, field_size<size_choices<>>> {
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
     std::unreachable();
@@ -23425,9 +23425,9 @@ struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
     if(size_idx_r == size_idx) {
       if constexpr(comptime_size_like<head>) return deduce_field_size<head>{}();
-      else deduce_field_size<head>{}(struct_fields);
+      else return deduce_field_size<head>{}(struct_fields);
     } else {
-      deduce_field_size_switch<size_idx - 1, tail...>(size_idx_r, struct_fields);
+      return deduce_field_size_switch<size_idx - 1, field_size<size_choices<tail...>>>{}(size_idx_r, struct_fields);
     } 
   }
 };
@@ -23440,7 +23440,7 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return deduce_field_size_switch<num_of_choices, field_size<size_choices<sizes...>>>(size_idx_r, struct_fields);
+    return deduce_field_size_switch<num_of_choices, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
   }
 };
 
@@ -23501,8 +23501,10 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
+            std::cout << "idx = " << *type_index << '\n';
             auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
-            field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
+            std::cout << "idx = " << size_to_read << '\n';
+            // field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
           } else {
             // todo what to do, prob similar normal return case 
           }
@@ -27771,7 +27773,7 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+  constexpr auto operator()(const struct_field_list<fields...>& flist) -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
@@ -30752,7 +30754,7 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+  constexpr auto operator()(const struct_field_list<fields...>& flist) -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
@@ -31383,6 +31385,9 @@ struct type;
 template <no_type_deduction_like T>
 struct type<T> {};
 
+template <fixed_string id>
+using match_field = field_accessor<id>;
+
 // todo constraints compute like
 template <typename eval_expression, typename tswitch>
 struct type<eval_expression, tswitch> {
@@ -31394,7 +31399,7 @@ struct type<eval_expression, tswitch> {
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
-    type_switch{}(eval_expression{}(sfl)); 
+    return type_switch{}(eval_expression{}(sfl)); 
   }
 };
 
@@ -34284,7 +34289,7 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(struct_field_list<fields...>& flist) -> R {
+  constexpr auto operator()(const struct_field_list<fields...>& flist) -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };

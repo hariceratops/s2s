@@ -67,6 +67,7 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           using variant_reader_type_t = variant_reader<field_type>;
           auto type_index = typename fields::type_deduction_guide{}(input); 
           if(type_index) {
+            std::cout << "idx = " << *type_index << '\n';
             auto size_to_read = deduce_field_size<field_size>{}(*type_index, input);
             field_value = variant_reader_type_t{}(*type_index, buffer_pos, size_to_read);
           } else {

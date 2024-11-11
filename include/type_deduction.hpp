@@ -42,6 +42,10 @@ struct type;
 template <no_type_deduction_like T>
 struct type<T> {};
 
+
+template <fixed_string id>
+using match_field = field_accessor<id>;
+
 // todo constraints compute like
 template <typename eval_expression, typename tswitch>
 struct type<eval_expression, tswitch> {
@@ -53,7 +57,7 @@ struct type<eval_expression, tswitch> {
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
-    type_switch{}(eval_expression{}(sfl)); 
+    return type_switch{}(eval_expression{}(sfl)); 
   }
 };
 
