@@ -6293,7 +6293,7 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
 
-#include <iostream>
+#include <print>
 
 #include <expected>
 #ifndef _FIELD_READER_HPP_
@@ -23568,9 +23568,10 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           }
         } else if constexpr (is_struct_field_list_v<extract_type_from_field_v<fields>>) {
           field_value = struct_cast<extract_type_from_field_v<fields>>(ifs);
-        } else if constexpr (is_field_v<fields>) {
+        } else if constexpr (is_comptime_sized_field_v<fields>) {
           field_value = read<field_type>(ifs, field_size::size_type_t::count);
         } else if constexpr (is_runtime_sized_field_v<fields>) {
+          auto size_to_read = deduce_field_size<field_size>{}(input);
           field_value = read<field_type>(ifs, input[field_type::field_accessor]);
         }
 
