@@ -145,11 +145,14 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         // todo return std::unexpected to break the pipeline
         // is this ok?
         if(field_value) field.value = *field_value;
+
         // currently compile error
         // else input = field_value;
         
         // todo constraint checker
         // static constexpr auto constraint_checker = constraint_on_value;
+        auto res = fields::constraint_checker(*field_value);
+
         return input;
       }
     );

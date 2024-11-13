@@ -23575,14 +23575,18 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           field_value = read<field_type>(ifs, input[field_type::field_accessor]);
         }
 
+        // todo constraint checker
+        // static constexpr auto constraint_checker = constraint_on_value;
+        auto res = fields::constraint_checker(*field_value);
+
         // todo return std::unexpected to break the pipeline
         // is this ok?
         if(field_value) field.value = *field_value;
         // currently compile error
         // else input = field_value;
         
-        // todo constraint checker
-        // static constexpr auto constraint_checker = constraint_on_value;
+        if(res) std::println("passed"); 
+
         return input;
       }
     );
@@ -34454,7 +34458,7 @@ using fixed_array_field =
 template <
   fixed_string id, 
   std::size_t N,
-  auto expected = no_constraint<fixed_string<N>>{},
+  auto expected = no_constraint<fixed_string<N + 1>>{},
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>
 >
@@ -34598,7 +34602,7 @@ template <
   typename T,
   typename size,
   typename present_only_if,
-  auto expected = no_constraint<std::string>{}
+  auto expected = no_constraint<std::optional<T>>{}
 >
 using maybe_field = 
   field<
@@ -34615,7 +34619,7 @@ using maybe_field =
 template <
   fixed_string id, 
   typename type_deducer,
-  auto expected = no_constraint<std::string>{}
+  auto expected = no_constraint<typename type_deducer::type_selection>{}
 >
 using union_field = 
   field<
