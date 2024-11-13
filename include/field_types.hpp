@@ -131,8 +131,8 @@ using magic_string =
   field<
     id, 
     fixed_string<expected.size()>, 
-    field_size<fixed<expected.size()>>, 
-    eq{expected},
+    field_size<fixed<expected.size() + 1>>, 
+    eq(expected),
     present_only_if, 
     type_deducer
   >;

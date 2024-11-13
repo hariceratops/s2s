@@ -149,9 +149,7 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         // currently compile error
         // else input = field_value;
         
-        // todo constraint checker
-        // static constexpr auto constraint_checker = constraint_on_value;
-        auto res = fields::constraint_checker(*field_value);
+        (void)fields::constraint_checker(*field_value);
 
         return input;
       }

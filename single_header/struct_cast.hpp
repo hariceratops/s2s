@@ -23575,17 +23575,14 @@ struct struct_cast_impl<struct_field_list<fields...>> {
           field_value = read<field_type>(ifs, input[field_type::field_accessor]);
         }
 
-        // todo constraint checker
-        // static constexpr auto constraint_checker = constraint_on_value;
-        auto res = fields::constraint_checker(*field_value);
-
         // todo return std::unexpected to break the pipeline
         // is this ok?
         if(field_value) field.value = *field_value;
+
         // currently compile error
         // else input = field_value;
         
-        if(res) std::println("passed"); 
+        (void)fields::constraint_checker(*field_value);
 
         return input;
       }
@@ -34534,8 +34531,8 @@ using magic_string =
   field<
     id, 
     fixed_string<expected.size()>, 
-    field_size<fixed<expected.size()>>, 
-    eq{expected},
+    field_size<fixed<expected.size() + 1>>, 
+    eq(expected),
     present_only_if, 
     type_deducer
   >;

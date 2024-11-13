@@ -12,6 +12,7 @@
 using i32 = int;
 using u32 = unsigned int;
 using u8 = unsigned char;
+using u16 = unsigned short;
 
 
 // TEST_CASE("Test reading a meta_struct from a static buffer") {
@@ -300,64 +301,91 @@ TEST_CASE("Test open range interval check") {
 }
 
 
-// TEST_CASE("Test magic number") {
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       magic_number<"magic_num", u32, 4, 0xdeadbeef>,
-//       field<"p", u32, field_size<4>>
-//     >;
-//   const u8 buffer[] = {
-//     0xef, 0xbe, 0xad, 0xde,
-//     0x0d, 0xd0, 0xfe, 0xca,
-//     0xef, 0xbe, 0xef, 0xbe
-//   };
-//   test_struct_field_list fields;
-//
-//   struct_cast(fields, buffer);
-//
-//   REQUIRE(fields["magic_num"_f] == 0xdeadbeef);
-//   REQUIRE(fields["p"_f] == 0xcafed00d);
-// }
-//
-//
-// TEST_CASE("Test magic array") {
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       magic_byte_array<"magic_arr", 10, std::array<unsigned char, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd}>,
-//       field<"size", u32, field_size<4>>
-//     >;
-//   const u8 buffer[] = {
-//     0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
-//     0x0d, 0xd0, 0xfe, 0xca
-//   };
-//   test_struct_field_list fields;
-//
-//   struct_cast(fields, buffer);
-//
-//   REQUIRE(fields["magic_arr"_f] == std::array<u8, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd});
-//   REQUIRE(fields["size"_f] == 0xcafed00d);
-// }
-//
-//
-// TEST_CASE("Test magic string") {
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       magic_string<"magic_str", "GIF">,
-//       field<"size", u32, field_size<4>>
-//     >;
-//   const u8 buffer[] = {
-//     'G', 'I', 'F',
-//     0x0d, 0xd0, 0xfe, 0xca
-//   };
-//   test_struct_field_list fields;
-//
-//   struct_cast(fields, buffer);
-//
-//   REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{fixed_string("GIF").data()});
-//   REQUIRE(fields["size"_f] == 0xcafed00d);
-// }
-//
-//
+TEST_CASE("Test magic number") {
+  using test_struct_field_list = 
+    struct_field_list<
+      magic_number<"magic_num", u32, field_size<fixed<4>>, 0xdeadbeef>,
+      basic_field<"p", u32, field_size<fixed<4>>>
+    >;
+
+  std::ofstream ofs("test_bin_input_magic_number.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 x = 0xbeefbeef;
+
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&x), sizeof(x));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_magic_number.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  REQUIRE(fields["magic_num"_f] == 0xdeadbeef);
+  REQUIRE(fields["p"_f] == 0xcafed00d);
+}
+
+
+TEST_CASE("Test magic array") {
+  using test_struct_field_list = 
+    struct_field_list<
+      magic_byte_array<"magic_arr", 10, std::array<unsigned char, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}>,
+      basic_field<"size", u32, field_size<fixed<4>>>
+    >;
+
+  std::ofstream ofs("test_bin_input_magic_array.bin", std::ios::out | std::ios::binary);
+  u32 bytes_0_3 = 0xffffffff;
+  u32 bytes_4_7 = 0xffffffff;
+  u16 bytes_8_9 = 0xffff;
+  u32 x = 0xcafed00d;
+
+  ofs.write(reinterpret_cast<const char*>(&bytes_0_3), sizeof(bytes_0_3));
+  ofs.write(reinterpret_cast<const char*>(&bytes_4_7), sizeof(bytes_4_7));
+  ofs.write(reinterpret_cast<const char*>(&bytes_8_9), sizeof(bytes_8_9));
+  ofs.write(reinterpret_cast<const char*>(&x), sizeof(x));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_magic_array.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  REQUIRE(fields["magic_arr"_f] == std::array<u8, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
+  REQUIRE(fields["size"_f] == 0xcafed00d);
+}
+
+
+TEST_CASE("Test magic string") {
+  using test_struct_field_list = 
+    struct_field_list<
+      magic_string<"magic_str", "GIF">,
+      basic_field<"size", u32, field_size<fixed<4>>>
+    >;
+
+  const u8 str[] = "GIF";
+  const auto str_len = 3;
+  u32 x = 0xcafed00d;
+
+  std::ofstream ofs("test_bin_input_magic_string.bin", std::ios::out | std::ios::binary);
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.write(reinterpret_cast<const char*>(&x), sizeof(x));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_magic_string.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{fixed_string("GIF").data()});
+  REQUIRE(fields["size"_f] == 0xcafed00d);
+}
+
+
 // TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
 //   using test_aliased_var_buffer_struct = 
 //     struct_field_list<
