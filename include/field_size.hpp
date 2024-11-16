@@ -23,25 +23,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -78,8 +74,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 

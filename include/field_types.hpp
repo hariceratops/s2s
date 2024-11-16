@@ -161,7 +161,7 @@ template <
   fixed_string id, 
   typename T, 
   runtime_size_like runtime_size,
-  auto expected = no_constraint<T>{},
+  auto expected = no_constraint<std::vector<T>>{},
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>
 >

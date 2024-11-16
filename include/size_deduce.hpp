@@ -22,12 +22,12 @@ struct deduce_field_size<field_size<fixed<N>>> {
 // template <fixed_string id>
 // using from_field = runtime_size<field_accessor<id>>;
 template <fixed_string id>
-struct deduce_field_size<field_size<runtime_size<field_accessor<id>>>> {
-  using field_size_type = runtime_size<field_accessor<id>>;
+struct deduce_field_size<field_size<field_accessor<id>>> {
+  using field_size_type = field_accessor<id>;
   
   template <typename... fields>
   constexpr auto operator()(const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return struct_fields[field_size_type::accessor];
+    return struct_fields[field_size_type{}];
   }
 };
 

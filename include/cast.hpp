@@ -138,8 +138,8 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         } else if constexpr (is_comptime_sized_field_v<fields>) {
           field_value = read<field_type>(ifs, field_size::size_type_t::count);
         } else if constexpr (is_runtime_sized_field_v<fields>) {
-          auto size_to_read = deduce_field_size<field_size>{}(input);
-          field_value = read<field_type>(ifs, input[field_type::field_accessor]);
+          auto len_to_read = deduce_field_size<field_size>{}(input);
+          field_value = read<field_type>(ifs, len_to_read);
         }
 
         // todo return std::unexpected to break the pipeline

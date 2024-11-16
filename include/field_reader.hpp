@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <print>
 #include <fstream>
 #include <expected>
 #include <utility>
@@ -25,6 +26,22 @@ auto read(std::ifstream& ifs, std::size_t size_to_read)
   T obj;
   if(!ifs.read(byte_addressof(obj), size_to_read))
     return std::unexpected("buffer exhaustion");
+  return obj;
+}
+
+template <typename T>
+  requires vector_like<T> || string_like<T>
+auto read(std::ifstream& ifs, std::size_t len_to_read) 
+     -> std::expected<T, std::string> {
+  T obj;
+
+  constexpr auto size_of_one_elem = sizeof(T{}[0]);
+  // constexpr auto size_of_one_elem = sizeof(extract_type_from_vec_t<T>);
+  obj.resize(len_to_read);
+  if(!ifs.read(byte_addressof(obj), size_of_one_elem * len_to_read)) {
+    return std::unexpected("buffer exhaustion");
+  }
+
   return obj;
 }
 

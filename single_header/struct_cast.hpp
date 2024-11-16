@@ -69,6 +69,11 @@ void* to_void_ptr(std::vector<T>& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
+template <typename T>
+void* to_void_ptr(std::string& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
 // todo add overloads for address manip of std::string
 // template <>
 // void* to_void_ptr(std::string obj) {
@@ -93,6 +98,11 @@ char* byte_addressof(fixed_string<N>& obj) {
 
 template <typename T>
 char* byte_addressof(std::vector<T>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
@@ -359,6 +369,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -1083,25 +1134,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -1138,8 +1185,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -1398,6 +1450,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -2119,25 +2212,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -2174,8 +2263,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -2419,6 +2513,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -2887,6 +3022,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -3750,25 +3926,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -3805,8 +3977,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -4065,6 +4242,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -4786,25 +5004,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -4841,8 +5055,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -5086,6 +5305,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -5554,6 +5814,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -6301,6 +6602,7 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #include <cstring>
 #include <iostream>
+#include <print>
 #include <fstream>
 #include <expected>
 #include <utility>
@@ -6637,25 +6939,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -6692,8 +6990,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -6952,6 +7255,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -7673,25 +8017,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -7728,8 +8068,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -7973,6 +8318,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -8441,6 +8827,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -9443,6 +9870,24 @@ auto read(std::ifstream& ifs, std::size_t size_to_read)
   return obj;
 }
 
+template <typename T>
+  requires vector_like<T> || string_like<T>
+auto read(std::ifstream& ifs, std::size_t len_to_read) 
+     -> std::expected<T, std::string> {
+  T obj;
+
+  constexpr auto size_of_one_elem = sizeof(T{}[0]);
+  // constexpr auto size_of_one_elem = sizeof(extract_type_from_vec_t<T>);
+  obj.resize(len_to_read);
+  std::println("len = {},  size_of_one = {}", len_to_read, size_of_one_elem);
+  if(!ifs.read(byte_addressof(obj), size_of_one_elem * len_to_read)) {
+    std::println("possibly out of bound");
+    return std::unexpected("buffer exhaustion");
+  }
+
+  return obj;
+}
+
 template <std::size_t idx, typename variant_type, typename... types>
 struct variant_reader_impl;
 
@@ -9709,6 +10154,47 @@ template <typename T>
 concept optional_like = is_optional_like_v<T>;
 
 template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
+
+template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 #endif // _SC_META_HPP_
@@ -9921,6 +10407,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -10642,25 +11169,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -10697,8 +11220,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -10942,6 +11470,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -11393,25 +11962,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -11448,8 +12013,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -11708,6 +12278,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -12429,25 +13040,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -12484,8 +13091,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -12729,6 +13341,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -13197,6 +13850,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -14055,25 +14749,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -14110,8 +14800,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -14367,6 +15062,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -15121,25 +15857,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -15176,8 +15908,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -15436,6 +16173,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -16157,25 +16935,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -16212,8 +16986,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -16457,6 +17236,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -16925,6 +17745,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -17727,25 +18588,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -17782,8 +18639,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -18163,25 +19025,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -18218,8 +19076,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -18478,6 +19341,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -19199,25 +20103,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -19254,8 +20154,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -19499,6 +20404,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -19967,6 +20913,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -20830,25 +21817,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -20885,8 +21868,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -21145,6 +22133,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -21866,25 +22895,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -21921,8 +22946,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -22166,6 +23196,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -22634,6 +23705,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -23388,12 +24500,12 @@ struct deduce_field_size<field_size<fixed<N>>> {
 // template <fixed_string id>
 // using from_field = runtime_size<field_accessor<id>>;
 template <fixed_string id>
-struct deduce_field_size<field_size<runtime_size<field_accessor<id>>>> {
-  using field_size_type = runtime_size<field_accessor<id>>;
+struct deduce_field_size<field_size<field_accessor<id>>> {
+  using field_size_type = field_accessor<id>;
   
   template <typename... fields>
   constexpr auto operator()(const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return struct_fields[field_size_type::accessor];
+    return struct_fields[field_size_type{}];
   }
 };
 
@@ -23571,8 +24683,8 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         } else if constexpr (is_comptime_sized_field_v<fields>) {
           field_value = read<field_type>(ifs, field_size::size_type_t::count);
         } else if constexpr (is_runtime_sized_field_v<fields>) {
-          auto size_to_read = deduce_field_size<field_size>{}(input);
-          field_value = read<field_type>(ifs, input[field_type::field_accessor]);
+          auto len_to_read = deduce_field_size<field_size>{}(input);
+          field_value = read<field_type>(ifs, len_to_read);
         }
 
         // todo return std::unexpected to break the pipeline
@@ -23817,6 +24929,47 @@ template <typename T>
 concept optional_like = is_optional_like_v<T>;
 
 template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
+
+template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 #endif // _SC_META_HPP_
@@ -24026,6 +25179,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -24747,25 +25941,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -24802,8 +25992,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -25353,25 +26548,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -25408,8 +26599,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -25668,6 +26864,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -26389,25 +27626,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -26444,8 +27677,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -26689,6 +27927,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -27157,6 +28436,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -28334,25 +29654,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -28389,8 +29705,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -28649,6 +29970,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -29370,25 +30732,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -29425,8 +30783,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -29670,6 +31033,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -30138,6 +31542,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -31260,25 +32705,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -31315,8 +32756,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -31869,25 +33315,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -31924,8 +33366,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -32184,6 +33631,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -32905,25 +34393,21 @@ struct fixed {
   static constexpr auto count = N;
 };
 
-template <typename T>
-struct runtime_size;
-
-template <typename field_accessor>
-struct runtime_size {
-  static constexpr auto accessor = field_accessor{};
-};
-
 template <fixed_string id>
-using from_field = runtime_size<field_accessor<id>>;
+using from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
 
+// todo constraint for callable
 template <auto callable, field_name_list req_fields>
 struct size_from_fields {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -32960,8 +34444,13 @@ struct is_runtime_size {
   static constexpr bool res = false;
 };
 
-template <auto field_accessor>
-struct is_runtime_size<field_size<from_field<field_accessor>>> {
+template <fixed_string id>
+struct is_runtime_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_runtime_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -33205,6 +34694,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -33673,6 +35203,47 @@ inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
 
 template <typename T>
 concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
 
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
@@ -34561,7 +36132,7 @@ template <
   fixed_string id, 
   typename T, 
   runtime_size_like runtime_size,
-  auto expected = no_constraint<T>{},
+  auto expected = no_constraint<std::vector<T>>{},
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>
 >

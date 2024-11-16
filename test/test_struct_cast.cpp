@@ -386,48 +386,54 @@ TEST_CASE("Test magic string") {
 }
 
 
-// TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
-//   using test_aliased_var_buffer_struct = 
-//     struct_field_list<
-//       field<"len", std::size_t, field_size<8>>,
-//       vec_field<"vec", int, runtime_size<from_field<"len">>>
-//       // str_field<"str", runtime_size<from_field<"len">>>
-//     >;
-//
-//   constexpr std::size_t str_len = 40;
-//   const u8 str[] = "foo in bar";
-//   const u32 u32_arr[] = {
-//     0xdeadbeef, 0xcafed00d,
-//     0xdeadbeef, 0xcafed00d,
-//     0xdeadbeef, 0xcafed00d,
-//     0xdeadbeef, 0xcafed00d,
-//     0xdeadbeef, 0xcafed00d
-//   };
-//
-//   std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
-//   ofs.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
-//   ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
-//   ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
-//   ofs.close();
-//
-//   std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
-//   test_aliased_var_buffer_struct fields;
-//   struct_cast(fields, ifs);
-//   ifs.close();
-//   
-//   std::cout << fields["len"_f] << '\n';
-//   std::cout << fields["vec"_f].size() << '\n';
-//   for(auto num: fields["vec"_f]) {
-//     std::cout << std::hex << num << '\n';
-//   }
-//
-//   // std::string_view expected{"foo in bar"};
-//   // REQUIRE(std::string_view{fields["a"_f]} == expected);
-//   // REQUIRE(std::string_view{fields["b"_f].data()} == expected);
-//   // REQUIRE(fields["c"_f] == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
-// };
-//
-//
+TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
+  using var_buffer_struct = 
+    struct_field_list<
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      vec_field<"vec", u32, field_size<from_field<"len">>>
+      // str_field<"str", field_size<from_field<"len">>>
+    >;
+
+  constexpr std::size_t vec_len = 10;
+  const u8 str[] = "foo in bar";
+  const u32 u32_arr[] = {
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d
+  };
+
+  std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
+  ofs.write(reinterpret_cast<const char*>(&vec_len), sizeof(vec_len));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.write(reinterpret_cast<const char*>(&str), vec_len + 1);
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<var_buffer_struct>(ifs);
+  ifs.close();
+ 
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  REQUIRE(fields["len"_f] == 10);
+  REQUIRE(fields["vec"_f].size() == 10);
+  REQUIRE(fields["vec"_f][0] == 0xdeadbeef);
+  REQUIRE(fields["vec"_f][1] == 0xcafed00d);
+  REQUIRE(fields["vec"_f][2] == 0xdeadbeef);
+  REQUIRE(fields["vec"_f][3] == 0xcafed00d);
+  REQUIRE(fields["vec"_f][4] == 0xdeadbeef);
+  REQUIRE(fields["vec"_f][5] == 0xcafed00d);
+  REQUIRE(fields["vec"_f][6] == 0xdeadbeef);
+  REQUIRE(fields["vec"_f][7] == 0xcafed00d);
+  REQUIRE(fields["vec"_f][8] == 0xdeadbeef);
+  REQUIRE(fields["vec"_f][9] == 0xcafed00d);
+  // REQUIRE(fields["str"_f].size() == 10);
+  std::string_view expected{"foo in bar"};
+  // REQUIRE(std::string_view{fields["str"_f]} == expected);
+};
+
+
 // TEST_CASE("Dummy test to verify runtime computation from fields") {
 //   using u32 = unsigned int;
 //   using sfl = struct_field_list<field<"a", u32, field_size<4>>, field<"b", u32, field_size<4>>>;

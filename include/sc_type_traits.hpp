@@ -143,6 +143,47 @@ template <typename T>
 concept optional_like = is_optional_like_v<T>;
 
 template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
+
+template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
 #endif // _SC_META_HPP_
