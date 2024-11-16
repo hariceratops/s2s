@@ -9879,9 +9879,7 @@ auto read(std::ifstream& ifs, std::size_t len_to_read)
   constexpr auto size_of_one_elem = sizeof(T{}[0]);
   // constexpr auto size_of_one_elem = sizeof(extract_type_from_vec_t<T>);
   obj.resize(len_to_read);
-  std::println("len = {},  size_of_one = {}", len_to_read, size_of_one_elem);
   if(!ifs.read(byte_addressof(obj), size_of_one_elem * len_to_read)) {
-    std::println("possibly out of bound");
     return std::unexpected("buffer exhaustion");
   }
 

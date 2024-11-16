@@ -543,37 +543,38 @@ namespace static_test {
 //   }
 // }
 
-// TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
-//   auto is_a_eq_1 = [](auto a){ return a == 1; };
-//
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>,
-//       maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
-//     >;
-//
-//   std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
-//   u32 a = 0xdeadbeef;
-//   u32 b = 0xcafed00d;
-//   u32 c = 0xbeefbeef;
-//   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
-//   ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
-//   ofs.close();
-//
-//   std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
-//   auto result = struct_cast<test_struct_field_list>(ifs);
-//   ifs.close();
-//
-//   REQUIRE(result.has_value() == true);
-//   if(result) {
-//     auto fields = *result;
-//     REQUIRE(fields["a"_f] == 0xdeadbeef);
-//     REQUIRE(fields["b"_f] == 0xcafed00d);
-//     REQUIRE(fields["c"_f] == std::nullopt);
-//   }
-// }
+TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
+  auto is_a_eq_1 = [](auto a){ return a == 1; };
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
+    >;
+
+  std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 c = 0xbeefbeef;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["c"_f] == std::nullopt);
+  }
+}
+
 
 TEST_CASE("Test case to verify option field parsing from binary file with successful parse predicate") {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
