@@ -386,12 +386,38 @@ TEST_CASE("Test magic string") {
 }
 
 
+TEST_CASE("Test reading a meta_struct with aliased length prefixed string from binary file") {
+  using var_buffer_struct = 
+    struct_field_list<
+      basic_field<"len", std::size_t, field_size<fixed<8>>>
+      // str_field<"str", field_size<from_field<"len">>>,
+    >;
+
+  constexpr std::size_t str_len = 10;
+  const u8 str[] = "foo in bar";
+
+  std::ofstream ofs("test_bin_input_str_fields.bin", std::ios::out | std::ios::binary);
+  ofs.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_str_fields.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<var_buffer_struct>(ifs);
+  ifs.close();
+ 
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  REQUIRE(fields["len"_f] == 10);
+  // REQUIRE(fields["str"_f].size() == 10);
+  std::string_view expected{"foo in bar"};
+  // REQUIRE(std::string_view{fields["str"_f]} == expected);
+};
+
 TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
   using var_buffer_struct = 
     struct_field_list<
       basic_field<"len", std::size_t, field_size<fixed<8>>>,
       vec_field<"vec", u32, field_size<from_field<"len">>>
-      // str_field<"str", field_size<from_field<"len">>>
     >;
 
   constexpr std::size_t vec_len = 10;
@@ -404,13 +430,13 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
     0xdeadbeef, 0xcafed00d
   };
 
-  std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
+  std::ofstream ofs("test_bin_input_vec_fields.bin", std::ios::out | std::ios::binary);
   ofs.write(reinterpret_cast<const char*>(&vec_len), sizeof(vec_len));
   ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
   ofs.write(reinterpret_cast<const char*>(&str), vec_len + 1);
   ofs.close();
 
-  std::ifstream ifs("test_bin_input_4.bin", std::ios::in | std::ios::binary);
+  std::ifstream ifs("test_bin_input_vec_fields.bin", std::ios::in | std::ios::binary);
   auto res = struct_cast<var_buffer_struct>(ifs);
   ifs.close();
  
@@ -418,19 +444,97 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
   auto fields = *res;
   REQUIRE(fields["len"_f] == 10);
   REQUIRE(fields["vec"_f].size() == 10);
-  REQUIRE(fields["vec"_f][0] == 0xdeadbeef);
-  REQUIRE(fields["vec"_f][1] == 0xcafed00d);
-  REQUIRE(fields["vec"_f][2] == 0xdeadbeef);
-  REQUIRE(fields["vec"_f][3] == 0xcafed00d);
-  REQUIRE(fields["vec"_f][4] == 0xdeadbeef);
-  REQUIRE(fields["vec"_f][5] == 0xcafed00d);
-  REQUIRE(fields["vec"_f][6] == 0xdeadbeef);
-  REQUIRE(fields["vec"_f][7] == 0xcafed00d);
-  REQUIRE(fields["vec"_f][8] == 0xdeadbeef);
-  REQUIRE(fields["vec"_f][9] == 0xcafed00d);
-  // REQUIRE(fields["str"_f].size() == 10);
-  std::string_view expected{"foo in bar"};
-  // REQUIRE(std::string_view{fields["str"_f]} == expected);
+  REQUIRE(fields["vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+                                              0xdeadbeef, 0xcafed00d,
+                                              0xdeadbeef, 0xcafed00d,
+                                              0xdeadbeef, 0xcafed00d, 
+                                              0xdeadbeef, 0xcafed00d});
+};
+
+TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields depending on multiple fields from binary file") {
+  auto size_from_rc = [](auto r, auto c) { return r * c; };
+
+  using var_buffer_struct = 
+    struct_field_list<
+      basic_field<"row", std::size_t, field_size<fixed<8>>>,
+      basic_field<"col", std::size_t, field_size<fixed<8>>>,
+      vec_field<"flat_vec", u32, field_size<from_fields<size_from_rc, with_fields<"row", "col">>>>
+    >;
+
+  constexpr std::size_t row = 5;
+  constexpr std::size_t col = 2;
+  const u32 u32_arr[] = {
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d
+  };
+
+  std::ofstream ofs("test_bin_input_vec_fields_multiple_size.bin", std::ios::out | std::ios::binary);
+  ofs.write(reinterpret_cast<const char*>(&row), sizeof(row));
+  ofs.write(reinterpret_cast<const char*>(&col), sizeof(col));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_vec_fields_multiple_size.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<var_buffer_struct>(ifs);
+  ifs.close();
+ 
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  REQUIRE(fields["row"_f] == 5);
+  REQUIRE(fields["col"_f] == 2);
+  REQUIRE(fields["flat_vec"_f].size() == 10);
+  REQUIRE(fields["flat_vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+                                                   0xdeadbeef, 0xcafed00d,
+                                                   0xdeadbeef, 0xcafed00d,
+                                                   0xdeadbeef, 0xcafed00d, 
+                                                   0xdeadbeef, 0xcafed00d});
+};
+
+
+TEST_CASE("Test reading a meta_struct with aliased length prefixed md_buffer fields depending on multiple fields from binary file") {
+  auto size_from_rc = [](auto r, auto c) { return r * c; };
+
+  using var_buffer_struct = 
+    struct_field_list<
+      basic_field<"row", std::size_t, field_size<fixed<8>>>,
+      basic_field<"col", std::size_t, field_size<fixed<8>>>,
+      vec_field<"matrix", std::vector<u32>, field_size<from_fields<size_from_rc, with_fields<"row", "col">>>>
+    >;
+
+  constexpr std::size_t row = 5;
+  constexpr std::size_t col = 2;
+  const u32 u32_arr[] = {
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d
+  };
+
+  std::ofstream ofs("test_bin_input_md_vec_fields.bin", std::ios::out | std::ios::binary);
+  ofs.write(reinterpret_cast<const char*>(&row), sizeof(row));
+  ofs.write(reinterpret_cast<const char*>(&col), sizeof(col));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_md_vec_fields.bin", std::ios::in | std::ios::binary);
+  // oops resizing recursively is not possible
+  // auto res = struct_cast<var_buffer_struct>(ifs);
+  ifs.close();
+ 
+  // REQUIRE(res.has_value());
+  // auto fields = *res;
+  // REQUIRE(fields["row"_f] == 5);
+  // REQUIRE(fields["col"_f] == 2);
+  // REQUIRE(fields["matrix"_f].size() == 10);
+  // REQUIRE(fields["vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+  //                                             0xdeadbeef, 0xcafed00d,
+  //                                             0xdeadbeef, 0xcafed00d,
+  //                                             0xdeadbeef, 0xcafed00d, 
+  //                                             0xdeadbeef, 0xcafed00d});
 };
 
 

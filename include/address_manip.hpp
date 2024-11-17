@@ -62,7 +62,7 @@ char* byte_addressof(std::vector<T>& obj) {
 
 template <typename T>
 char* byte_addressof(std::string& obj) {
-  return reinterpret_cast<char*>(obj.data());
+  return reinterpret_cast<char*>(&obj[0]);
 }
 
 #endif // _ADDRESS_MANIP_HPP_
