@@ -434,28 +434,32 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
 };
 
 
-// TEST_CASE("Dummy test to verify runtime computation from fields") {
-//   using u32 = unsigned int;
-//   using sfl = struct_field_list<field<"a", u32, field_size<4>>, field<"b", u32, field_size<4>>>;
-//   sfl fl;
-//   unsigned char arr[] = {0x04, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00};
-//   struct_cast(fl, arr);
-//
-//   auto callable = [](u32& a, u32& b) -> u32 { return a * b; };
-//   using dep_fields = 
-//     typelist::typelist<
-//       field<"a", u32, field_size<4>>,
-//       field<"b", u32, field_size<4>>
-//     >;
-//   auto res = compute<callable, dep_fields>()(fl);
-//
-//   REQUIRE(fl["a"_f] == 4);
-//   REQUIRE(fl["b"_f] == 5);
-//   REQUIRE(res == 20);
-//   std::cout << std::dec << res << '\n';
-// }
-//
-//
+TEST_CASE("Dummy test to verify runtime computation from fields") {
+  using u32 = unsigned int;
+  using sfl = 
+    struct_field_list<basic_field<"a", u32, field_size<fixed<4>>>, 
+                      basic_field<"b", u32, field_size<fixed<4>>>>;
+
+  std::ofstream ofs("test_bin_input_1.bin", std::ios::out | std::ios::binary);
+  u32 a = 4;
+  u32 b = 5;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_1.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<sfl>(ifs);
+  ifs.close();
+
+  auto callable = [](const u32& a, const u32& b) -> u32 { return a * b; };
+  auto fields = *result;
+  REQUIRE(fields["a"_f] == 4);
+  REQUIRE(fields["b"_f] == 5);
+  auto comp_res = compute<callable, u32, with_fields<"a", "b">>{}(fields);
+  REQUIRE(comp_res == 20);
+}
+
+
 
 namespace static_test {
   // implicit conversion produces false positive in second static_assert, 
@@ -544,7 +548,7 @@ namespace static_test {
 // }
 
 TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
-  auto is_a_eq_1 = [](auto a){ return a == 1; };
+  auto is_a_eq_1 = [](auto& a){ return a == 1; };
 
   using test_struct_field_list = 
     struct_field_list<
