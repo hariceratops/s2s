@@ -22,11 +22,11 @@ using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 // todo maybe make expected, present_only_if, type_deduce as types
 // todo rename expected -> value_constraint
 
-// todo comptime_size_like
+// todo fixed_size_like
 template <
   fixed_string id, 
   integral T, 
-  comptime_size_like size, 
+  fixed_size_like size, 
   auto expected = no_constraint<T>{},
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>
@@ -140,7 +140,7 @@ using magic_string =
 template <
   fixed_string id, 
   integral T, 
-  comptime_size_like size, 
+  fixed_size_like size, 
   T expected,
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>
@@ -160,7 +160,7 @@ using magic_number =
 template <
   fixed_string id, 
   typename T, 
-  runtime_size_like runtime_size,
+  variable_size_like runtime_size,
   auto expected = no_constraint<std::vector<T>>{},
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>
@@ -178,7 +178,7 @@ using vec_field =
 // todo check if this will work for all char types like wstring
 template <
   fixed_string id, 
-  runtime_size_like runtime_size,
+  variable_size_like runtime_size,
   auto expected = no_constraint<std::string>{},
   typename present_only_if = always_present,
   typename type_deducer = type<no_type_deduction>

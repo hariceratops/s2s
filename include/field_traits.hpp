@@ -21,47 +21,47 @@ constexpr bool is_field_v = is_field<T>::value;
 
 
 template <typename T>
-struct is_comptime_sized_field;
+struct is_fixed_sized_field;
 
 template <fixed_string id,
           field_containable T, 
-          comptime_size_like size, 
+          fixed_size_like size, 
           auto constraint_on_value, 
           typename present_only_if, 
           typename type_deducer>
-struct is_comptime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
+struct is_fixed_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
 };
 
 template <typename T>
-struct is_comptime_sized_field {
+struct is_fixed_sized_field {
   static constexpr bool res = false;
 };
 
 template <typename T>
-inline constexpr bool is_comptime_sized_field_v = is_comptime_sized_field<T>::res;
+inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
 template <typename T>
-struct is_runtime_sized_field;
+struct is_variable_sized_field;
 
 // todo: todo var buffer like field constraint
 template <fixed_string id,
           typename T, 
-          runtime_size_like size, 
+          variable_size_like size, 
           auto constraint_on_value, 
           typename present_only_if, 
           typename type_deducer>
-struct is_runtime_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
+struct is_variable_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
   static constexpr bool res = true;
 };
 
 template <typename T>
-struct is_runtime_sized_field {
+struct is_variable_sized_field {
   static constexpr bool res = false;
 };
 
 template <typename T>
-inline constexpr bool is_runtime_sized_field_v = is_runtime_sized_field<T>::res;
+inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
 
 template <typename T>
 struct is_optional_field;
@@ -106,9 +106,9 @@ template <typename T>
 inline constexpr bool is_union_field_v = is_union_field<T>::res;
 
 template <typename T>
-concept field_like = is_comptime_sized_field_v<T> ||
-                     is_runtime_sized_field_v<T>  ||
-                     is_optional_field_v<T>       ||
+concept field_like = is_fixed_sized_field_v<T>     ||
+                     is_variable_sized_field_v<T>  ||
+                     is_optional_field_v<T>        ||
                      is_union_field_v<T>;
 
 // namespace static_test {

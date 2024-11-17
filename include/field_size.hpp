@@ -5,7 +5,6 @@
 #include "fixed_str_list.hpp"
 #include "typelist.hpp"
 
-
 template <typename size_type>
 struct field_size;
 
@@ -51,54 +50,54 @@ struct size_choices {
 
 // Metafunctions for checking if a type is a size type
 template <typename T>
-struct is_comptime_size;
+struct is_fixed_size;
 
 template <std::size_t N>
-struct is_comptime_size<field_size<fixed<N>>> {
+struct is_fixed_size<field_size<fixed<N>>> {
   static constexpr bool res = true;
 };
 
 template <typename T>
-struct is_comptime_size {
+struct is_fixed_size {
   static constexpr bool res = false;
 };
 
 template <typename T>
-inline constexpr bool is_comptime_size_v = is_comptime_size<T>::res;
+inline constexpr bool is_fixed_size_v = is_fixed_size<T>::res;
 
 template <typename T>
-struct is_runtime_size;
+struct is_variable_size;
 
 template <typename T>
-struct is_runtime_size {
+struct is_variable_size {
   static constexpr bool res = false;
 };
 
 template <fixed_string id>
-struct is_runtime_size<field_size<from_field<id>>> {
+struct is_variable_size<field_size<from_field<id>>> {
   static constexpr bool res = true;
 };
 
 template <auto callable, field_name_list ids>
-struct is_runtime_size<field_size<from_fields<callable, ids>>> {
+struct is_variable_size<field_size<from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
 template <typename T>
-inline constexpr bool is_runtime_size_v = is_runtime_size<T>::res;
+inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
 
 // Concepts for checking if a type is a size type
 template <typename T>
-concept comptime_size_like = is_comptime_size_v<T>;
+concept fixed_size_like = is_fixed_size_v<T>;
 
 template <typename T>
-concept runtime_size_like = is_runtime_size_v<T>;
+concept variable_size_like = is_variable_size_v<T>;
 
 template <typename T>
 struct is_selectable_size;
 
 template <typename T>
-concept atomic_size = comptime_size_like<T> || runtime_size_like<T>;
+concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
 
 template <atomic_size... size_type>
 struct is_selectable_size<field_size<size_choices<size_type...>>> {
@@ -111,21 +110,21 @@ struct is_selectable_size {
 };
 
 template <typename T>
-inline constexpr bool is_selectable_size_v = is_comptime_size<T>::res;
+inline constexpr bool is_selectable_size_v = is_fixed_size<T>::res;
 
 template <typename T>
 concept selectable_size_like = is_selectable_size_v<T>;
 
 template <typename T>
-concept is_size_like = comptime_size_like<T> ||
-                       runtime_size_like<T> ||
+concept is_size_like = fixed_size_like<T>    ||
+                       variable_size_like<T> ||
                        selectable_size_like<T>;
 
 namespace static_test {
-static_assert(is_runtime_size_v<field_size<from_field<"hello">>>);
-static_assert(is_comptime_size_v<field_size<fixed<4>>>);
-static_assert(!is_comptime_size_v<int>);
-static_assert(!is_runtime_size_v<int>);
+static_assert(is_variable_size_v<field_size<from_field<"hello">>>);
+static_assert(is_fixed_size_v<field_size<fixed<4>>>);
+static_assert(!is_fixed_size_v<int>);
+static_assert(!is_variable_size_v<int>);
 static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 }
 

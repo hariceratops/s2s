@@ -57,7 +57,7 @@ struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>
   template <typename... fields>
   constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
     if(size_idx_r == size_idx) {
-      if constexpr(comptime_size_like<head>) return deduce_field_size<head>{}();
+      if constexpr(fixed_size_like<head>) return deduce_field_size<head>{}();
       else return deduce_field_size<head>{}(struct_fields);
     } else {
       return deduce_field_size_switch<size_idx + 1, field_size<size_choices<tail...>>>{}(size_idx_r, struct_fields);
