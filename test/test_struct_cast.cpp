@@ -727,7 +727,8 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
       union_field<
         "c", 
         type<
-          compute<unit, u32, with_fields<"a">>,
+          // compute<unit, u32, with_fields<"a">>,
+          match_field<"a">,
           type_switch<
             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
             match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,

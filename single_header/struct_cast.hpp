@@ -26053,6 +26053,62 @@ static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 
 #include <variant>
 #include <expected>
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -32903,6 +32959,19 @@ struct type<eval_expression, tswitch> {
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
     return type_switch{}(eval_expression{}(sfl)); 
+  }
+};
+
+template <fixed_string id, typename tswitch>
+struct type<match_field<id>, tswitch> {
+  using type_switch = tswitch;
+  using type_selection = tswitch::types_only;
+  using size_selection = tswitch::size_only;
+
+  template <typename... fields>
+  auto operator()(const struct_field_list<fields...>& sfl)
+    -> std::expected<std::size_t, std::string> const {
+    return type_switch{}(sfl[field_accessor<id>{}]); 
   }
 };
 

@@ -3,6 +3,7 @@
 
 #include <variant>
 #include <expected>
+#include "field_accessor.hpp"
 #include "typelist.hpp"
 #include "type_ladder.hpp"
 #include "type_switch.hpp"
@@ -58,6 +59,19 @@ struct type<eval_expression, tswitch> {
   auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, std::string> const {
     return type_switch{}(eval_expression{}(sfl)); 
+  }
+};
+
+template <fixed_string id, typename tswitch>
+struct type<match_field<id>, tswitch> {
+  using type_switch = tswitch;
+  using type_selection = tswitch::types_only;
+  using size_selection = tswitch::size_only;
+
+  template <typename... fields>
+  auto operator()(const struct_field_list<fields...>& sfl)
+    -> std::expected<std::size_t, std::string> const {
+    return type_switch{}(sfl[field_accessor<id>{}]); 
   }
 };
 
