@@ -717,9 +717,6 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
 }
 
 TEST_CASE("Test case to verify variant field parsing from a binary file") {
-  // todo a convinient type to get field "x"
-  auto unit = [](auto a){ return a; };
-
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
@@ -727,7 +724,6 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
       union_field<
         "c", 
         type<
-          // compute<unit, u32, with_fields<"a">>,
           match_field<"a">,
           type_switch<
             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
@@ -757,6 +753,49 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
     auto fields = *result;
     REQUIRE(fields["a"_f] == 0xdeadbeef);
     REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
+  }
+}
+
+TEST_CASE("Test case to verify variant field parsing from a binary file with complex type predicate") {
+  auto some_complex_calc = [](auto a, auto b){ return a + b; };
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          compute<some_complex_calc, u32, with_fields<"a", "b">>,
+          type_switch<
+            match_case<100, type_tag<float, field_size<fixed<4>>>>,
+            match_case<200, type_tag<u32, field_size<fixed<4>>>>,
+            match_case<300, type_tag<int, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  std::ofstream ofs("test_bin_input_7.bin", std::ios::out | std::ios::binary);
+  u32 a = 100;
+  u32 b = 100;
+  u32 c = 0xbeefbeef;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_7.bin", std::ios::in | std::ios::binary);
+
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 100);
+    REQUIRE(fields["b"_f] == 100);
     REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
   }
 }
