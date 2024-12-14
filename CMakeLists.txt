@@ -49,3 +49,6 @@ add_executable(test_struct_cast ${TEST_DIR}/test_struct_cast.cpp)
 target_link_libraries(test_struct_cast PRIVATE Catch2::Catch2)
 target_include_directories(test_struct_cast PRIVATE ${catch2_SOURCE_DIR}/single_include)
 
+# temporary tests with out catch for easier debugging in gdb
+# add_executable(test_temp ${TEST_DIR}/test_temp.cpp)
+# target_include_directories(test_temp PRIVATE ${catch2_SOURCE_DIR}/single_include)

@@ -389,8 +389,8 @@ TEST_CASE("Test magic string") {
 TEST_CASE("Test reading a meta_struct with aliased length prefixed string from binary file") {
   using var_buffer_struct = 
     struct_field_list<
-      basic_field<"len", std::size_t, field_size<fixed<8>>>
-      // str_field<"str", field_size<from_field<"len">>>,
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      str_field<"str", field_size<from_field<"len">>>
     >;
 
   constexpr std::size_t str_len = 10;
@@ -398,7 +398,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
 
   std::ofstream ofs("test_bin_input_str_fields.bin", std::ios::out | std::ios::binary);
   ofs.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
-  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.write(reinterpret_cast<const char*>(&str), str_len);
   ofs.close();
 
   std::ifstream ifs("test_bin_input_str_fields.bin", std::ios::in | std::ios::binary);
@@ -408,9 +408,9 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
   REQUIRE(res.has_value());
   auto fields = *res;
   REQUIRE(fields["len"_f] == 10);
-  // REQUIRE(fields["str"_f].size() == 10);
+  REQUIRE(fields["str"_f].size() == 10);
   std::string_view expected{"foo in bar"};
-  // REQUIRE(std::string_view{fields["str"_f]} == expected);
+  REQUIRE(std::string_view{fields["str"_f]} == expected);
 };
 
 TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {

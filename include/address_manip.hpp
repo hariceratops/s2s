@@ -60,8 +60,7 @@ char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
-template <typename T>
-char* byte_addressof(std::string& obj) {
+inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 

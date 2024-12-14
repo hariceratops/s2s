@@ -1,7 +1,7 @@
-[  ] Rename compute file and the functions in it to an appropriate names
-[  ] Convert reader lambdas into templated functors to read both readers and streams
-[  ] Make there are no editor errors due to cpp23 features
-[  ] Support for callable based  jump table in the computations
+[c] Rename compute file and the functions in it to an appropriate names
+[c] Convert reader lambdas into templated functors to read both readers and streams
+[x] Make there are no editor errors due to cpp23 features
+[x] Support for callable based  jump table in the computations
 [  ] Size dependency resolution checks
 [  ] Parse dependency resolution checks
 [  ] Updated field type aliases

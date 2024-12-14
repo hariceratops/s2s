@@ -101,8 +101,7 @@ char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
 }
 
-template <typename T>
-char* byte_addressof(std::string& obj) {
+inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 
@@ -24689,7 +24688,6 @@ struct struct_cast_impl<struct_field_list<fields...>> {
         // todo return std::unexpected to break the pipeline
         // is this ok?
         if(field_value) field.value = *field_value;
-
         // currently compile error
         // else input = field_value;
         
