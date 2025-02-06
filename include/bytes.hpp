@@ -1,7 +1,6 @@
 #ifndef _BYTES_HPP_
 #define _BYTES_HPP_
 
-#include <iostream>
 #include <cstddef>  // for std::size_t
 #include <climits>  // for CHAR_BIT
 

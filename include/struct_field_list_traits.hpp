@@ -4,8 +4,8 @@
 #include <type_traits>
 #include "field_list.hpp"
 
-template <typename... fields>
-struct struct_field_list;
+// template <typename... fields>
+// struct struct_field_list;
 
 // Metafunction to check if a type is a struct_field_list
 template <typename T>

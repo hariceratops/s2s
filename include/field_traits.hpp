@@ -4,32 +4,14 @@
 
 #include "field.hpp"
 #include "field_size.hpp"
-#include "sc_type_traits.hpp"
-
-
-template <typename T>
-struct is_field;
-
-template <typename T>
-struct is_field: std::false_type{};
-
-template <fixed_string id, typename T, typename field_size, auto constraint, typename presence_check, typename type_deducer>
-struct is_field<field<id, T, field_size, constraint, presence_check, type_deducer>>: std::true_type{};
-
-template <typename T>
-constexpr bool is_field_v = is_field<T>::value;
 
 
 template <typename T>
 struct is_fixed_sized_field;
 
-template <fixed_string id,
-          field_containable T, 
-          fixed_size_like size, 
-          auto constraint_on_value, 
-          typename present_only_if, 
-          typename type_deducer>
-struct is_fixed_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
+// Specialization for field with fixed_size_like size
+template <fixed_string id, typename T, fixed_size_like size, auto constraint_on_value>
+struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
 
@@ -41,17 +23,16 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
+// Concept for fixed_sized_field_like
+template <typename T>
+concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
 template <typename T>
 struct is_variable_sized_field;
 
-// todo: todo var buffer like field constraint
-template <fixed_string id,
-          typename T, 
-          variable_size_like size, 
-          auto constraint_on_value, 
-          typename present_only_if, 
-          typename type_deducer>
-struct is_variable_sized_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
+// Specialization for field with variable_size_like size
+template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
 
@@ -63,16 +44,26 @@ struct is_variable_sized_field {
 template <typename T>
 inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
 
+// Concept for variable_sized_field_like
+template <typename T>
+concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+
 template <typename T>
 struct is_optional_field;
 
-template <fixed_string id,
-          optional_like T, 
+// Specialization for maybe_field with a field
+template <fixed_string id, 
+          typename T, 
           typename size, 
           auto constraint_on_value, 
           typename present_only_if, 
-          typename type_deducer>
-struct is_optional_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
+          typename optional, 
+          typename base_field>
+struct is_optional_field<
+    maybe_field<id, T, size, constraint_on_value, present_only_if, optional, base_field>
+  > 
+{
   static constexpr bool res = true;
 };
 
@@ -84,21 +75,25 @@ struct is_optional_field {
 template <typename T>
 inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
 
+// Concept for optional_field_like
+template <typename T>
+concept optional_field_like = is_optional_field_v<T>;
+
+
 template <typename T>
 struct is_union_field;
 
-template <typename T>
-struct is_union_field {
-  static constexpr bool res = false;
-};
-
 template <fixed_string id,
-          variant_like T, 
-          typename size, 
-          auto constraint_on_value, 
-          typename present_only_if, 
-          typename type_deducer>
-struct is_union_field<field<id, T, size, constraint_on_value, present_only_if, type_deducer>> {
+          typename type_deducer,
+          typename type,
+          typename size_type,
+          auto constraint_on_value,
+          typename variant,
+          typename field_choices_t>
+struct is_union_field<
+    union_field<id, type_deducer, type, size_type, constraint_on_value, variant, field_choices_t>
+  > 
+{
   static constexpr bool res = true;
 };
 
@@ -106,16 +101,20 @@ template <typename T>
 inline constexpr bool is_union_field_v = is_union_field<T>::res;
 
 template <typename T>
-concept field_like = is_fixed_sized_field_v<T>     ||
-                     is_variable_sized_field_v<T>  ||
-                     is_optional_field_v<T>        ||
-                     is_union_field_v<T>;
+concept union_field_like = is_union_field_v<T>;
 
+// todo struct_field_like
+
+template <typename T>
+concept field_like = fixed_sized_field_like<T> || 
+                     variable_sized_field_like<T> || 
+                     optional_field_like<T> || 
+                     union_field_like<T>;
+//
 // namespace static_test {
 //   static_assert(is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
 //   static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
 //   static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
 //   static_assert(!is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
 // }
-
 #endif /*_FIELD_TRAITS_HPP_*/

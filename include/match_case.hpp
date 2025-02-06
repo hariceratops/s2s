@@ -10,6 +10,7 @@ struct match_case {
   static constexpr auto value = v;
   using type_tag = T;
 };
+
 template <typename T>
 struct is_match_case;
 
@@ -28,8 +29,6 @@ inline constexpr bool is_match_case_v = is_match_case<T>::res;
 
 template <typename T>
 concept match_case_like = is_match_case_v<T>;
-
-
 
 
 #endif // _MATCH_CASE_HPP_

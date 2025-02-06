@@ -52,8 +52,8 @@ template <typename eval_expression, typename tswitch>
 struct type<eval_expression, tswitch> {
   using expression = eval_expression;
   using type_switch = tswitch;
-  using type_selection = tswitch::types_only;
-  using size_selection = tswitch::size_only;
+  using variant = tswitch::variant;
+  using sizes = tswitch::sizes;
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
@@ -65,8 +65,8 @@ struct type<eval_expression, tswitch> {
 template <fixed_string id, typename tswitch>
 struct type<match_field<id>, tswitch> {
   using type_switch = tswitch;
-  using type_selection = tswitch::types_only;
-  using size_selection = tswitch::size_only;
+  using variant = tswitch::variant;
+  using sizes = tswitch::sizes;
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)

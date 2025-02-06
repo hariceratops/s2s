@@ -2,7 +2,6 @@
 #define _COMPUTE_RES_
 
 #include <type_traits>
-#include <functional>
 #include "field_accessor.hpp"
 #include "field_list.hpp"
 #include "fixed_str_list.hpp"

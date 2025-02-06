@@ -5,6 +5,7 @@
 #include "compute_res.hpp"
 #include "match_case.hpp"
 #include "field_size.hpp"
+#include "type_deduction_helper.hpp"
 
 
 template <std::size_t idx, typename... cases>
@@ -37,9 +38,9 @@ struct type_switch_impl<idx, match_case_head, match_case_rest...> {
 // todo return tag constructed with match
 template <match_case_like case_head, match_case_like... case_rest>
 struct type_switch {
-  using types_only = std::variant<typename case_head::type_tag::type, typename case_rest::type_tag::type...>;
-  using size_only = field_size<size_choices<typename case_head::type_tag::field_size, typename case_rest::type_tag::field_size...>>;
-  
+  using variant = variant_from_type_conditions_v<case_head, case_rest...>;
+  using sizes = size_choices_from_type_conditions_v<case_head, case_rest...>;
+
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
     std::expected<std::size_t, std::string> 
