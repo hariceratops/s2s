@@ -105,6 +105,7 @@ struct read_field<T, F> {
 };
 
 
+// todo restore constexpr
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -145,7 +146,7 @@ struct read_variant_impl {
     F& field_list,
     std::ifstream& ifs, 
     std::size_t idx_r) :
-      ifs(ifs), variant(variant), field_list(field_list), idx_r(idx_r) {}
+      variant(variant), field_list(field_list), ifs(ifs), idx_r(idx_r) {}
 
   constexpr auto operator()() -> read_result {
     if (idx_r != idx) 
@@ -153,7 +154,7 @@ struct read_variant_impl {
 
     T field;
     auto reader = read_field<T, F>(field, field_list, ifs);
-    constexpr auto res = reader();
+    auto res = reader();
     if(!res)
       return std::unexpected(res.error());
     variant = std::move(field.value);
@@ -165,8 +166,8 @@ struct read_variant_impl {
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
 
-template <typename T, typename F, typename field_head, std::size_t idx_head, typename... fields, std::size_t... idx>
-struct read_variant_helper<T, F, field_choice_list<field_head, fields...>, std::index_sequence<idx_head, idx...>> {
+template <typename T, typename F, typename... fields, std::size_t... idx>
+struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequence<idx...>> {
   T& field;
   F& field_list;
   std::ifstream& ifs;
@@ -176,15 +177,17 @@ struct read_variant_helper<T, F, field_choice_list<field_head, fields...>, std::
     : field(field), field_list(field_list), ifs(ifs), idx_r(idx_r) {}
   
   constexpr auto operator()() -> read_result {
+    read_result pipeline_seed{};
     return (
-      read_variant_impl<idx_head, field_head, F, typename field_head::field_type>(field.value, field_list, ifs, idx_r) |
+      pipeline_seed |
       ... | 
-      read_variant_impl<idx, fields, F, typename fields::field_type>(field.value, field_list, ifs, idx_r)
+      read_variant_impl<idx, fields, F, typename T::field_type>(field.value, field_list, ifs, idx_r)
     );
   }
 };
 
 
+// todo restore constexpr
 template <union_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -197,24 +200,23 @@ struct read_field<T, F> {
   constexpr auto operator()() -> read_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
-    using field_type = typename T::field_type;
     constexpr auto max_type_index = T::variant_size;
 
-    constexpr auto type_index_deducer = type_deduction_guide();
-    constexpr auto type_index_result = type_deduction_guide(field_list); 
+    auto type_index_deducer = type_deduction_guide();
+    auto type_index_result = type_index_deducer(field_list); 
     if(!type_index_result)
       return std::unexpected(type_index_result.error());
 
-    constexpr auto idx_r = *type_index_result;
+    auto idx_r = *type_index_result;
     using read_helper_t = 
       read_variant_helper<
-        field_type, 
+        T, 
         F, 
         field_choices, 
         std::make_index_sequence<max_type_index>
       >;
-    constexpr auto field_reader = read_helper_t(field, field_list, ifs, idx_r);
-    constexpr auto field_read_res = field_reader();
+    auto field_reader = read_helper_t(field, field_list, ifs, idx_r);
+    auto field_read_res = field_reader();
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};

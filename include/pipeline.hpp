@@ -18,4 +18,8 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
   return res ? callable() : std::unexpected(res.error());
 }
 
+// auto operator|(auto&& callable_left, auto&& callable_right) -> read_result  {
+//   return callable_left() | callable_right;
+// }
+
 #endif // _PIPELINE_HPP_

@@ -29,7 +29,7 @@ template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
 
 template <typename T>
-using size_from_type_condition_v = size_from_type_condition<T>::type;
+using size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {

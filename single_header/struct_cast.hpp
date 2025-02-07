@@ -19410,6 +19410,10 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
   return res ? callable() : std::unexpected(res.error());
 }
 
+// auto operator|(auto&& callable_left, auto&& callable_right) -> read_result  {
+//   return callable_left() | callable_right;
+// }
+
 #endif // _PIPELINE_HPP_
 
 template <typename T>
@@ -19498,6 +19502,7 @@ struct read_field<T, F> {
   }
 };
 
+// todo restore constexpr
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -19537,7 +19542,7 @@ struct read_variant_impl {
     F& field_list,
     std::ifstream& ifs, 
     std::size_t idx_r) :
-      ifs(ifs), variant(variant), field_list(field_list), idx_r(idx_r) {}
+      variant(variant), field_list(field_list), ifs(ifs), idx_r(idx_r) {}
 
   constexpr auto operator()() -> read_result {
     if (idx_r != idx) 
@@ -19545,7 +19550,7 @@ struct read_variant_impl {
 
     T field;
     auto reader = read_field<T, F>(field, field_list, ifs);
-    constexpr auto res = reader();
+    auto res = reader();
     if(!res)
       return std::unexpected(res.error());
     variant = std::move(field.value);
@@ -19556,8 +19561,8 @@ struct read_variant_impl {
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
 
-template <typename T, typename F, typename field_head, std::size_t idx_head, typename... fields, std::size_t... idx>
-struct read_variant_helper<T, F, field_choice_list<field_head, fields...>, std::index_sequence<idx_head, idx...>> {
+template <typename T, typename F, typename... fields, std::size_t... idx>
+struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequence<idx...>> {
   T& field;
   F& field_list;
   std::ifstream& ifs;
@@ -19567,14 +19572,16 @@ struct read_variant_helper<T, F, field_choice_list<field_head, fields...>, std::
     : field(field), field_list(field_list), ifs(ifs), idx_r(idx_r) {}
   
   constexpr auto operator()() -> read_result {
+    read_result pipeline_seed{};
     return (
-      read_variant_impl<idx_head, field_head, F, typename field_head::field_type>(field.value, field_list, ifs, idx_r) |
+      pipeline_seed |
       ... | 
-      read_variant_impl<idx, fields, F, typename fields::field_type>(field.value, field_list, ifs, idx_r)
+      read_variant_impl<idx, fields, F, typename T::field_type>(field.value, field_list, ifs, idx_r)
     );
   }
 };
 
+// todo restore constexpr
 template <union_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -19587,24 +19594,23 @@ struct read_field<T, F> {
   constexpr auto operator()() -> read_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
-    using field_type = typename T::field_type;
     constexpr auto max_type_index = T::variant_size;
 
-    constexpr auto type_index_deducer = type_deduction_guide();
-    constexpr auto type_index_result = type_deduction_guide(field_list); 
+    auto type_index_deducer = type_deduction_guide();
+    auto type_index_result = type_index_deducer(field_list); 
     if(!type_index_result)
       return std::unexpected(type_index_result.error());
 
-    constexpr auto idx_r = *type_index_result;
+    auto idx_r = *type_index_result;
     using read_helper_t = 
       read_variant_helper<
-        field_type, 
+        T, 
         F, 
         field_choices, 
         std::make_index_sequence<max_type_index>
       >;
-    constexpr auto field_reader = read_helper_t(field, field_list, ifs, idx_r);
-    constexpr auto field_read_res = field_reader();
+    auto field_reader = read_helper_t(field, field_list, ifs, idx_r);
+    auto field_read_res = field_reader();
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};
@@ -24958,6 +24964,21 @@ static_assert(tl::all_are_same_v<tl::typelist<>>);
 
 #endif // _TYPELIST_HPP_
 
+#ifndef _ERROR_HPP_
+#define _ERROR_HPP_
+
+#include <expected>
+
+enum cast_error {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure
+};
+
+using read_result = std::expected<void, cast_error>;
+
+#endif // _ERROR_HPP_
+
 #ifndef _TYPE_LADDER_HPP_
 #define _TYPE_LADDER_HPP_
 
@@ -28613,6 +28634,21 @@ template <typename T>
 inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::res;
 
 #endif // _COMPUTE_RES_
+
+#ifndef _ERROR_HPP_
+#define _ERROR_HPP_
+
+#include <expected>
+
+enum cast_error {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure
+};
+
+using read_result = std::expected<void, cast_error>;
+
+#endif // _ERROR_HPP_
 
 #ifndef _TYPE_DEDUCTION_HELPER_HPP_
 #define _TYPE_DEDUCTION_HELPER_HPP_
@@ -32386,7 +32422,7 @@ template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
 
 template <typename T>
-using size_from_type_condition_v = size_from_type_condition<T>::type;
+using size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {
@@ -32418,9 +32454,9 @@ struct type_ladder_impl;
 template <std::size_t idx>
 struct type_ladder_impl<idx> {
   constexpr auto operator()(auto) const -> 
-    std::expected<std::size_t, std::string> 
+    std::expected<std::size_t, cast_error> 
   {
-    return std::unexpected("no matches found");
+    return std::unexpected(cast_error::type_deduction_failure);
   }
 };
 
@@ -32429,7 +32465,7 @@ template <std::size_t idx, typename clause_head, typename... clause_rest>
 struct type_ladder_impl<idx, clause_head, clause_rest...> {
   template <typename... fields>
   constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
-    std::expected<std::size_t, std::string> 
+    std::expected<std::size_t, cast_error> 
   {
     bool eval_result = clause_head::e(field_list);
     if(eval_result) return idx;
@@ -32445,7 +32481,7 @@ struct type_ladder<clause_head, clause_rest...> {
 
   template <typename... fields>
   constexpr auto operator()(struct_field_list<fields...>& field_list) const -> 
-    std::expected<std::size_t, std::string> 
+    std::expected<std::size_t, cast_error> 
   {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }
@@ -36110,6 +36146,21 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTE_RES_
 
+#ifndef _ERROR_HPP_
+#define _ERROR_HPP_
+
+#include <expected>
+
+enum cast_error {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure
+};
+
+using read_result = std::expected<void, cast_error>;
+
+#endif // _ERROR_HPP_
+
 #ifndef _MATCH_CASE_HPP_
 #define _MATCH_CASE_HPP_
 
@@ -40377,7 +40428,7 @@ template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
 
 template <typename T>
-using size_from_type_condition_v = size_from_type_condition<T>::type;
+using size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {
@@ -40403,9 +40454,9 @@ struct type_switch_impl;
 template <std::size_t idx>
 struct type_switch_impl<idx> {
   constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, std::string> 
+    std::expected<std::size_t, cast_error> 
   {
-    return std::unexpected("no matches found");
+    return std::unexpected(cast_error::type_deduction_failure);
   }
 };
 
@@ -40413,7 +40464,7 @@ struct type_switch_impl<idx> {
 template <std::size_t idx, match_case_like match_case_head, match_case_like... match_case_rest>
 struct type_switch_impl<idx, match_case_head, match_case_rest...> {
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, std::string> 
+    std::expected<std::size_t, cast_error> 
   {
     if(v == match_case_head::value) return idx;
     else return type_switch_impl<idx + 1, match_case_rest...>{}(v);
@@ -40432,7 +40483,7 @@ struct type_switch {
 
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, std::string> 
+    std::expected<std::size_t, cast_error> 
   {
     return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 
@@ -40486,7 +40537,7 @@ struct type<eval_expression, tswitch> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, std::string> const {
+    -> std::expected<std::size_t, cast_error> const {
     return type_switch{}(eval_expression{}(sfl)); 
   }
 };
@@ -40499,7 +40550,7 @@ struct type<match_field<id>, tswitch> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, std::string> const {
+    -> std::expected<std::size_t, cast_error> const {
     return type_switch{}(sfl[field_accessor<id>{}]); 
   }
 };
@@ -40513,7 +40564,7 @@ struct type<tladder> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, std::string> const {
+    -> std::expected<std::size_t, cast_error> const {
     return type_ladder{}(sfl);
   }
 };

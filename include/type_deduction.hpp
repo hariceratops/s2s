@@ -4,6 +4,7 @@
 #include <expected>
 #include "field_accessor.hpp"
 #include "typelist.hpp"
+#include "error.hpp"
 #include "type_ladder.hpp"
 #include "type_switch.hpp"
 
@@ -56,7 +57,7 @@ struct type<eval_expression, tswitch> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, std::string> const {
+    -> std::expected<std::size_t, cast_error> const {
     return type_switch{}(eval_expression{}(sfl)); 
   }
 };
@@ -69,7 +70,7 @@ struct type<match_field<id>, tswitch> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, std::string> const {
+    -> std::expected<std::size_t, cast_error> const {
     return type_switch{}(sfl[field_accessor<id>{}]); 
   }
 };
@@ -83,7 +84,7 @@ struct type<tladder> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, std::string> const {
+    -> std::expected<std::size_t, cast_error> const {
     return type_ladder{}(sfl);
   }
 };
