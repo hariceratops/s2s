@@ -186,4 +186,7 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
+// template <typename T>
+// concept fixed_buffer_containable = field_containable<T> || field_list_like
+
 #endif // _SC_META_HPP_

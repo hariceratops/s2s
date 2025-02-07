@@ -4,13 +4,14 @@
 
 #include "field.hpp"
 #include "field_size.hpp"
+#include "sc_type_traits.hpp"
 
 
 template <typename T>
 struct is_fixed_sized_field;
 
 // Specialization for field with fixed_size_like size
-template <fixed_string id, typename T, fixed_size_like size, auto constraint_on_value>
+template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
 struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -48,6 +49,27 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
 
+template <typename T>
+struct is_struct_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_struct_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_struct_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept struct_field_like = is_struct_field_v<T>;
+
 
 template <typename T>
 struct is_optional_field;
@@ -56,12 +78,12 @@ struct is_optional_field;
 template <fixed_string id, 
           typename T, 
           typename size, 
-          auto constraint_on_value, 
           typename present_only_if, 
+          auto constraint_on_value, 
           typename optional, 
           typename base_field>
 struct is_optional_field<
-    maybe_field<id, T, size, constraint_on_value, present_only_if, optional, base_field>
+    maybe_field<id, T, size, present_only_if, constraint_on_value, optional, base_field>
   > 
 {
   static constexpr bool res = true;
@@ -98,6 +120,11 @@ struct is_union_field<
 };
 
 template <typename T>
+struct is_union_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
 inline constexpr bool is_union_field_v = is_union_field<T>::res;
 
 template <typename T>
@@ -107,7 +134,8 @@ concept union_field_like = is_union_field_v<T>;
 
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
-                     variable_sized_field_like<T> || 
+                     variable_sized_field_like<T> ||
+                     struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
 //

@@ -1,7 +1,6 @@
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
 
-#include <variant>
 #include <expected>
 #include "field_accessor.hpp"
 #include "typelist.hpp"

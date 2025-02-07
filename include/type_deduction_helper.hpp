@@ -22,7 +22,7 @@ struct size_from_type_condition;
 
 template <type_condition_like match_case>
 struct size_from_type_condition {
-  using size = typename match_case::type_tag::size;
+  using size = typename match_case::type_tag::field_size;
 };
 
 template <typename T>

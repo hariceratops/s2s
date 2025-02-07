@@ -7,22 +7,10 @@
 #include <expected>
 #include <utility>
 #include "field_traits.hpp"
+#include "field_meta.hpp"
 #include "size_deduce.hpp"
 #include "error.hpp"
-
-
-using read_result = std::expected<void, cast_error>;
-
-
-template<variant_like T, typename F>
-constexpr auto operator|(std::expected<T, cast_error>&& exp, F&& func) {
-  return exp ? func(exp) : exp;
-}
-
-
-constexpr auto operator|(read_result& lhs, auto functor) {
-  if(lhs) return functor(*lhs); else return lhs;
-}
+#include "pipeline.hpp"
 
 
 template <typename T>
@@ -36,7 +24,7 @@ constexpr auto raw_read(T& value, std::ifstream& ifs, std::size_t size_to_read)
 }
 
 
-template <typename T, field_list_like F>
+template <typename T>
 constexpr auto read_scalar(T& value, std::size_t size_to_read, std::ifstream& ifs)
   -> read_result
 {
@@ -44,64 +32,70 @@ constexpr auto read_scalar(T& value, std::size_t size_to_read, std::ifstream& if
 }
 
 
-template <typename T, field_list_like F>
+template <typename T>
 constexpr auto read_vector(T& value, std::size_t len_to_read, std::ifstream& ifs) 
   -> read_result 
 {
-  constexpr auto size_of_one_elem = sizeof(decltype(value){}[0]);
+  constexpr auto size_of_one_elem = sizeof(T{}[0]);
+  value.resize(len_to_read);
   return raw_read(value, ifs, len_to_read * size_of_one_elem);
 }
 
 
-// todo ctad read<t,f>
-// todo inheritance for ctor boilerplate removal: read<t,f>
-// todo take expected<flist, error>|flist& as argument to operator
+// todo inheritance for ctor boilerplate removal: read<t,f>?
 template <typename F, typename L>
-struct read;
+struct read_field;
 
 template <fixed_sized_field_like T, field_list_like F>
-struct read<T, F> {
+struct read_field<T, F> {
   T& field;
   F& field_list;
   std::ifstream& ifs;
 
-  constexpr read(T& field, std::ifstream& ifs)
-    : field(field), ifs(ifs) {}
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
 
   constexpr auto operator()() const -> read_result {
-    return read_scalar(field.value, field_list, ifs);
+    using field_size = typename T::field_size;
+    constexpr auto size_to_read = deduce_field_size<field_size>{}();
+    return read_scalar(field.value, size_to_read, ifs);
   }
 };
 
 
 template <variable_sized_field_like T, field_list_like F>
-struct read<T, F> {
+struct read_field<T, F> {
   T& field;
   F& field_list;
   std::ifstream& ifs;
 
-  constexpr read(T& field, std::ifstream& ifs)
-    : field(field), ifs(ifs) {}
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
 
-  constexpr auto operator()(F& field_list) const -> read_result {
+  constexpr auto operator()() const -> read_result {
     using field_size = typename T::field_size;
-    constexpr auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return read_vector(field.value, field_list, ifs);
+    auto len_to_read = deduce_field_size<field_size>{}(field_list);
+    return read_vector(field.value, len_to_read, ifs);
   }
 };
 
 
-template <field_list_like T, field_list_like F>
-struct read<T, F> {
+// Forward declaration
+template <field_list_like T>
+constexpr auto struct_cast(std::ifstream&) -> std::expected<T, cast_error>;
+
+template <struct_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
   std::ifstream& ifs;
 
-  constexpr read(T& field, std::ifstream& ifs)
-    : field(field), ifs(ifs) {}
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
 
-  constexpr auto operator()([[maybe_unused]] F& field_list) const -> read_result {
-    auto res = struct_cast<T>(ifs);
+  constexpr auto operator()() const -> read_result {
+    using field_list_t = extract_type_from_field_v<T>;
+    auto res = struct_cast<field_list_t>(ifs);
     if(!res)
       return std::unexpected(res.error());
     // todo move?
@@ -112,23 +106,23 @@ struct read<T, F> {
 
 
 template <optional_field_like T, field_list_like F>
-struct read<T, F> {
+struct read_field<T, F> {
   T& field;
   F& field_list;
   std::ifstream& ifs;
 
-  constexpr read(T& field, std::ifstream& ifs): 
-    field(field), ifs(ifs) {}
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs): 
+    field(field), field_list(field_list), ifs(ifs) {}
   
-  constexpr auto operator()(F& field_list) -> read_result {
+  constexpr auto operator()() -> read_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;
       return {};
     }
     using field_base_type_t = typename T::field_base_type;
-    constexpr field_base_type_t base_field{};
-    constexpr read<field_base_type_t, F> reader(base_field, field_list, ifs);
-    constexpr auto res = reader();
+    field_base_type_t base_field{};
+    read_field<field_base_type_t, F> reader(base_field, field_list, ifs);
+    auto res = reader();
     if(!res) 
       return std::unexpected(res.error());
     // todo is move guaranteed
@@ -141,15 +135,15 @@ struct read<T, F> {
 // Helper function to read bytes into the variant
 template<std::size_t idx, typename T, typename F, typename V>
 struct read_variant_impl {
-  std::ifstream& ifs;
   V& variant;
-  std::size_t idx_r;
   F& field_list;
+  std::ifstream& ifs;
+  std::size_t idx_r;
 
   constexpr explicit read_variant_impl(
-    std::ifstream& ifs, 
     V& variant, 
     F& field_list,
+    std::ifstream& ifs, 
     std::size_t idx_r) :
       ifs(ifs), variant(variant), field_list(field_list), idx_r(idx_r) {}
 
@@ -158,7 +152,7 @@ struct read_variant_impl {
       return {};
 
     T field;
-    auto reader = read<T, F>(field, field_list, ifs);
+    auto reader = read_field<T, F>(field, field_list, ifs);
     constexpr auto res = reader();
     if(!res)
       return std::unexpected(res.error());
@@ -183,23 +177,24 @@ struct read_variant_helper<T, F, field_choice_list<field_head, fields...>, std::
   
   constexpr auto operator()() -> read_result {
     return (
-      read_variant_impl<idx_head, field_head, F, typename field_head::field_type>(field, ifs, idx_r) |
+      read_variant_impl<idx_head, field_head, F, typename field_head::field_type>(field.value, field_list, ifs, idx_r) |
       ... | 
-      read_variant_impl<idx, fields, F, typename fields::field_type>(field, ifs, idx_r)
+      read_variant_impl<idx, fields, F, typename fields::field_type>(field.value, field_list, ifs, idx_r)
     );
   }
 };
 
 
 template <union_field_like T, field_list_like F>
-struct read<T, F> {
+struct read_field<T, F> {
   T& field;
+  F& field_list;
   std::ifstream& ifs;
 
-  constexpr read(T& field, std::ifstream& ifs): 
-    field(field), ifs(ifs) {}
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs): 
+    field(field), field_list(field_list), ifs(ifs) {}
 
-  constexpr auto operator()(F& field_list) -> read_result {
+  constexpr auto operator()() -> read_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     using field_type = typename T::field_type;
@@ -209,9 +204,17 @@ struct read<T, F> {
     constexpr auto type_index_result = type_deduction_guide(field_list); 
     if(!type_index_result)
       return std::unexpected(type_index_result.error());
+
     constexpr auto idx_r = *type_index_result;
-    constexpr auto field_read_res = 
-      read_variant_helper<field_type, F, field_choices, std::make_index_sequence<max_type_index>>(field, field_list, ifs, idx_r);
+    using read_helper_t = 
+      read_variant_helper<
+        field_type, 
+        F, 
+        field_choices, 
+        std::make_index_sequence<max_type_index>
+      >;
+    constexpr auto field_reader = read_helper_t(field, field_list, ifs, idx_r);
+    constexpr auto field_read_res = field_reader();
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};

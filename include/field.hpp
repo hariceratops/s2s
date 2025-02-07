@@ -23,11 +23,13 @@ struct field {
 template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
 using to_optional_field = field<id, std::optional<T>, size_type, constraint_on_value>;
 
+// todo maybe provide field directly as template parameter constrained?
+// will solve constraint issue and also produces clean API
 template <fixed_string id, 
           typename T, 
           typename size_type, 
-          auto constraint_on_value, 
           typename present_only_if,
+          auto constraint_on_value = no_constraint<T>{},
           typename optional = to_optional_field<id, T, size_type, constraint_on_value>,
           typename base_field = field<id, T, size_type, constraint_on_value>>
 class maybe_field : public optional
@@ -46,11 +48,11 @@ struct to_field_choices;
 
 template <fixed_string id, typename T, typename field_size>
 struct to_field_choice {
-  using field = field<id, T, field_size, no_constraint<T>{}>;
+  using field_choice = field<id, T, field_size, no_constraint<T>{}>;
 };
 
 template <fixed_string id, typename T, typename field_size>
-using to_field_choice_v = to_field_choice<id, T, field_size>::field;
+using to_field_choice_v = to_field_choice<id, T, field_size>::field_choice;
 
 template <fixed_string id, typename... types, typename... sizes>
 struct to_field_choices<id, std::variant<types...>, field_size<size_choices<sizes...>>> {

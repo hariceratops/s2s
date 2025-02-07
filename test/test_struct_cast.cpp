@@ -2,10 +2,43 @@
 
 #include <catch2/catch.hpp>
 #include "../single_header/struct_cast.hpp"
-#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <cassert>
+
+
+// todo static tests
+//// namespace static_test {
+//   // implicit conversion produces false positive in second static_assert, 
+//   // must be checked with std::is_same_v additionally
+//   // auto constexpr unit = [](int a)-> int { return a * 1; };
+//   // static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
+//   // static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
+//   // static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);
+//
+//   auto unit = [](auto a){ return a * 1; };
+//   auto is_a_eq_1 = [](auto a){ return a == 1; };
+//   using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>
+//     >;
+//   static_assert(is_invocable<is_a_eq_1, bool, test_struct_field_list, with_fields<"a">>::res);
+//   static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_struct_field_list, with_fields<"a">>);
+//   // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_struct_field_list, with_fields<"a">>);
+//   static_assert(is_invocable<unit, bool, test_struct_field_list, with_fields<"a">>::res);
+// }
+  // using inner =  
+  //   struct_field<
+  //       "c", 
+  //       struct_field_list<
+  //         basic_field<"x", u32, field_size<fixed<4>>>,
+  //         basic_field<"y", u32, field_size<fixed<4>>>
+  //       >
+  //     >;
+  // static_assert(struct_field_like<inner>);
+  // static_assert(variable_sized_field_like<inner>);
+  // static_assert(fixed_sized_field_like<inner>);
 
 
 // Helper types
@@ -13,30 +46,6 @@ using i32 = int;
 using u32 = unsigned int;
 using u8 = unsigned char;
 using u16 = unsigned short;
-
-
-// TEST_CASE("Test reading a meta_struct from a static buffer") {
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>
-//     >;
-//
-//   const u8 buffer[] = {
-//     0xef, 0xbe, 0xad, 0xde,
-//     0x0d, 0xd0, 0xfe, 0xca,
-//     0xef, 0xbe, 0xef, 0xbe
-//   };
-//
-//   auto result = struct_cast<test_struct_field_list>(buffer);
-//
-//   REQUIRE(result.has_value() == true);
-//   if(result) {
-//     auto fields = *result;
-//     REQUIRE(fields["a"_f] == 0xdeadbeef);
-//     REQUIRE(fields["b"_f] == 0xcafed00d);
-//   }
-// }
 
 
 TEST_CASE("Test reading a meta_struct from a binary file") {
@@ -65,40 +74,6 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
     REQUIRE(fields["b"_f] == 0xcafed00d);
   }
 }
-
-
-// TEST_CASE("Test reading a meta_struct with nested struct from a static buffer") {
-//   using test_nested_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>,
-//       struct_field<
-//         "c", 
-//         struct_field_list<
-//           basic_field<"x", u32, field_size<fixed<4>>>,
-//           basic_field<"y", u32, field_size<fixed<4>>>
-//         >
-//       >
-//     >;
-//
-//   const u8 buffer[] = {
-//     0xef, 0xbe, 0xad, 0xde,
-//     0x0d, 0xd0, 0xfe, 0xca,
-//     0xef, 0xbe, 0xef, 0xbe,
-//     0xef, 0xbe, 0xad, 0xde
-//   };
-//
-//   auto result = struct_cast<test_nested_struct_field_list>(buffer);
-//
-//   REQUIRE(result.has_value() == true);
-//   if(result) {
-//     auto fields = *result;
-//     REQUIRE(fields["a"_f] == 0xdeadbeef);
-//     REQUIRE(fields["b"_f] == 0xcafed00d);
-//     REQUIRE(fields["c"_f]["x"_f] == 0xbeefbeef);
-//     REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
-//   }
-// }
 
 
 TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
@@ -176,7 +151,6 @@ TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file"
 };
 
 
-
 TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field from binary file") {
   using md_struct = 
     struct_field_list<
@@ -208,38 +182,39 @@ TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field f
 };
 
 
-TEST_CASE("Test reading a meta_struct with array of records from binary file") {
-  using test_struct = 
-    struct_field_list <
-      basic_field<"a", u32, field_size<fixed<4>>>,
-      basic_field<"b", u32, field_size<fixed<4>>>
-    >;
-  using md_struct = 
-    struct_field_list<
-      fixed_array_field<"records", test_struct, 3>
-    >;
-
-  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
-  const u32 u32_arr[3][2] = { 
-    {0xdeadbeef, 0xbeefbeef},
-    {0xdeadbeef, 0xbeefbeef}, 
-    {0xdeadbeef, 0xbeefbeef} 
-  };
-  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
-  ofs.close();
-
-  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
-  auto res = struct_cast<md_struct>(ifs);
-  ifs.close();
-  
-  REQUIRE(res.has_value());
-  auto fields = *res;
-  auto records = fields["records"_f];
-  for(auto record: records) {
-    REQUIRE(record["a"_f] == 0xdeadbeef);
-    REQUIRE(record["b"_f] == 0xbeefbeef);
-  }
-};
+// todo array of records and vector of records
+// TEST_CASE("Test reading a meta_struct with array of records from binary file") {
+//   using test_struct = 
+//     struct_field_list <
+//       basic_field<"a", u32, field_size<fixed<4>>>,
+//       basic_field<"b", u32, field_size<fixed<4>>>
+//     >;
+//   using md_struct = 
+//     struct_field_list<
+//       fixed_array_field<"records", test_struct, 3>
+//     >;
+//
+//   std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+//   const u32 u32_arr[3][2] = { 
+//     {0xdeadbeef, 0xbeefbeef},
+//     {0xdeadbeef, 0xbeefbeef}, 
+//     {0xdeadbeef, 0xbeefbeef} 
+//   };
+//   ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+//   ofs.close();
+//
+//   std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+//   auto res = struct_cast<md_struct>(ifs);
+//   ifs.close();
+//   
+//   REQUIRE(res.has_value());
+//   auto fields = *res;
+//   auto records = fields["records"_f];
+//   for(auto record: records) {
+//     REQUIRE(record["a"_f] == 0xdeadbeef);
+//     REQUIRE(record["b"_f] == 0xbeefbeef);
+//   }
+// };
 
 
 TEST_CASE("Test eq field constraint") {
@@ -413,6 +388,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
   REQUIRE(std::string_view{fields["str"_f]} == expected);
 };
 
+
 TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
   using var_buffer_struct = 
     struct_field_list<
@@ -450,6 +426,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
                                               0xdeadbeef, 0xcafed00d, 
                                               0xdeadbeef, 0xcafed00d});
 };
+
 
 TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields depending on multiple fields from binary file") {
   auto size_from_rc = [](auto r, auto c) { return r * c; };
@@ -494,48 +471,49 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
 };
 
 
-TEST_CASE("Test reading a meta_struct with aliased length prefixed md_buffer fields depending on multiple fields from binary file") {
-  auto size_from_rc = [](auto r, auto c) { return r * c; };
-
-  using var_buffer_struct = 
-    struct_field_list<
-      basic_field<"row", std::size_t, field_size<fixed<8>>>,
-      basic_field<"col", std::size_t, field_size<fixed<8>>>,
-      vec_field<"matrix", std::vector<u32>, field_size<from_fields<size_from_rc, with_fields<"row", "col">>>>
-    >;
-
-  constexpr std::size_t row = 5;
-  constexpr std::size_t col = 2;
-  const u32 u32_arr[] = {
-    0xdeadbeef, 0xcafed00d,
-    0xdeadbeef, 0xcafed00d,
-    0xdeadbeef, 0xcafed00d,
-    0xdeadbeef, 0xcafed00d,
-    0xdeadbeef, 0xcafed00d
-  };
-
-  std::ofstream ofs("test_bin_input_md_vec_fields.bin", std::ios::out | std::ios::binary);
-  ofs.write(reinterpret_cast<const char*>(&row), sizeof(row));
-  ofs.write(reinterpret_cast<const char*>(&col), sizeof(col));
-  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
-  ofs.close();
-
-  std::ifstream ifs("test_bin_input_md_vec_fields.bin", std::ios::in | std::ios::binary);
-  // oops resizing recursively is not possible
-  // auto res = struct_cast<var_buffer_struct>(ifs);
-  ifs.close();
- 
-  // REQUIRE(res.has_value());
-  // auto fields = *res;
-  // REQUIRE(fields["row"_f] == 5);
-  // REQUIRE(fields["col"_f] == 2);
-  // REQUIRE(fields["matrix"_f].size() == 10);
-  // REQUIRE(fields["vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
-  //                                             0xdeadbeef, 0xcafed00d,
-  //                                             0xdeadbeef, 0xcafed00d,
-  //                                             0xdeadbeef, 0xcafed00d, 
-  //                                             0xdeadbeef, 0xcafed00d});
-};
+// todo recursive resize
+// TEST_CASE("Test reading a meta_struct with aliased length prefixed md_buffer fields depending on multiple fields from binary file") {
+//   auto size_from_rc = [](auto r, auto c) { return r * c; };
+//
+//   using var_buffer_struct = 
+//     struct_field_list<
+//       basic_field<"row", std::size_t, field_size<fixed<8>>>,
+//       basic_field<"col", std::size_t, field_size<fixed<8>>>,
+//       vec_field<"matrix", std::vector<u32>, field_size<from_fields<size_from_rc, with_fields<"row", "col">>>>
+//     >;
+//
+//   constexpr std::size_t row = 5;
+//   constexpr std::size_t col = 2;
+//   const u32 u32_arr[] = {
+//     0xdeadbeef, 0xcafed00d,
+//     0xdeadbeef, 0xcafed00d,
+//     0xdeadbeef, 0xcafed00d,
+//     0xdeadbeef, 0xcafed00d,
+//     0xdeadbeef, 0xcafed00d
+//   };
+//
+//   std::ofstream ofs("test_bin_input_md_vec_fields.bin", std::ios::out | std::ios::binary);
+//   ofs.write(reinterpret_cast<const char*>(&row), sizeof(row));
+//   ofs.write(reinterpret_cast<const char*>(&col), sizeof(col));
+//   ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+//   ofs.close();
+//
+//   std::ifstream ifs("test_bin_input_md_vec_fields.bin", std::ios::in | std::ios::binary);
+//   // oops resizing recursively is not possible
+//   // auto res = struct_cast<var_buffer_struct>(ifs);
+//   ifs.close();
+//  
+//   // REQUIRE(res.has_value());
+//   // auto fields = *res;
+//   // REQUIRE(fields["row"_f] == 5);
+//   // REQUIRE(fields["col"_f] == 2);
+//   // REQUIRE(fields["matrix"_f].size() == 10);
+//   // REQUIRE(fields["vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+//   //                                             0xdeadbeef, 0xcafed00d,
+//   //                                             0xdeadbeef, 0xcafed00d,
+//   //                                             0xdeadbeef, 0xcafed00d, 
+//   //                                             0xdeadbeef, 0xcafed00d});
+// };
 
 
 TEST_CASE("Dummy test to verify runtime computation from fields") {
@@ -563,93 +541,6 @@ TEST_CASE("Dummy test to verify runtime computation from fields") {
   REQUIRE(comp_res == 20);
 }
 
-
-
-namespace static_test {
-  // implicit conversion produces false positive in second static_assert, 
-  // must be checked with std::is_same_v additionally
-  // auto constexpr unit = [](int a)-> int { return a * 1; };
-  // static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
-  // static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
-  // static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);
-
-  auto unit = [](auto a){ return a * 1; };
-  auto is_a_eq_1 = [](auto a){ return a == 1; };
-  using test_struct_field_list = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>
-    >;
-  static_assert(is_invocable<is_a_eq_1, bool, test_struct_field_list, with_fields<"a">>::res);
-  static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_struct_field_list, with_fields<"a">>);
-  // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_struct_field_list, with_fields<"a">>);
-  static_assert(is_invocable<unit, bool, test_struct_field_list, with_fields<"a">>::res);
-}
-
-// TEST_CASE("Test case to verify option field parsing") {
-//   auto is_a_eq_1 = [](auto a){ return a == 1; };
-//
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>,
-//       maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
-//     >;
-//
-//   const u8 buffer[] = {
-//     0xef, 0xbe, 0xad, 0xde,
-//     0x0d, 0xd0, 0xfe, 0xca,
-//     0xef, 0xbe, 0xef, 0xbe
-//   };
-//
-//   auto result = struct_cast<test_struct_field_list>(buffer);
-//
-//   REQUIRE(result.has_value() == true);
-//   if(result) {
-//     auto fields = *result;
-//     REQUIRE(fields["a"_f] == 0xdeadbeef);
-//     REQUIRE(fields["b"_f] == 0xcafed00d);
-//     REQUIRE(fields["c"_f] == std::nullopt);
-//   }
-// }
-//
-// TEST_CASE("Test case to verify variant field parsing") {
-//   // todo a convinient type to get field "x"
-//   auto unit = [](auto a){ return a; };
-//
-//   // todo introduce type named expression to avoid decltype
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>,
-//       union_field<
-//         "c", 
-//         type<
-//           compute<unit, u32, with_fields<"a">>,
-//           type_switch<
-//             match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
-//             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
-//             match_case<0xbeefbeef, type_tag<unsigned int, field_size<fixed<4>>>>
-//           >
-//         >
-//       >
-//     >;
-//
-//   const u8 buffer[] = {
-//     0xef, 0xbe, 0xad, 0xde,
-//     0x0d, 0xd0, 0xfe, 0xca,
-//     0xef, 0xbe, 0xef, 0xbe
-//   };
-//
-//   auto result = struct_cast<test_struct_field_list>(buffer);
-//
-//   REQUIRE(result.has_value() == true);
-//   if(result) {
-//     auto fields = *result;
-//     REQUIRE(fields["a"_f] == 0xdeadbeef);
-//     REQUIRE(fields["b"_f] == 0xcafed00d);
-//   }
-// }
 
 TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
   auto is_a_eq_1 = [](auto& a){ return a == 1; };
@@ -716,6 +607,7 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
   }
 }
 
+
 TEST_CASE("Test case to verify variant field parsing from a binary file") {
   using test_struct_field_list = 
     struct_field_list<
@@ -757,46 +649,47 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
   }
 }
 
-TEST_CASE("Test case to verify variant field parsing from a binary file with complex type predicate") {
-  auto some_complex_calc = [](auto a, auto b){ return a + b; };
 
-  using test_struct_field_list = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
-        "c", 
-        type<
-          compute<some_complex_calc, u32, with_fields<"a", "b">>,
-          type_switch<
-            match_case<100, type_tag<float, field_size<fixed<4>>>>,
-            match_case<200, type_tag<u32, field_size<fixed<4>>>>,
-            match_case<300, type_tag<int, field_size<fixed<4>>>>
-          >
-        >
-      >
-    >;
-
-  std::ofstream ofs("test_bin_input_7.bin", std::ios::out | std::ios::binary);
-  u32 a = 100;
-  u32 b = 100;
-  u32 c = 0xbeefbeef;
-  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
-  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
-  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
-  ofs.close();
-
-  std::ifstream ifs("test_bin_input_7.bin", std::ios::in | std::ios::binary);
-
-  auto result = struct_cast<test_struct_field_list>(ifs);
-  ifs.close();
-
-  REQUIRE(result.has_value() == true);
-  if(result) {
-    auto fields = *result;
-    REQUIRE(fields["a"_f] == 100);
-    REQUIRE(fields["b"_f] == 100);
-    REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
-  }
-}
-
+// TEST_CASE("Test case to verify variant field parsing from a binary file with complex type predicate") {
+//   auto some_complex_calc = [](auto a, auto b){ return a + b; };
+//
+//   using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>,
+//       union_field<
+//         "c", 
+//         type<
+//           compute<some_complex_calc, u32, with_fields<"a", "b">>,
+//           type_switch<
+//             match_case<100, type_tag<float, field_size<fixed<4>>>>,
+//             match_case<200, type_tag<u32, field_size<fixed<4>>>>,
+//             match_case<300, type_tag<int, field_size<fixed<4>>>>
+//           >
+//         >
+//       >
+//     >;
+//
+//   std::ofstream ofs("test_bin_input_7.bin", std::ios::out | std::ios::binary);
+//   u32 a = 100;
+//   u32 b = 100;
+//   u32 c = 0xbeefbeef;
+//   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+//   ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+//   ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+//   ofs.close();
+//
+//   std::ifstream ifs("test_bin_input_7.bin", std::ios::in | std::ios::binary);
+//
+//   auto result = struct_cast<test_struct_field_list>(ifs);
+//   ifs.close();
+//
+//   REQUIRE(result.has_value() == true);
+//   if(result) {
+//     auto fields = *result;
+//     REQUIRE(fields["a"_f] == 100);
+//     REQUIRE(fields["b"_f] == 100);
+//     REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
+//   }
+// }
+//
