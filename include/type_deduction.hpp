@@ -79,8 +79,8 @@ struct type<match_field<id>, tswitch> {
 template <typename tladder>
 struct type<tladder> {
   using type_ladder = tladder;
-  using type_selection = tladder::types_only;
-  using size_selection = tladder::size_only;
+  using variant = tladder::variant;
+  using sizes = tladder::sizes;
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)

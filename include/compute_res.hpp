@@ -59,7 +59,7 @@ struct compute<callable, R, fixed_string_list<req_fields...>>{
                 R,
                 struct_field_list<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) -> R {
+  constexpr auto operator()(const struct_field_list<fields...>& flist) const -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
