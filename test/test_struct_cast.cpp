@@ -76,6 +76,28 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
 }
 
 
+TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") {
+  using test_struct_field_list = 
+   struct_field_list<
+     basic_field<"a", u32, field_size<fixed<4>>>, 
+     basic_field<"b", u32, field_size<fixed<4>>>
+  >;
+
+  std::ofstream ofs("test_buffer_exhaustion.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.close();
+
+  std::ifstream ifs("test_buffer_exhaustion.bin", std::ios::in | std::ios::binary);
+
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == false);
+  REQUIRE(result.error() == cast_error::buffer_exhaustion);
+}
+
+
 TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
    using test_nested_struct_field_list = 
     struct_field_list<
