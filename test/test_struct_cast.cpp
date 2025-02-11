@@ -737,13 +737,120 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with com
 }
 
 
-// todo clause based union field
+TEST_CASE("Test case to verify parsing variant field with multiple struct field choices") {
+  using inner_1 = 
+   struct_field_list<
+     basic_field<"x", u32, field_size<fixed<4>>>, 
+     basic_field<"y", u32, field_size<fixed<4>>>
+  >;
+
+  using inner_2 = 
+   struct_field_list<
+     basic_field<"p", u32, field_size<fixed<4>>>, 
+     basic_field<"q", u32, field_size<fixed<4>>>
+  >;
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          match_field<"a">,
+          type_switch<
+            match_case<0xcafed00d, type_tag<inner_1, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, type_tag<inner_2, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 c = 0xbeefbeef;
+  u32 d = 0xbeefd00d;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  ofs.write(reinterpret_cast<const char*>(&d), sizeof(d));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    auto c = std::get<inner_2>(fields["c"_f]);
+    REQUIRE(c["p"_f] == 0xbeefbeef);
+    REQUIRE(c["q"_f] == 0xbeefd00d);
+  }
+}
+
+
+TEST_CASE("Test case to verify failed parsing variant field") {
+  using inner_1 = 
+   struct_field_list<
+     basic_field<"x", u32, field_size<fixed<4>>>, 
+     basic_field<"y", u32, field_size<fixed<4>>>
+  >;
+
+  using inner_2 = 
+   struct_field_list<
+     basic_field<"p", u32, field_size<fixed<4>>>, 
+     basic_field<"q", u32, field_size<fixed<4>>>
+  >;
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          match_field<"a">,
+          type_switch<
+            match_case<0xcafed00d, type_tag<inner_1, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, type_tag<inner_2, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xbeefbeef;
+  u32 b = 0xbeefbeef;
+  u32 c = 0xbeefbeef;
+  u32 d = 0xbeefd00d;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  ofs.write(reinterpret_cast<const char*>(&d), sizeof(d));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == false);
+  REQUIRE(result.error() == cast_error::type_deduction_failure);
+}
+
+
 TEST_CASE("Test case to verify variant field parsing from a binary file with binary clauses") {
   auto bool_predicate_1 = [](auto a, auto b){ return a + b >= 20000 && a + b < 40000; };
   auto bool_predicate_2 = [](auto a, auto b){ return a + b <= 40000 && a + b < 60000; };
   auto bool_predicate_3 = [](auto a, auto b){ return a + b >= 60000; };
   
   // todo type tag entries shall be unique with respect to type
+  // todo possible convinent short hand for eval_bool_from_fields
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
