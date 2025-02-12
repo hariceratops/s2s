@@ -100,33 +100,6 @@ struct create_field_from_array_of_records<T> {
 template <typename T>
 using create_field_from_array_of_records_v = create_field_from_array_of_records<T>::res;
 
-template <array_of_record_field_like T, field_list_like F>
-struct read_field<T, F> {
-  T& field;
-  F& field_list;
-  std::ifstream& ifs;
-
-  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
-    : field(field), field_list(field_list), ifs(ifs) {}
-
-  constexpr auto operator()() const -> read_result {
-    using array_type = typename T::field_type;
-    using array_element_field = create_field_from_array_of_records_v<T>;
-    constexpr auto array_len = extract_size_from_array_v<array_type>;
-
-    for(std::size_t count = 0; count < array_len; ++count) {
-      array_element_field t;
-      auto reader = read_field<array_element_field, F>(t, field_list, ifs);
-      auto res = reader();
-      if(!res) 
-        return std::unexpected(res.error());
-      field.value[count] = t.value;
-    }
-    return {};
-  }
-};
-
-
 struct not_vector_of_records_field {};
 
 template <typename T>
@@ -146,6 +119,51 @@ struct create_field_from_vector_of_records<T> {
 template <typename T>
 using create_field_from_vector_of_records_v = create_field_from_vector_of_records<T>::res;
 
+template <typename T, typename F, typename E>
+struct read_buffer_of_records {
+  T& field;
+  F& field_list;
+  std::ifstream& ifs;
+  std::size_t len_to_read;
+
+  constexpr read_buffer_of_records(T& field, F& field_list, std::ifstream& ifs, std::size_t len_to_read)
+    : field(field), field_list(field_list), ifs(ifs), len_to_read(len_to_read) {}
+
+  constexpr auto operator()() const -> read_result {
+    for(std::size_t count = 0; count < len_to_read; ++count) {
+      E elem;
+      auto reader = read_field<E, F>(elem, field_list, ifs);
+      auto res = reader();
+      if(!res) 
+        return std::unexpected(res.error());
+      field.value[count] = elem.value;
+    }
+    return {};
+  }
+};
+
+template <array_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+  std::ifstream& ifs;
+
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
+
+  constexpr auto operator()() const -> read_result {
+    using array_type = typename T::field_type;
+    using array_element_field = create_field_from_array_of_records_v<T>;
+    using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
+
+    constexpr auto array_len = extract_size_from_array_v<array_type>;
+    auto reader = read_impl_t(field, field_list, ifs, array_len);
+    auto res = reader();
+    return res;
+  }
+};
+
+
 template <vector_of_record_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -158,19 +176,13 @@ struct read_field<T, F> {
   constexpr auto operator()() const -> read_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     using field_size = typename T::field_size;
+    using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
 
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     field.value.resize(len_to_read);
-
-    for(std::size_t count = 0; count < len_to_read; ++count) {
-      vector_element_field t;
-      auto reader = read_field<vector_element_field, F>(t, field_list, ifs);
-      auto res = reader();
-      if(!res) 
-        return std::unexpected(res.error());
-      field.value[count] = t.value;
-    }
-    return {};
+    auto reader = read_impl_t(field, field_list, ifs, len_to_read);
+    auto res = reader();
+    return res;
   }
 };
 
