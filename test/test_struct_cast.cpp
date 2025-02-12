@@ -874,9 +874,9 @@ TEST_CASE("Test case to verify failed parsing variant field") {
 
 
 TEST_CASE("Test case to verify variant field parsing from a binary file with binary clauses") {
-  auto bool_predicate_1 = [](auto a, auto b){ return a + b >= 20000 && a + b < 40000; };
-  auto bool_predicate_2 = [](auto a, auto b){ return a + b <= 40000 && a + b < 60000; };
-  auto bool_predicate_3 = [](auto a, auto b){ return a + b >= 60000; };
+  auto bpred_1 = [](auto a, auto b){ return a + b >= 20000 && a + b < 40000; };
+  auto bpred_2 = [](auto a, auto b){ return a + b <= 40000 && a + b < 60000; };
+  auto bpred_3 = [](auto a, auto b){ return a + b >= 60000; };
   
   // todo type tag entries shall be unique with respect to type
   // todo possible convinent short hand for eval_bool_from_fields
@@ -888,9 +888,9 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with bin
         "c", 
         type<
           type_ladder<
-            clause<eval_bool_from_fields<bool_predicate_1, with_fields<"a", "b">>, type_tag<float, field_size<fixed<4>>>>,
-            clause<eval_bool_from_fields<bool_predicate_2, with_fields<"a", "b">>, type_tag<u32, field_size<fixed<4>>>>,
-            clause<eval_bool_from_fields<bool_predicate_3, with_fields<"a", "b">>, type_tag<int, field_size<fixed<4>>>>
+            clause<predicate<bpred_1, with_fields<"a", "b">>, type_tag<float, field_size<fixed<4>>>>,
+            clause<predicate<bpred_2, with_fields<"a", "b">>, type_tag<u32, field_size<fixed<4>>>>,
+            clause<predicate<bpred_3, with_fields<"a", "b">>, type_tag<int, field_size<fixed<4>>>>
           >
         >
       >
