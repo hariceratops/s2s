@@ -127,6 +127,54 @@ struct read_field<T, F> {
 };
 
 
+struct not_vector_of_records_field {};
+
+template <typename T>
+struct create_field_from_vector_of_records;
+
+template <vector_of_record_field_like T>
+struct create_field_from_vector_of_records<T> {
+  using vector_type = typename T::field_type;
+  using vector_elem_type = extract_type_from_vec_t<vector_type>;
+  static constexpr auto field_id = T::field_id;
+  using size = field_size<size_dont_care>;
+  static constexpr auto constraint = no_constraint<vector_elem_type>{};
+
+  using res = field<field_id, vector_elem_type, size, constraint>;
+};
+
+template <typename T>
+using create_field_from_vector_of_records_v = create_field_from_vector_of_records<T>::res;
+
+template <vector_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+  std::ifstream& ifs;
+
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
+
+  constexpr auto operator()() const -> read_result {
+    using vector_element_field = create_field_from_vector_of_records_v<T>;
+    using field_size = typename T::field_size;
+
+    auto len_to_read = deduce_field_size<field_size>{}(field_list);
+    field.value.resize(len_to_read);
+
+    for(std::size_t count = 0; count < len_to_read; ++count) {
+      vector_element_field t;
+      auto reader = read_field<vector_element_field, F>(t, field_list, ifs);
+      auto res = reader();
+      if(!res) 
+        return std::unexpected(res.error());
+      field.value[count] = t.value;
+    }
+    return {};
+  }
+};
+
+
 // Forward declaration
 template <field_list_like T>
 constexpr auto struct_cast(std::ifstream&) -> std::expected<T, cast_error>;

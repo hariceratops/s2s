@@ -500,6 +500,44 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
 };
 
 
+TEST_CASE("Test reading a meta_struct with vector of records from binary file") {
+  using test_struct = 
+    struct_field_list <
+      basic_field<"a", u32, field_size<fixed<4>>>,
+      basic_field<"b", u32, field_size<fixed<4>>>
+    >;
+  using md_struct = 
+    struct_field_list<
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      vector_of_records<"records", test_struct, field_size<from_field<"len">>>
+    >;
+  
+  // todo we get segfault/exception if length is missing in the binary
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  constexpr std::size_t vec_len = 3;
+  const u32 u32_arr[3][2] = { 
+    {0xdeadbeef, 0xbeefbeef},
+    {0xdeadbeef, 0xbeefbeef}, 
+    {0xdeadbeef, 0xbeefbeef} 
+  };
+  ofs.write(reinterpret_cast<const char*>(&vec_len), sizeof(vec_len));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<md_struct>(ifs);
+  ifs.close();
+  
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  auto records = fields["records"_f];
+  for(auto record: records) {
+    REQUIRE(record["a"_f] == 0xdeadbeef);
+    REQUIRE(record["b"_f] == 0xbeefbeef);
+  }
+};
+
+
 // todo recursive resize
 // TEST_CASE("Test reading a meta_struct with aliased length prefixed md_buffer fields depending on multiple fields from binary file") {
 //   auto size_from_rc = [](auto r, auto c) { return r * c; };

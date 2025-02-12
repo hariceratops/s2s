@@ -5,14 +5,24 @@
 #include "field_lookup.hpp"
 
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 

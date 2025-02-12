@@ -24,14 +24,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -45,7 +43,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -54,7 +51,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -70,6 +67,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -158,6 +174,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;

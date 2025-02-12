@@ -916,6 +916,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -2115,6 +2118,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -3296,6 +3302,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -3315,14 +3324,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -3336,7 +3343,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -3344,7 +3350,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -3360,6 +3366,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -3446,6 +3471,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -4356,6 +4382,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -4875,14 +4904,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -5725,6 +5764,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -6906,6 +6948,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -6925,14 +6970,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -6946,7 +6989,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -6954,7 +6996,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -6970,6 +7012,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -7056,6 +7117,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -7966,6 +8028,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -8485,14 +8550,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -9551,6 +9626,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -10732,6 +10810,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -10751,14 +10832,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -10772,7 +10851,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -10780,7 +10858,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -10796,6 +10874,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -10882,6 +10979,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -12126,6 +12224,9 @@ struct extract_size_from_array<std::array<T, N>> {
 
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
+
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
 #endif // _SC_META_HPP_
 
@@ -13795,6 +13896,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -14976,6 +15080,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -14995,14 +15102,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -15016,7 +15121,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -15024,7 +15128,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -15040,6 +15144,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -15126,6 +15249,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -16036,6 +16160,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -16555,14 +16682,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -17405,6 +17542,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -18586,6 +18726,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -18605,14 +18748,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -18626,7 +18767,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -18634,7 +18774,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -18650,6 +18790,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -18736,6 +18895,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -19646,6 +19806,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -20165,14 +20328,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -21343,6 +21516,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -21881,6 +22057,53 @@ struct read_field<T, F> {
     for(std::size_t count = 0; count < array_len; ++count) {
       array_element_field t;
       auto reader = read_field<array_element_field, F>(t, field_list, ifs);
+      auto res = reader();
+      if(!res) 
+        return std::unexpected(res.error());
+      field.value[count] = t.value;
+    }
+    return {};
+  }
+};
+
+struct not_vector_of_records_field {};
+
+template <typename T>
+struct create_field_from_vector_of_records;
+
+template <vector_of_record_field_like T>
+struct create_field_from_vector_of_records<T> {
+  using vector_type = typename T::field_type;
+  using vector_elem_type = extract_type_from_vec_t<vector_type>;
+  static constexpr auto field_id = T::field_id;
+  using size = field_size<size_dont_care>;
+  static constexpr auto constraint = no_constraint<vector_elem_type>{};
+
+  using res = field<field_id, vector_elem_type, size, constraint>;
+};
+
+template <typename T>
+using create_field_from_vector_of_records_v = create_field_from_vector_of_records<T>::res;
+
+template <vector_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+  std::ifstream& ifs;
+
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
+
+  constexpr auto operator()() const -> read_result {
+    using vector_element_field = create_field_from_vector_of_records_v<T>;
+    using field_size = typename T::field_size;
+
+    auto len_to_read = deduce_field_size<field_size>{}(field_list);
+    field.value.resize(len_to_read);
+
+    for(std::size_t count = 0; count < len_to_read; ++count) {
+      vector_element_field t;
+      auto reader = read_field<vector_element_field, F>(t, field_list, ifs);
       auto res = reader();
       if(!res) 
         return std::unexpected(res.error());
@@ -22791,6 +23014,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -23972,6 +24198,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -23991,14 +24220,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -24012,7 +24239,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -24020,7 +24246,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -24036,6 +24262,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -24122,6 +24367,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -25032,6 +25278,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -25551,14 +25800,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -25935,6 +26194,9 @@ struct extract_size_from_array<std::array<T, N>> {
 
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
+
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
 #endif // _SC_META_HPP_
 
@@ -26690,6 +26952,9 @@ struct extract_size_from_array<std::array<T, N>> {
 
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
+
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
 #endif // _SC_META_HPP_
 
@@ -28647,6 +28912,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -29828,6 +30096,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -29847,14 +30118,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -29868,7 +30137,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -29876,7 +30144,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -29892,6 +30160,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -29978,6 +30265,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -30888,6 +31176,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -31407,14 +31698,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -32788,6 +33089,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -33969,6 +34273,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -33988,14 +34295,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -34009,7 +34314,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -34017,7 +34321,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -34033,6 +34337,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -34119,6 +34442,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -35029,6 +35353,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -35548,14 +35875,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
@@ -36860,6 +37197,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -38041,6 +38381,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 template <typename T>
@@ -38060,14 +38403,12 @@ struct is_fixed_sized_field {
 template <typename T>
 inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
 template <typename T>
 struct is_array_of_record_field;
 
-// Specialization for field with fixed_size_like size
 template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
@@ -38081,7 +38422,6 @@ struct is_array_of_record_field {
 template <typename T>
 inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
 
-// Concept for fixed_sized_field_like
 template <typename T>
 concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
@@ -38089,7 +38429,7 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -38105,6 +38445,25 @@ inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::re
 // Concept for variable_sized_field_like
 template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -38191,6 +38550,7 @@ template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -39101,6 +39461,9 @@ struct extract_size_from_array<std::array<T, N>> {
 template <typename T>
 inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
+template <typename T>
+concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
 #endif // _SC_META_HPP_
 
 #ifndef _FIXED_STRING_HPP_
@@ -39620,14 +39983,24 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+// template <fixed_string head>
+// constexpr bool is_unique() { return true;  }
+//
+// template <fixed_string head, fixed_string... rest>
+// constexpr bool is_unique() {
+//   return ((head != rest) && ...) && is_unique(rest...);
+// }
+//
+// static_assert(is_unique<"hello", "hello">());
+// static_assert(is_unique<"hello", "world">());
+//
+
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
   requires all_field_like<fields...>
 struct struct_field_list : struct_field_list_base, fields... {
-  // static_assert(are_all_fields_v<field_list<fields...>>, 
-  //               "struct_field_list shall be templated with field like types only");
   // todo: impl size resolution
   // todo: impl dependencies resolution
   // static_assert(size_indices_resolved_v<field_list<fields...>>, 
