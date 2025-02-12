@@ -39,7 +39,14 @@
   // static_assert(struct_field_like<inner>);
   // static_assert(variable_sized_field_like<inner>);
   // static_assert(fixed_sized_field_like<inner>);
-
+using temp = 
+  struct_field_list<
+    basic_field<"a", int, field_size<fixed<4>>>,
+    basic_field<"b", int, field_size<fixed<4>>>
+  >;
+static_assert(array_of_records_like<std::array<temp, 10>>);
+static_assert(vector_of_records_like<std::vector<temp>>);
+static_assert(!field_containable<std::array<temp, 10>>);
 
 // Helper types
 using i32 = int;
@@ -205,38 +212,38 @@ TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field f
 
 
 // todo array of records and vector of records
-// TEST_CASE("Test reading a meta_struct with array of records from binary file") {
-//   using test_struct = 
-//     struct_field_list <
-//       basic_field<"a", u32, field_size<fixed<4>>>,
-//       basic_field<"b", u32, field_size<fixed<4>>>
-//     >;
-//   using md_struct = 
-//     struct_field_list<
-//       fixed_array_field<"records", test_struct, 3>
-//     >;
-//
-//   std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
-//   const u32 u32_arr[3][2] = { 
-//     {0xdeadbeef, 0xbeefbeef},
-//     {0xdeadbeef, 0xbeefbeef}, 
-//     {0xdeadbeef, 0xbeefbeef} 
-//   };
-//   ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
-//   ofs.close();
-//
-//   std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
-//   auto res = struct_cast<md_struct>(ifs);
-//   ifs.close();
-//   
-//   REQUIRE(res.has_value());
-//   auto fields = *res;
-//   auto records = fields["records"_f];
-//   for(auto record: records) {
-//     REQUIRE(record["a"_f] == 0xdeadbeef);
-//     REQUIRE(record["b"_f] == 0xbeefbeef);
-//   }
-// };
+TEST_CASE("Test reading a meta_struct with array of records from binary file") {
+  using test_struct = 
+    struct_field_list <
+      basic_field<"a", u32, field_size<fixed<4>>>,
+      basic_field<"b", u32, field_size<fixed<4>>>
+    >;
+  using md_struct = 
+    struct_field_list<
+      array_of_records<"records", test_struct, 3>
+    >;
+
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  const u32 u32_arr[3][2] = { 
+    {0xdeadbeef, 0xbeefbeef},
+    {0xdeadbeef, 0xbeefbeef}, 
+    {0xdeadbeef, 0xbeefbeef} 
+  };
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+  auto res = struct_cast<md_struct>(ifs);
+  ifs.close();
+  
+  REQUIRE(res.has_value());
+  auto fields = *res;
+  auto records = fields["records"_f];
+  for(auto record: records) {
+    REQUIRE(record["a"_f] == 0xdeadbeef);
+    REQUIRE(record["b"_f] == 0xbeefbeef);
+  }
+};
 
 
 TEST_CASE("Test eq field constraint") {

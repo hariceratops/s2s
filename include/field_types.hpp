@@ -270,11 +270,15 @@ using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 //
 
 
+// todo if fixed size and basic ensure constrint on size and data width
 template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
 using basic_field = field<id, T, size_type, constraint_on_value>;
 
 template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
 using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+
+template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
+using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
 
 template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
 using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
@@ -297,11 +301,14 @@ using magic_number = field<id, T, size, eq{expected}>;
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
 
+template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
+
 template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
 using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
-using struct_field = field<id, T, field_size<fixed<sizeof(T)>>, no_constraint<T>{}>;
+using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
 
 
 namespace static_test {

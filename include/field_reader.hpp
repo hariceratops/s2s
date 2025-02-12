@@ -12,6 +12,7 @@
 #include "error.hpp"
 #include "pipeline.hpp"
 
+#include "field.hpp"
 
 template <typename T>
 // todo specialise for non scalar type to facilitate endianness specific vector read
@@ -76,6 +77,52 @@ struct read_field<T, F> {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return read_vector(field.value, len_to_read, ifs);
+  }
+};
+
+
+struct not_array_of_records_field {};
+
+template <typename T>
+struct create_field_from_array_of_records;
+
+template <array_of_record_field_like T>
+struct create_field_from_array_of_records<T> {
+  using array_type = typename T::field_type;
+  using array_elem_type = extract_type_from_array_v<array_type>;
+  static constexpr auto field_id = T::field_id;
+  using size = field_size<size_dont_care>;
+  static constexpr auto constraint = no_constraint<array_elem_type>{};
+
+  using res = field<field_id, array_elem_type, size, constraint>;
+};
+
+template <typename T>
+using create_field_from_array_of_records_v = create_field_from_array_of_records<T>::res;
+
+template <array_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+  std::ifstream& ifs;
+
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
+
+  constexpr auto operator()() const -> read_result {
+    using array_type = typename T::field_type;
+    using array_element_field = create_field_from_array_of_records_v<T>;
+    constexpr auto array_len = extract_size_from_array_v<array_type>;
+
+    for(std::size_t count = 0; count < array_len; ++count) {
+      array_element_field t;
+      auto reader = read_field<array_element_field, F>(t, field_list, ifs);
+      auto res = reader();
+      if(!res) 
+        return std::unexpected(res.error());
+      field.value[count] = t.value;
+    }
+    return {};
   }
 };
 

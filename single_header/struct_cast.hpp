@@ -484,6 +484,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -704,7 +706,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -721,7 +723,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -808,7 +810,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -847,8 +849,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -1617,6 +1683,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -1837,7 +1905,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -1854,7 +1922,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -1941,7 +2009,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -1980,8 +2048,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -2741,6 +2873,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -2952,7 +3086,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -2969,7 +3103,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -3056,7 +3190,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -3095,8 +3229,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -3120,6 +3318,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -3226,6 +3445,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -3704,6 +3924,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -3924,7 +4146,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -3941,7 +4163,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -4028,7 +4250,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -4067,8 +4289,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -5007,6 +5293,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -5227,7 +5515,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -5244,7 +5532,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -5331,7 +5619,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -5370,8 +5658,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -6131,6 +6483,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -6342,7 +6696,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -6359,7 +6713,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -6446,7 +6800,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -6485,8 +6839,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -6510,6 +6928,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -6616,6 +7055,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -7094,6 +7534,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -7314,7 +7756,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -7331,7 +7773,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -7418,7 +7860,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -7457,8 +7899,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -8611,6 +9117,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -8831,7 +9339,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -8848,7 +9356,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -8935,7 +9443,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -8974,8 +9482,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -9735,6 +10307,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -9946,7 +10520,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -9963,7 +10537,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -10050,7 +10624,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -10089,8 +10663,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -10114,6 +10752,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -10220,6 +10879,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -10593,6 +11253,8 @@ struct field_size {
   using size_type_t = size_type;
   // static constexpr auto size = size_type{};
 };
+
+struct size_dont_care {};
 
 template <std::size_t N>
 struct fixed;
@@ -11031,6 +11693,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -11251,7 +11915,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -11268,7 +11932,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -11355,7 +12019,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -11394,8 +12058,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -12188,6 +12916,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -12631,6 +13361,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -12851,7 +13583,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -12868,7 +13600,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -12955,7 +13687,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -12994,8 +13726,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -13755,6 +14551,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -13966,7 +14764,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -13983,7 +14781,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -14070,7 +14868,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -14109,8 +14907,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -14134,6 +14996,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -14240,6 +15123,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -14718,6 +15602,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -14938,7 +15824,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -14955,7 +15841,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -15042,7 +15928,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -15081,8 +15967,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -16021,6 +16971,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -16241,7 +17193,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -16258,7 +17210,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -16345,7 +17297,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -16384,8 +17336,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -17145,6 +18161,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -17356,7 +18374,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -17373,7 +18391,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -17460,7 +18478,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -17499,8 +18517,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -17524,6 +18606,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -17630,6 +18733,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -18108,6 +19212,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -18328,7 +19434,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -18345,7 +19451,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -18432,7 +19538,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -18471,8 +19577,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -19416,6 +20586,1199 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
 
 #endif // _PIPELINE_HPP_
 
+#ifndef _FIELD__HPP_
+#define _FIELD__HPP_
+
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+
+#ifndef _FIELD_ACCESSOR_HPP_
+#define _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id>
+struct field_accessor {
+  static constexpr auto field_id = id;
+};
+
+template <fixed_string id>
+constexpr auto operator""_f() {
+  return field_accessor<id>{};
+}
+
+#endif // _FIELD_ACCESSOR_HPP_
+
+#ifndef _FIXED_STR_LIST_HPP_
+#define _FIXED_STR_LIST_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string... fs>
+struct fixed_string_list {};
+
+template <fixed_string... fs>
+using with_fields = fixed_string_list<fs...>;
+
+template <typename T>
+struct is_field_name_list;
+
+template <typename T>
+struct is_field_name_list {
+  static constexpr bool res = false;
+};
+
+template <fixed_string... fs>
+struct is_field_name_list<with_fields<fs...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_field_name_list_v = is_field_name_list<T>::res;
+
+struct empty_list{};
+struct not_a_list{};
+struct out_of_bound{};
+
+template <typename T>
+struct size;
+
+template <>
+struct size<fixed_string_list<>> {
+  static constexpr std::size_t N = 0;
+};
+
+template <fixed_string head, fixed_string... tail>
+struct size<fixed_string_list<head, tail...>> {
+  static constexpr std::size_t N = 1 + size<fixed_string_list<tail...>>::N;
+};
+
+template <typename T>
+inline constexpr std::size_t size_v = size<T>::N;
+
+template <typename T>
+struct front;
+
+template <fixed_string head, fixed_string... tail>
+struct front<fixed_string_list<head, tail...>> {
+  static constexpr auto string = head;
+};
+
+template <typename T>
+inline constexpr auto front_t = front<T>::string;
+
+template <std::size_t idx, std::size_t key, std::size_t count, typename T>
+struct get;
+
+template <std::size_t key, std::size_t count, fixed_string head, fixed_string... tail>
+struct get<key, key, count, fixed_string_list<head, tail...>> {
+  static constexpr auto string = head;
+};
+
+template <std::size_t idx, std::size_t key, std::size_t count, fixed_string head, fixed_string... tail>
+struct get<idx, key, count, fixed_string_list<head, tail...>> {
+  static constexpr auto string = get<idx + 1, key, count, fixed_string_list<tail...>>::string;
+};
+
+template <std::size_t key, typename T>
+inline constexpr auto get_t = get<0, key, size_v<T>, T>::string; 
+
+template <std::size_t count, typename T>
+struct pop;
+
+template <std::size_t count>
+struct pop<count, fixed_string_list<>> {
+  using type = fixed_string_list<>;
+};
+
+template <std::size_t count, fixed_string head, fixed_string... tail>
+struct pop<count, fixed_string_list<head, tail...>> {
+  using type = typename pop<count - 1, fixed_string_list<tail...>>::type;
+};
+
+template <fixed_string head, fixed_string... tail>
+struct pop<0, fixed_string_list<head, tail...>> {
+  using type = fixed_string_list<head, tail...>;
+};
+
+template <std::size_t count, typename T>
+using pop_t = typename pop<count, T>::type;
+
+template <typename T>
+concept field_name_list = is_field_name_list_v<T>;
+
+using typelist_ex = fixed_string_list<"a", "b", "c", "d">;
+inline constexpr auto idx_list = std::make_integer_sequence<std::size_t, size_v<typelist_ex>>{};
+static_assert(fixed_string("a") == front_t<typelist_ex>);
+static_assert(std::is_same_v<fixed_string_list<"a", "b", "c", "d">, pop_t<0, typelist_ex>>);
+static_assert(std::is_same_v<fixed_string_list<"b", "c", "d">, pop_t<1, typelist_ex>>);
+static_assert(std::is_same_v<fixed_string_list<"c", "d">, pop_t<2, typelist_ex>>);
+static_assert(fixed_string("c") == front_t<pop_t<2, typelist_ex>>);
+static_assert(fixed_string("c") == get_t<2, typelist_ex>);
+static_assert(size_v<typelist_ex> == 4);
+
+#endif // _FIXED_STR_LIST_HPP_
+
+#ifndef _TYPELIST_HPP_
+#define _TYPELIST_HPP_
+
+#include <string>
+#include <type_traits>
+
+template <typename... ts>
+struct field_list{};
+
+namespace typelist {
+struct null {};
+
+template <typename... ts>
+struct typelist;
+
+template <typename... ts>
+struct typelist{};
+
+template <>
+struct typelist<>{};
+
+template <typename... ts>
+struct any_of;
+
+template <typename... ts>
+struct any_of {};
+
+template <typename t>
+struct any_of<typelist<>, t> { static constexpr bool res = false; };
+
+template <typename t, typename... rest>
+struct any_of<typelist<t, rest...>, t> { static constexpr bool res = true; };
+
+template <typename t, typename u, typename... rest>
+struct any_of<typelist<u, rest...>, t> { static constexpr bool res = false || any_of<typelist<rest...>, t>::res; };
+
+template <typename typelist, typename type>
+inline constexpr bool any_of_v = any_of<typelist, type>::res;
+
+template <typename... ts>
+struct all_are_same;
+
+template <>
+struct all_are_same<typelist<>> {
+  static constexpr auto all_same = true;
+};
+
+template <typename T>
+struct all_are_same<typelist<T>> {
+  static constexpr auto all_same = true;
+};
+
+template <typename T, typename U, typename... rest>
+struct all_are_same<typelist<T, U, rest...>> {
+  static constexpr auto all_same = std::is_same_v<T, U> && all_are_same<typelist<U, rest...>>::all_same;
+};
+
+template <typename T, typename... rest>
+struct all_are_same<typelist<T, rest...>> {
+  static constexpr auto all_same = false;
+};
+
+template <typename tlist>
+inline constexpr bool all_are_same_v = all_are_same<tlist>::all_same;
+
+template <typename... ts>
+struct front;
+
+template <typename t, typename... ts>
+struct front<typelist<t, ts...>> {
+  using front_t = t;
+};
+
+template <>
+struct front<typelist<>> {
+  using front_t = null;
+};
+
+template <typename tlist>
+using front_t = typename front<tlist>::front_t;
+
+} // namespace typelist
+
+namespace static_tests {
+namespace tl = typelist;
+
+static_assert(tl::any_of_v<tl::typelist<int, float, float>, int>);
+static_assert(tl::any_of_v<tl::typelist<float, int, float, float>, int>);
+static_assert(!tl::any_of_v<tl::typelist<int, int, int>, float>);
+static_assert(!tl::any_of_v<tl::typelist<>, float>);
+
+static_assert(tl::all_are_same_v<tl::typelist<int, int, int>>);
+static_assert(!tl::all_are_same_v<tl::typelist<float, int, int>>);
+static_assert(!tl::all_are_same_v<tl::typelist<int, int, float, int, int>>);
+static_assert(!tl::all_are_same_v<tl::typelist<int, float, float, int, int>>);
+static_assert(tl::all_are_same_v<tl::typelist<int>>);
+static_assert(tl::all_are_same_v<tl::typelist<>>);
+}
+
+#endif // _TYPELIST_HPP_
+
+template <typename size_type>
+struct field_size;
+
+template <typename size_type>
+struct field_size {
+  using size_type_t = size_type;
+  // static constexpr auto size = size_type{};
+};
+
+struct size_dont_care {};
+
+template <std::size_t N>
+struct fixed;
+
+template <std::size_t N>
+struct fixed {
+  static constexpr auto count = N;
+};
+
+template <fixed_string id>
+using from_field = field_accessor<id>;
+
+template <auto callable, field_name_list req_fields>
+struct size_from_fields;
+
+// todo constraint for callable
+template <auto callable, field_name_list req_fields>
+struct size_from_fields {
+  static constexpr auto f = callable;
+  static constexpr auto req_field_list = req_fields{};
+};
+
+template <auto callable, field_name_list ids>
+using from_fields = size_from_fields<callable, ids>;
+
+// todo size type for holding multiple sizes in case of union fields
+template <typename... size_type>
+struct size_choices;
+
+template <typename... size_type>
+struct size_choices {
+  using choices = typelist::typelist<size_type...>;
+  static auto constexpr num_of_choices = sizeof...(size_type);
+};
+
+// Metafunctions for checking if a type is a size type
+template <typename T>
+struct is_fixed_size;
+
+template <std::size_t N>
+struct is_fixed_size<field_size<fixed<N>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_fixed_size {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_size_v = is_fixed_size<T>::res;
+
+template <typename T>
+struct is_variable_size;
+
+template <typename T>
+struct is_variable_size {
+  static constexpr bool res = false;
+};
+
+template <fixed_string id>
+struct is_variable_size<field_size<from_field<id>>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_variable_size<field_size<from_fields<callable, ids>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
+
+// Concepts for checking if a type is a size type
+template <typename T>
+concept fixed_size_like = is_fixed_size_v<T>;
+
+template <typename T>
+concept variable_size_like = is_variable_size_v<T>;
+
+template <typename T>
+struct is_selectable_size;
+
+template <typename T>
+concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
+
+template <atomic_size... size_type>
+struct is_selectable_size<field_size<size_choices<size_type...>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_selectable_size {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_selectable_size_v = is_fixed_size<T>::res;
+
+template <typename T>
+concept selectable_size_like = is_selectable_size_v<T>;
+
+template <typename T>
+concept is_size_like = fixed_size_like<T>    ||
+                       variable_size_like<T> ||
+                       selectable_size_like<T>;
+
+namespace static_test {
+static_assert(is_variable_size_v<field_size<from_field<"hello">>>);
+static_assert(is_fixed_size_v<field_size<fixed<4>>>);
+static_assert(!is_fixed_size_v<int>);
+static_assert(!is_variable_size_v<int>);
+static_assert(field_size<fixed<6>>::size_type_t::count == 6);
+}
+
+#endif // _FIELD_SIZE_HPP_
+
+#ifndef FIELD_CONSTRAINT_HPP
+#define FIELD_CONSTRAINT_HPP
+
+#include <algorithm>
+#include <array>
+#include <concepts>
+#include <cassert>
+#include <cstdio>
+#include <type_traits>
+#ifndef _SC_META_HPP_
+#define _SC_META_HPP_
+
+#include <vector>
+#include <variant>
+#include <optional>
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
+#define _STRUCT_FIELD_LIST_BASE_HPP_
+
+#include <type_traits>
+
+struct struct_field_list_base {};
+
+template <typename T>
+concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+
+#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+
+// Arithmetic concept
+template <typename T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
+template <typename T>
+concept integral = std::is_integral_v<T>;
+
+template <typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template <typename T>
+concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
+template <typename T>
+struct is_fixed_string;
+
+template <std::size_t N>
+struct is_fixed_string<fixed_string<N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_string {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_string_v = is_fixed_string<T>::is_same;
+
+template <typename T>
+concept fixed_string_like = is_fixed_string_v<T>;
+
+template <typename T>
+struct is_fixed_array;
+
+template <typename T, std::size_t N>
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_fixed_array<std::array<T, N>> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_fixed_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
+
+template <typename T>
+struct is_c_array;
+
+template <typename T, std::size_t N>
+  requires (arithmetic<T> || is_c_array<T>::is_same)
+struct is_c_array<T[N]> {
+  static constexpr bool is_same = true;
+};
+
+template <typename T>
+struct is_c_array {
+  static constexpr bool is_same = false;
+};
+
+template <typename T>
+inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
+
+// fixed_buffer_like concept
+// todo constrain to array of primitives 
+// todo check if array of records and arrays are possible for implementation
+// todo check if md string is ok
+template <typename T>
+concept fixed_buffer_like = 
+  is_fixed_array_v<T> ||
+  is_c_array_v<T> ||
+  is_fixed_string_v<T>;
+
+struct not_a_vec{};
+
+template <typename T>
+struct extract_type_from_vec;
+
+template <typename T>
+struct extract_type_from_vec<std::vector<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_vec {
+  using type = not_a_vec;
+};
+
+template <typename T>
+using extract_type_from_vec_t = typename extract_type_from_vec<T>::type;
+
+template <typename T>
+struct is_variant_like;
+
+template <typename T>
+struct is_variant_like {
+  static constexpr bool res = false;
+};
+
+template <typename... ts>
+struct is_variant_like<std::variant<ts...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_variant_like_v = is_variant_like<T>::res;
+
+template <typename T>
+concept variant_like = is_variant_like_v<T>;
+
+// todo: add constraints such that user defined optionals can also be used 
+// todo: also add constraint to permit var length fields
+template <typename T>
+struct is_optional_like;
+
+template <typename T>
+struct is_optional_like {
+  static inline constexpr bool res = false;
+};
+
+// template <field_containable T>
+template <typename T>
+struct is_optional_like<std::optional<T>> {
+  static inline constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_optional_like_v = is_optional_like<T>::res;
+
+template <typename T>
+concept optional_like = is_optional_like_v<T>;
+
+template <typename T>
+struct is_vector_like;
+
+// vector of vectors or vector of arrays?
+template <typename T>
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
+struct is_vector_like<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector_like<T>::res;
+
+template <typename T>
+concept vector_like = is_vector_v<T>;
+
+template <typename T>
+struct is_string_like;
+
+// vector of vectors or vector of arrays?
+template <>
+struct is_string_like<std::string> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_string_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_string_v = is_string_like<T>::res;
+
+template <typename T>
+concept string_like = is_string_v<T>;
+
+template <typename T>
+concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
+
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
+
+#endif // _SC_META_HPP_
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+#ifndef _TYPELIST_HPP_
+#define _TYPELIST_HPP_
+
+#include <string>
+#include <type_traits>
+
+template <typename... ts>
+struct field_list{};
+
+namespace typelist {
+struct null {};
+
+template <typename... ts>
+struct typelist;
+
+template <typename... ts>
+struct typelist{};
+
+template <>
+struct typelist<>{};
+
+template <typename... ts>
+struct any_of;
+
+template <typename... ts>
+struct any_of {};
+
+template <typename t>
+struct any_of<typelist<>, t> { static constexpr bool res = false; };
+
+template <typename t, typename... rest>
+struct any_of<typelist<t, rest...>, t> { static constexpr bool res = true; };
+
+template <typename t, typename u, typename... rest>
+struct any_of<typelist<u, rest...>, t> { static constexpr bool res = false || any_of<typelist<rest...>, t>::res; };
+
+template <typename typelist, typename type>
+inline constexpr bool any_of_v = any_of<typelist, type>::res;
+
+template <typename... ts>
+struct all_are_same;
+
+template <>
+struct all_are_same<typelist<>> {
+  static constexpr auto all_same = true;
+};
+
+template <typename T>
+struct all_are_same<typelist<T>> {
+  static constexpr auto all_same = true;
+};
+
+template <typename T, typename U, typename... rest>
+struct all_are_same<typelist<T, U, rest...>> {
+  static constexpr auto all_same = std::is_same_v<T, U> && all_are_same<typelist<U, rest...>>::all_same;
+};
+
+template <typename T, typename... rest>
+struct all_are_same<typelist<T, rest...>> {
+  static constexpr auto all_same = false;
+};
+
+template <typename tlist>
+inline constexpr bool all_are_same_v = all_are_same<tlist>::all_same;
+
+template <typename... ts>
+struct front;
+
+template <typename t, typename... ts>
+struct front<typelist<t, ts...>> {
+  using front_t = t;
+};
+
+template <>
+struct front<typelist<>> {
+  using front_t = null;
+};
+
+template <typename tlist>
+using front_t = typename front<tlist>::front_t;
+
+} // namespace typelist
+
+namespace static_tests {
+namespace tl = typelist;
+
+static_assert(tl::any_of_v<tl::typelist<int, float, float>, int>);
+static_assert(tl::any_of_v<tl::typelist<float, int, float, float>, int>);
+static_assert(!tl::any_of_v<tl::typelist<int, int, int>, float>);
+static_assert(!tl::any_of_v<tl::typelist<>, float>);
+
+static_assert(tl::all_are_same_v<tl::typelist<int, int, int>>);
+static_assert(!tl::all_are_same_v<tl::typelist<float, int, int>>);
+static_assert(!tl::all_are_same_v<tl::typelist<int, int, float, int, int>>);
+static_assert(!tl::all_are_same_v<tl::typelist<int, float, float, int, int>>);
+static_assert(tl::all_are_same_v<tl::typelist<int>>);
+static_assert(tl::all_are_same_v<tl::typelist<>>);
+}
+
+#endif // _TYPELIST_HPP_
+
+namespace tl = typelist;
+
+// Concept for strict callable
+template <typename T, typename Arg>
+concept strict_callable = requires(T t, Arg arg) {
+  { t(arg) } -> std::convertible_to<bool>;
+} && std::is_same_v<T, typename std::remove_cvref_t<Arg>>;
+
+// Concepts
+template <typename T>
+concept equality_comparable = requires(T a, T b) {
+    { a == b } -> std::same_as<bool>;
+    { a != b } -> std::same_as<bool>;
+} && !std::is_floating_point_v<T>;
+
+template <typename T>
+concept comparable = requires(T a, T b) {
+    { a < b } -> std::same_as<bool>;
+    { a > b } -> std::same_as<bool>;
+    { a <= b } -> std::same_as<bool>;
+    { a >= b } -> std::same_as<bool>;
+};
+
+template <typename T>
+concept inequality_comparable = comparable<T> && 
+    (std::is_integral_v<T> || is_fixed_string_v<T>);
+
+// Structs for predefined constraints
+template <equality_comparable T>
+struct eq {
+  T v;
+  constexpr eq(T value) : v(value) {}
+  constexpr eq() : v{} {}
+  constexpr bool operator()(const T& actual_v) const { return actual_v == v; }
+};
+
+template <equality_comparable T>
+struct neq {
+  T v;
+  constexpr neq(T value) : v(value) {}
+  constexpr neq() : v{} {}
+  constexpr bool operator()(const T& actual_v) const { return actual_v != v; }
+};
+
+template <comparable T>
+struct lt {
+  T v;
+  constexpr lt(T value) : v(value) {}
+  constexpr lt() : v{} {}
+  constexpr bool operator()(const T& actual_v) const { return actual_v < v; }
+};
+
+template <comparable T>
+struct gt {
+  T v;
+  constexpr gt(T value) : v(value) {}
+  constexpr gt() : v{} {}
+  constexpr bool operator()(const T& actual_v) const { return actual_v > v; }
+};
+
+template <typename T>
+struct lte {
+  T v;
+  constexpr lte(T value) : v(value) {}
+  constexpr lte() : v{} {}
+  constexpr bool operator()(const T& actual_v) const { return actual_v <= v; }
+};
+
+template <inequality_comparable T>
+struct gte {
+  T v;
+  constexpr gte(T value) : v(value) {}
+  constexpr gte() : v{} {}
+  constexpr bool operator()(const T& actual_v) const { return actual_v >= v; }
+};
+
+template <typename T>
+struct no_constraint {
+  constexpr bool operator()([[maybe_unused]] const T& actual_v) const { 
+    return true; 
+  }
+};
+
+template <typename T, typename... Ts>
+  requires (tl::all_are_same_v<tl::typelist<T, Ts...>>)
+struct any_of {
+  std::array<T, 1 + sizeof...(Ts)> possible_values;
+
+  constexpr any_of(T first, Ts... rest) : possible_values{first, rest...} {}
+
+  constexpr bool operator()(const T& actual_v) const {
+    return std::find(possible_values.begin(), 
+                     possible_values.end(), 
+                     actual_v) != possible_values.end();
+  }
+};
+
+// Range struct
+template <typename T>
+struct range {
+  T a;
+  T b;
+
+  constexpr range(T value1, T value2) : a(value1), b(value2) {
+    static_assert(value1 < value2, "Range start must be less than range end");
+  }
+};
+
+// CTAD for range
+template <typename T>
+range(T, T) -> range<T>;
+
+// Struct to check if a value is in any of the open intervals
+template <typename t, typename... ts>
+  requires (tl::all_are_same_v<tl::typelist<ts...>>)
+struct is_in_open_range {
+  std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
+
+  constexpr is_in_open_range(range<t> range, ::range<ts>... ranges) : open_ranges{range, ranges...} {
+    std::sort(open_ranges.begin(), open_ranges.end(), [](const ::range<t>& r1, const ::range<t>& r2) {
+      return r1.a < r2.a;
+    });
+  }
+
+  constexpr bool operator()(const t& value) const {
+    auto it = std::lower_bound(open_ranges.begin(), open_ranges.end(), value, [](const range<t>& r, const t& v) {
+      return r.b < v;
+    });
+    if (it != open_ranges.begin() && (it == open_ranges.end() || it->a > value)) {
+      --it;
+    }
+    return it != open_ranges.end() && it->a < value && value < it->b;
+  }
+};
+
+// Struct to check if a value is in any of the closed intervals
+template <typename T, std::size_t N>
+struct is_in_closed_range {
+  std::array<range<T>, N> closed_ranges;
+
+  constexpr is_in_closed_range(std::array<range<T>, N> ranges) : closed_ranges(ranges) {
+    std::sort(closed_ranges.begin(), closed_ranges.end(), [](const range<T>& r1, const range<T>& r2) {
+      return r1.a < r2.a;
+    });
+  }
+
+  constexpr bool operator()(const T& value) const {
+    auto it = std::lower_bound(closed_ranges.begin(), closed_ranges.end(), value, [](const range<T>& r, const T& v) {
+      return r.b < v;
+    });
+    if (it != closed_ranges.begin() && (it == closed_ranges.end() || it->a > value)) {
+      --it;
+    }
+    return it != closed_ranges.end() && it->a <= value && value <= it->b;
+  }
+};
+
+// CTAD (Class Template Argument Deduction) guides
+template <typename T>
+eq(T) -> eq<T>;
+
+template <typename T>
+neq(T) -> neq<T>;
+
+template <typename T>
+lt(T) -> lt<T>;
+
+template <typename T>
+gt(T) -> gt<T>;
+
+template <typename T>
+lte(T) -> lte<T>;
+
+template <typename T>
+gte(T) -> gte<T>;
+
+template <typename t, typename... ts> 
+any_of(t, ts...) -> any_of<t, ts...>;
+
+template <typename t, typename... ts> 
+is_in_open_range(range<t>, range<ts>...) -> is_in_open_range<t, ts...>;
+
+template <typename T, std::size_t N>
+is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
+
+#endif // FIELD_CONSTRAINT_HPP
+
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr auto size() const { return N; }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+
+namespace static_test {
+static_assert(fixed_string("hello").size() == 5);
+}
+
+#endif // _FIXED_STRING_HPP_
+
+template <fixed_string id,
+          typename T,
+          typename size_type,
+          auto constraint_on_value>
+struct field {
+  using field_type = T;
+  using field_size = size_type;
+
+  static constexpr auto field_id = id;
+  static constexpr auto constraint_checker = constraint_on_value;
+  field_type value;
+};
+
+template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
+using to_optional_field = field<id, std::optional<T>, size_type, constraint_on_value>;
+
+// todo maybe provide field directly as template parameter constrained?
+// will solve constraint issue and also produces clean API
+template <fixed_string id, 
+          typename T, 
+          typename size_type, 
+          typename present_only_if,
+          auto constraint_on_value = no_constraint<T>{},
+          typename optional = to_optional_field<id, T, size_type, constraint_on_value>,
+          typename base_field = field<id, T, size_type, constraint_on_value>>
+class maybe_field : public optional
+{
+public:
+  using field_base_type = base_field;
+  using field_presence_checker = present_only_if;
+};
+
+template <typename... choices>
+struct field_choice_list {};
+
+template <fixed_string id, typename... args>
+struct to_field_choices;
+
+template <fixed_string id, typename T, typename field_size>
+struct to_field_choice {
+  using field_choice = field<id, T, field_size, no_constraint<T>{}>;
+};
+
+template <fixed_string id, typename T, typename field_size>
+using to_field_choice_v = to_field_choice<id, T, field_size>::field_choice;
+
+template <fixed_string id, typename... types, typename... sizes>
+struct to_field_choices<id, std::variant<types...>, field_size<size_choices<sizes...>>> {
+  using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
+};
+
+// todo how to handle constraint_on_value in general
+template <fixed_string id,
+          typename type_deducer,
+          typename type = typename type_deducer::variant,
+          typename size_type = typename type_deducer::sizes,
+          auto constraint_on_value = no_constraint<type>{},
+          typename variant = field<id, type, size_type, constraint_on_value>,
+          typename field_choices_t = to_field_choices<id, type, size_type>::choices
+  >
+struct union_field: public variant {
+  using type_deduction_guide = type_deducer;
+  using field_choices = field_choices_t;
+  static constexpr auto variant_size = std::variant_size_v<type>;
+};
+
+#endif // _FIELD__HPP_
+
 template <typename T>
 // todo specialise for non scalar type to facilitate endianness specific vector read
 constexpr auto raw_read(T& value, std::ifstream& ifs, std::size_t size_to_read) 
@@ -19475,6 +21838,51 @@ struct read_field<T, F> {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return read_vector(field.value, len_to_read, ifs);
+  }
+};
+
+struct not_array_of_records_field {};
+
+template <typename T>
+struct create_field_from_array_of_records;
+
+template <array_of_record_field_like T>
+struct create_field_from_array_of_records<T> {
+  using array_type = typename T::field_type;
+  using array_elem_type = extract_type_from_array_v<array_type>;
+  static constexpr auto field_id = T::field_id;
+  using size = field_size<size_dont_care>;
+  static constexpr auto constraint = no_constraint<array_elem_type>{};
+
+  using res = field<field_id, array_elem_type, size, constraint>;
+};
+
+template <typename T>
+using create_field_from_array_of_records_v = create_field_from_array_of_records<T>::res;
+
+template <array_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+  std::ifstream& ifs;
+
+  constexpr read_field(T& field, F& field_list, std::ifstream& ifs)
+    : field(field), field_list(field_list), ifs(ifs) {}
+
+  constexpr auto operator()() const -> read_result {
+    using array_type = typename T::field_type;
+    using array_element_field = create_field_from_array_of_records_v<T>;
+    constexpr auto array_len = extract_size_from_array_v<array_type>;
+
+    for(std::size_t count = 0; count < array_len; ++count) {
+      array_element_field t;
+      auto reader = read_field<array_element_field, F>(t, field_list, ifs);
+      auto res = reader();
+      if(!res) 
+        return std::unexpected(res.error());
+      field.value[count] = t.value;
+    }
+    return {};
   }
 };
 
@@ -19947,6 +22355,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -20167,7 +22577,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -20184,7 +22594,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -20271,7 +22681,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -20310,8 +22720,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -21071,6 +23545,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -21282,7 +23758,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -21299,7 +23775,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -21386,7 +23862,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -21425,8 +23901,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -21450,6 +23990,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -21556,6 +24117,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -22034,6 +24596,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -22254,7 +24818,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -22271,7 +24835,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -22358,7 +24922,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -22397,8 +24961,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -23094,7 +25722,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -23111,7 +25739,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -23198,7 +25826,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -23237,8 +25865,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -23563,6 +26255,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -23783,7 +26477,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -23800,7 +26494,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -23887,7 +26581,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -23926,8 +26620,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -24686,6 +27444,8 @@ struct field_size {
   using size_type_t = size_type;
   // static constexpr auto size = size_type{};
 };
+
+struct size_dont_care {};
 
 template <std::size_t N>
 struct fixed;
@@ -25451,6 +28211,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -25671,7 +28433,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -25688,7 +28450,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -25775,7 +28537,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -25814,8 +28576,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -26575,6 +29401,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -26786,7 +29614,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -26803,7 +29631,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -26890,7 +29718,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -26929,8 +29757,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -26954,6 +29846,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -27060,6 +29973,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -27538,6 +30452,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -27758,7 +30674,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -27775,7 +30691,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -27862,7 +30778,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -27901,8 +30817,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -29370,6 +32350,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -29590,7 +32572,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -29607,7 +32589,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -29694,7 +32676,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -29733,8 +32715,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -30494,6 +33540,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -30705,7 +33753,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -30722,7 +33770,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -30809,7 +33857,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -30848,8 +33896,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -30873,6 +33985,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -30979,6 +34112,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -31457,6 +34591,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -31677,7 +34813,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -31694,7 +34830,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -31781,7 +34917,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -31820,8 +34956,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -33220,6 +36420,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -33440,7 +36642,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -33457,7 +36659,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -33544,7 +36746,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -33583,8 +36785,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -34344,6 +37610,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -34555,7 +37823,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -34572,7 +37840,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -34659,7 +37927,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -34698,8 +37966,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -34723,6 +38055,27 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 // Concept for fixed_sized_field_like
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+// Concept for fixed_sized_field_like
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
 
 template <typename T>
 struct is_variable_sized_field;
@@ -34829,6 +38182,7 @@ concept union_field_like = is_union_field_v<T>;
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
@@ -35307,6 +38661,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
@@ -35527,7 +38883,7 @@ template <typename T>
 struct is_fixed_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_fixed_array<std::array<T, N>> {
   static constexpr bool is_same = true;
 };
@@ -35544,7 +38900,7 @@ template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>
-  requires (field_list_like<T> || arithmetic<T> || is_c_array<T>::is_same)
+  requires (arithmetic<T> || is_c_array<T>::is_same)
 struct is_c_array<T[N]> {
   static constexpr bool is_same = true;
 };
@@ -35631,7 +38987,7 @@ struct is_vector_like;
 
 // vector of vectors or vector of arrays?
 template <typename T>
-  requires (field_list_like<T> || arithmetic<T> || is_fixed_array<T>::is_same)
+  requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
   static constexpr bool res = true;
 };
@@ -35670,8 +39026,72 @@ concept string_like = is_string_v<T>;
 template <typename T>
 concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
 
-// template <typename T>
-// concept fixed_buffer_containable = field_containable<T> || field_list_like
+template <typename T>
+struct is_array_of_records;
+
+template <field_list_like T, std::size_t N>
+struct is_array_of_records<std::array<T, N>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_array_of_records_v = is_array_of_records<T>::res;
+
+template <typename T>
+concept array_of_records_like = is_array_of_records_v<T>;
+
+template <typename T>
+struct is_vector_of_records;
+
+template <field_list_like T>
+struct is_vector_of_records<std::vector<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_records {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+constexpr inline bool is_vector_of_records_v = is_vector_of_records<T>::res;
+
+template <typename T>
+concept vector_of_records_like = is_vector_of_records_v<T>;
+
+struct not_an_array {};
+
+template <typename T>
+struct extract_type_from_array;
+
+template <typename T, std::size_t N>
+struct extract_type_from_array<std::array<T, N>> {
+  using type = T;
+};
+
+template <typename T>
+struct extract_type_from_array {
+  using type = not_an_array;
+};
+
+template <typename T>
+using extract_type_from_array_v = extract_type_from_array<T>::type;
+
+template <typename T>
+struct extract_size_from_array;
+
+template <typename T, std::size_t N>
+struct extract_size_from_array<std::array<T, N>> {
+  static constexpr auto size = N;
+};
+
+template <typename T>
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
 
 #endif // _SC_META_HPP_
 
@@ -36746,11 +40166,15 @@ using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 // *   */
 //
 
+// todo if fixed size and basic ensure constrint on size and data width
 template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
 using basic_field = field<id, T, size_type, constraint_on_value>;
 
 template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
 using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+
+template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
+using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
 
 template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
 using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
@@ -36773,11 +40197,14 @@ using magic_number = field<id, T, size, eq{expected}>;
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
 
+template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
+
 template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
 using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
-using struct_field = field<id, T, field_size<fixed<sizeof(T)>>, no_constraint<T>{}>;
+using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
 
 namespace static_test {
   using u32 = unsigned int;

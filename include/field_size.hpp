@@ -14,6 +14,8 @@ struct field_size {
   // static constexpr auto size = size_type{};
 };
 
+struct size_dont_care {};
+
 template <std::size_t N>
 struct fixed;
 
