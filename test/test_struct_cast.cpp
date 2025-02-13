@@ -48,6 +48,9 @@ static_assert(array_of_records_like<std::array<temp, 10>>);
 static_assert(vector_of_records_like<std::vector<temp>>);
 static_assert(!field_containable<std::array<temp, 10>>);
 
+// will fail!
+// using size_failure_basic_field = basic_field<"a", int, field_size<fixed<6>>>;
+
 // Helper types
 using i32 = int;
 using u32 = unsigned int;
