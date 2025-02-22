@@ -4979,6 +4979,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -4995,7 +5016,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -8675,6 +8697,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -8691,7 +8734,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -16907,6 +16951,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -16923,7 +16988,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -20603,6 +20669,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -20619,7 +20706,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -26162,6 +26250,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -26178,7 +26287,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -32253,6 +32363,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -32269,7 +32400,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -35949,6 +36081,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -35965,7 +36118,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -40246,6 +40400,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -40262,7 +40437,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -44473,6 +44649,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -44489,7 +44686,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution
@@ -48631,6 +48829,27 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
+template <fixed_string... arg>
+struct are_unique_fixed_strings;
+
+template <fixed_string head>
+struct are_unique_fixed_strings<head> {
+  static constexpr bool res = true;
+};
+
+template <fixed_string head, fixed_string neck, fixed_string... tail>
+struct are_unique_fixed_strings<head, neck, tail...> {
+  constexpr static bool res =
+    ((head != neck) && ... && (head != tail)) &&
+    are_unique_fixed_strings<neck, tail...>::res;
+};
+
+template <fixed_string... field_ids>
+inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
+
+static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
+static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
+
 // template <fixed_string head>
 // constexpr bool is_unique() { return true;  }
 //
@@ -48647,7 +48866,8 @@ template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
 template <typename... fields>
-  requires all_field_like<fields...>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids_v<fields::field_id...>
 struct struct_field_list : struct_field_list_base, fields... {
   // todo: impl size resolution
   // todo: impl dependencies resolution

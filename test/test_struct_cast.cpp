@@ -44,6 +44,12 @@ using temp =
     basic_field<"a", int, field_size<fixed<4>>>,
     basic_field<"b", int, field_size<fixed<4>>>
   >;
+// will fail
+// using non_unique_temp = 
+//   struct_field_list<
+//     basic_field<"a", int, field_size<fixed<4>>>,
+//     basic_field<"a", int, field_size<fixed<4>>>
+//   >;
 using u32 = unsigned int;
 static_assert(array_of_records_like<std::array<temp, 10>>);
 static_assert(vector_of_records_like<std::vector<temp>>);
