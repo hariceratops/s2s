@@ -421,7 +421,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
   using var_buffer_struct = 
     struct_field_list<
       basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      str_field<"str", field_size<from_field<"len">>>
+      str_field<"str", field_size<len_from_field<"len">>>
     >;
 
   constexpr std::size_t str_len = 10;
@@ -449,7 +449,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
   using var_buffer_struct = 
     struct_field_list<
       basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      vec_field<"vec", u32, field_size<from_field<"len">>>
+      vec_field<"vec", u32, field_size<len_from_field<"len">>>
     >;
 
   constexpr std::size_t vec_len = 10;
@@ -491,7 +491,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
     struct_field_list<
       basic_field<"row", std::size_t, field_size<fixed<8>>>,
       basic_field<"col", std::size_t, field_size<fixed<8>>>,
-      vec_field<"flat_vec", u32, field_size<from_fields<size_from_rc, with_fields<"row", "col">>>>
+      vec_field<"flat_vec", u32, field_size<len_from_fields<size_from_rc, with_fields<"row", "col">>>>
     >;
 
   constexpr std::size_t row = 5;
@@ -536,7 +536,7 @@ TEST_CASE("Test reading a meta_struct with vector of records from binary file") 
   using md_struct = 
     struct_field_list<
       basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      vector_of_records<"records", test_struct, field_size<from_field<"len">>>
+      vector_of_records<"records", test_struct, field_size<len_from_field<"len">>>
     >;
   
   // todo we get segfault/exception if length is missing in the binary

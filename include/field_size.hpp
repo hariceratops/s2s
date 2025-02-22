@@ -25,7 +25,7 @@ struct fixed {
 };
 
 template <fixed_string id>
-using from_field = field_accessor<id>;
+using len_from_field = field_accessor<id>;
 
 template <auto callable, field_name_list req_fields>
 struct size_from_fields;
@@ -38,7 +38,7 @@ struct size_from_fields {
 };
 
 template <auto callable, field_name_list ids>
-using from_fields = size_from_fields<callable, ids>;
+using len_from_fields = size_from_fields<callable, ids>;
 
 // todo size type for holding multiple sizes in case of union fields
 template <typename... size_type>
@@ -76,12 +76,12 @@ struct is_variable_size {
 };
 
 template <fixed_string id>
-struct is_variable_size<field_size<from_field<id>>> {
+struct is_variable_size<field_size<len_from_field<id>>> {
   static constexpr bool res = true;
 };
 
 template <auto callable, field_name_list ids>
-struct is_variable_size<field_size<from_fields<callable, ids>>> {
+struct is_variable_size<field_size<len_from_fields<callable, ids>>> {
   static constexpr bool res = true;
 };
 
@@ -123,7 +123,7 @@ concept is_size_like = fixed_size_like<T>    ||
                        selectable_size_like<T>;
 
 namespace static_test {
-static_assert(is_variable_size_v<field_size<from_field<"hello">>>);
+static_assert(is_variable_size_v<field_size<len_from_field<"hello">>>);
 static_assert(is_fixed_size_v<field_size<fixed<4>>>);
 static_assert(!is_fixed_size_v<int>);
 static_assert(!is_variable_size_v<int>);
