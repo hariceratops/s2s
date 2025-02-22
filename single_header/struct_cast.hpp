@@ -1291,6 +1291,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -1342,6 +1344,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -1351,6 +1375,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -2493,6 +2518,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -2544,6 +2571,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -2553,6 +2602,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -4757,6 +4807,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -4808,6 +4860,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -4817,6 +4891,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -6139,6 +6214,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -6190,6 +6267,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -6199,6 +6298,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -8403,6 +8503,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -8454,6 +8556,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -8463,6 +8587,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -10001,6 +10126,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -10052,6 +10179,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -10061,6 +10210,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -12600,6 +12750,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -12651,6 +12803,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -12660,6 +12834,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -14271,6 +14446,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -14322,6 +14499,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -14331,6 +14530,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -16535,6 +16735,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -16586,6 +16788,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -16595,6 +16819,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -17917,6 +18142,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -17968,6 +18195,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -17977,6 +18226,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -20181,6 +20431,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -20232,6 +20484,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -20241,6 +20515,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -21891,6 +22166,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -21942,6 +22219,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -21951,6 +22250,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -23401,6 +23701,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -23452,6 +23754,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -23461,6 +23785,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -25665,6 +25990,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -25716,6 +26043,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -25725,6 +26074,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -27340,6 +27690,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -27391,6 +27743,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -27400,6 +27774,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -29417,6 +29792,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -29468,6 +29845,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -29477,6 +29876,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -31681,6 +32081,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -31732,6 +32134,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -31741,6 +32165,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -33063,6 +33488,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -33114,6 +33541,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -33123,6 +33572,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -35327,6 +35777,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -35378,6 +35830,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -35387,6 +35861,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -37310,6 +37785,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -37361,6 +37838,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -37370,6 +37869,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -39574,6 +40074,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -39625,6 +40127,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -39634,6 +40158,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -41487,6 +42012,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -41538,6 +42065,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -41547,6 +42096,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -43751,6 +44301,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -43802,6 +44354,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -43811,6 +44385,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -45595,6 +46170,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -45646,6 +46223,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -45655,6 +46254,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -47859,6 +48459,8 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
+#include <type_traits>
+
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -47910,6 +48512,28 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
 // todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
@@ -47919,6 +48543,7 @@ template <fixed_string id,
           typename variant = field<id, type, size_type, constraint_on_value>,
           typename field_choices_t = to_field_choices<id, type, size_type>::choices
   >
+  requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
   using type_deduction_guide = type_deducer;
   using field_choices = field_choices_t;
@@ -48324,10 +48949,8 @@ using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 template <typename size, typename field_type>
 concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
 
-// todo if fixed size and basic ensure constrint on size and data width
 template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
   requires field_fits_to_underlying_type<size_type, T>
-  // requires (deduce_field_size<size_type>{}() <= sizeof(T))
 using basic_field = field<id, T, size_type, constraint_on_value>;
 
 template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
@@ -48354,9 +48977,9 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<e
 template <fixed_string id, integral T, fixed_size_like size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
 
-// todo a length field for cleaner user meta-api
-// // todo get vector length in bytes instead of size to read additional overload
+// todo get vector length in bytes instead of size to read additional overload
 // todo better naming and impl for from_field, since it is ambiguous about len or size in bytes
+// todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
 

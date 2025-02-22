@@ -44,10 +44,28 @@ using temp =
     basic_field<"a", int, field_size<fixed<4>>>,
     basic_field<"b", int, field_size<fixed<4>>>
   >;
+using u32 = unsigned int;
 static_assert(array_of_records_like<std::array<temp, 10>>);
 static_assert(vector_of_records_like<std::vector<temp>>);
 static_assert(!field_containable<std::array<temp, 10>>);
-
+// will fail since type choices are not unique
+// using test_struct_field_list = 
+//     struct_field_list<
+//       basic_field<"a", u32, field_size<fixed<4>>>, 
+//       basic_field<"b", u32, field_size<fixed<4>>>,
+//       union_field<
+//         "c", 
+//         type<
+//           match_field<"a">,
+//           type_switch<
+//             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
+//             match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
+//             match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
+//           >
+//         >
+//       >
+//     >;
+//
 // will fail!
 // using size_failure_basic_field = basic_field<"a", int, field_size<fixed<6>>>;
 
