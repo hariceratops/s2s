@@ -34,21 +34,16 @@ template <fixed_string id,
           typename present_only_if, 
           auto constraint, 
           typename optional,
-          typename base_field,
           typename... rest>
 struct field_lookup<
-    field_list<maybe_field<id, T, size, present_only_if, constraint, optional, base_field>, rest...>, id
+    field_list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>, id
   > 
 {
   using type = 
     maybe_field<
-      id, 
-      T, 
-      size,
+      field<id, T, size, constraint>,
       present_only_if, 
-      constraint, 
-      optional, 
-      base_field
+      optional
     >;
 };
 

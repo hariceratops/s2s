@@ -643,7 +643,7 @@ TEST_CASE("Test case to verify option field parsing with parse predicate failure
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_1, with_fields<"a">>>
+      maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_1, with_fields<"a">>>
     >;
 
   std::ofstream ofs("test_bin_input_4.bin", std::ios::out | std::ios::binary);
@@ -682,7 +682,7 @@ TEST_CASE("Test case to verify optional struct from binary file with successful 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<"c", inner, field_size<fixed<4>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+      maybe_field<struct_field<"c", inner>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
   std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);
@@ -712,6 +712,79 @@ TEST_CASE("Test case to verify optional struct from binary file with successful 
 }
 
 
+TEST_CASE("Test case to verify optional fixed_array from binary file with successful parse predicate") {
+  auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      maybe_field<fixed_array_field<"c", u32, 3>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    >;
+
+  std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  const u32 u32_arr[] = {0xdeadbeef, 0xcafed00d, 0xbeefbeef};
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  // array of integers of length 3
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_5.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["c"_f]);
+    auto opt_array = *(fields["c"_f]);
+    REQUIRE(opt_array == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
+  }
+}
+
+
+TEST_CASE("Test case to verify optional fixed string from binary file with successful parse predicate") {
+  auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      maybe_field<fixed_string_field<"c", 10>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    >;
+
+  std::ofstream ofs("test_bin_input_opt_fixed_str.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  constexpr std::size_t str_len = 10;
+  const u8 str[] = "foo in bar";
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_opt_fixed_str.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  std::string_view expected{"foo in bar"};
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["c"_f]);
+    auto opt_fixed_str = *(fields["c"_f]);
+    REQUIRE(std::string_view{opt_fixed_str.data()} == expected);
+  }
+}
+
+
 TEST_CASE("Test case to verify option field parsing from binary file with successful parse predicate") {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
 
@@ -719,7 +792,7 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<"c", u32, field_size<fixed<4>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+      maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
   std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);

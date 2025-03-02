@@ -116,13 +116,12 @@ struct is_optional_field;
 template <fixed_string id, 
           typename T, 
           typename size, 
+          auto constraint, 
           typename present_only_if, 
-          auto constraint_on_value, 
-          typename optional, 
-          typename base_field>
+          typename optional>
 struct is_optional_field<
-    maybe_field<id, T, size, present_only_if, constraint_on_value, optional, base_field>
-  > 
+    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+  >
 {
   static constexpr bool res = true;
 };

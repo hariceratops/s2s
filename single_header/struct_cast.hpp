@@ -993,18 +993,44 @@ struct field {
 };
 
 
+template <typename T>
+struct to_optional_field;
+
 template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
-using to_optional_field = field<id, std::optional<T>, size_type, constraint_on_value>;
+struct to_optional_field<field<id, T, size_type, constraint_on_value>> {
+  using res = field<id, std::optional<T>, size_type, constraint_on_value>;
+};
+
+template <typename T>
+using to_optional_field_v = to_optional_field<T>::res;
+
+template <typename T>
+struct no_variance_field;
+
+template <fixed_string id,
+          typename T,
+          typename size_type,
+          auto constraint_on_value>
+struct no_variance_field<field<id, T, size_type, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct no_variance_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
+
+template <typename T>
+concept no_variance_field_like = no_variance_field_v<T>;
 
 // todo maybe provide field directly as template parameter constrained?
 // will solve constraint issue and also produces clean API
-template <fixed_string id, 
-          typename T, 
-          typename size_type, 
+template <no_variance_field_like base_field,
           typename present_only_if,
-          auto constraint_on_value = no_constraint<T>{},
-          typename optional = to_optional_field<id, T, size_type, constraint_on_value>,
-          typename base_field = field<id, T, size_type, constraint_on_value>>
+          typename optional = to_optional_field_v<base_field>>
 class maybe_field : public optional
 {
 public:
@@ -1231,13 +1257,12 @@ struct is_optional_field;
 template <fixed_string id, 
           typename T, 
           typename size, 
+          auto constraint, 
           typename present_only_if, 
-          auto constraint_on_value, 
-          typename optional, 
-          typename base_field>
+          typename optional>
 struct is_optional_field<
-    maybe_field<id, T, size, present_only_if, constraint_on_value, optional, base_field>
-  > 
+    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+  >
 {
   static constexpr bool res = true;
 };
@@ -1337,21 +1362,16 @@ template <fixed_string id,
           typename present_only_if, 
           auto constraint, 
           typename optional,
-          typename base_field,
           typename... rest>
 struct field_lookup<
-    field_list<maybe_field<id, T, size, present_only_if, constraint, optional, base_field>, rest...>, id
+    field_list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>, id
   > 
 {
   using type = 
     maybe_field<
-      id, 
-      T, 
-      size,
+      field<id, T, size, constraint>,
       present_only_if, 
-      constraint, 
-      optional, 
-      base_field
+      optional
     >;
 };
 
