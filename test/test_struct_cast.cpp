@@ -636,6 +636,39 @@ TEST_CASE("Dummy test to verify runtime computation from fields") {
 }
 
 
+TEST_CASE("Test case to verify option field parsing from binary file with successful parse predicate") {
+  auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    >;
+
+  std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  u32 c = 0xbeefbeef;
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_5.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(*(fields["c"_f]) == 0xbeefbeef);
+  }
+}
+
+
 TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
   auto is_a_eq_1 = [](auto& a){ return a == 1; };
 
@@ -785,26 +818,35 @@ TEST_CASE("Test case to verify optional fixed string from binary file with succe
 }
 
 
-TEST_CASE("Test case to verify option field parsing from binary file with successful parse predicate") {
+TEST_CASE("Test case to verify optional length prefixed array from binary file with successful parse predicate") {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
 
   using test_struct_field_list = 
     struct_field_list<
       basic_field<"a", u32, field_size<fixed<4>>>, 
       basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      maybe_field<vec_field<"vec", u32, field_size<len_from_field<"len">>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  std::ofstream ofs("test_bin_input_5.bin", std::ios::out | std::ios::binary);
+  std::ofstream ofs("test_bin_input_opt_variable_array.bin", std::ios::out | std::ios::binary);
   u32 a = 0xdeadbeef;
   u32 b = 0xcafed00d;
-  u32 c = 0xbeefbeef;
+  constexpr std::size_t vec_len = 10;
+  const u32 u32_arr[] = {
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d,
+    0xdeadbeef, 0xcafed00d
+  };
   ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
   ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
-  ofs.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  ofs.write(reinterpret_cast<const char*>(&vec_len), sizeof(vec_len));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
   ofs.close();
 
-  std::ifstream ifs("test_bin_input_5.bin", std::ios::in | std::ios::binary);
+  std::ifstream ifs("test_bin_input_opt_variable_array.bin", std::ios::in | std::ios::binary);
   auto result = struct_cast<test_struct_field_list>(ifs);
   ifs.close();
 
@@ -813,28 +855,135 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
     auto fields = *result;
     REQUIRE(fields["a"_f] == 0xdeadbeef);
     REQUIRE(fields["b"_f] == 0xcafed00d);
-    REQUIRE(*(fields["c"_f]) == 0xbeefbeef);
+    REQUIRE(fields["len"_f] == 10);
+    REQUIRE(fields["vec"_f]);
+    auto vec = *(fields["vec"_f]) ;
+    REQUIRE(vec.size() == 10);
+    REQUIRE(vec == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+                                    0xdeadbeef, 0xcafed00d,
+                                    0xdeadbeef, 0xcafed00d,
+                                    0xdeadbeef, 0xcafed00d, 
+                                    0xdeadbeef, 0xcafed00d});
+  }
+}
+
+
+TEST_CASE("Test case to verify optional array of records from binary file with successful parse predicate") {
+  auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+
+  using test_struct = 
+    struct_field_list <
+      basic_field<"x", u32, field_size<fixed<4>>>,
+      basic_field<"y", u32, field_size<fixed<4>>>
+    >;
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      maybe_field<array_of_records<"records", test_struct, 3>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    >;
+
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  const u32 u32_arr[3][2] = { 
+    {0xdeadbeef, 0xbeefbeef},
+    {0xdeadbeef, 0xbeefbeef}, 
+    {0xdeadbeef, 0xbeefbeef} 
+  };
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["records"_f]);
+    auto records = fields["records"_f];
+    for(auto record: *records) {
+      REQUIRE(record["x"_f] == 0xdeadbeef);
+      REQUIRE(record["y"_f] == 0xbeefbeef);
+    }
+  }
+}
+
+
+TEST_CASE("Test case to verify optional vector of records from binary file with successful parse predicate") {
+  auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+
+  using test_struct = 
+    struct_field_list <
+      basic_field<"x", u32, field_size<fixed<4>>>,
+      basic_field<"y", u32, field_size<fixed<4>>>
+    >;
+
+  using test_struct_field_list = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      maybe_field<vector_of_records<"records", test_struct, field_size<len_from_field<"len">>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    >;
+
+  std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
+  u32 a = 0xdeadbeef;
+  u32 b = 0xcafed00d;
+  constexpr std::size_t vec_len = 3;
+  const u32 u32_arr[3][2] = { 
+    {0xdeadbeef, 0xbeefbeef},
+    {0xdeadbeef, 0xbeefbeef}, 
+    {0xdeadbeef, 0xbeefbeef} 
+  };
+  ofs.write(reinterpret_cast<const char*>(&a), sizeof(a));
+  ofs.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  ofs.write(reinterpret_cast<const char*>(&vec_len), sizeof(vec_len));
+  ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  ofs.close();
+
+  std::ifstream ifs("test_bin_input_6.bin", std::ios::in | std::ios::binary);
+  auto result = struct_cast<test_struct_field_list>(ifs);
+  ifs.close();
+
+  REQUIRE(result.has_value() == true);
+  if(result) {
+    auto fields = *result;
+    REQUIRE(fields["a"_f] == 0xdeadbeef);
+    REQUIRE(fields["b"_f] == 0xcafed00d);
+    REQUIRE(fields["records"_f]);
+    auto records = fields["records"_f];
+    for(auto record: *records) {
+      REQUIRE(record["x"_f] == 0xdeadbeef);
+      REQUIRE(record["y"_f] == 0xbeefbeef);
+    }
   }
 }
 
 
 TEST_CASE("Test case to verify variant field parsing from a binary file") {
-  using test_struct_field_list = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
-        "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,
-            match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
-          >
+using test_struct_field_list = 
+  struct_field_list<
+    basic_field<"a", u32, field_size<fixed<4>>>, 
+    basic_field<"b", u32, field_size<fixed<4>>>,
+    union_field<
+      "c", 
+      type<
+        match_field<"a">,
+        type_switch<
+          match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
+          match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,
+          match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
         >
       >
-    >;
+    >
+  >;
 
   std::ofstream ofs("test_bin_input_6.bin", std::ios::out | std::ios::binary);
   u32 a = 0xdeadbeef;
