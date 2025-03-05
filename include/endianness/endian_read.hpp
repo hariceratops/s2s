@@ -1,11 +1,8 @@
-#include <fstream>
 #include <iterator>
-#include <algorithm>
-#include <iostream>
 
 
 template <typename T>
-class mem_rep {
+struct mem_rep {
   char* mem;
   std::size_t size;
 
@@ -53,7 +50,7 @@ public:
     char& operator*() { return *current; }
     bytewise_reverse_iterator& operator++() { --current; return *this;  }
     bytewise_reverse_iterator& operator++(int) {
-      bytewise_reverse_iterator temp = *this;
+      bytewise_reverse_iterator& temp = *this;
       --current;
       return temp;
     }
