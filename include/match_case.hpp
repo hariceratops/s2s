@@ -5,7 +5,7 @@
 
 // todo constrain to data types possible for fields
 // todo constrain T?
-template <auto v, typename T>
+template <auto v, type_tag_like T>
 struct match_case {
   static constexpr auto value = v;
   using type_tag = T;

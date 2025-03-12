@@ -18,6 +18,9 @@ template <typename T>
 concept floating_point = std::is_floating_point_v<T>;
 
 template <typename T>
+concept trivial = floating_point<T> || integral<T>;
+
+template <typename T>
 concept unsigned_integral = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
 template <typename T>

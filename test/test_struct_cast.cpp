@@ -824,7 +824,7 @@ TEST_CASE("Test case to verify optional length prefixed array from binary file w
       REQUIRE(fields["b"_f] == 0xcafed00d);
       REQUIRE(fields["len"_f] == 10);
       REQUIRE(fields["vec"_f]);
-      auto vec = *(fields["vec"_f]) ;
+      auto vec = *(fields["vec"_f]);
       REQUIRE(vec.size() == 10);
       REQUIRE(vec == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
                                       0xdeadbeef, 0xcafed00d,
@@ -960,8 +960,8 @@ TEST_CASE("Test case to verify failed parsing variant field") {
         type<
           match_field<"a">,
           type_switch<
-            match_case<0xcafed00d, type_tag<inner_1, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, type_tag<inner_2, field_size<fixed<4>>>>
+            match_case<0xcafed00d, struct_tag<inner_1>>,
+            match_case<0xdeadbeef, struct_tag<inner_2>>
           >
         >
       >
@@ -994,9 +994,9 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
         type<
           match_field<"a">,
           type_switch<
-            match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, type_tag<u32, field_size<fixed<4>>>>,
-            match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
+            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, trivial_tag<u32, field_size<fixed<4>>>>,
+            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
           >
         >
       >
@@ -1009,6 +1009,102 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
       REQUIRE(fields["a"_f] == 0xdeadbeef);
       REQUIRE(fields["b"_f] == 0xcafed00d);
       REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
+    }
+  });
+}
+
+
+TEST_CASE("Test case to verify variant field with an fixed array parsing from a binary file") {
+  [](){
+    std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+    u32 a = 0xdeadbeef;
+    u32 b = 0xcafed00d;
+    const u32 u32_arr[] = {0xdeadbeef, 0xcafed00d, 0xbeefbeef};
+    file.write(reinterpret_cast<const char*>(&a), sizeof(a));
+    file.write(reinterpret_cast<const char*>(&b), sizeof(b));
+    file.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  }();
+
+  FIELD_LIST_SCHEMA = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          match_field<"a">,
+          type_switch<
+            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, fixed_buffer_tag<std::array<u32, 3>, field_size<fixed<4>>>>,
+            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  FIELD_LIST_READ_CHECK({
+    REQUIRE(result.has_value() == true);
+    if(result) {
+      auto fields = *result;
+      REQUIRE(fields["a"_f] == 0xdeadbeef);
+      REQUIRE(fields["b"_f] == 0xcafed00d);
+      REQUIRE(std::get<std::array<u32, 3>>(fields["c"_f]) == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
+    }
+  });
+}
+
+
+TEST_CASE("Test case to verify variant field with an variable sized array parsing from a binary file") {
+  [](){
+    std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+    u32 a = 0xdeadbeef;
+    u32 b = 0xcafed00d;
+    constexpr std::size_t vec_len = 10;
+    const u32 u32_arr[] = {
+      0xdeadbeef, 0xcafed00d,
+      0xdeadbeef, 0xcafed00d,
+      0xdeadbeef, 0xcafed00d,
+      0xdeadbeef, 0xcafed00d,
+      0xdeadbeef, 0xcafed00d
+    };
+    file.write(reinterpret_cast<const char*>(&a), sizeof(a));
+    file.write(reinterpret_cast<const char*>(&b), sizeof(b));
+    file.write(reinterpret_cast<const char*>(&vec_len), sizeof(vec_len));
+    file.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
+  }();
+
+  FIELD_LIST_SCHEMA = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      union_field<
+        "c", 
+        type<
+          match_field<"a">,
+          type_switch<
+            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, variable_buffer_tag<std::vector<u32>, field_size<len_from_field<"len">>>>,
+            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  FIELD_LIST_READ_CHECK({
+    REQUIRE(result.has_value() == true);
+    if(result) {
+      auto fields = *result;
+      REQUIRE(fields["a"_f] == 0xdeadbeef);
+      REQUIRE(fields["b"_f] == 0xcafed00d);
+      REQUIRE(fields["len"_f] == 10);
+      auto& vec = std::get<std::vector<u32>>(fields["c"_f]);
+      REQUIRE(vec.size() == 10);
+      REQUIRE(vec == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+                                      0xdeadbeef, 0xcafed00d,
+                                      0xdeadbeef, 0xcafed00d,
+                                      0xdeadbeef, 0xcafed00d, 
+                                      0xdeadbeef, 0xcafed00d});
     }
   });
 }
@@ -1034,9 +1130,9 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with com
         type<
           compute<some_complex_calc, u32, with_fields<"a", "b">>,
           type_switch<
-            match_case<100, type_tag<float, field_size<fixed<4>>>>,
-            match_case<200, type_tag<u32, field_size<fixed<4>>>>,
-            match_case<300, type_tag<int, field_size<fixed<4>>>>
+            match_case<100, trivial_tag<float, field_size<fixed<4>>>>,
+            match_case<200, trivial_tag<u32, field_size<fixed<4>>>>,
+            match_case<300, trivial_tag<int, field_size<fixed<4>>>>
           >
         >
       >
@@ -1085,8 +1181,8 @@ TEST_CASE("Test case to verify parsing variant field with multiple struct field 
         type<
           match_field<"a">,
           type_switch<
-            match_case<0xcafed00d, type_tag<inner_1, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, type_tag<inner_2, field_size<fixed<4>>>>
+            match_case<0xcafed00d, struct_tag<inner_1>>,
+            match_case<0xdeadbeef, struct_tag<inner_2>>
           >
         >
       >
@@ -1106,7 +1202,44 @@ TEST_CASE("Test case to verify parsing variant field with multiple struct field 
 }
 
 
-TEST_CASE("Test case to verify variant field parsing from a binary file with binary clauses") {
+TEST_CASE("Test case to verify failed variant field parsing from a binary file with boolean clauses") {
+  PREPARE_INPUT_FILE({
+    u32 a = 50000;
+    u32 b = 50000;
+    float c = 3.14f;
+    file.write(reinterpret_cast<const char*>(&a), sizeof(a));
+    file.write(reinterpret_cast<const char*>(&b), sizeof(b));
+    file.write(reinterpret_cast<const char*>(&c), sizeof(c));
+  });
+
+  auto bpred_1 = [](auto a, auto b){ return a + b >= 20000 && a + b < 40000; };
+  auto bpred_2 = [](auto a, auto b){ return a + b <= 40000 && a + b < 60000; };
+  
+  // todo type tag entries shall be unique with respect to type
+  // todo possible convinent short hand for eval_bool_from_fields
+  FIELD_LIST_SCHEMA = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          type_ladder<
+            clause<predicate<bpred_1, with_fields<"a", "b">>, trivial_tag<float, field_size<fixed<4>>>>,
+            clause<predicate<bpred_2, with_fields<"a", "b">>, trivial_tag<u32, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  FIELD_LIST_READ_CHECK({
+    REQUIRE(result.has_value() == false);
+    REQUIRE(result.error() == cast_error::type_deduction_failure);
+  });
+}
+
+
+TEST_CASE("Test case to verify variant field parsing from a binary file with boolean clauses") {
   PREPARE_INPUT_FILE({
     u32 a = 12000;
     u32 b = 12000;
@@ -1130,9 +1263,9 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with bin
         "c", 
         type<
           type_ladder<
-            clause<predicate<bpred_1, with_fields<"a", "b">>, type_tag<float, field_size<fixed<4>>>>,
-            clause<predicate<bpred_2, with_fields<"a", "b">>, type_tag<u32, field_size<fixed<4>>>>,
-            clause<predicate<bpred_3, with_fields<"a", "b">>, type_tag<int, field_size<fixed<4>>>>
+            clause<predicate<bpred_1, with_fields<"a", "b">>, trivial_tag<float, field_size<fixed<4>>>>,
+            clause<predicate<bpred_2, with_fields<"a", "b">>, trivial_tag<u32, field_size<fixed<4>>>>,
+            clause<predicate<bpred_3, with_fields<"a", "b">>, trivial_tag<int, field_size<fixed<4>>>>
           >
         >
       >

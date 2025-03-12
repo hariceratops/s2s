@@ -30,7 +30,7 @@ auto main(void) -> int {
   using var_buffer_struct = 
     struct_field_list<
       basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      str_field<"str", field_size<from_field<"len">>>
+      str_field<"str", field_size<len_from_field<"len">>>
     >;
 
   constexpr std::size_t str_len = 10;
@@ -46,6 +46,6 @@ auto main(void) -> int {
   ifs.close();
 
   auto fields = *res;
-  static_assert(is_variable_sized_field_v<str_field<"str", field_size<from_field<"len">>>>);
+  static_assert(is_variable_sized_field_v<str_field<"str", field_size<len_from_field<"len">>>>);
   std::cout << fields["len"_f] << " " << fields["str"_f].size() <<  std::string_view{fields["str"_f]};
 };
