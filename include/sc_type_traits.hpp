@@ -60,6 +60,9 @@ template <typename T>
 inline constexpr bool is_fixed_array_v = is_fixed_array<T>::is_same;
 
 template <typename T>
+concept fixed_array_like = is_fixed_array_v<T>;
+
+template <typename T>
 struct is_c_array;
 
 template <typename T, std::size_t N>

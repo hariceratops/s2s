@@ -4,6 +4,7 @@
 #include "sc_type_traits.hpp"
 #include "struct_field_list_base.hpp"
 #include "field_size.hpp"
+#include "size_deduce.hpp"
 
 
 template <typename T, typename size>
@@ -19,6 +20,7 @@ concept fixed_buffer_type_tag_like =
 // todo is this required
 // todo constraint T and size
 template <trivial T, fixed_size_like S>
+  requires (deduce_field_size<S>{}() <= sizeof(T))
 struct trivial_tag {
   using type = T;
   using size = S;
@@ -30,17 +32,28 @@ struct struct_tag {
   using size = field_size<size_dont_care>;
 };
 
-template <typename T, typename S> 
-  requires fixed_buffer_type_tag_like<T, S>
+// todo how to handle array of array
+template <trivial T, std::size_t N> 
 struct fixed_buffer_tag {
-  using type = T;
+  using type = std::array<T, N>;
+  using size = field_size<fixed<N * sizeof(T)>>;
+};
+
+template <std::size_t N> 
+struct fixed_string_tag {
+  using type = fixed_string<N>;
+  using size = field_size<fixed<N + 1>>;
+};
+
+template <trivial T, variable_size_like S> 
+struct variable_buffer_tag {
+  using type = std::vector<T>;
   using size = S;
 };
 
-template <typename T, typename S> 
-  requires variable_buffer_type_tag_like<T, S>
-struct variable_buffer_tag {
-  using type = T;
+template <variable_size_like S> 
+struct variable_string_tag {
+  using type = std::string;
   using size = S;
 };
 
@@ -52,13 +65,23 @@ struct is_type_tag<trivial_tag<T, size>> {
   static constexpr bool res = true;
 };
 
-template <typename T, typename size>
+template <typename T, std::size_t size>
 struct is_type_tag<fixed_buffer_tag<T, size>> {
+  static constexpr bool res = true;
+};
+
+template <std::size_t size>
+struct is_type_tag<fixed_string_tag<size>> {
   static constexpr bool res = true;
 };
 
 template <typename T, typename size>
 struct is_type_tag<variable_buffer_tag<T, size>> {
+  static constexpr bool res = true;
+};
+
+template <typename size>
+struct is_type_tag<variable_string_tag<size>> {
   static constexpr bool res = true;
 };
 

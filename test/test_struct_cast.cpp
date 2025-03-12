@@ -1035,7 +1035,7 @@ TEST_CASE("Test case to verify variant field with an fixed array parsing from a 
           match_field<"a">,
           type_switch<
             match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, fixed_buffer_tag<std::array<u32, 3>, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, fixed_buffer_tag<u32, 3>>,
             match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
           >
         >
@@ -1084,7 +1084,7 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
           match_field<"a">,
           type_switch<
             match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, variable_buffer_tag<std::vector<u32>, field_size<len_from_field<"len">>>>,
+            match_case<0xdeadbeef, variable_buffer_tag<u32, field_size<len_from_field<"len">>>>,
             match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
           >
         >
