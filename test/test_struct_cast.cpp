@@ -1110,6 +1110,90 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
 }
 
 
+TEST_CASE("Test case to verify variant field with an fixed string parsing from a binary file") {
+  PREPARE_INPUT_FILE({
+    u32 a = 0xdeadbeef;
+    u32 b = 0xcafed00d;
+    constexpr std::size_t str_len = 10;
+    const u8 str[] = "foo in bar";
+    file.write(reinterpret_cast<const char*>(&a), sizeof(a));
+    file.write(reinterpret_cast<const char*>(&b), sizeof(b));
+    file.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  });
+
+  FIELD_LIST_SCHEMA = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      union_field<
+        "c", 
+        type<
+          match_field<"a">,
+          type_switch<
+            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, fixed_string_tag<10>>,
+            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  FIELD_LIST_READ_CHECK({
+    REQUIRE(result.has_value() == true);
+    if(result) {
+      auto fields = *result;
+      REQUIRE(fields["a"_f] == 0xdeadbeef);
+      REQUIRE(fields["b"_f] == 0xcafed00d);
+      auto& str = std::get<fixed_string<10>>(fields["c"_f]);
+      REQUIRE(std::string_view{str.data()} == std::string_view{"foo in bar"});
+    }
+  });
+}
+
+
+TEST_CASE("Test case to verify variant field with a variable string parsing from a binary file") {
+  PREPARE_INPUT_FILE({
+    u32 a = 0xdeadbeef;
+    u32 b = 0xcafed00d;
+    constexpr std::size_t str_len = 10;
+    const u8 str[] = "foo in bar";
+    file.write(reinterpret_cast<const char*>(&a), sizeof(a));
+    file.write(reinterpret_cast<const char*>(&b), sizeof(b));
+    file.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
+    file.write(reinterpret_cast<const char*>(&str), str_len + 1);
+  });
+
+  FIELD_LIST_SCHEMA = 
+    struct_field_list<
+      basic_field<"a", u32, field_size<fixed<4>>>, 
+      basic_field<"b", u32, field_size<fixed<4>>>,
+      basic_field<"len", std::size_t, field_size<fixed<8>>>,
+      union_field<
+        "c", 
+        type<
+          match_field<"a">,
+          type_switch<
+            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
+            match_case<0xdeadbeef, variable_string_tag<field_size<len_from_field<"len">>>>,
+            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+          >
+        >
+      >
+    >;
+
+  FIELD_LIST_READ_CHECK({
+    REQUIRE(result.has_value() == true);
+    if(result) {
+      auto fields = *result;
+      REQUIRE(fields["a"_f] == 0xdeadbeef);
+      REQUIRE(fields["b"_f] == 0xcafed00d);
+      auto& str = std::get<std::string>(fields["c"_f]);
+      REQUIRE(str == std::string{"foo in bar"});
+    }
+  });
+}
+
+
 TEST_CASE("Test case to verify variant field parsing from a binary file with complex type predicate") {
   PREPARE_INPUT_FILE({
     u32 a = 100;

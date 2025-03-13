@@ -7,16 +7,6 @@
 #include "size_deduce.hpp"
 
 
-template <typename T, typename size>
-concept variable_buffer_type_tag_like = 
-  (variable_sized_buffer_like<T> || vector_of_records_like<T>) &&
-  (variable_size_like<size>);
-
-template <typename T, typename size>
-concept fixed_buffer_type_tag_like = 
-  (fixed_buffer_like<T> || array_of_records_like<T>) &&
-  (fixed_size_like<size>);
-
 // todo is this required
 // todo constraint T and size
 template <trivial T, fixed_size_like S>
@@ -54,6 +44,18 @@ struct variable_buffer_tag {
 template <variable_size_like S> 
 struct variable_string_tag {
   using type = std::string;
+  using size = S;
+};
+
+template <field_list_like T, std::size_t N>
+struct array_of_record_tag {
+  using type = std::array<T, N>;
+  using size = field_size<size_dont_care>;
+};
+
+template <field_list_like T, variable_size_like S>
+struct vector_of_record_tag {
+  using type = std::vector<T>;
   using size = S;
 };
 
