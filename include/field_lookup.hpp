@@ -7,38 +7,76 @@
 #include "field.hpp"
 
 
+// Sentinel type for a failed lookup
 struct field_lookup_failed {};
 
-template <typename ls, fixed_string id>
+// Primary template declaration for field_lookup
+template <typename FieldList, fixed_string Id>
 struct field_lookup;
 
-template <fixed_string id, typename T, typename size, auto field_constraint, typename... rest>
-struct field_lookup<field_list<field<id, T, size, field_constraint>, rest...>, id> {
-  using type = field<id, T, size, field_constraint>;
+// Success case 1: Match a field with the given id
+template <fixed_string id, 
+          typename T, 
+          typename size_type, 
+          auto constraint, 
+          typename... rest>
+struct field_lookup<
+    field_list<field<id, T, size_type, constraint>, rest...>, id
+  >
+{
+  using type = field<id, T, size_type, constraint>;
 };
 
-template <fixed_string id, typename T, typename... rest>
-struct field_lookup<field_list<struct_field<id, T>, rest...>, id> {
-  using type = struct_field<id, T>;
+// Success case 2: Match a maybe_field with the given id
+template <fixed_string id, 
+          typename T, 
+          typename size, 
+          typename present_only_if, 
+          auto constraint, 
+          typename optional,
+          typename... rest>
+struct field_lookup<
+    field_list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>, id
+  > 
+{
+  using type = 
+    maybe_field<
+      field<id, T, size, constraint>,
+      present_only_if, 
+      optional
+    >;
 };
 
-template <fixed_string id, typename T, typename size, auto field_constraint, typename... rest>
-struct field_lookup<field_list<runtime_field<id, T, size, field_constraint>, rest...>, id> {
-  using type = runtime_field<id, T, size, field_constraint>;
+// Success case 3: Match a union_field with the given id
+template <fixed_string id,
+          typename type_deducer,
+          auto constraint_on_value,
+          typename T,
+          typename size_type,
+          typename variant,
+          typename field_choices_t,
+          typename... rest>
+struct field_lookup<
+    field_list<union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>, rest...>, id
+  >
+{
+  using type = union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>;
 };
 
-template <fixed_string id, typename head, typename... rest>
+// Recursive case: id does not match the head, continue searching in the rest
+template <typename head, typename... rest, fixed_string id>
 struct field_lookup<field_list<head, rest...>, id> {
   using type = typename field_lookup<field_list<rest...>, id>::type;
 };
 
+// Failure case: Reached the end of the field list without finding a match
 template <fixed_string id>
 struct field_lookup<field_list<>, id> {
   using type = field_lookup_failed;
 };
 
-template <typename ls, fixed_string id>
-using field_lookup_v = typename field_lookup<ls, id>::type;
-
+// Alias for easier use
+template <typename field_list_t, fixed_string id>
+using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_

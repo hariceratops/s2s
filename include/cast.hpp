@@ -1,83 +1,42 @@
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
 
-#include "field_meta.hpp"
+#include <print>
+
+#include <expected>
+#include "field_reader.hpp"
+// #include "field_meta.hpp"
+#include "field_list.hpp"
+#include "error.hpp"
+
+
+// forward declaration
+template <field_list_like T>
+constexpr auto struct_cast(std::ifstream&) -> std::expected<T, cast_error>;
 
 template <typename T>
-struct is_field;
-
-template <typename T>
-struct is_field: std::false_type{};
-
-template <fixed_string id, typename T, typename field_size, auto constraint>
-struct is_field<field<id, T, field_size, constraint>>: std::true_type{};
-
-template <typename T>
-constexpr bool is_field_v = is_field<T>::value;
-
-template <typename T>
-struct is_field_with_runtime_size;
-
-template <typename T>
-struct is_field_with_runtime_size: std::false_type{};
-
-template <fixed_string id, typename T, typename field_size, auto constraint>
-struct is_field_with_runtime_size<runtime_field<id, T, field_size, constraint>>: std::true_type{};
-
-template <typename T>
-constexpr bool is_field_with_runtime_size_v = is_field_with_runtime_size<T>::value;
-
-static_assert(is_field_with_runtime_size_v<runtime_field<"hello", int, runtime_size<from_field<"a">>>>);
-static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-static_assert(!is_field_v<runtime_field<"hello", int, runtime_size<from_field<"a">>>>);
+struct struct_cast_impl;
 
 template <typename... fields>
-struct struct_field_list;
+struct struct_cast_impl<struct_field_list<fields...>> {
+  using S = struct_field_list<fields...>;
+  using R = std::expected<S, cast_error>;
 
-// Metafunction to check if a type is a struct_field_list
-template <typename T>
-struct is_struct_field_list : std::false_type {};
+  constexpr auto operator()(std::ifstream& ifs) -> R {
+    S field_list;
+    read_result pipeline_seed{};
+    auto res = (
+      pipeline_seed |
+      ... |
+      read_field<fields, S>(static_cast<fields&>(field_list), field_list, ifs)
+    );
+    return res ? R(field_list) : std::unexpected(res.error());
+  }
+};
 
-template <typename... Entries>
-struct is_struct_field_list<struct_field_list<Entries...>> : std::true_type {};
-
-template <typename T>
-constexpr bool is_struct_field_list_v = is_struct_field_list<T>::value;
-
-
-template <typename... fields>
-constexpr void struct_cast(struct_field_list<fields...>& field_list, const unsigned char* buffer) {
-  std::size_t prefix_sum[sizeof...(fields) + 1] = {0};
-  std::size_t index = 0;
-
-  ([&](auto& field) {
-    using field_type = std::decay_t<decltype(field)>;
-    prefix_sum[index + 1] = prefix_sum[index] + field_type::field_size;
-    if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
-      struct_cast(field.value, buffer + prefix_sum[index]);
-    } else if constexpr (is_field_v<field_type>) {
-      field.read(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_type::field_size);
-    } else if constexpr (is_field_with_runtime_size_v<field_type>) {
-      field.read(reinterpret_cast<const char*>(buffer + prefix_sum[index]), field_list[field_type::field_accessor]);
-    }
-    ++index;
-  }(static_cast<fields&>(field_list)), ...);
-}
-
-template <typename... fields>
-constexpr void struct_cast(struct_field_list<fields...>& field_list, std::ifstream& stream) {
-  ([&](auto& field) {
-    using field_type = std::decay_t<decltype(field)>;
-    if constexpr (is_struct_field_list_v<extract_type_from_field_v<field_type>>) {
-      struct_cast(field.value, stream);
-    } else if constexpr (is_field_v<field_type>) {
-      field.read(stream, field_type::field_size);
-    } else if constexpr (is_field_with_runtime_size_v<field_type>) {
-      field.read(stream, field_list[field_type::field_accessor]);
-    }
-
-  }(static_cast<fields&>(field_list)), ...);
+template <field_list_like T>
+constexpr auto struct_cast(std::ifstream& ifs) -> std::expected<T, cast_error> {
+  return struct_cast_impl<T>{}(ifs);
 }
 
 #endif // _CAST_HPP_

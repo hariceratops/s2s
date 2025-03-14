@@ -11,13 +11,8 @@ struct not_a_field;
 template <typename T>
 struct extract_type_from_field;
 
-template <fixed_string id, typename field_type, std::size_t size>
-struct extract_type_from_field<field<id, field_type, field_size<size>>> {
-  using type = field_type;
-};
-
-template <fixed_string id, typename field_type>
-struct extract_type_from_field<struct_field<id, field_type>> {
+template <fixed_string id, typename field_type, typename size, auto constraint>
+struct extract_type_from_field<field<id, field_type, field_size<size>, constraint>> {
   using type = field_type;
 };
 

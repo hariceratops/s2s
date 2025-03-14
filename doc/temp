@@ -1,0 +1,28 @@
+union_field <
+  "id",
+  deduce_type<
+    eval<func, std::size_t, with_fields<"a">>,
+    type_switch<
+      match_case<0, type_tag<int, 4>>,
+      match_case<1, type_tag<float, 4>>,
+      match_case<2, type_tag<array_field<int>, 10>>
+    >
+  >
+>;
+ 
+union_field <
+  "id",
+  deduce_type<
+    with_type_ladder<
+      clause<
+        eval_b<func, with_fields<"a">>, 
+        type_tag<int, 4>
+      >,
+      clause<
+        eval_b<another_func, with_fields<"b">>,
+        type_tag<float, 4>
+      >
+    >
+  >
+>;
+

@@ -1,0 +1,25 @@
+[c] Rename compute file and the functions in it to an appropriate names
+[c] Convert reader lambdas into templated functors to read both readers and streams
+[x] Make there are no editor errors due to cpp23 features
+[x] Support for callable based  jump table in the computations
+[  ] Size dependency resolution checks
+[  ] Parse dependency resolution checks
+[  ] Updated field type aliases
+  - [  ] Usage of metafunctions to extract type and size for union fields
+[  ] Updated test cases, add new if required
+[  ] Static test cases for all type traits and concepts
+[  ] Compilable bit and byte type abstraction
+[  ] Memstream abstraction
+[  ] Constraint complaince with std::expected
+[  ] Improved fixed_string
+[  ] Support for meta_enums
+[  ] Support for skipping and delimiters
+[  ] Support for no_std and user defined optionals, variants, expected, containers
+[  ] Visualizer for the struct_field_list using Python, Graphviz
+[  ] Doxygen, MdDocs
+[  ] Bitfields
+[  ] Endianness
+[  ] Alignment and packing manipulation for field list
+[  ] Instantition of memstream reader based on whether bit operations required or not
+[  ] Concepts for field dependency
+[  ] Concepts for field lookup

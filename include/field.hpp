@@ -1,106 +1,131 @@
-#ifndef _FIELD_HPP_
-#define _FIELD_HPP_
+#ifndef _FIELD__HPP_
+#define _FIELD__HPP_
 
-#include <iostream>
-#include "fixed_string.hpp"
-#include "field_base.hpp"
-#include "address_manip.hpp"
-#include "sc_type_traits.hpp"
-#include "field_constraints.hpp"
+
 #include "field_size.hpp"
-#include <fstream>
-#include <cstring>
-#include <array>
-#include <vector>
-#include <string>
+#include "field_constraints.hpp"
+#include "fixed_string.hpp"
+#include <type_traits>
+
+template <fixed_string id,
+          typename T,
+          typename size_type,
+          auto constraint_on_value>
+struct field {
+  using field_type = T;
+  using field_size = size_type;
+
+  static constexpr auto field_id = id;
+  static constexpr auto constraint_checker = constraint_on_value;
+  field_type value;
+};
+
 
 template <typename T>
-concept field_containable = fixed_buffer_like<T> || arithmetic<T>;
+struct to_optional_field;
+
+template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
+struct to_optional_field<field<id, T, size_type, constraint_on_value>> {
+  using res = field<id, std::optional<T>, size_type, constraint_on_value>;
+};
+
+template <typename T>
+using to_optional_field_v = to_optional_field<T>::res;
+
+template <typename T>
+struct no_variance_field;
 
 template <fixed_string id,
           typename T,
-          auto constraint = no_constraint<T>{}> 
-struct basic_field: public field_base<id, T> {
-  void read(const char* buffer, std::size_t size_to_read) {
-    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
-    assert(constraint(this->value));
-  }
-
-  void read(std::ifstream& ifs, std::size_t size_to_read) {
-    ifs.read(byte_addressof(this->value), size_to_read);
-    assert(constraint(this->value));
-  }
+          typename size_type,
+          auto constraint_on_value>
+struct no_variance_field<field<id, T, size_type, constraint_on_value>> {
+  static constexpr bool res = true;
 };
 
+template <typename T>
+struct no_variance_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
+
+template <typename T>
+concept no_variance_field_like = no_variance_field_v<T>;
+
+// todo maybe provide field directly as template parameter constrained?
+// will solve constraint issue and also produces clean API
+template <no_variance_field_like base_field,
+          typename present_only_if,
+          typename optional = to_optional_field_v<base_field>>
+class maybe_field : public optional
+{
+public:
+  using field_base_type = base_field;
+  using field_presence_checker = present_only_if;
+};
+
+
+template <typename... choices>
+struct field_choice_list {};
+
+template <fixed_string id, typename... args>
+struct to_field_choices;
+
+template <fixed_string id, typename T, typename field_size>
+struct to_field_choice {
+  using field_choice = field<id, T, field_size, no_constraint<T>{}>;
+};
+
+template <fixed_string id, typename T, typename field_size>
+using to_field_choice_v = to_field_choice<id, T, field_size>::field_choice;
+
+template <fixed_string id, typename... types, typename... sizes>
+struct to_field_choices<id, std::variant<types...>, field_size<size_choices<sizes...>>> {
+  using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
+};
+
+
+template <typename arg>
+struct are_unique_types;
+
+template <typename head>
+struct are_unique_types<field_choice_list<head>> {
+  static constexpr bool res = true;
+};
+
+template <typename head, typename neck, typename... tail>
+struct are_unique_types<field_choice_list<head, neck, tail...>> {
+  constexpr static bool res =
+    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
+    are_unique_types<field_choice_list<neck, tail...>>::res;
+};
+
+
+template <typename choice_list>
+inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
+
+static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
+static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
+
+
+// todo how to handle constraint_on_value in general
 template <fixed_string id,
-          field_containable T,
-          typename comptime_size,
-          auto constraint = no_constraint<T>{}> 
-struct field: public basic_field<id, T> {
-  static constexpr auto field_size = comptime_size::size;
-};
-
-// todo remove field_containable since value of T type shall
-// be either allocated or managed, constain accordingly
-// todo is contraint required? maybe.
-template <fixed_string id,
-          typename T,
-          typename runtime_size,
-          auto constraint = no_constraint<T>{}> 
-struct runtime_field: public basic_field<id, T> {
-  static constexpr auto field_accessor = runtime_size::accessor;
-  void read(const char* buffer, std::size_t size_to_read) {
-    this->value.resize(size_to_read);
-    std::memcpy(to_void_ptr(this->value), buffer, size_to_read);
-    assert(constraint(this->value));
-  }
-
-  void read(std::ifstream& ifs, std::size_t size_to_read) {
-    this->value.resize(size_to_read);
-    ifs.read(byte_addressof(this->value), size_to_read);
-    assert(constraint(this->value));
-  }
+          typename type_deducer,
+          typename type = typename type_deducer::variant,
+          typename size_type = typename type_deducer::sizes,
+          auto constraint_on_value = no_constraint<type>{},
+          typename variant = field<id, type, size_type, constraint_on_value>,
+          typename field_choices_t = to_field_choices<id, type, size_type>::choices
+  >
+  requires are_unique_types_v<field_choices_t>
+struct union_field: public variant {
+  using type_deduction_guide = type_deducer;
+  using field_choices = field_choices_t;
+  static constexpr auto variant_size = std::variant_size_v<type>;
 };
 
 
-template <fixed_string id, field_list_like T>
-struct struct_field : field_base<id, T> {
-  static constexpr auto field_size = sizeof(T);
-};
-
-// Aliases
-// todo enforce constraints wherever applicable
-template <fixed_string id, typename T, std::size_t N>
-using fixed_array_field = field<id, std::array<T, N>, field_size<N * sizeof(T)>>;
-
-template <fixed_string id, std::size_t N>
-using fixed_string_field = field<id, fixed_string<N + 1>, field_size<N + 1>>;
-
-template <fixed_string id, typename T, std::size_t N>
-using c_arr_field = field<id, T[N], field_size<N * sizeof(T)>>;
-
-template <fixed_string id, std::size_t N>
-using c_str_field = field<id, char[N + 1], field_size<N * sizeof(char) + 1>>;
-
-template <fixed_string id, floating_point T>
-using float_point_field = field<id, T, field_size<sizeof(T)>>;
-
-template <fixed_string id, std::size_t N, std::array<unsigned char, N> expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<N>, eq{expected}>;
-
-template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, field_size<expected.size()>, eq{expected}>;
-
-template <fixed_string id, integral T, std::size_t size, T expected>
-using magic_number = field<id, T, field_size<size>, eq{expected}>;
-
-// digressions = What if user wants a custom allocator? use the plain version of the type instead of alias?
-// todo get vector length in bytes instead of size to read additional overload
-template <fixed_string id, typename T, typename runtime_size>
-using vec_field = runtime_field<id, std::vector<T>, runtime_size>;
-
-// todo check if this will work for all char types like wstring
-template <fixed_string id, typename runtime_size>
-using str_field = runtime_field<id, std::string, runtime_size>;
-
-#endif
+#endif // _FIELD__HPP_

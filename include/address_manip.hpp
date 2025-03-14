@@ -1,10 +1,10 @@
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
 
-#include "fixed_string.hpp"
 #include <array>
 #include <string>
 #include <vector>
+#include "fixed_string.hpp"
 
 
 // Function to void pointer cast
@@ -25,6 +25,11 @@ void* to_void_ptr(fixed_string<N>& obj) {
 
 template <typename T>
 void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+template <typename T>
+void* to_void_ptr(std::string& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
@@ -53,6 +58,10 @@ char* byte_addressof(fixed_string<N>& obj) {
 template <typename T>
 char* byte_addressof(std::vector<T>& obj) {
   return reinterpret_cast<char*>(obj.data());
+}
+
+inline char* byte_addressof(std::string& obj) {
+  return reinterpret_cast<char*>(&obj[0]);
 }
 
 #endif // _ADDRESS_MANIP_HPP_
