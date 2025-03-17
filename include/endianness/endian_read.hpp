@@ -1,14 +1,15 @@
 #include <iterator>
+#include <expected>
 
 
 template <typename T>
-struct mem_rep {
-  char* mem;
+struct raw_bytes {
+  char* ptr_to_object;
   std::size_t size;
 
 public:
-  explicit constexpr mem_rep(T& obj, std::size_t size)
-    : mem(reinterpret_cast<char*>(&obj)), size(size) {}
+  explicit constexpr raw_bytes(T& obj, std::size_t size)
+    : ptr_to_object(reinterpret_cast<char*>(&obj)), size(size) {}
 
   class bytewise_iterator {
     char* current;
@@ -62,9 +63,72 @@ public:
     }
   };
 
-  bytewise_iterator begin() { return bytewise_iterator(mem); }
-  bytewise_iterator end() { return bytewise_iterator(mem + size); }
-  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(mem + size - 1); }
-  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(mem - 1); }
+  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
+  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + size); }
+  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(ptr_to_object + size - 1); }
+  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(ptr_to_object - 1); }
 };
+
+
+enum cast_endianness {
+  host = 0,
+  foreign = 1
+};
+
+struct little_endian {};
+struct big_endian {};
+
+// todo custom input iterator
+using InputStreamIter = std::istreambuf_iterator<char>;
+
+// todo decide on the return type
+// todo rename to copy and enclose in a namespace
+template </*typename InputStreamIter, */typename ObjIter>
+constexpr auto copy_from_file(InputStreamIter& fstream_iter, ObjIter&& obj_byte_iter, std::size_t count) 
+  -> std::expected<void, std::string>  
+{
+  std::size_t b_count = 0;
+  auto end_of_stream = InputStreamIter{};
+
+  while(b_count < count) {
+    if(fstream_iter == end_of_stream) 
+      return std::unexpected("eof");
+
+    *obj_byte_iter = *fstream_iter;
+    obj_byte_iter++;
+    fstream_iter++;
+    b_count++;
+  }
+  return {};
+}
+
+
+template <std::endian endianness>
+constexpr cast_endianness deduce_byte_order() {
+  if constexpr(std::endian::native == endianness) 
+    return cast_endianness::host;
+  else if constexpr(std::endian::native != endianness) 
+    return cast_endianness::foreign;
+}
+
+
+// todo decide if endianness should be in type or value domain
+template <std::endian endianness, typename T>
+constexpr auto copy_from_file(InputStreamIter& iter, raw_bytes<T>& obj) 
+  -> std::expected<void, std::string>
+{
+  constexpr auto byte_order = 
+    [](){
+      if constexpr(std::endian::native == endianness) return cast_endianness::host;
+      else if constexpr(std::endian::native != endianness) return cast_endianness::foreign;
+    }();
+
+  if constexpr(byte_order == cast_endianness::host) {
+    return copy_from_file(iter, obj.begin(), obj.size);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    return copy_from_file(iter, obj.rbegin(), obj.size);
+  }
+
+  return std::unexpected("unknown endianness");
+}
 

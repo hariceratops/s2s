@@ -1,5 +1,5 @@
 
-// Begin /home/hari/Code/struct_cast/include/fixed_string.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -43,9 +43,9 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
-// End /home/hari/Code/struct_cast/include/fixed_string.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/fixed_string.hpp
 
-// Begin /home/hari/Code/struct_cast/include/address_manip.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/address_manip.hpp
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
 
@@ -112,9 +112,9 @@ inline char* byte_addressof(std::string& obj) {
 
 #endif // _ADDRESS_MANIP_HPP_
 
-// End /home/hari/Code/struct_cast/include/address_manip.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/address_manip.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_accessor.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
@@ -131,9 +131,9 @@ constexpr auto operator""_f() {
 
 #endif // _FIELD_ACCESSOR_HPP_
 
-// End /home/hari/Code/struct_cast/include/field_accessor.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_accessor.hpp
 
-// Begin /home/hari/Code/struct_cast/include/fixed_str_list.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/fixed_str_list.hpp
 #ifndef _FIXED_STR_LIST_HPP_
 #define _FIXED_STR_LIST_HPP_
  
@@ -247,9 +247,9 @@ static_assert(size_v<typelist_ex> == 4);
 
 #endif // _FIXED_STR_LIST_HPP_
 
-// End /home/hari/Code/struct_cast/include/fixed_str_list.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/fixed_str_list.hpp
 
-// Begin /home/hari/Code/struct_cast/include/typelist.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/typelist.hpp
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -353,9 +353,9 @@ static_assert(tl::all_are_same_v<tl::typelist<>>);
 
 #endif // _TYPELIST_HPP_
 
-// End /home/hari/Code/struct_cast/include/typelist.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/typelist.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_size.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_size.hpp
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
  
@@ -488,9 +488,9 @@ static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 
 #endif // _FIELD_SIZE_HPP_
 
-// End /home/hari/Code/struct_cast/include/field_size.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_size.hpp
 
-// Begin /home/hari/Code/struct_cast/include/struct_field_list_base.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/struct_field_list_base.hpp
 #ifndef _STRUCT_FIELD_LIST_BASE_HPP_
 #define _STRUCT_FIELD_LIST_BASE_HPP_
 
@@ -503,9 +503,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 
 #endif // _STRUCT_FIELD_LIST_BASE_HPP_
 
-// End /home/hari/Code/struct_cast/include/struct_field_list_base.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/struct_field_list_base.hpp
 
-// Begin /home/hari/Code/struct_cast/include/sc_type_traits.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/sc_type_traits.hpp
 #ifndef _SC_META_HPP_
 #define _SC_META_HPP_
 
@@ -771,9 +771,9 @@ concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
 #endif // _SC_META_HPP_
 
-// End /home/hari/Code/struct_cast/include/sc_type_traits.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/sc_type_traits.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_constraints.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_constraints.hpp
 #ifndef FIELD_CONSTRAINT_HPP
 #define FIELD_CONSTRAINT_HPP
 
@@ -975,9 +975,9 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// End /home/hari/Code/struct_cast/include/field_constraints.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_constraints.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field.hpp
 #ifndef _FIELD__HPP_
 #define _FIELD__HPP_
  
@@ -1108,9 +1108,9 @@ struct union_field: public variant {
 
 #endif // _FIELD__HPP_
 
-// End /home/hari/Code/struct_cast/include/field.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_meta.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_meta.hpp
 #ifndef _FIELD_META_HPP_
 #define _FIELD_META_HPP_
  
@@ -1146,9 +1146,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 #endif // _FIELD_META_HPP_
 
-// End /home/hari/Code/struct_cast/include/field_meta.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_meta.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_traits.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_traits.hpp
 #ifndef _FIELD_TRAITS_HPP_
 #define _FIELD_TRAITS_HPP_
  
@@ -1333,9 +1333,9 @@ concept field_like = fixed_sized_field_like<T> ||
 // }
 #endif /*_FIELD_TRAITS_HPP_*/
 
-// End /home/hari/Code/struct_cast/include/field_traits.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_traits.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_lookup.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_lookup.hpp
 #ifndef _FIELD_LOOKUP_HPP_
 #define _FIELD_LOOKUP_HPP_
  
@@ -1415,9 +1415,9 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
-// End /home/hari/Code/struct_cast/include/field_lookup.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_lookup.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_list.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_list.hpp
 #ifndef _FIELD_LIST__HPP_
 #define _FIELD_LIST__HPP_
  
@@ -1472,9 +1472,9 @@ struct struct_field_list : struct_field_list_base, fields... {
 
 #endif // _FIELD_LIST__HPP_
 
-// End /home/hari/Code/struct_cast/include/field_list.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_list.hpp
 
-// Begin /home/hari/Code/struct_cast/include/compute_res.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/compute_res.hpp
 #ifndef _COMPUTE_RES_
 #define _COMPUTE_RES_
 
@@ -1600,9 +1600,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTE_RES_
 
-// End /home/hari/Code/struct_cast/include/compute_res.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/compute_res.hpp
 
-// Begin /home/hari/Code/struct_cast/include/size_deduce.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/size_deduce.hpp
 #ifndef _SIZE_DEDUCE_HPP_
 #define _SIZE_DEDUCE_HPP_
  
@@ -1683,9 +1683,9 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 
 #endif // _SIZE_DEDUCE_HPP_
 
-// End /home/hari/Code/struct_cast/include/size_deduce.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/size_deduce.hpp
 
-// Begin /home/hari/Code/struct_cast/include/error.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/error.hpp
 #ifndef _ERROR_HPP_
 #define _ERROR_HPP_
 
@@ -1702,9 +1702,9 @@ using read_result = std::expected<void, cast_error>;
 
 #endif // _ERROR_HPP_
 
-// End /home/hari/Code/struct_cast/include/error.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/error.hpp
 
-// Begin /home/hari/Code/struct_cast/include/pipeline.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/pipeline.hpp
 #ifndef _PIPELINE_HPP_
 #define _PIPELINE_HPP_
 
@@ -1730,9 +1730,9 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
 
 #endif // _PIPELINE_HPP_
 
-// End /home/hari/Code/struct_cast/include/pipeline.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/pipeline.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_reader.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
 
@@ -2064,9 +2064,9 @@ struct read_field<T, F> {
 
 #endif // _FIELD_READER_HPP_
 
-// End /home/hari/Code/struct_cast/include/field_reader.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_reader.hpp
 
-// Begin /home/hari/Code/struct_cast/include/cast.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/cast.hpp
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
 
@@ -2108,9 +2108,9 @@ constexpr auto struct_cast(std::ifstream& ifs) -> std::expected<T, cast_error> {
 
 #endif // _CAST_HPP_
 
-// End /home/hari/Code/struct_cast/include/cast.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/cast.hpp
 
-// Begin /home/hari/Code/struct_cast/include/type_tag.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_tag.hpp
 #ifndef _TYPE_TAG_HPP_
 #define _TYPE_TAG_HPP_
  
@@ -2216,9 +2216,9 @@ concept type_tag_like = is_type_tag_v<T>;
 
 #endif // _TYPE_TAG_HPP_
 
-// End /home/hari/Code/struct_cast/include/type_tag.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/type_tag.hpp
 
-// Begin /home/hari/Code/struct_cast/include/match_case.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/match_case.hpp
 #ifndef _MATCH_CASE_HPP_
 #define _MATCH_CASE_HPP_
  
@@ -2252,9 +2252,9 @@ concept match_case_like = is_match_case_v<T>;
 
 #endif // _MATCH_CASE_HPP_
 
-// End /home/hari/Code/struct_cast/include/match_case.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/match_case.hpp
 
-// Begin /home/hari/Code/struct_cast/include/clause.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/clause.hpp
 #ifndef _CLAUSE_HPP_
 #define _CLAUSE_HPP_
  
@@ -2290,9 +2290,9 @@ concept clause_like = is_clause_v<T>;
 
 #endif // _CLAUSE_HPP_
 
-// End /home/hari/Code/struct_cast/include/clause.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/clause.hpp
 
-// Begin /home/hari/Code/struct_cast/include/type_deduction_helper.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction_helper.hpp
 #ifndef _TYPE_DEDUCTION_HELPER_HPP_
 #define _TYPE_DEDUCTION_HELPER_HPP_
  
@@ -2340,9 +2340,9 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/Code/struct_cast/include/type_deduction_helper.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction_helper.hpp
 
-// Begin /home/hari/Code/struct_cast/include/type_ladder.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_ladder.hpp
 #ifndef _TYPE_LADDER_HPP_
 #define _TYPE_LADDER_HPP_
  
@@ -2396,9 +2396,9 @@ struct type_ladder<clause_head, clause_rest...> {
 
 #endif // _TYPE_LADDER_HPP_
 
-// End /home/hari/Code/struct_cast/include/type_ladder.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/type_ladder.hpp
 
-// Begin /home/hari/Code/struct_cast/include/type_switch.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_switch.hpp
 #ifndef _TYPE_SWITCH_HPP_
 #define _TYPE_SWITCH_HPP_
 
@@ -2449,9 +2449,9 @@ struct type_switch {
 
 #endif // _TYPE_SWITCH_HPP_
 
-// End /home/hari/Code/struct_cast/include/type_switch.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/type_switch.hpp
 
-// Begin /home/hari/Code/struct_cast/include/type_deduction.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction.hpp
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
 
@@ -2545,9 +2545,9 @@ struct type<tladder> {
 
 #endif // _TYPE_DEDUCTION_HPP_
 
-// End /home/hari/Code/struct_cast/include/type_deduction.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction.hpp
 
-// Begin /home/hari/Code/struct_cast/include/field_types.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_types.hpp
 #ifndef _FIELD_TYPE_HPP_
 #define _FIELD_TYPE_HPP_
  
@@ -2621,9 +2621,9 @@ namespace static_test {
 }
 #endif /* _FIELD_TYPE_HPP_ */
 
-// End /home/hari/Code/struct_cast/include/field_types.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/field_types.hpp
 
-// Begin /home/hari/Code/struct_cast/include/struct_cast.hpp
+// Begin /home/hari/Code/struct_cast/worktree/memstream/include/struct_cast.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
  
@@ -2635,4 +2635,4 @@ namespace static_test {
  
 #endif // STRUCT_CAST_HPP
 
-// End /home/hari/Code/struct_cast/include/struct_cast.hpp
+// End /home/hari/Code/struct_cast/worktree/memstream/include/struct_cast.hpp

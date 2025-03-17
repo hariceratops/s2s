@@ -13,6 +13,7 @@
 #include <climits>
 #include <utility>
 #include <type_traits>
+#include "../error.hpp"
 
 // Type for specifying a number of bytes to read/write
 template <std::size_t N>
@@ -268,6 +269,5 @@ static inline void test() {
   memstream_2.read(&read_data, 8_b); // Read 8 bits
   std::cout << std::bitset<8>(read_data) << std::endl; // Output: 10101010
 }
-
 
 #endif /*_MEMSTREAM_HPP_*/
