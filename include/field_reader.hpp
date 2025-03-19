@@ -11,8 +11,10 @@
 #include "size_deduce.hpp"
 #include "error.hpp"
 #include "pipeline.hpp"
-
 #include "field.hpp"
+#include "read.hpp"
+#include "stream.hpp"
+
 
 template <typename T>
 // todo specialise for non scalar type to facilitate endianness specific vector read
@@ -57,9 +59,11 @@ struct read_field<T, F> {
     : field(field), field_list(field_list), ifs(ifs) {}
 
   constexpr auto operator()() const -> read_result {
+    using field_type = decltype(field.value);
     using field_size = typename T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
-    return read_scalar(field.value, size_to_read, ifs);
+    input_stream<std::ifstream> in_stream(ifs);
+    return in_stream.read<std::endian::little>(raw_bytes<field_type>(field.value, size_to_read));
   }
 };
 
