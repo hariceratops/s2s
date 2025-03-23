@@ -107,19 +107,22 @@ concept std_input_stream_iter = requires(T obj, int _) {
 
 // todo rename to copy and enclose in a namespace
 template <typename InputStreamIter, typename ObjIter>
-constexpr auto copy_from_file(InputStreamIter& fstream_iter, ObjIter&& obj_byte_iter, std::size_t count) 
+constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begin, ObjIter&& obj_end, std::size_t count) 
   -> std::expected<void, cast_error>  
 {
   std::size_t b_count = 0;
   auto end_of_stream = InputStreamIter{};
 
+  // todo out of bounds protection for obj_byte_iter
   while(b_count < count) {
-    if(fstream_iter == end_of_stream) 
+    if(stream_iter == end_of_stream) 
+      return std::unexpected(cast_error::buffer_exhaustion);
+    if(obj_begin == obj_end)
       return std::unexpected(cast_error::buffer_exhaustion);
 
-    *obj_byte_iter = *fstream_iter;
-    obj_byte_iter++;
-    fstream_iter++;
+    *obj_begin = *stream_iter;
+    obj_begin++;
+    stream_iter++;
     b_count++;
   }
   return {};
@@ -140,9 +143,56 @@ constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj)
 {
   constexpr auto byte_order = deduce_byte_order<endianness>();
   if constexpr(byte_order == cast_endianness::host) {
-    return copy_from_file(iter, obj.begin(), obj.size);
+    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
   } else if constexpr(byte_order == cast_endianness::foreign) {
-    return copy_from_file(iter, obj.rbegin(), obj.size);
+    return copy_from_stream(iter, obj.rbegin(), obj.rend(), obj.size);
+  }
+}
+
+
+template <typename InputStreamIter, typename ObjIter>
+constexpr auto copy_vector_foreign(InputStreamIter& stream_iter, 
+                                   ObjIter&& obj_begin, ObjIter&& obj_end, 
+                                   std::size_t count_to_read, 
+                                   std::size_t size_of_elem) 
+  -> std::expected<void, cast_error>  
+{
+  std::size_t e_count = 0;
+  std::size_t b_count = 0;
+  auto end_of_stream = InputStreamIter{};
+  
+  while(e_count < count_to_read) {
+    obj_begin += size_of_elem;
+
+    if(obj_begin == obj_end)
+      return std::unexpected(cast_error::buffer_exhaustion);
+
+    // todo different error for input buffer exhaustion
+    if(stream_iter == end_of_stream) 
+      return std::unexpected(cast_error::buffer_exhaustion);
+
+    while(b_count < size_of_elem) {
+      *obj_begin = *stream_iter;
+      obj_begin++;
+      stream_iter++;
+      b_count++;
+    }
+    e_count++;
+  }
+  return {};
+}
+
+
+// todo different raw_bytes implementation for non scalar types?
+template <std::endian endianness, typename Iter, typename T>
+constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj, std::size_t count, std::size_t size_of_elem) 
+  -> std::expected<void, cast_error>
+{
+  constexpr auto byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    return copy_vector_foreign(iter, obj.begin(), obj.end(), obj.size, count, size_of_elem);
   }
 }
 

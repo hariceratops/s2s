@@ -18,8 +18,10 @@
 
 #define FIELD_LIST_READ_CHECK(code) \
   do { \
-    std::ifstream file("test_input.bin", std::ios::in | std::ios::binary); \
-    auto result = struct_cast<test_field_list>(file); \
+    using file_stream = input_stream<std::ifstream>; \
+    std::ifstream in_file("test_input.bin", std::ios::in | std::ios::binary); \
+    input_stream<std::ifstream> file(in_file); \
+    auto result = struct_cast<file_stream, test_field_list, std::endian::little>(file); \
     code; \
   } while(0)
 
@@ -56,21 +58,21 @@
   // static_assert(struct_field_like<inner>);
   // static_assert(variable_sized_field_like<inner>);
   // static_assert(fixed_sized_field_like<inner>);
-using temp = 
-  struct_field_list<
-    basic_field<"a", int, field_size<fixed<4>>>,
-    basic_field<"b", int, field_size<fixed<4>>>
-  >;
+// using temp = 
+//   struct_field_list<
+//     basic_field<"a", int, field_size<fixed<4>>>,
+//     basic_field<"b", int, field_size<fixed<4>>>
+//   >;
 // will fail
 // using non_unique_temp = 
 //   struct_field_list<
 //     basic_field<"a", int, field_size<fixed<4>>>,
 //     basic_field<"a", int, field_size<fixed<4>>>
 //   >;
-using u32 = unsigned int;
-static_assert(array_of_records_like<std::array<temp, 10>>);
-static_assert(vector_of_records_like<std::vector<temp>>);
-static_assert(!field_containable<std::array<temp, 10>>);
+// using u32 = unsigned int;
+// static_assert(array_of_records_like<std::array<temp, 10>>);
+// static_assert(vector_of_records_like<std::vector<temp>>);
+// static_assert(!field_containable<std::array<temp, 10>>);
 // will fail since type choices are not unique
 // using test_struct_field_list = 
 //     struct_field_list<

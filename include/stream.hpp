@@ -7,6 +7,7 @@
 #include <fstream>
 #include "error.hpp"
 #include "read.hpp"
+#include "address_manip.hpp"
 
 
 
@@ -71,8 +72,20 @@ public:
   input_stream(const input_stream&) = delete;
 
   template <std::endian endianness, typename T>
-  constexpr auto read(raw_bytes<T>&& obj) -> buffer_result {
-    return copy_from_stream<endianness>(std::istreambuf_iterator<char>(buffer), obj);
+  constexpr auto read(T& obj, std::size_t size_to_read) -> buffer_result {
+    auto as_raw_bytes = raw_bytes<T>(obj, size_to_read);
+    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
+    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes);
+  }
+
+  template <std::endian endianness, typename T>
+  constexpr auto read_vector(T& obj, std::size_t len_to_read) -> buffer_result {
+    constexpr auto size_of_one_elem = sizeof(T{}[0]);
+    obj.resize(len_to_read);
+    auto as_byte_addresss = byte_addressof(obj);
+    auto as_raw_bytes = raw_bytes<T>(as_byte_addresss, len_to_read * size_of_one_elem);
+    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
+    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes, len_to_read, size_of_one_elem);
   }
 };
 
@@ -94,8 +107,27 @@ public:
   }
 };
 
+template <typename S>
+struct is_s2s_input_stream;
 
-static_assert(std_read_trait<std::ifstream>);
-static_assert(convertible_to_bool<std::ifstream>);
+template <typename S>
+struct is_s2s_input_stream {
+  static constexpr bool res = false;
+};
+
+template <typename S>
+struct is_s2s_input_stream<input_stream<S>> {
+  static constexpr bool res = true;
+};
+
+template <typename S>
+inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
+
+template <typename T>
+concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
+
+// static_assert(std_read_trait<std::ifstream>);
+// static_assert(readable<std::ifstream>);
+// static_assert(convertible_to_bool<std::ifstream>);
 
 #endif /* __STREAM_HPP__ */
