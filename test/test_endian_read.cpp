@@ -33,9 +33,9 @@ auto main(void) -> int {
   raw_bytes<std::vector<u32>> vec_bytes(vec);
   std::cout << vec_bytes.element_size << ' ' << vec_bytes.vector_size << '\n';
   auto end = vec_bytes.fend();
-  std::cout << vec_bytes.fbegin().container_start <<  " " << vec_bytes.fbegin().container_end << '\n';
   for(auto begin = vec_bytes.fbegin(); begin != end; ++begin) {
-    std::cout << std::hex << static_cast<unsigned>(*begin);
+    char cur = *begin;
+    std::cout << std::hex << static_cast<unsigned>(cur);
   }
 
   return 0;

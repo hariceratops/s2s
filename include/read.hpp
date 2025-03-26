@@ -1,78 +1,14 @@
 #ifndef __READ_HPP__
 #define __READ_HPP__
 
+// todo compiler intrinsic byte swap for better performance
+
+
 #include <iterator>
 #include <expected>
+#include "address_manip.hpp"
 #include "error.hpp"
-
-
-template <typename T>
-struct raw_bytes {
-  char* ptr_to_object;
-  std::size_t size;
-
-public:
-  explicit constexpr raw_bytes(T& obj, std::size_t size)
-    : ptr_to_object(reinterpret_cast<char*>(&obj)), size(size) {}
-
-  // todo move iterators outside of class to decouple and improve compile time
-  class bytewise_iterator {
-    char* current;
-
-  public:
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using pointer = char*;
-    using reference = char&;
-
-    explicit constexpr bytewise_iterator(char* start)
-      : current(start) {}
-    char& operator*() { return *current; }
-    bytewise_iterator& operator++() { ++current; return *this; }
-    bytewise_iterator& operator++(int) {
-      bytewise_iterator& temp = *this;
-      ++current;
-      return temp;
-    }
-    bool operator!=(const bytewise_iterator& other) const {
-      return current != other.current;
-    }
-    bool operator==(const bytewise_iterator& other) const {
-      return current == other.current;
-    }
-  };
-
-  class bytewise_reverse_iterator {
-    char* current;
-
-  public:
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using pointer = char*;
-    using reference = char&;
-
-    explicit constexpr bytewise_reverse_iterator(char* start)
-      : current(start) {}
-    char& operator*() { return *current; }
-    bytewise_reverse_iterator& operator++() { --current; return *this;  }
-    bytewise_reverse_iterator& operator++(int) {
-      bytewise_reverse_iterator& temp = *this;
-      --current;
-      return temp;
-    }
-    bool operator!=(const bytewise_reverse_iterator& other) const {
-      return current != other.current;
-    }
-    bool operator==(const bytewise_reverse_iterator& other) const {
-      return current == other.current;
-    }
-  };
-
-  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
-  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + size); }
-  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(ptr_to_object + size - 1); }
-  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(ptr_to_object - 1); }
-};
+#include "sc_type_traits.hpp"
 
 
 enum cast_endianness {
@@ -82,6 +18,161 @@ enum cast_endianness {
 
 struct little_endian {};
 struct big_endian {};
+
+
+// todo move iterators outside of class to decouple and improve compile time
+class bytewise_iterator {
+  char* current;
+
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using pointer = char*;
+  using reference = char&;
+
+  explicit constexpr bytewise_iterator(char* start)
+    : current(start) {}
+  char& operator*() { return *current; }
+  bytewise_iterator& operator++() { ++current; return *this; }
+  bytewise_iterator operator++(int) {
+    bytewise_iterator temp = *this;
+    ++(*this);
+    return temp;
+  }
+  bool operator!=(const bytewise_iterator& other) const {
+    return current != other.current;
+  }
+  bool operator==(const bytewise_iterator& other) const {
+    return current == other.current;
+  }
+};
+
+class bytewise_reverse_iterator {
+  char* current;
+
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using pointer = char*;
+  using reference = char&;
+
+  explicit constexpr bytewise_reverse_iterator(char* start)
+    : current(start) {}
+  char& operator*() { return *current; }
+  bytewise_reverse_iterator& operator++() { --current; return *this;  }
+  bytewise_reverse_iterator operator++(int) {
+    bytewise_reverse_iterator temp = *this;
+    ++(*this);
+    return temp;
+  }
+  bool operator!=(const bytewise_reverse_iterator& other) const {
+    return current != other.current;
+  }
+  bool operator==(const bytewise_reverse_iterator& other) const {
+    return current == other.current;
+  }
+};
+
+
+class foreign_vector_iterator {
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = char;
+  using difference_type = std::ptrdiff_t;
+  using pointer = char*;
+  using reference = char&;
+
+// private:
+  pointer container_start;
+  pointer container_end;
+  std::size_t element_size;
+  pointer element_start;
+  pointer element_end;
+  pointer current;
+
+public:
+  foreign_vector_iterator() :
+    container_start(nullptr),
+    container_end(nullptr),
+    element_size(0),
+    element_start(nullptr),
+    element_end(nullptr),
+    current(nullptr) {}
+
+  foreign_vector_iterator(char* container_start, char* container_end, std::size_t element_size) 
+    : container_start(container_start),
+      container_end(container_end),
+      element_size(element_size),
+      element_start(container_start + element_size - 1),
+      element_end(container_start - 1),
+      current(element_start){}
+
+  char& operator*() { return *current; }
+  foreign_vector_iterator& operator++() { 
+    if(current > element_end) { --current;  }
+    else {
+      if(element_start + element_size > container_end)
+        current = element_start = element_end = nullptr;
+      else {
+        current = element_start = element_start + element_size;
+        element_end = element_end + element_size;
+      }
+    }
+    return *this;  
+  }
+  foreign_vector_iterator operator++(int) {
+    foreign_vector_iterator temp = *this;
+    ++(*this);
+    return temp;
+  }
+  bool operator!=(const foreign_vector_iterator& other) const {
+    return current != other.current;
+  }
+  bool operator==(const foreign_vector_iterator& other) const {
+    return current == other.current;
+  }
+};
+
+
+template <typename T>
+struct raw_bytes;
+
+
+template <typename T>
+struct raw_bytes {
+  char* ptr_to_object;
+  std::size_t size;
+
+public:
+  explicit constexpr raw_bytes(T& obj, std::size_t size)
+    : ptr_to_object(byte_addressof(obj)), size(size) {}
+
+  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
+  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + size + 1); }
+  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(ptr_to_object + size - 1); }
+  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(ptr_to_object - 1); }
+};
+
+
+template <vector_like T>
+struct raw_bytes<T> {
+  char* ptr_to_object;
+  std::size_t vector_size;
+  std::size_t element_size;
+
+public:
+  explicit constexpr raw_bytes(T& obj)
+    : ptr_to_object(byte_addressof(obj)), vector_size(obj.size()), element_size(sizeof(T{}[0])) {}
+
+  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
+  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + vector_size * element_size); }
+  foreign_vector_iterator fbegin() {
+    return vector_size == 0 ? 
+           foreign_vector_iterator() :
+           foreign_vector_iterator(ptr_to_object, ptr_to_object + vector_size * element_size + 1, element_size);
+  }
+  foreign_vector_iterator fend() { return foreign_vector_iterator(); }
+};
 
 
 template <typename T>
@@ -111,6 +202,7 @@ constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begi
   -> std::expected<void, cast_error>  
 {
   std::size_t b_count = 0;
+  // todo is this well defined
   auto end_of_stream = InputStreamIter{};
 
   // todo out of bounds protection for obj_byte_iter
@@ -150,6 +242,7 @@ constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj)
 }
 
 
+// todo optimization for word sized copy
 template <typename InputStreamIter, typename ObjIter>
 constexpr auto copy_vector_foreign(InputStreamIter& stream_iter, 
                                    ObjIter&& obj_begin, ObjIter&& obj_end, 
