@@ -27,7 +27,10 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
     auto res = (
       pipeline_seed |
       ... |
-      read_field<fields, S, stream, endianness>(static_cast<fields&>(field_list), field_list, s)
+      [&](){
+        auto reader = read_field<fields, S>(static_cast<fields&>(field_list), field_list);
+        return reader.template read<endianness>(s);
+      }
     );
     return res ? R(field_list) : std::unexpected(res.error());
   }
