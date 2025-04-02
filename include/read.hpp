@@ -109,16 +109,13 @@ public:
 
   char& operator*() { return *current; }
   foreign_vector_iterator& operator++() { 
-    if(current > element_end) { --current;  }
-    else {
-      if(element_start + element_size > container_end)
-        current = element_start = element_end = nullptr;
-      else {
-        current = element_start = element_start + element_size;
-        element_end = element_end + element_size;
-      }
+    --current;
+    if(current == element_end) {
+      element_start += element_size;
+      element_end += element_size;
+      current = (element_start >= container_end) ? nullptr : element_start;
     }
-    return *this;  
+    return *this;
   }
   foreign_vector_iterator operator++(int) {
     foreign_vector_iterator temp = *this;
