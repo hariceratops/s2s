@@ -1,5 +1,5 @@
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/fixed_string.hpp
+// Begin /home/hari/repos/struct_cast/include/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -43,9 +43,9 @@ static_assert(fixed_string("hello").size() == 5);
 
 #endif // _FIXED_STRING_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/fixed_string.hpp
+// End /home/hari/repos/struct_cast/include/fixed_string.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_accessor.hpp
+// Begin /home/hari/repos/struct_cast/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
@@ -62,9 +62,9 @@ constexpr auto operator""_f() {
 
 #endif // _FIELD_ACCESSOR_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_accessor.hpp
+// End /home/hari/repos/struct_cast/include/field_accessor.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/fixed_str_list.hpp
+// Begin /home/hari/repos/struct_cast/include/fixed_str_list.hpp
 #ifndef _FIXED_STR_LIST_HPP_
 #define _FIXED_STR_LIST_HPP_
  
@@ -178,9 +178,9 @@ static_assert(size_v<typelist_ex> == 4);
 
 #endif // _FIXED_STR_LIST_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/fixed_str_list.hpp
+// End /home/hari/repos/struct_cast/include/fixed_str_list.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/typelist.hpp
+// Begin /home/hari/repos/struct_cast/include/typelist.hpp
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -284,9 +284,9 @@ static_assert(tl::all_are_same_v<tl::typelist<>>);
 
 #endif // _TYPELIST_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/typelist.hpp
+// End /home/hari/repos/struct_cast/include/typelist.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_size.hpp
+// Begin /home/hari/repos/struct_cast/include/field_size.hpp
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
  
@@ -419,9 +419,9 @@ static_assert(field_size<fixed<6>>::size_type_t::count == 6);
 
 #endif // _FIELD_SIZE_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_size.hpp
+// End /home/hari/repos/struct_cast/include/field_size.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/struct_field_list_base.hpp
+// Begin /home/hari/repos/struct_cast/include/struct_field_list_base.hpp
 #ifndef _STRUCT_FIELD_LIST_BASE_HPP_
 #define _STRUCT_FIELD_LIST_BASE_HPP_
 
@@ -434,9 +434,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 
 #endif // _STRUCT_FIELD_LIST_BASE_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/struct_field_list_base.hpp
+// End /home/hari/repos/struct_cast/include/struct_field_list_base.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/sc_type_traits.hpp
+// Begin /home/hari/repos/struct_cast/include/sc_type_traits.hpp
 #ifndef _SC_META_HPP_
 #define _SC_META_HPP_
 
@@ -702,9 +702,9 @@ concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
 #endif // _SC_META_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/sc_type_traits.hpp
+// End /home/hari/repos/struct_cast/include/sc_type_traits.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_constraints.hpp
+// Begin /home/hari/repos/struct_cast/include/field_constraints.hpp
 #ifndef FIELD_CONSTRAINT_HPP
 #define FIELD_CONSTRAINT_HPP
 
@@ -906,9 +906,9 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // FIELD_CONSTRAINT_HPP
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_constraints.hpp
+// End /home/hari/repos/struct_cast/include/field_constraints.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field.hpp
+// Begin /home/hari/repos/struct_cast/include/field.hpp
 #ifndef _FIELD__HPP_
 #define _FIELD__HPP_
  
@@ -1039,9 +1039,9 @@ struct union_field: public variant {
 
 #endif // _FIELD__HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field.hpp
+// End /home/hari/repos/struct_cast/include/field.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_meta.hpp
+// Begin /home/hari/repos/struct_cast/include/field_meta.hpp
 #ifndef _FIELD_META_HPP_
 #define _FIELD_META_HPP_
  
@@ -1077,9 +1077,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 #endif // _FIELD_META_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_meta.hpp
+// End /home/hari/repos/struct_cast/include/field_meta.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_traits.hpp
+// Begin /home/hari/repos/struct_cast/include/field_traits.hpp
 #ifndef _FIELD_TRAITS_HPP_
 #define _FIELD_TRAITS_HPP_
  
@@ -1264,9 +1264,9 @@ concept field_like = fixed_sized_field_like<T> ||
 // }
 #endif /*_FIELD_TRAITS_HPP_*/
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_traits.hpp
+// End /home/hari/repos/struct_cast/include/field_traits.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_lookup.hpp
+// Begin /home/hari/repos/struct_cast/include/field_lookup.hpp
 #ifndef _FIELD_LOOKUP_HPP_
 #define _FIELD_LOOKUP_HPP_
  
@@ -1346,9 +1346,9 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 
 #endif // _FIELD_LOOKUP_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_lookup.hpp
+// End /home/hari/repos/struct_cast/include/field_lookup.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_list.hpp
+// Begin /home/hari/repos/struct_cast/include/field_list.hpp
 #ifndef _FIELD_LIST__HPP_
 #define _FIELD_LIST__HPP_
  
@@ -1403,9 +1403,9 @@ struct struct_field_list : struct_field_list_base, fields... {
 
 #endif // _FIELD_LIST__HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_list.hpp
+// End /home/hari/repos/struct_cast/include/field_list.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/compute_res.hpp
+// Begin /home/hari/repos/struct_cast/include/compute_res.hpp
 #ifndef _COMPUTE_RES_
 #define _COMPUTE_RES_
 
@@ -1531,9 +1531,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTE_RES_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/compute_res.hpp
+// End /home/hari/repos/struct_cast/include/compute_res.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/size_deduce.hpp
+// Begin /home/hari/repos/struct_cast/include/size_deduce.hpp
 #ifndef _SIZE_DEDUCE_HPP_
 #define _SIZE_DEDUCE_HPP_
  
@@ -1614,9 +1614,9 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 
 #endif // _SIZE_DEDUCE_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/size_deduce.hpp
+// End /home/hari/repos/struct_cast/include/size_deduce.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/error.hpp
+// Begin /home/hari/repos/struct_cast/include/error.hpp
 #ifndef _ERROR_HPP_
 #define _ERROR_HPP_
 
@@ -1633,9 +1633,9 @@ using read_result = std::expected<void, cast_error>;
 
 #endif // _ERROR_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/error.hpp
+// End /home/hari/repos/struct_cast/include/error.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/pipeline.hpp
+// Begin /home/hari/repos/struct_cast/include/pipeline.hpp
 #ifndef _PIPELINE_HPP_
 #define _PIPELINE_HPP_
 
@@ -1661,210 +1661,9 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
 
 #endif // _PIPELINE_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/pipeline.hpp
+// End /home/hari/repos/struct_cast/include/pipeline.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/read.hpp
-#ifndef __READ_HPP__
-#define __READ_HPP__
-
-#include <iterator>
-#include <expected>
- 
-template <typename T>
-struct raw_bytes {
-  char* ptr_to_object;
-  std::size_t size;
-
-public:
-  explicit constexpr raw_bytes(T& obj, std::size_t size)
-    : ptr_to_object(reinterpret_cast<char*>(&obj)), size(size) {}
-
-  // todo move iterators outside of class to decouple and improve compile time
-  class bytewise_iterator {
-    char* current;
-
-  public:
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using pointer = char*;
-    using reference = char&;
-
-    explicit constexpr bytewise_iterator(char* start)
-      : current(start) {}
-    char& operator*() { return *current; }
-    bytewise_iterator& operator++() { ++current; return *this; }
-    bytewise_iterator& operator++(int) {
-      bytewise_iterator& temp = *this;
-      ++current;
-      return temp;
-    }
-    bool operator!=(const bytewise_iterator& other) const {
-      return current != other.current;
-    }
-    bool operator==(const bytewise_iterator& other) const {
-      return current == other.current;
-    }
-  };
-
-  class bytewise_reverse_iterator {
-    char* current;
-
-  public:
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using pointer = char*;
-    using reference = char&;
-
-    explicit constexpr bytewise_reverse_iterator(char* start)
-      : current(start) {}
-    char& operator*() { return *current; }
-    bytewise_reverse_iterator& operator++() { --current; return *this;  }
-    bytewise_reverse_iterator& operator++(int) {
-      bytewise_reverse_iterator& temp = *this;
-      --current;
-      return temp;
-    }
-    bool operator!=(const bytewise_reverse_iterator& other) const {
-      return current != other.current;
-    }
-    bool operator==(const bytewise_reverse_iterator& other) const {
-      return current == other.current;
-    }
-  };
-
-  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
-  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + size); }
-  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(ptr_to_object + size - 1); }
-  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(ptr_to_object - 1); }
-};
-
-
-enum cast_endianness {
-  host = 0,
-  foreign = 1
-};
-
-struct little_endian {};
-struct big_endian {};
-
-
-template <typename T>
-concept std_input_stream_iter = requires(T obj, int _) {
-  { obj.operator*() } -> std::same_as<char>;
-  { obj.operator++() } -> std::same_as<T&>;
-  { obj.operator++(_) } -> std::same_as<T&>;
-  { std::is_same_v<typename T::iterator_category, std::input_iterator_tag> };
-  { std::is_same_v<typename T::streambuf_type, std::basic_streambuf<char>> };
-  { std::is_same_v<typename T::istream_type, std::basic_istream<char>> };
-};
-
-// todo is a custom input iterator needed
-// using InputStreamIter = std::istreambuf_iterator<char>;
-// todo if needed roll out one and right a concept for it
-// template <typename T>
-// concept input_stream_iter = requires(T obj, int _) {
-//   { obj.operator*() } -> std::same_as<char>;
-//   { obj.operator++() } -> std::same_as<T&>;
-//   { obj.operator++(_) } -> std::same_as<T&>;
-//   { std::is_same_v<typename T::iterator_category, std::input_iterator_tag> };
-// };
-
-// todo rename to copy and enclose in a namespace
-template <typename InputStreamIter, typename ObjIter>
-constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begin, ObjIter&& obj_end, std::size_t count) 
-  -> std::expected<void, cast_error>  
-{
-  std::size_t b_count = 0;
-  auto end_of_stream = InputStreamIter{};
-
-  // todo out of bounds protection for obj_byte_iter
-  while(b_count < count) {
-    if(stream_iter == end_of_stream) 
-      return std::unexpected(cast_error::buffer_exhaustion);
-    if(obj_begin == obj_end)
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    *obj_begin = *stream_iter;
-    obj_begin++;
-    stream_iter++;
-    b_count++;
-  }
-  return {};
-}
-
-
-template <std::endian endianness>
-constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) return cast_endianness::foreign;
-}
-
-
-// todo decide if endianness should be in type or value domain
-template <std::endian endianness, typename Iter, typename T>
-constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj) 
-  -> std::expected<void, cast_error>
-{
-  constexpr auto byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
-    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
-    return copy_from_stream(iter, obj.rbegin(), obj.rend(), obj.size);
-  }
-}
-
-
-template <typename InputStreamIter, typename ObjIter>
-constexpr auto copy_vector_foreign(InputStreamIter& stream_iter, 
-                                   ObjIter&& obj_begin, ObjIter&& obj_end, 
-                                   std::size_t count_to_read, 
-                                   std::size_t size_of_elem) 
-  -> std::expected<void, cast_error>  
-{
-  std::size_t e_count = 0;
-  std::size_t b_count = 0;
-  auto end_of_stream = InputStreamIter{};
-  
-  while(e_count < count_to_read) {
-    obj_begin += size_of_elem;
-
-    if(obj_begin == obj_end)
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    // todo different error for input buffer exhaustion
-    if(stream_iter == end_of_stream) 
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    while(b_count < size_of_elem) {
-      *obj_begin = *stream_iter;
-      obj_begin++;
-      stream_iter++;
-      b_count++;
-    }
-    e_count++;
-  }
-  return {};
-}
-
-
-// todo different raw_bytes implementation for non scalar types?
-template <std::endian endianness, typename Iter, typename T>
-constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj, std::size_t count, std::size_t size_of_elem) 
-  -> std::expected<void, cast_error>
-{
-  constexpr auto byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
-    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
-    return copy_vector_foreign(iter, obj.begin(), obj.end(), obj.size, count, size_of_elem);
-  }
-}
-
-#endif /* __READ_HPP__ */
-
-// End /home/hari/Code/struct_cast/worktree/memstream/include/read.hpp
-
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/address_manip.hpp
+// Begin /home/hari/repos/struct_cast/include/address_manip.hpp
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
 
@@ -1931,9 +1730,303 @@ inline char* byte_addressof(std::string& obj) {
 
 #endif // _ADDRESS_MANIP_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/address_manip.hpp
+// End /home/hari/repos/struct_cast/include/address_manip.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/stream.hpp
+// Begin /home/hari/repos/struct_cast/include/read.hpp
+#ifndef __READ_HPP__
+#define __READ_HPP__
+
+// todo compiler intrinsic byte swap for better performance
+
+
+#include <iterator>
+#include <expected>
+ 
+ 
+ 
+enum cast_endianness {
+  host = 0,
+  foreign = 1
+};
+
+struct little_endian {};
+struct big_endian {};
+
+
+// todo move iterators outside of class to decouple and improve compile time
+class bytewise_iterator {
+  char* current;
+
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using pointer = char*;
+  using reference = char&;
+
+  explicit constexpr bytewise_iterator(char* start)
+    : current(start) {}
+  char& operator*() { return *current; }
+  bytewise_iterator& operator++() { ++current; return *this; }
+  bytewise_iterator operator++(int) {
+    bytewise_iterator temp = *this;
+    ++(*this);
+    return temp;
+  }
+  bool operator!=(const bytewise_iterator& other) const {
+    return current != other.current;
+  }
+  bool operator==(const bytewise_iterator& other) const {
+    return current == other.current;
+  }
+};
+
+class bytewise_reverse_iterator {
+  char* current;
+
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using pointer = char*;
+  using reference = char&;
+
+  explicit constexpr bytewise_reverse_iterator(char* start)
+    : current(start) {}
+  char& operator*() { return *current; }
+  bytewise_reverse_iterator& operator++() { --current; return *this;  }
+  bytewise_reverse_iterator operator++(int) {
+    bytewise_reverse_iterator temp = *this;
+    ++(*this);
+    return temp;
+  }
+  bool operator!=(const bytewise_reverse_iterator& other) const {
+    return current != other.current;
+  }
+  bool operator==(const bytewise_reverse_iterator& other) const {
+    return current == other.current;
+  }
+};
+
+
+class foreign_vector_iterator {
+public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = char;
+  using difference_type = std::ptrdiff_t;
+  using pointer = char*;
+  using reference = char&;
+
+// private:
+  pointer container_start;
+  pointer container_end;
+  std::size_t element_size;
+  pointer element_start;
+  pointer element_end;
+  pointer current;
+
+public:
+  foreign_vector_iterator() :
+    container_start(nullptr),
+    container_end(nullptr),
+    element_size(0),
+    element_start(nullptr),
+    element_end(nullptr),
+    current(nullptr) {}
+
+  foreign_vector_iterator(char* container_start, char* container_end, std::size_t element_size) 
+    : container_start(container_start),
+      container_end(container_end),
+      element_size(element_size),
+      element_start(container_start + element_size - 1),
+      element_end(container_start - 1),
+      current(element_start){}
+
+  char& operator*() { return *current; }
+  foreign_vector_iterator& operator++() { 
+    if(current > element_end) { --current;  }
+    else {
+      if(element_start + element_size > container_end)
+        current = element_start = element_end = nullptr;
+      else {
+        current = element_start = element_start + element_size;
+        element_end = element_end + element_size;
+      }
+    }
+    return *this;  
+  }
+  foreign_vector_iterator operator++(int) {
+    foreign_vector_iterator temp = *this;
+    ++(*this);
+    return temp;
+  }
+  bool operator!=(const foreign_vector_iterator& other) const {
+    return current != other.current;
+  }
+  bool operator==(const foreign_vector_iterator& other) const {
+    return current == other.current;
+  }
+};
+
+
+template <typename T>
+struct raw_bytes;
+
+
+template <typename T>
+struct raw_bytes {
+  char* ptr_to_object;
+  std::size_t size;
+
+public:
+  explicit constexpr raw_bytes(T& obj, std::size_t size)
+    : ptr_to_object(byte_addressof(obj)), size(size) {}
+
+  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
+  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + size + 1); }
+  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(ptr_to_object + size - 1); }
+  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(ptr_to_object - 1); }
+};
+
+
+template <vector_like T>
+struct raw_bytes<T> {
+  char* ptr_to_object;
+  std::size_t vector_size;
+  std::size_t element_size;
+
+public:
+  explicit constexpr raw_bytes(T& obj)
+    : ptr_to_object(byte_addressof(obj)), vector_size(obj.size()), element_size(sizeof(T{}[0])) {}
+
+  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
+  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + vector_size * element_size); }
+  foreign_vector_iterator fbegin() {
+    return vector_size == 0 ? 
+           foreign_vector_iterator() :
+           foreign_vector_iterator(ptr_to_object, ptr_to_object + vector_size * element_size + 1, element_size);
+  }
+  foreign_vector_iterator fend() { return foreign_vector_iterator(); }
+};
+
+
+template <typename T>
+concept std_input_stream_iter = requires(T obj, int _) {
+  { obj.operator*() } -> std::same_as<char>;
+  { obj.operator++() } -> std::same_as<T&>;
+  { obj.operator++(_) } -> std::same_as<T&>;
+  { std::is_same_v<typename T::iterator_category, std::input_iterator_tag> };
+  { std::is_same_v<typename T::streambuf_type, std::basic_streambuf<char>> };
+  { std::is_same_v<typename T::istream_type, std::basic_istream<char>> };
+};
+
+// todo is a custom input iterator needed
+// using InputStreamIter = std::istreambuf_iterator<char>;
+// todo if needed roll out one and right a concept for it
+// template <typename T>
+// concept input_stream_iter = requires(T obj, int _) {
+//   { obj.operator*() } -> std::same_as<char>;
+//   { obj.operator++() } -> std::same_as<T&>;
+//   { obj.operator++(_) } -> std::same_as<T&>;
+//   { std::is_same_v<typename T::iterator_category, std::input_iterator_tag> };
+// };
+
+// todo rename to copy and enclose in a namespace
+template <typename InputStreamIter, typename ObjIter>
+constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begin, ObjIter&& obj_end, std::size_t count) 
+  -> std::expected<void, cast_error>  
+{
+  std::size_t b_count = 0;
+  // todo is this well defined
+  auto end_of_stream = InputStreamIter{};
+
+  // todo out of bounds protection for obj_byte_iter
+  while(b_count < count) {
+    if(stream_iter == end_of_stream) 
+      return std::unexpected(cast_error::buffer_exhaustion);
+    if(obj_begin == obj_end)
+      return std::unexpected(cast_error::buffer_exhaustion);
+
+    *obj_begin = *stream_iter;
+    obj_begin++;
+    stream_iter++;
+    b_count++;
+  }
+  return {};
+}
+
+
+template <std::endian endianness>
+constexpr cast_endianness deduce_byte_order() {
+  if constexpr(std::endian::native == endianness) return cast_endianness::host;
+  else if constexpr(std::endian::native != endianness) return cast_endianness::foreign;
+}
+
+
+// todo decide if endianness should be in type or value domain
+template <std::endian endianness, typename Iter, typename T>
+constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj) 
+  -> std::expected<void, cast_error>
+{
+  constexpr auto byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    return copy_from_stream(iter, obj.rbegin(), obj.rend(), obj.size);
+  }
+}
+
+
+// todo optimization for word sized copy
+template <typename InputStreamIter, typename ObjIter>
+constexpr auto copy_vector_foreign(InputStreamIter& stream_iter, 
+                                   ObjIter&& obj_begin, ObjIter&& obj_end, 
+                                   std::size_t count_to_read, 
+                                   std::size_t size_of_elem) 
+  -> std::expected<void, cast_error>  
+{
+  std::size_t e_count = 0;
+  std::size_t b_count = 0;
+  auto end_of_stream = InputStreamIter{};
+  
+  while(e_count < count_to_read) {
+    obj_begin += size_of_elem;
+
+    if(obj_begin == obj_end)
+      return std::unexpected(cast_error::buffer_exhaustion);
+
+    // todo different error for input buffer exhaustion
+    if(stream_iter == end_of_stream) 
+      return std::unexpected(cast_error::buffer_exhaustion);
+
+    while(b_count < size_of_elem) {
+      *obj_begin = *stream_iter;
+      obj_begin++;
+      stream_iter++;
+      b_count++;
+    }
+    e_count++;
+  }
+  return {};
+}
+
+
+// todo different raw_bytes implementation for non scalar types?
+template <std::endian endianness, typename Iter, typename T>
+constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj, std::size_t count, std::size_t size_of_elem) 
+  -> std::expected<void, cast_error>
+{
+  constexpr auto byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    return copy_vector_foreign(iter, obj.begin(), obj.end(), obj.size, count, size_of_elem);
+  }
+}
+
+#endif /* __READ_HPP__ */
+
+// End /home/hari/repos/struct_cast/include/read.hpp
+
+// Begin /home/hari/repos/struct_cast/include/stream.hpp
 #ifndef __STREAM_HPP__
 #define __STREAM_HPP__
 
@@ -2065,9 +2158,9 @@ concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 
 #endif /* __STREAM_HPP__ */
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/stream.hpp
+// End /home/hari/repos/struct_cast/include/stream.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_reader.hpp
+// Begin /home/hari/repos/struct_cast/include/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
 
@@ -2082,49 +2175,20 @@ concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
  
  
  
-// template <typename T>
-// // todo specialise for non scalar type to facilitate endianness specific vector read
-// constexpr auto raw_read(T& value, stream& s, std::size_t size_to_read) 
-//   -> read_result 
-// {
-//   if(!s.read(byte_addressof(value), size_to_read))
-//     return std::unexpected(cast_error::buffer_exhaustion);
-//   return {};
-// }
-//
-//
-// template <typename T>
-// constexpr auto read_scalar(T& value, std::size_t size_to_read, stream& s)
-//   -> read_result
-// {
-//   return raw_read(value, s, size_to_read);
-// }
-//
-//
-// template <typename T>
-// constexpr auto read_vector(T& value, std::size_t len_to_read, stream& s) 
-//   -> read_result 
-// {
-//   constexpr auto size_of_one_elem = sizeof(T{}[0]);
-//   value.resize(len_to_read);
-//   return raw_read(value, s, len_to_read * size_of_one_elem);
-// }
-//
-
 // todo inheritance for ctor boilerplate removal: read<t,f>?
-template <typename F, typename L, typename stream, auto endianness>
+template <typename F, typename L>
 struct read_field;
 
-template <fixed_sized_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <fixed_sized_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
 
-  constexpr read_field(T& field, F& field_list, stream& s)
-    : field(field), field_list(field_list), s(s) {}
-
-  constexpr auto operator()() const -> read_result {
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list) {}
+  
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) const -> read_result {
     using field_size = typename T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
     return s.template read<endianness>(field.value, size_to_read);
@@ -2133,16 +2197,16 @@ struct read_field<T, F, stream, endianness> {
 
 
 // todo what if vector elements are not aligned by 2
-template <variable_sized_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <variable_sized_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
+  
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
 
-  constexpr read_field(T& field, F& field_list, stream& s)
-    : field(field), field_list(field_list), s(s) {}
-
-  constexpr auto operator()() const -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) const -> read_result {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return s.template read_vector<endianness>(field.value, len_to_read);
@@ -2188,24 +2252,25 @@ struct create_field_from_vector_of_records<T> {
 template <typename T>
 using create_field_from_vector_of_records_v = create_field_from_vector_of_records<T>::res;
 
-template <typename T, typename F, typename E, typename stream, auto endianness>
+template <typename T, typename F, typename E>
 struct read_buffer_of_records {
   T& field;
   F& field_list;
-  stream& s;
-  std::size_t len_to_read;
+    std::size_t len_to_read;
 
-  constexpr read_buffer_of_records(T& field, F& field_list, stream& s, std::size_t len_to_read)
-    : field(field), field_list(field_list), s(s), len_to_read(len_to_read) {}
+  constexpr read_buffer_of_records(T& field, F& field_list, std::size_t len_to_read)
+    : field(field), field_list(field_list), len_to_read(len_to_read) {}
 
-  constexpr auto operator()() const -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) const -> read_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       E elem;
-      auto reader = read_field<E, F, stream, endianness>(elem, field_list, s);
+      auto reader = read_field<E, F>(elem, field_list, s);
       auto res = reader();
       if(!res) 
         return std::unexpected(res.error());
       // todo is move guaranteed
+      // todo optimise pass field.value[count] to reader instead of elem
       field.value[count] = std::move(elem.value);
       // field.value[count] = elem.value;
     }
@@ -2213,46 +2278,46 @@ struct read_buffer_of_records {
   }
 };
 
-template <array_of_record_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <array_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
+  
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
 
-  constexpr read_field(T& field, F& field_list, stream& s)
-    : field(field), field_list(field_list), s(s) {}
-
-  constexpr auto operator()() const -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) const -> read_result {
     using array_type = typename T::field_type;
     using array_element_field = create_field_from_array_of_records_v<T>;
-    using read_impl_t = read_buffer_of_records<T, F, array_element_field, stream, endianness>;
+    using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
 
     constexpr auto array_len = extract_size_from_array_v<array_type>;
-    auto reader = read_impl_t(field, field_list, s, array_len);
-    auto res = reader();
+    auto reader = read_impl_t(field, field_list, array_len);
+    auto res = reader.template read<endianness>(s);
     return res;
   }
 };
 
 
-template <vector_of_record_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <vector_of_record_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
+  
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
 
-  constexpr read_field(T& field, F& field_list, stream& s)
-    : field(field), field_list(field_list), s(s) {}
-
-  constexpr auto operator()() const -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) const -> read_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     using field_size = typename T::field_size;
-    using read_impl_t = read_buffer_of_records<T, F, vector_element_field, stream, endianness>;
+    using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
 
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     field.value.resize(len_to_read);
-    auto reader = read_impl_t(field, field_list, s, len_to_read);
-    auto res = reader();
+    auto reader = read_impl_t(field, field_list, len_to_read);
+    auto res = reader.template read<endianness>(s);
     return res;
   }
 };
@@ -2262,16 +2327,16 @@ struct read_field<T, F, stream, endianness> {
 template <s2s_input_stream_like stream, field_list_like T, auto endianness>
 constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
 
-template <struct_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <struct_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
+  
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
 
-  constexpr read_field(T& field, F& field_list, stream& s)
-    : field(field), field_list(field_list), s(s) {}
-
-  constexpr auto operator()() const -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) const -> read_result {
     using field_list_t = extract_type_from_field_v<T>;
     auto res = struct_cast<field_list_t, endianness>(s);
     if(!res)
@@ -2284,24 +2349,24 @@ struct read_field<T, F, stream, endianness> {
 
 
 // todo restore constexpr
-template <optional_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <optional_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
-
-  constexpr read_field(T& field, F& field_list, stream& s): 
-    field(field), field_list(field_list), s(s) {}
   
-  constexpr auto operator()() -> read_result {
+  constexpr read_field(T& field, F& field_list): 
+    field(field), field_list(field_list){}
+  
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) -> read_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;
       return {};
     }
     using field_base_type_t = typename T::field_base_type;
     field_base_type_t base_field{};
-    read_field<field_base_type_t, F, stream, endianness> reader(base_field, field_list, s);
-    auto res = reader();
+    read_field<field_base_type_t, F> reader(base_field, field_list);
+    auto res = reader.template read<endianness>(s);
     if(!res) 
       return std::unexpected(res.error());
     // todo is move guaranteed
@@ -2312,26 +2377,25 @@ struct read_field<T, F, stream, endianness> {
 
 
 // Helper function to read bytes into the variant
-template<std::size_t idx, typename T, typename F, typename V, typename stream, auto endianness>
+template<std::size_t idx, typename T, typename F, typename V>
 struct read_variant_impl {
   V& variant;
   F& field_list;
-  stream& s;
   std::size_t idx_r;
 
   constexpr explicit read_variant_impl(
     V& variant, 
     F& field_list,
-    stream& s, 
     std::size_t idx_r) :
-      variant(variant), field_list(field_list), s(s), idx_r(idx_r) {}
+      variant(variant), field_list(field_list), idx_r(idx_r) {}
 
-  constexpr auto operator()() -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) -> read_result {
     if (idx_r != idx) 
       return {};
 
     T field;
-    auto reader = read_field<T, F, stream, endianness>(field, field_list, s);
+    auto reader = read_field<T, F>(field, field_list, s);
     auto res = reader();
     if(!res)
       return std::unexpected(res.error());
@@ -2341,41 +2405,44 @@ struct read_variant_impl {
 };
 
 
-template <typename T, typename F, typename field_choices, typename idx_seq, typename stream, auto endianness>
+template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
 
-template <typename T, typename F, typename... fields, std::size_t... idx, typename stream, auto endianness>
-struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequence<idx...>, stream, endianness> {
+template <typename T, typename F, typename... fields, std::size_t... idx>
+struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequence<idx...>> {
   T& field;
   F& field_list;
-  stream& s;
   std::size_t idx_r;
   
-  constexpr read_variant_helper(T& field, F& field_list, stream& s, std::size_t idx_r) 
-    : field(field), field_list(field_list), s(s), idx_r(idx_r) {}
+  constexpr read_variant_helper(T& field, F& field_list, std::size_t idx_r) 
+    : field(field), field_list(field_list), idx_r(idx_r) {}
   
-  constexpr auto operator()() -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) -> read_result {
     read_result pipeline_seed{};
     return (
       pipeline_seed |
       ... | 
-      read_variant_impl<idx, fields, F, typename T::field_type, stream, endianness>(field.value, field_list, s, idx_r)
+      [&]() {
+        auto reader_impl = read_variant_impl<idx, fields, F, typename T::field_type>(field.value, field_list, idx_r);
+        return reader_impl.template read<endianness>(s);
+      }
     );
   }
 };
 
 
 // todo restore constexpr
-template <union_field_like T, field_list_like F, typename stream, auto endianness>
-struct read_field<T, F, stream, endianness> {
+template <union_field_like T, field_list_like F>
+struct read_field<T, F> {
   T& field;
   F& field_list;
-  stream& s;
+  
+  constexpr read_field(T& field, F& field_list): 
+    field(field), field_list(field_list){}
 
-  constexpr read_field(T& field, F& field_list, stream& s): 
-    field(field), field_list(field_list), s(s) {}
-
-  constexpr auto operator()() -> read_result {
+  template <auto endianness, typename stream>
+  constexpr auto read(stream& s) -> read_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
@@ -2391,9 +2458,7 @@ struct read_field<T, F, stream, endianness> {
         T, 
         F, 
         field_choices, 
-        std::make_index_sequence<max_type_index>,
-        stream,
-        endianness
+        std::make_index_sequence<max_type_index>
       >;
     auto field_reader = read_helper_t(field, field_list, s, idx_r);
     auto field_read_res = field_reader();
@@ -2405,9 +2470,9 @@ struct read_field<T, F, stream, endianness> {
 
 #endif // _FIELD_READER_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_reader.hpp
+// End /home/hari/repos/struct_cast/include/field_reader.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/cast.hpp
+// Begin /home/hari/repos/struct_cast/include/cast.hpp
 #ifndef _CAST_HPP_
 #define _CAST_HPP_
 
@@ -2435,7 +2500,10 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
     auto res = (
       pipeline_seed |
       ... |
-      read_field<fields, S, stream, endianness>(static_cast<fields&>(field_list), field_list, s)
+      [&](){
+        auto reader = read_field<fields, S>(static_cast<fields&>(field_list), field_list);
+        return reader.template read<endianness>(s);
+      }
     );
     return res ? R(field_list) : std::unexpected(res.error());
   }
@@ -2448,9 +2516,9 @@ constexpr auto struct_cast(stream& s) -> std::expected<T, cast_error> {
 
 #endif // _CAST_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/cast.hpp
+// End /home/hari/repos/struct_cast/include/cast.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_tag.hpp
+// Begin /home/hari/repos/struct_cast/include/type_tag.hpp
 #ifndef _TYPE_TAG_HPP_
 #define _TYPE_TAG_HPP_
  
@@ -2556,9 +2624,9 @@ concept type_tag_like = is_type_tag_v<T>;
 
 #endif // _TYPE_TAG_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/type_tag.hpp
+// End /home/hari/repos/struct_cast/include/type_tag.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/match_case.hpp
+// Begin /home/hari/repos/struct_cast/include/match_case.hpp
 #ifndef _MATCH_CASE_HPP_
 #define _MATCH_CASE_HPP_
  
@@ -2592,9 +2660,9 @@ concept match_case_like = is_match_case_v<T>;
 
 #endif // _MATCH_CASE_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/match_case.hpp
+// End /home/hari/repos/struct_cast/include/match_case.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/clause.hpp
+// Begin /home/hari/repos/struct_cast/include/clause.hpp
 #ifndef _CLAUSE_HPP_
 #define _CLAUSE_HPP_
  
@@ -2630,9 +2698,9 @@ concept clause_like = is_clause_v<T>;
 
 #endif // _CLAUSE_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/clause.hpp
+// End /home/hari/repos/struct_cast/include/clause.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction_helper.hpp
+// Begin /home/hari/repos/struct_cast/include/type_deduction_helper.hpp
 #ifndef _TYPE_DEDUCTION_HELPER_HPP_
 #define _TYPE_DEDUCTION_HELPER_HPP_
  
@@ -2680,9 +2748,9 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction_helper.hpp
+// End /home/hari/repos/struct_cast/include/type_deduction_helper.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_ladder.hpp
+// Begin /home/hari/repos/struct_cast/include/type_ladder.hpp
 #ifndef _TYPE_LADDER_HPP_
 #define _TYPE_LADDER_HPP_
  
@@ -2736,9 +2804,9 @@ struct type_ladder<clause_head, clause_rest...> {
 
 #endif // _TYPE_LADDER_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/type_ladder.hpp
+// End /home/hari/repos/struct_cast/include/type_ladder.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_switch.hpp
+// Begin /home/hari/repos/struct_cast/include/type_switch.hpp
 #ifndef _TYPE_SWITCH_HPP_
 #define _TYPE_SWITCH_HPP_
 
@@ -2789,9 +2857,9 @@ struct type_switch {
 
 #endif // _TYPE_SWITCH_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/type_switch.hpp
+// End /home/hari/repos/struct_cast/include/type_switch.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction.hpp
+// Begin /home/hari/repos/struct_cast/include/type_deduction.hpp
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
 
@@ -2885,9 +2953,9 @@ struct type<tladder> {
 
 #endif // _TYPE_DEDUCTION_HPP_
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/type_deduction.hpp
+// End /home/hari/repos/struct_cast/include/type_deduction.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/field_types.hpp
+// Begin /home/hari/repos/struct_cast/include/field_types.hpp
 #ifndef _FIELD_TYPE_HPP_
 #define _FIELD_TYPE_HPP_
  
@@ -2961,9 +3029,9 @@ namespace static_test {
 }
 #endif /* _FIELD_TYPE_HPP_ */
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/field_types.hpp
+// End /home/hari/repos/struct_cast/include/field_types.hpp
 
-// Begin /home/hari/Code/struct_cast/worktree/memstream/include/struct_cast.hpp
+// Begin /home/hari/repos/struct_cast/include/struct_cast.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
  
@@ -2975,4 +3043,4 @@ namespace static_test {
  
 #endif // STRUCT_CAST_HPP
 
-// End /home/hari/Code/struct_cast/worktree/memstream/include/struct_cast.hpp
+// End /home/hari/repos/struct_cast/include/struct_cast.hpp
