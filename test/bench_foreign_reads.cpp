@@ -4,6 +4,7 @@
 #include <random>
 #include <vector>
 #include <fstream>
+#include <spanstream>
 #include "benchmark/benchmark.h"
 
 
@@ -215,8 +216,19 @@ void create_binary_data(std::string file_name, std::size_t num_elements) {
   file.close();
 }
 
+void create_binary_vector(std::ospanstream& stream, std::size_t num_elements) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint32_t> dist(0, UINT32_MAX);
+  for (std::size_t i = 0; i < num_elements; ++i) {
+      auto temp = dist(gen);
+      stream.write(reinterpret_cast<const char*>(&temp), sizeof(temp));
+  }
+}
+
 void bench_builtins_scalar_from_file(benchmark::State& state) {
-  constexpr std::size_t num_elements = 1000;
+  std::size_t num_elements = state.range(0);
+
   for (auto _ : state) {
     std::string file_name("test_builtins_scalar_from_file.bin");
     create_binary_data(file_name, num_elements);
@@ -233,7 +245,8 @@ void bench_builtins_scalar_from_file(benchmark::State& state) {
 }
 
 void bench_reverse_copy_scalar_from_file(benchmark::State& state) {
-  constexpr std::size_t num_elements = 1000;
+  std::size_t num_elements = state.range(0);
+
   for (auto _ : state) {
     std::string file_name("test_reverse_scalar_from_copy.bin");
     create_binary_data(file_name, num_elements);
@@ -249,9 +262,8 @@ void bench_reverse_copy_scalar_from_file(benchmark::State& state) {
   }
 }
 
-// Reads using foreign iterator
 void bench_custom_iterator_scalar_from_file(benchmark::State& state) {
-  constexpr std::size_t num_elements = 1000;
+  std::size_t num_elements = state.range(0);
 
   for (auto _ : state) {
     std::string file_name("test_custom_iterator_scalar_from_file.bin");
@@ -279,7 +291,8 @@ void bench_custom_iterator_scalar_from_file(benchmark::State& state) {
 }
 
 void bench_builtins_vector_from_file(benchmark::State& state) {
-  constexpr std::size_t num_elements = 1000;
+  std::size_t num_elements = state.range(0);
+
   for (auto _ : state) {
     std::string file_name("test_builtins_vector_from_file.bin");
     create_binary_data(file_name, num_elements);
@@ -288,7 +301,6 @@ void bench_builtins_vector_from_file(benchmark::State& state) {
     dest.resize(num_elements);
 
     stream.read(reinterpret_cast<char*>(dest.data()), num_elements * sizeof(uint32_t));
-
     for (std::size_t idx = 0; idx < num_elements; ++idx) {
       dest[idx] = swap_bytes(dest[idx]);
     }
@@ -297,7 +309,8 @@ void bench_builtins_vector_from_file(benchmark::State& state) {
 }
 
 void bench_reverse_copy_vector_from_file(benchmark::State& state) {
-  constexpr std::size_t num_elements = 1000;
+  std::size_t num_elements = state.range(0);
+
   for (auto _ : state) {
     std::string file_name("test_reverse_vector_from_copy.bin");
     create_binary_data(file_name, num_elements);
@@ -306,7 +319,6 @@ void bench_reverse_copy_vector_from_file(benchmark::State& state) {
     dest.resize(num_elements);
 
     stream.read(reinterpret_cast<char*>(dest.data()), num_elements * sizeof(uint32_t));
-
     for (std::size_t idx = 0; idx < num_elements; ++idx) {
       std::reverse(reinterpret_cast<char*>(&dest[idx]), reinterpret_cast<char*>(&dest[idx]) + sizeof(uint32_t));
     }
@@ -314,9 +326,8 @@ void bench_reverse_copy_vector_from_file(benchmark::State& state) {
   }
 }
 
-// Reads using foreign iterator
 void bench_custom_iterator_vector_from_file(benchmark::State& state) {
-  constexpr std::size_t num_elements = 1000;
+  std::size_t num_elements = state.range(0);
 
   for (auto _ : state) {
     std::string file_name("test_custom_iterator_vector_from_file.bin");
@@ -340,11 +351,151 @@ void bench_custom_iterator_vector_from_file(benchmark::State& state) {
   }
 }
 
+void bench_builtins_scalar_from_vector(benchmark::State& state) {
+    std::size_t num_elements = state.range(0);
+
+    for (auto _ : state) {
+      std::vector<char> buffer(num_elements * sizeof(uint32_t));
+      std::ospanstream out_stream{std::span(buffer)};
+      create_binary_vector(out_stream, num_elements);
+      std::vector<uint32_t> dest;
+      dest.resize(num_elements);
+      std::ispanstream in_stream{std::span(buffer)};
+
+      for (std::size_t idx = 0; idx < num_elements; ++idx) {
+          in_stream.read(reinterpret_cast<char*>(&dest[idx]), sizeof(uint32_t));
+          dest[idx] = swap_bytes(dest[idx]);
+      }
+      benchmark::DoNotOptimize(dest);
+    }
+}
+
+void bench_reverse_copy_scalar_from_vector(benchmark::State& state) {
+    std::size_t num_elements = state.range(0);
+
+    for (auto _ : state) {
+      std::vector<char> buffer(num_elements * sizeof(uint32_t));
+      std::ospanstream out_stream{std::span(buffer)};
+      create_binary_vector(out_stream, num_elements);
+      std::vector<uint32_t> dest;
+      dest.resize(num_elements);
+      std::ispanstream in_stream{std::span(buffer)};
+
+      for (std::size_t idx = 0; idx < num_elements; ++idx) {
+          in_stream.read(reinterpret_cast<char*>(&dest[idx]), sizeof(uint32_t));
+          std::reverse(reinterpret_cast<char*>(&dest[idx]), reinterpret_cast<char*>(&dest[idx]) + sizeof(uint32_t));
+      }
+      benchmark::DoNotOptimize(dest);
+    }
+}
+
+
+void bench_custom_iterator_scalar_from_vector(benchmark::State& state) {
+    std::size_t num_elements = state.range(0);
+
+    for (auto _ : state) {
+      std::vector<char> buffer(num_elements * sizeof(uint32_t));
+      std::ospanstream out_stream{std::span(buffer)};
+      create_binary_vector(out_stream, num_elements);
+      std::vector<uint32_t> dest;
+      dest.resize(num_elements);
+      std::ispanstream in_stream{std::span(buffer)};
+
+      for (std::size_t idx = 0; idx < num_elements; ++idx) {
+        raw_bytes<uint32_t> wrapped_data(dest[idx], 4);
+        auto it = wrapped_data.rbegin();
+        auto end = wrapped_data.rend();
+        auto stream_it = std::istreambuf_iterator<char>(in_stream);
+        auto stream_end = std::istreambuf_iterator<char>();
+        auto b_count = 0;
+        while (b_count < 4 && it != end && stream_it != stream_end) {
+          *it = *stream_it;
+          ++it;
+          ++stream_it;
+          b_count++;
+        }
+      }
+      benchmark::DoNotOptimize(dest);
+    }
+}
+
+void bench_builtins_vector_from_vector(benchmark::State& state) {
+    std::size_t num_elements = state.range(0);
+
+    for (auto _ : state) {
+      std::vector<char> buffer(num_elements * sizeof(uint32_t));
+      std::ospanstream out_stream{std::span(buffer)};
+      create_binary_vector(out_stream, num_elements);
+      std::vector<uint32_t> dest;
+      dest.resize(num_elements);
+      std::ispanstream in_stream{std::span(buffer)};
+
+      in_stream.read(reinterpret_cast<char*>(dest.data()), num_elements * sizeof(uint32_t));
+      for (std::size_t idx = 0; idx < num_elements; ++idx) {
+          dest[idx] = swap_bytes(dest[idx]);
+      }
+      benchmark::DoNotOptimize(dest);
+    }
+}
+
+void bench_reverse_copy_vector_from_vector(benchmark::State& state) {
+    std::size_t num_elements = state.range(0);
+
+    for (auto _ : state) {
+      std::vector<char> buffer(num_elements * sizeof(uint32_t));
+      std::ospanstream out_stream{std::span(buffer)};
+      create_binary_vector(out_stream, num_elements);
+      std::vector<uint32_t> dest;
+      dest.resize(num_elements);
+      std::ispanstream in_stream{std::span(buffer)};
+
+      in_stream.read(reinterpret_cast<char*>(dest.data()), num_elements * sizeof(uint32_t));
+      for (std::size_t idx = 0; idx < num_elements; ++idx) {
+          std::reverse(reinterpret_cast<char*>(&dest[idx]), reinterpret_cast<char*>(&dest[idx]) + sizeof(uint32_t));
+      }
+      benchmark::DoNotOptimize(dest);
+    }
+}
+
+void bench_custom_iterator_vector_from_vector(benchmark::State& state) {
+  std::size_t num_elements = state.range(0);
+
+  for (auto _ : state) {
+    std::vector<char> buffer(num_elements * sizeof(uint32_t));
+    std::ospanstream out_stream{std::span(buffer)};
+    create_binary_vector(out_stream, num_elements);
+    std::vector<uint32_t> dest;
+    dest.resize(num_elements);
+    std::ispanstream in_stream{std::span(buffer)};
+
+    raw_bytes<std::vector<uint32_t>> wrapped_data(dest);
+    auto it = wrapped_data.fbegin();
+    auto end = wrapped_data.fend();
+    auto stream_it = std::istreambuf_iterator<char>(in_stream);
+    auto stream_end = std::istreambuf_iterator<char>();
+    while (it != end && stream_it != stream_end) {
+      *it = *stream_it;
+      ++it;
+      ++stream_it;
+    }
+
+    benchmark::DoNotOptimize(dest);
+  }
+}
+
 // Simulate reading n integer struct from a file
-BENCHMARK(bench_builtins_scalar_from_file);
-BENCHMARK(bench_reverse_copy_scalar_from_file);
-BENCHMARK(bench_custom_iterator_scalar_from_file);
+//BENCHMARK(bench_builtins_scalar_from_file)->Arg(1000)->Arg(100000);
+//BENCHMARK(bench_reverse_copy_scalar_from_file)->Arg(1000)->Arg(100000);
+//BENCHMARK(bench_custom_iterator_scalar_from_file)->Arg(1000)->Arg(100000);
 // Simulate reading n integer vector from a file
-BENCHMARK(bench_builtins_vector_from_file);
-BENCHMARK(bench_reverse_copy_vector_from_file);
-BENCHMARK(bench_custom_iterator_vector_from_file);
+//BENCHMARK(bench_builtins_vector_from_file)->Arg(1000)->Arg(100000);
+//BENCHMARK(bench_reverse_copy_vector_from_file)->Arg(1000)->Arg(100000);
+//BENCHMARK(bench_custom_iterator_vector_from_file)->Arg(1000)->Arg(100000);
+// Simulate reading n integer struct from a file
+//BENCHMARK(bench_builtins_scalar_from_vector)->Arg(1000)->Arg(10000)->Arg(100000);
+//BENCHMARK(bench_reverse_copy_scalar_from_vector)->Arg(1000)->Arg(10000)->Arg(100000);
+//BENCHMARK(bench_custom_iterator_scalar_from_vector)->Arg(1000)->Arg(10000)->Arg(100000);
+// Simulate reading n integer vector from a file
+BENCHMARK(bench_builtins_vector_from_vector)->Arg(1000)->Arg(10000)->Arg(50000)->Arg(75000)->Arg(100000);
+BENCHMARK(bench_reverse_copy_vector_from_vector)->Arg(1000)->Arg(10000)->Arg(50000)->Arg(75000)->Arg(100000);
+BENCHMARK(bench_custom_iterator_vector_from_vector)->Arg(1000)->Arg(10000)->Arg(50000)->Arg(75000)->Arg(100000);
