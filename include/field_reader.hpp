@@ -103,6 +103,7 @@ struct read_buffer_of_records {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> read_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
+      // todo move E outside loop for optimization?
       E elem;
       auto reader = read_field<E, F>(elem, field_list, s);
       auto res = reader();

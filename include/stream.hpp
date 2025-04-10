@@ -4,11 +4,8 @@
 
 #include <concepts>
 #include <expected>
-#include <fstream>
 #include "error.hpp"
 #include "read.hpp"
-#include "address_manip.hpp"
-
 
 
 // todo decide on how to wrap a user defined stream
@@ -66,6 +63,12 @@ class input_stream {
 private:
   stream& buffer;
 
+  template <std::endian endianness, typename T>
+  constexpr auto read(raw_bytes<T>& as_raw_bytes) -> buffer_result {
+    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
+    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes);
+  }
+
 public:
   input_stream(stream& buffer): buffer(buffer) {}
   // todo delete copy constructor?
@@ -74,18 +77,27 @@ public:
   template <std::endian endianness, typename T>
   constexpr auto read(T& obj, std::size_t size_to_read) -> buffer_result {
     auto as_raw_bytes = raw_bytes<T>(obj, size_to_read);
-    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
-    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes);
+    return read<endianness>(as_raw_bytes);
   }
 
+  // todo handle read for fixed size array
+
   template <std::endian endianness, typename T>
-  constexpr auto read_vector(T& obj, std::size_t len_to_read) -> buffer_result {
-    constexpr auto size_of_one_elem = sizeof(T{}[0]);
+  constexpr auto read(std::vector<T>& obj, std::size_t len_to_read) -> buffer_result {
     obj.resize(len_to_read);
-    auto as_byte_addresss = byte_addressof(obj);
-    auto as_raw_bytes = raw_bytes<T>(as_byte_addresss, len_to_read * size_of_one_elem);
-    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
-    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes, len_to_read, size_of_one_elem);
+    auto as_raw_bytes = raw_bytes<T>(obj);
+
+    if constexpr(has_builtin_bswap<sizeof(T)>()) {
+      auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
+      auto res = copy_from_stream(streambuf_iter, as_raw_bytes.begin(), as_raw_bytes.end(), obj.size);
+      if(res) {
+        for(auto& elem: obj)
+          elem = swap_bytes(elem);
+      }
+      return res;
+    } else {
+      return read<endianness>(as_raw_bytes);
+    }
   }
 };
 

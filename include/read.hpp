@@ -8,6 +8,7 @@
 #include <expected>
 #include "address_manip.hpp"
 #include "error.hpp"
+#include <cstdint>
 #include "sc_type_traits.hpp"
 
 
@@ -19,6 +20,34 @@ enum cast_endianness {
 struct little_endian {};
 struct big_endian {};
 
+template <std::size_t size>
+constexpr bool has_builtin_bswap() {
+  if constexpr (size == 2 || size == 4 || size == 8) 
+  {
+    #if defined(__GNC__) || defined(__clang__) || defined(_MSC_VER)
+      return true;
+    #else
+      return false;
+    #endif
+  }
+  return false;
+}
+
+
+template <typename T>
+constexpr T swap_bytes(T value) {
+  constexpr std::size_t size = sizeof(T);
+
+  #if defined(__GNUC__) || defined(__GNUG__) || defined(__clang__)
+    if constexpr (size == 2) return __builtin_bswap16(value);
+    if constexpr (size == 4) return __builtin_bswap32(value);
+    if constexpr (size == 8) return __builtin_bswap64(value);
+  #elif defined(_MSC_VER)
+    if constexpr (size == 2) return _byteswap_ushort(value);
+    if constexpr (size == 4) return _byteswap_ulong(value);
+    if constexpr (size == 8) return _byteswap_uint64(value);
+  #endif
+}
 
 // todo move iterators outside of class to decouple and improve compile time
 class bytewise_iterator {
@@ -82,8 +111,7 @@ public:
   using pointer = char*;
   using reference = char&;
 
-// private:
-  pointer container_start;
+private:
   pointer container_end;
   std::size_t element_size;
   pointer element_start;
@@ -92,15 +120,13 @@ public:
 
 public:
   foreign_vector_iterator() :
-    container_start(nullptr),
     container_end(nullptr),
     element_size(0),
     element_start(nullptr),
     element_end(nullptr),
     current(nullptr) {}
 
-  foreign_vector_iterator(char* container_start, char* container_end, std::size_t element_size) 
-    : container_start(container_start),
+  foreign_vector_iterator(char* container_start, char* container_end, std::size_t element_size) :
       container_end(container_end),
       element_size(element_size),
       element_start(container_start + element_size - 1),
@@ -163,12 +189,12 @@ public:
 
   bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
   bytewise_iterator end() { return bytewise_iterator(ptr_to_object + vector_size * element_size); }
-  foreign_vector_iterator fbegin() {
+  foreign_vector_iterator f_begin() {
     return vector_size == 0 ? 
            foreign_vector_iterator() :
            foreign_vector_iterator(ptr_to_object, ptr_to_object + vector_size * element_size + 1, element_size);
   }
-  foreign_vector_iterator fend() { return foreign_vector_iterator(); }
+  foreign_vector_iterator f_end() { return foreign_vector_iterator(); }
 };
 
 
@@ -194,6 +220,7 @@ concept std_input_stream_iter = requires(T obj, int _) {
 // };
 
 // todo rename to copy and enclose in a namespace
+// todo optimization for word sized copy
 template <typename InputStreamIter, typename ObjIter>
 constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begin, ObjIter&& obj_end, std::size_t count) 
   -> std::expected<void, cast_error>  
@@ -202,10 +229,10 @@ constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begi
   // todo is this well defined
   auto end_of_stream = InputStreamIter{};
 
-  // todo out of bounds protection for obj_byte_iter
   while(b_count < count) {
     if(stream_iter == end_of_stream) 
       return std::unexpected(cast_error::buffer_exhaustion);
+    // todo out of bounds protection for obj_byte_iter?
     if(obj_begin == obj_end)
       return std::unexpected(cast_error::buffer_exhaustion);
 
@@ -220,8 +247,10 @@ constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begi
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) return cast_endianness::foreign;
+  if constexpr(std::endian::native == endianness) 
+    return cast_endianness::host;
+  else if constexpr(std::endian::native != endianness) 
+    return cast_endianness::foreign;
 }
 
 
@@ -238,51 +267,19 @@ constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj)
   }
 }
 
-
-// todo optimization for word sized copy
-template <typename InputStreamIter, typename ObjIter>
-constexpr auto copy_vector_foreign(InputStreamIter& stream_iter, 
-                                   ObjIter&& obj_begin, ObjIter&& obj_end, 
-                                   std::size_t count_to_read, 
-                                   std::size_t size_of_elem) 
-  -> std::expected<void, cast_error>  
-{
-  std::size_t e_count = 0;
-  std::size_t b_count = 0;
-  auto end_of_stream = InputStreamIter{};
-  
-  while(e_count < count_to_read) {
-    obj_begin += size_of_elem;
-
-    if(obj_begin == obj_end)
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    // todo different error for input buffer exhaustion
-    if(stream_iter == end_of_stream) 
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    while(b_count < size_of_elem) {
-      *obj_begin = *stream_iter;
-      obj_begin++;
-      stream_iter++;
-      b_count++;
-    }
-    e_count++;
-  }
-  return {};
-}
-
-
 // todo different raw_bytes implementation for non scalar types?
 template <std::endian endianness, typename Iter, typename T>
-constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj, std::size_t count, std::size_t size_of_elem) 
+constexpr auto copy_from_stream(Iter&& iter, raw_bytes<std::vector<T>>& obj) 
   -> std::expected<void, cast_error>
 {
   constexpr auto byte_order = deduce_byte_order<endianness>();
   if constexpr(byte_order == cast_endianness::host) {
     return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
   } else if constexpr(byte_order == cast_endianness::foreign) {
-    return copy_vector_foreign(iter, obj.begin(), obj.end(), obj.size, count, size_of_elem);
+    if constexpr(has_builtin_bswap<sizeof(T)>()) {
+    } else {
+      return copy_from_stream(iter, obj.f_begin(), obj.f_end(), obj.size);
+    }
   }
 }
 
