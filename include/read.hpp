@@ -112,34 +112,45 @@ public:
   using reference = char&;
 
 private:
-  pointer container_end;
+  pointer container_start;
   std::size_t element_size;
-  pointer element_start;
-  pointer element_end;
+  std::size_t count_to_read;
+  std::size_t global_byte_count;
+  std::size_t local_byte_count;
+  std::size_t element_read_count;
+  std::size_t old_read_element_count;
+  std::size_t element_start_pos;
   pointer current;
 
 public:
-  foreign_vector_iterator() :
-    container_end(nullptr),
-    element_size(0),
-    element_start(nullptr),
-    element_end(nullptr),
-    current(nullptr) {}
+  foreign_vector_iterator() : container_start(nullptr), current(nullptr) {}
 
-  foreign_vector_iterator(char* container_start, char* container_end, std::size_t element_size) :
-      container_end(container_end),
+  foreign_vector_iterator(char* container_start, std::size_t count_to_read, std::size_t element_size) :
+      container_start(container_start),
       element_size(element_size),
-      element_start(container_start + element_size - 1),
-      element_end(container_start - 1),
-      current(element_start){}
+      count_to_read(count_to_read),
+      global_byte_count(1), 
+      local_byte_count(1),
+      element_read_count(0),
+      old_read_element_count(0),
+      element_start_pos(((element_read_count + 1) * element_size) - 1),
+      current(container_start + element_start_pos) {}
 
   char& operator*() { return *current; }
-  foreign_vector_iterator& operator++() { 
-    --current;
-    if(current == element_end) {
-      element_start += element_size;
-      element_end += element_size;
-      current = (element_start >= container_end) ? nullptr : element_start;
+  foreign_vector_iterator& operator++() {
+    element_start_pos = ((element_read_count + 1) * element_size) - 1;
+    if(element_start_pos > count_to_read) {
+        current = nullptr;
+        return *this;
+    }
+    
+    current = container_start + element_start_pos - local_byte_count;
+    global_byte_count++;
+    local_byte_count++;
+    element_read_count = global_byte_count / element_size;
+    if(element_read_count != old_read_element_count) {
+        old_read_element_count = element_read_count;
+        local_byte_count = 0;
     }
     return *this;
   }
