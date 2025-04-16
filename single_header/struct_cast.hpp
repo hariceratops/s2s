@@ -45,6 +45,75 @@ static_assert(fixed_string("hello").size() == 5);
 
 // End /home/hari/repos/struct_cast/include/fixed_string.hpp
 
+// Begin /home/hari/repos/struct_cast/include/address_manip.hpp
+#ifndef _ADDRESS_MANIP_HPP_
+#define _ADDRESS_MANIP_HPP_
+
+#include <array>
+#include <string>
+#include <vector>
+ 
+// Function to void pointer cast
+template <typename T>
+void* to_void_ptr(T& obj) {
+  return reinterpret_cast<void*>(&obj);
+}
+
+template <typename T, std::size_t N>
+void* to_void_ptr(std::array<T, N>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+template <std::size_t N>
+void* to_void_ptr(fixed_string<N>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+template <typename T>
+void* to_void_ptr(std::vector<T>& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+template <typename T>
+void* to_void_ptr(std::string& obj) {
+  return reinterpret_cast<void*>(obj.data());
+}
+
+// todo add overloads for address manip of std::string
+// template <>
+// void* to_void_ptr(std::string obj) {
+//   return reinterpret_cast<void*>(obj.data());
+// }
+
+// Function to get byte address
+template <typename T>
+char* byte_addressof(T& obj) {
+  return reinterpret_cast<char*>(&obj);
+}
+
+template <typename T, std::size_t N>
+char* byte_addressof(std::array<T, N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <std::size_t N>
+char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <typename T>
+char* byte_addressof(std::vector<T>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+inline char* byte_addressof(std::string& obj) {
+  return reinterpret_cast<char*>(&obj[0]);
+}
+
+#endif // _ADDRESS_MANIP_HPP_
+
+// End /home/hari/repos/struct_cast/include/address_manip.hpp
+
 // Begin /home/hari/repos/struct_cast/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
@@ -699,6 +768,12 @@ inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array
 
 template <typename T>
 concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
+template <typename T>
+concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
+
+template <typename T>
+concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 
 #endif // _SC_META_HPP_
 
@@ -1663,369 +1738,6 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
 
 // End /home/hari/repos/struct_cast/include/pipeline.hpp
 
-// Begin /home/hari/repos/struct_cast/include/address_manip.hpp
-#ifndef _ADDRESS_MANIP_HPP_
-#define _ADDRESS_MANIP_HPP_
-
-#include <array>
-#include <string>
-#include <vector>
- 
-// Function to void pointer cast
-template <typename T>
-void* to_void_ptr(T& obj) {
-  return reinterpret_cast<void*>(&obj);
-}
-
-template <typename T, std::size_t N>
-void* to_void_ptr(std::array<T, N>& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <std::size_t N>
-void* to_void_ptr(fixed_string<N>& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <typename T>
-void* to_void_ptr(std::vector<T>& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <typename T>
-void* to_void_ptr(std::string& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-// todo add overloads for address manip of std::string
-// template <>
-// void* to_void_ptr(std::string obj) {
-//   return reinterpret_cast<void*>(obj.data());
-// }
-
-// Function to get byte address
-template <typename T>
-char* byte_addressof(T& obj) {
-  return reinterpret_cast<char*>(&obj);
-}
-
-template <typename T, std::size_t N>
-char* byte_addressof(std::array<T, N>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <std::size_t N>
-char* byte_addressof(fixed_string<N>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <typename T>
-char* byte_addressof(std::vector<T>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-inline char* byte_addressof(std::string& obj) {
-  return reinterpret_cast<char*>(&obj[0]);
-}
-
-#endif // _ADDRESS_MANIP_HPP_
-
-// End /home/hari/repos/struct_cast/include/address_manip.hpp
-
-// Begin /home/hari/repos/struct_cast/include/read.hpp
-#ifndef __READ_HPP__
-#define __READ_HPP__
-
-// todo compiler intrinsic byte swap for better performance
-
-
-#include <iterator>
-#include <expected>
- 
- 
- 
-enum cast_endianness {
-  host = 0,
-  foreign = 1
-};
-
-struct little_endian {};
-struct big_endian {};
-
-
-// todo move iterators outside of class to decouple and improve compile time
-class bytewise_iterator {
-  char* current;
-
-public:
-  using iterator_category = std::forward_iterator_tag;
-  using difference_type = std::ptrdiff_t;
-  using pointer = char*;
-  using reference = char&;
-
-  explicit constexpr bytewise_iterator(char* start)
-    : current(start) {}
-  char& operator*() { return *current; }
-  bytewise_iterator& operator++() { ++current; return *this; }
-  bytewise_iterator operator++(int) {
-    bytewise_iterator temp = *this;
-    ++(*this);
-    return temp;
-  }
-  bool operator!=(const bytewise_iterator& other) const {
-    return current != other.current;
-  }
-  bool operator==(const bytewise_iterator& other) const {
-    return current == other.current;
-  }
-};
-
-class bytewise_reverse_iterator {
-  char* current;
-
-public:
-  using iterator_category = std::forward_iterator_tag;
-  using difference_type = std::ptrdiff_t;
-  using pointer = char*;
-  using reference = char&;
-
-  explicit constexpr bytewise_reverse_iterator(char* start)
-    : current(start) {}
-  char& operator*() { return *current; }
-  bytewise_reverse_iterator& operator++() { --current; return *this;  }
-  bytewise_reverse_iterator operator++(int) {
-    bytewise_reverse_iterator temp = *this;
-    ++(*this);
-    return temp;
-  }
-  bool operator!=(const bytewise_reverse_iterator& other) const {
-    return current != other.current;
-  }
-  bool operator==(const bytewise_reverse_iterator& other) const {
-    return current == other.current;
-  }
-};
-
-
-class foreign_vector_iterator {
-public:
-  using iterator_category = std::forward_iterator_tag;
-  using value_type = char;
-  using difference_type = std::ptrdiff_t;
-  using pointer = char*;
-  using reference = char&;
-
-// private:
-  pointer container_start;
-  pointer container_end;
-  std::size_t element_size;
-  pointer element_start;
-  pointer element_end;
-  pointer current;
-
-public:
-  foreign_vector_iterator() :
-    container_start(nullptr),
-    container_end(nullptr),
-    element_size(0),
-    element_start(nullptr),
-    element_end(nullptr),
-    current(nullptr) {}
-
-  foreign_vector_iterator(char* container_start, char* container_end, std::size_t element_size) 
-    : container_start(container_start),
-      container_end(container_end),
-      element_size(element_size),
-      element_start(container_start + element_size - 1),
-      element_end(container_start - 1),
-      current(element_start){}
-
-  char& operator*() { return *current; }
-  foreign_vector_iterator& operator++() { 
-    if(current > element_end) { --current;  }
-    else {
-      if(element_start + element_size > container_end)
-        current = element_start = element_end = nullptr;
-      else {
-        current = element_start = element_start + element_size;
-        element_end = element_end + element_size;
-      }
-    }
-    return *this;  
-  }
-  foreign_vector_iterator operator++(int) {
-    foreign_vector_iterator temp = *this;
-    ++(*this);
-    return temp;
-  }
-  bool operator!=(const foreign_vector_iterator& other) const {
-    return current != other.current;
-  }
-  bool operator==(const foreign_vector_iterator& other) const {
-    return current == other.current;
-  }
-};
-
-
-template <typename T>
-struct raw_bytes;
-
-
-template <typename T>
-struct raw_bytes {
-  char* ptr_to_object;
-  std::size_t size;
-
-public:
-  explicit constexpr raw_bytes(T& obj, std::size_t size)
-    : ptr_to_object(byte_addressof(obj)), size(size) {}
-
-  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
-  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + size + 1); }
-  bytewise_reverse_iterator rbegin() { return bytewise_reverse_iterator(ptr_to_object + size - 1); }
-  bytewise_reverse_iterator rend() { return bytewise_reverse_iterator(ptr_to_object - 1); }
-};
-
-
-template <vector_like T>
-struct raw_bytes<T> {
-  char* ptr_to_object;
-  std::size_t vector_size;
-  std::size_t element_size;
-
-public:
-  explicit constexpr raw_bytes(T& obj)
-    : ptr_to_object(byte_addressof(obj)), vector_size(obj.size()), element_size(sizeof(T{}[0])) {}
-
-  bytewise_iterator begin() { return bytewise_iterator(ptr_to_object); }
-  bytewise_iterator end() { return bytewise_iterator(ptr_to_object + vector_size * element_size); }
-  foreign_vector_iterator fbegin() {
-    return vector_size == 0 ? 
-           foreign_vector_iterator() :
-           foreign_vector_iterator(ptr_to_object, ptr_to_object + vector_size * element_size + 1, element_size);
-  }
-  foreign_vector_iterator fend() { return foreign_vector_iterator(); }
-};
-
-
-template <typename T>
-concept std_input_stream_iter = requires(T obj, int _) {
-  { obj.operator*() } -> std::same_as<char>;
-  { obj.operator++() } -> std::same_as<T&>;
-  { obj.operator++(_) } -> std::same_as<T&>;
-  { std::is_same_v<typename T::iterator_category, std::input_iterator_tag> };
-  { std::is_same_v<typename T::streambuf_type, std::basic_streambuf<char>> };
-  { std::is_same_v<typename T::istream_type, std::basic_istream<char>> };
-};
-
-// todo is a custom input iterator needed
-// using InputStreamIter = std::istreambuf_iterator<char>;
-// todo if needed roll out one and right a concept for it
-// template <typename T>
-// concept input_stream_iter = requires(T obj, int _) {
-//   { obj.operator*() } -> std::same_as<char>;
-//   { obj.operator++() } -> std::same_as<T&>;
-//   { obj.operator++(_) } -> std::same_as<T&>;
-//   { std::is_same_v<typename T::iterator_category, std::input_iterator_tag> };
-// };
-
-// todo rename to copy and enclose in a namespace
-template <typename InputStreamIter, typename ObjIter>
-constexpr auto copy_from_stream(InputStreamIter& stream_iter, ObjIter&& obj_begin, ObjIter&& obj_end, std::size_t count) 
-  -> std::expected<void, cast_error>  
-{
-  std::size_t b_count = 0;
-  // todo is this well defined
-  auto end_of_stream = InputStreamIter{};
-
-  // todo out of bounds protection for obj_byte_iter
-  while(b_count < count) {
-    if(stream_iter == end_of_stream) 
-      return std::unexpected(cast_error::buffer_exhaustion);
-    if(obj_begin == obj_end)
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    *obj_begin = *stream_iter;
-    obj_begin++;
-    stream_iter++;
-    b_count++;
-  }
-  return {};
-}
-
-
-template <std::endian endianness>
-constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) return cast_endianness::foreign;
-}
-
-
-// todo decide if endianness should be in type or value domain
-template <std::endian endianness, typename Iter, typename T>
-constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj) 
-  -> std::expected<void, cast_error>
-{
-  constexpr auto byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
-    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
-    return copy_from_stream(iter, obj.rbegin(), obj.rend(), obj.size);
-  }
-}
-
-
-// todo optimization for word sized copy
-template <typename InputStreamIter, typename ObjIter>
-constexpr auto copy_vector_foreign(InputStreamIter& stream_iter, 
-                                   ObjIter&& obj_begin, ObjIter&& obj_end, 
-                                   std::size_t count_to_read, 
-                                   std::size_t size_of_elem) 
-  -> std::expected<void, cast_error>  
-{
-  std::size_t e_count = 0;
-  std::size_t b_count = 0;
-  auto end_of_stream = InputStreamIter{};
-  
-  while(e_count < count_to_read) {
-    obj_begin += size_of_elem;
-
-    if(obj_begin == obj_end)
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    // todo different error for input buffer exhaustion
-    if(stream_iter == end_of_stream) 
-      return std::unexpected(cast_error::buffer_exhaustion);
-
-    while(b_count < size_of_elem) {
-      *obj_begin = *stream_iter;
-      obj_begin++;
-      stream_iter++;
-      b_count++;
-    }
-    e_count++;
-  }
-  return {};
-}
-
-
-// todo different raw_bytes implementation for non scalar types?
-template <std::endian endianness, typename Iter, typename T>
-constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj, std::size_t count, std::size_t size_of_elem) 
-  -> std::expected<void, cast_error>
-{
-  constexpr auto byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
-    return copy_from_stream(iter, obj.begin(), obj.end(), obj.size);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
-    return copy_vector_foreign(iter, obj.begin(), obj.end(), obj.size, count, size_of_elem);
-  }
-}
-
-#endif /* __READ_HPP__ */
-
-// End /home/hari/repos/struct_cast/include/read.hpp
-
 // Begin /home/hari/repos/struct_cast/include/stream.hpp
 #ifndef __STREAM_HPP__
 #define __STREAM_HPP__
@@ -2033,10 +1745,23 @@ constexpr auto copy_from_stream(Iter&& iter, raw_bytes<T>& obj, std::size_t coun
 
 #include <concepts>
 #include <expected>
-#include <fstream>
  
  
- 
+enum cast_endianness {
+  host = 0,
+  foreign = 1
+};
+
+
+template <std::endian endianness>
+constexpr cast_endianness deduce_byte_order() {
+  if constexpr(std::endian::native == endianness) 
+    return cast_endianness::host;
+  else if constexpr(std::endian::native != endianness) 
+    return cast_endianness::foreign;
+}
+
+
 // todo decide on how to wrap a user defined stream
 // todo decide on constraints on streams
 // todo is a wrapper needed, maybe constraint the copy function directly with stream traits
@@ -2083,35 +1808,72 @@ template <typename T>
 concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
 
-using buffer_result = std::expected<void, cast_error>;
+using rw_result = std::expected<void, cast_error>;
 
 
 // todo maybe split to input_stream and output_stream
 template <input_stream_like stream>
 class input_stream {
 private:
-  stream& buffer;
+  stream& s;
+
+  template <typename T>
+  constexpr auto read_native_impl(T& obj, std::size_t size_to_read) -> rw_result {
+    if(!s.read(byte_addressof(obj), size_to_read)) {
+      return std::unexpected(cast_error::buffer_exhaustion);
+    }
+    return {};
+  }
+
+  template <constant_sized_like T>
+  constexpr auto read_native(T& obj, std::size_t size_to_read) -> rw_result {
+    return read_native_impl(obj, size_to_read);   
+  }
+
+  template <variable_sized_buffer_like T>
+  constexpr auto read_native(T& obj, std::size_t len_to_read) -> rw_result {
+    obj.resize(len_to_read);
+    return read_native_impl(obj, len_to_read * sizeof(T{}[0]));
+  }
+
+  template <trivial T>
+  constexpr auto read_foreign_scalar(T& obj, std::size_t size_to_read) -> rw_result {
+    auto res = read_native_impl(obj, size_to_read);
+    if(res) {
+      std::byteswap(obj);
+      return {};
+    }
+    return res;
+  }
+
+  template <buffer_like T>
+  constexpr auto read_foreign_buffer(T& obj, std::size_t len_to_read) -> rw_result {
+    auto res = read_native(obj, len_to_read);
+    if(res) {
+      for(auto& elem: obj) 
+        std::byteswap(obj);
+      return {};
+    }
+    return res;
+  }
 
 public:
-  input_stream(stream& buffer): buffer(buffer) {}
+  input_stream(stream& s): s(s) {}
   // todo delete copy constructor?
   input_stream(const input_stream&) = delete;
 
   template <std::endian endianness, typename T>
-  constexpr auto read(T& obj, std::size_t size_to_read) -> buffer_result {
-    auto as_raw_bytes = raw_bytes<T>(obj, size_to_read);
-    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
-    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes);
-  }
-
-  template <std::endian endianness, typename T>
-  constexpr auto read_vector(T& obj, std::size_t len_to_read) -> buffer_result {
-    constexpr auto size_of_one_elem = sizeof(T{}[0]);
-    obj.resize(len_to_read);
-    auto as_byte_addresss = byte_addressof(obj);
-    auto as_raw_bytes = raw_bytes<T>(as_byte_addresss, len_to_read * size_of_one_elem);
-    auto streambuf_iter = std::istreambuf_iterator<char>(buffer);
-    return copy_from_stream<endianness>(streambuf_iter, as_raw_bytes, len_to_read, size_of_one_elem);
+  constexpr auto read(T& obj, std::size_t N) -> rw_result {
+    auto constexpr byte_order = deduce_byte_order<endianness>();
+    if constexpr(byte_order == cast_endianness::host) {
+      return read_native(obj, N); 
+    } else if constexpr(byte_order == cast_endianness::foreign) {
+      if constexpr(trivial<T>) {
+        return read_foreign_scalar(obj, N);
+      } else if constexpr(buffer_like<T>) {
+        return read_foreign_buffer(obj, N);
+      }
+    }
   }
 };
 
@@ -2119,15 +1881,15 @@ public:
 template <output_stream_like stream>
 class output_stream {
 private:
-  stream& buffer;
+  stream& s;
 
 public:
   // delete copy constructor?
   template <typename T>
-  constexpr auto write(const char* src_mem, std::size_t size_to_read) -> buffer_result {
+  constexpr auto write(const char* src_mem, std::size_t size_to_read) -> rw_result {
     // eof = buffer_exhaustion
     // bad | fail = io_error
-    if(!buffer.write(src_mem, size_to_read))
+    if(!s.write(src_mem, size_to_read))
       return std::unexpected(cast_error::buffer_exhaustion);
     return {};
   }
@@ -2209,7 +1971,7 @@ struct read_field<T, F> {
   constexpr auto read(stream& s) const -> read_result {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return s.template read_vector<endianness>(field.value, len_to_read);
+    return s.template read<endianness>(field.value, len_to_read);
   }
 };
 
@@ -2264,9 +2026,10 @@ struct read_buffer_of_records {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> read_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
+      // todo move E outside loop for optimization?
       E elem;
-      auto reader = read_field<E, F>(elem, field_list, s);
-      auto res = reader();
+      auto reader = read_field<E, F>(elem, field_list);
+      auto res = reader.template read<endianness, stream>(s);
       if(!res) 
         return std::unexpected(res.error());
       // todo is move guaranteed
@@ -2338,7 +2101,7 @@ struct read_field<T, F> {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> read_result {
     using field_list_t = extract_type_from_field_v<T>;
-    auto res = struct_cast<field_list_t, endianness>(s);
+    auto res = struct_cast<stream, field_list_t, endianness>(s);
     if(!res)
       return std::unexpected(res.error());
     // todo move?
@@ -2395,8 +2158,8 @@ struct read_variant_impl {
       return {};
 
     T field;
-    auto reader = read_field<T, F>(field, field_list, s);
-    auto res = reader();
+    auto reader = read_field<T, F>(field, field_list);
+    auto res = reader.template read<endianness, stream>(s);
     if(!res)
       return std::unexpected(res.error());
     variant = std::move(field.value);
@@ -2460,8 +2223,8 @@ struct read_field<T, F> {
         field_choices, 
         std::make_index_sequence<max_type_index>
       >;
-    auto field_reader = read_helper_t(field, field_list, s, idx_r);
-    auto field_read_res = field_reader();
+    auto field_reader = read_helper_t(field, field_list, idx_r);
+    auto field_read_res = field_reader.template read<endianness, stream>(s);
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};

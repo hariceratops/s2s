@@ -48,7 +48,7 @@ struct read_field<T, F> {
   constexpr auto read(stream& s) const -> read_result {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return s.template read_vector<endianness>(field.value, len_to_read);
+    return s.template read<endianness>(field.value, len_to_read);
   }
 };
 
@@ -105,8 +105,8 @@ struct read_buffer_of_records {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       // todo move E outside loop for optimization?
       E elem;
-      auto reader = read_field<E, F>(elem, field_list, s);
-      auto res = reader();
+      auto reader = read_field<E, F>(elem, field_list);
+      auto res = reader.template read<endianness, stream>(s);
       if(!res) 
         return std::unexpected(res.error());
       // todo is move guaranteed
@@ -178,7 +178,7 @@ struct read_field<T, F> {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> read_result {
     using field_list_t = extract_type_from_field_v<T>;
-    auto res = struct_cast<field_list_t, endianness>(s);
+    auto res = struct_cast<stream, field_list_t, endianness>(s);
     if(!res)
       return std::unexpected(res.error());
     // todo move?
@@ -235,8 +235,8 @@ struct read_variant_impl {
       return {};
 
     T field;
-    auto reader = read_field<T, F>(field, field_list, s);
-    auto res = reader();
+    auto reader = read_field<T, F>(field, field_list);
+    auto res = reader.template read<endianness, stream>(s);
     if(!res)
       return std::unexpected(res.error());
     variant = std::move(field.value);
@@ -300,8 +300,8 @@ struct read_field<T, F> {
         field_choices, 
         std::make_index_sequence<max_type_index>
       >;
-    auto field_reader = read_helper_t(field, field_list, s, idx_r);
-    auto field_read_res = field_reader();
+    auto field_reader = read_helper_t(field, field_list, idx_r);
+    auto field_read_res = field_reader.template read<endianness, stream>(s);
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};
