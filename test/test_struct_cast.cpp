@@ -16,12 +16,17 @@
 
 #define FIELD_LIST_SCHEMA using test_field_list
 
-#define FIELD_LIST_READ_CHECK(code) \
+#define FIELD_LIST_LE_READ_CHECK(code) \
   do { \
-    using file_stream = input_stream<std::ifstream>; \
-    std::ifstream in_file("test_input.bin", std::ios::in | std::ios::binary); \
-    input_stream<std::ifstream> file(in_file); \
-    auto result = struct_cast<file_stream, test_field_list, std::endian::little>(file); \
+    std::ifstream file("test_input.bin", std::ios::in | std::ios::binary); \
+    auto result = struct_cast_le<test_field_list>(file); \
+    code; \
+  } while(0)
+
+#define FIELD_LIST_BE_READ_CHECK(code) \
+  do { \
+    std::ifstream file("test_input.bin", std::ios::in | std::ios::binary); \
+    auto result = struct_cast_be<test_field_list>(file); \
     code; \
   } while(0)
 
@@ -174,12 +179,21 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
      basic_field<"b", u32, field_size<fixed<4>>>
   >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
       REQUIRE(fields["a"_f] == 0xdeadbeef);
       REQUIRE(fields["b"_f] == 0xcafed00d);
+    }
+  });
+
+  FIELD_LIST_BE_READ_CHECK({
+    REQUIRE(result.has_value() == true);
+    if(result) {
+      auto fields = *result;
+      REQUIRE(fields["a"_f] == 0xefbeadde);
+      REQUIRE(fields["b"_f] == 0x0dd0feca);
     }
   });
 }
@@ -198,7 +212,7 @@ TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") 
      basic_field<"b", u32, field_size<fixed<4>>>
   >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
     REQUIRE(result.error() == cast_error::buffer_exhaustion);
   });
@@ -230,7 +244,7 @@ TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -260,7 +274,7 @@ TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file"
       fixed_array_field<"c", u32, 3>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     std::string_view expected{"foo in bar"};
     REQUIRE(result.has_value() == true);
     auto fields = *result;
@@ -287,7 +301,7 @@ TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field f
       fixed_array_field<"arr", std::array<u32, 3>, 3>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(
@@ -324,7 +338,7 @@ TEST_CASE("Test reading a meta_struct with array of records from binary file") {
       array_of_records<"records", test_struct, 3>
     >;
   
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     auto records = fields["records"_f];
@@ -352,7 +366,7 @@ TEST_CASE("Test magic number") {
       basic_field<"p", u32, field_size<fixed<4>>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(fields["magic_num"_f] == 0xdeadbeef);
@@ -379,7 +393,7 @@ TEST_CASE("Test magic array") {
       basic_field<"size", u32, field_size<fixed<4>>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(fields["magic_arr"_f] == std::array<u8, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
@@ -403,7 +417,7 @@ TEST_CASE("Test magic string") {
       basic_field<"size", u32, field_size<fixed<4>>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{fixed_string("GIF").data()});
@@ -426,7 +440,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
       str_field<"str", field_size<len_from_field<"len">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(fields["len"_f] == 10);
@@ -460,7 +474,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
       vec_field<"vec", u32, field_size<len_from_field<"len">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(fields["len"_f] == 10);
@@ -500,7 +514,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
       vec_field<"flat_vec", u32, field_size<len_from_fields<size_from_rc, with_fields<"row", "col">>>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     REQUIRE(fields["row"_f] == 5);
@@ -540,7 +554,7 @@ TEST_CASE("Test reading a meta_struct with vector of records from binary file") 
       vector_of_records<"records", test_struct, field_size<len_from_field<"len">>>
     >;
  
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
     auto records = fields["records"_f];
@@ -613,9 +627,7 @@ TEST_CASE("Dummy test to verify runtime computation from fields") {
   // todo: macro fails to compile
   [](){
     std::ifstream ifs("test_input.bin", std::ios::in | std::ios::binary);
-    using file_stream = input_stream<std::ifstream>;
-    file_stream fs(ifs);
-    auto result = struct_cast<file_stream, test_field_list, std::endian::little>(fs);
+    auto result = struct_cast_le<test_field_list>(ifs);
     auto callable = [](const u32& a, const u32& b) -> u32 { return a * b; };
     auto fields = *result;
     REQUIRE(fields["a"_f] == 4);
@@ -644,7 +656,7 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
       maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -674,7 +686,7 @@ TEST_CASE("Test case to verify option field parsing with parse predicate failure
       maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_1, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -711,7 +723,7 @@ TEST_CASE("Test case to verify optional struct from binary file with successful 
       maybe_field<struct_field<"c", inner>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -744,7 +756,7 @@ TEST_CASE("Test case to verify optional fixed_array from binary file with succes
       maybe_field<fixed_array_field<"c", u32, 3>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -777,7 +789,7 @@ TEST_CASE("Test case to verify optional fixed string from binary file with succe
       maybe_field<fixed_string_field<"c", 10>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     std::string_view expected{"foo in bar"};
     REQUIRE(result.has_value() == true);
     if(result) {
@@ -820,7 +832,7 @@ TEST_CASE("Test case to verify optional length prefixed array from binary file w
       maybe_field<vec_field<"vec", u32, field_size<len_from_field<"len">>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -868,7 +880,7 @@ TEST_CASE("Test case to verify optional array of records from binary file with s
       maybe_field<array_of_records<"records", test_struct, 3>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -916,7 +928,7 @@ TEST_CASE("Test case to verify optional vector of records from binary file with 
       maybe_field<vector_of_records<"records", test_struct, field_size<len_from_field<"len">>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -972,7 +984,7 @@ TEST_CASE("Test case to verify failed parsing variant field") {
     >;
 
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
     REQUIRE(result.error() == cast_error::type_deduction_failure);
   });
@@ -1006,7 +1018,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1046,7 +1058,7 @@ TEST_CASE("Test case to verify variant field with an fixed array parsing from a 
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1095,7 +1107,7 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1142,7 +1154,7 @@ TEST_CASE("Test case to verify variant field with an fixed string parsing from a
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1185,7 +1197,7 @@ TEST_CASE("Test case to verify variant field with a variable string parsing from
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1226,7 +1238,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with com
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1276,7 +1288,7 @@ TEST_CASE("Test case to verify parsing variant field with multiple struct field 
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;
@@ -1320,7 +1332,7 @@ TEST_CASE("Test case to verify failed variant field parsing from a binary file w
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
     REQUIRE(result.error() == cast_error::type_deduction_failure);
   });
@@ -1359,7 +1371,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with boo
       >
     >;
 
-  FIELD_LIST_READ_CHECK({
+  FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == true);
     if(result) {
       auto fields = *result;

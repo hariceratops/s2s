@@ -102,7 +102,8 @@ private:
   constexpr auto read_foreign_scalar(T& obj, std::size_t size_to_read) -> rw_result {
     auto res = read_native_impl(obj, size_to_read);
     if(res) {
-      std::byteswap(obj);
+      // todo rollout byteswap if freestanding compiler doesnt provide one
+      obj = std::byteswap(obj);
       return {};
     }
     return res;
@@ -113,7 +114,7 @@ private:
     auto res = read_native(obj, len_to_read);
     if(res) {
       for(auto& elem: obj) 
-        std::byteswap(obj);
+        obj = std::byteswap(obj);
       return {};
     }
     return res;
