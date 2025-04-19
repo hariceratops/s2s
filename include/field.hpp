@@ -26,7 +26,7 @@ struct to_optional_field;
 
 template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
 struct to_optional_field<field<id, T, size_type, constraint_on_value>> {
-  using res = field<id, std::optional<T>, size_type, constraint_on_value>;
+  using res = field<id, std::optional<T>, size_type, no_constraint<std::optional<T>>{}>;
 };
 
 template <typename T>
@@ -37,9 +37,8 @@ struct no_variance_field;
 
 template <fixed_string id,
           typename T,
-          typename size_type,
-          auto constraint_on_value>
-struct no_variance_field<field<id, T, size_type, constraint_on_value>> {
+          typename size_type>
+struct no_variance_field<field<id, T, size_type, no_constraint<T>{}>> {
   static constexpr bool res = true;
 };
 

@@ -262,4 +262,10 @@ inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array
 template <typename T>
 concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
+template <typename T>
+concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
+
+template <typename T>
+concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
+
 #endif // _SC_META_HPP_
