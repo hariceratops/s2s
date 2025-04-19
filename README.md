@@ -57,7 +57,7 @@ The compiler version requirements are
 
 ## API documentation
 Refer file UserGuide.md for detailed API documentation, for a brief 
-tour, refer the section [Brief Tour](Brief-Tour)
+tour, refer the section [Brief Tour](#Brief-Tour)
 
 ## Brief Tour
 ### "Struct"
