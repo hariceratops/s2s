@@ -199,6 +199,27 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
 }
 
 
+TEST_CASE("Test reading a meta_struct from a binary file but validation of field value fails") {
+  PREPARE_INPUT_FILE({
+    u32 a = 0xdeadbeef;
+    u32 b = 0xdeadbeef;
+    file.write(reinterpret_cast<const char*>(&a), sizeof(a));
+    file.write(reinterpret_cast<const char*>(&b), sizeof(b));
+  });
+
+  FIELD_LIST_SCHEMA = 
+   struct_field_list<
+     basic_field<"a", u32, field_size<fixed<4>>, eq(0xdeadbeef)>, 
+     basic_field<"b", u32, field_size<fixed<4>>, eq(0xcafed00d)>
+  >;
+
+  FIELD_LIST_LE_READ_CHECK({
+    REQUIRE(result.has_value() == false);
+    REQUIRE(result.error() == cast_error::validation_failure);
+  });
+}
+
+
 TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
@@ -422,6 +443,28 @@ TEST_CASE("Test magic string") {
     auto fields = *result;
     REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{fixed_string("GIF").data()});
     REQUIRE(fields["size"_f] == 0xcafed00d);
+  });
+}
+
+
+TEST_CASE("Test failing magic string read") {
+  PREPARE_INPUT_FILE({
+    const u8 str[] = "NAH";
+    const auto str_len = 3;
+    u32 x = 0xcafed00d;
+    file.write(reinterpret_cast<const char*>(&str), str_len + 1);
+    file.write(reinterpret_cast<const char*>(&x), sizeof(x));
+  });
+
+  FIELD_LIST_SCHEMA = 
+    struct_field_list<
+      magic_string<"magic_str", "GIF">,
+      basic_field<"size", u32, field_size<fixed<4>>>
+    >;
+
+  FIELD_LIST_LE_READ_CHECK({
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == cast_error::validation_failure);
   });
 }
 
