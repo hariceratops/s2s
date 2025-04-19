@@ -2176,6 +2176,7 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
         if(!read_res) 
           return read_res;
         // Try validating with the constraint
+        // todo enable check only if constraint is present, to avoid runtime costs?
         // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
           bool field_validation_res = fields::constraint_checker(field.value);
           if(!field_validation_res)
