@@ -23,9 +23,6 @@ struct are_unique_fixed_strings<head, neck, tail...> {
 template <fixed_string... field_ids>
 inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
 
-static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
-static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
-
 
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);

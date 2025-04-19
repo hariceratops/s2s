@@ -2,3 +2,4 @@ build
 build_clang
 .cache
 compile_commands.json
+worktree

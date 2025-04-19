@@ -24,14 +24,4 @@ struct extract_type_from_field {
 template <typename T>
 using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
-// todo: How to enable this test
-// static_assert(std::is_same_v<extract_type_from_field_v<field<"x", int, 4>>, int>);
-// static_assert(std::is_same_v<extract_type_from_field_v<field<"x", float, 4>>, float>);
-// static_assert(std::is_same_v<extract_type_from_field_v<std::array<char, 10>>, not_a_field>);
-// static_assert(
-//   std::is_same_v<extract_type_from_field_v<
-//     struct_field<"d", struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>>, 
-//     struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>
-//   );
-
 #endif // _FIELD_META_HPP_

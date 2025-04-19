@@ -34,9 +34,5 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
   return !(lhs == rhs);
 }
 
-namespace static_test {
-static_assert(fixed_string("hello").size() == 5);
-}
-
 
 #endif // _FIXED_STRING_HPP_

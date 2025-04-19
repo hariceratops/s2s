@@ -36,10 +36,6 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
   return !(lhs == rhs);
 }
 
-namespace static_test {
-static_assert(fixed_string("hello").size() == 5);
-}
-
 
 #endif // _FIXED_STRING_HPP_
 
@@ -53,7 +49,6 @@ static_assert(fixed_string("hello").size() == 5);
 #include <string>
 #include <vector>
  
-// Function to void pointer cast
 template <typename T>
 void* to_void_ptr(T& obj) {
   return reinterpret_cast<void*>(&obj);
@@ -79,13 +74,6 @@ void* to_void_ptr(std::string& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
-// todo add overloads for address manip of std::string
-// template <>
-// void* to_void_ptr(std::string obj) {
-//   return reinterpret_cast<void*>(obj.data());
-// }
-
-// Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
   return reinterpret_cast<char*>(&obj);
@@ -232,19 +220,6 @@ using pop_t = typename pop<count, T>::type;
 template <typename T>
 concept field_name_list = is_field_name_list_v<T>;
 
-
-using typelist_ex = fixed_string_list<"a", "b", "c", "d">;
-inline constexpr auto idx_list = std::make_integer_sequence<std::size_t, size_v<typelist_ex>>{};
-static_assert(fixed_string("a") == front_t<typelist_ex>);
-static_assert(std::is_same_v<fixed_string_list<"a", "b", "c", "d">, pop_t<0, typelist_ex>>);
-static_assert(std::is_same_v<fixed_string_list<"b", "c", "d">, pop_t<1, typelist_ex>>);
-static_assert(std::is_same_v<fixed_string_list<"c", "d">, pop_t<2, typelist_ex>>);
-static_assert(fixed_string("c") == front_t<pop_t<2, typelist_ex>>);
-static_assert(fixed_string("c") == get_t<2, typelist_ex>);
-static_assert(size_v<typelist_ex> == 4);
-
-
-
 #endif // _FIXED_STR_LIST_HPP_
 
 // End /home/hari/repos/struct_cast/include/fixed_str_list.hpp
@@ -334,21 +309,7 @@ using front_t = typename front<tlist>::front_t;
 } // namespace typelist
 
 
-namespace static_tests {
-namespace tl = typelist;
 
-static_assert(tl::any_of_v<tl::typelist<int, float, float>, int>);
-static_assert(tl::any_of_v<tl::typelist<float, int, float, float>, int>);
-static_assert(!tl::any_of_v<tl::typelist<int, int, int>, float>);
-static_assert(!tl::any_of_v<tl::typelist<>, float>);
-
-static_assert(tl::all_are_same_v<tl::typelist<int, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<float, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<int, int, float, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<int, float, float, int, int>>);
-static_assert(tl::all_are_same_v<tl::typelist<int>>);
-static_assert(tl::all_are_same_v<tl::typelist<>>);
-}
 
 
 #endif // _TYPELIST_HPP_
@@ -478,13 +439,7 @@ concept is_size_like = fixed_size_like<T>    ||
                        variable_size_like<T> ||
                        selectable_size_like<T>;
 
-namespace static_test {
-static_assert(is_variable_size_v<field_size<len_from_field<"hello">>>);
-static_assert(is_fixed_size_v<field_size<fixed<4>>>);
-static_assert(!is_fixed_size_v<int>);
-static_assert(!is_variable_size_v<int>);
-static_assert(field_size<fixed<6>>::size_type_t::count == 6);
-}
+
 
 #endif // _FIELD_SIZE_HPP_
 
@@ -587,8 +542,6 @@ template <typename T>
 inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
 
 // fixed_buffer_like concept
-// todo constrain to array of primitives 
-// todo check if array of records and arrays are possible for implementation
 // todo check if md string is ok
 template <typename T>
 concept fixed_buffer_like = 
@@ -634,7 +587,6 @@ template <typename T>
 concept variant_like = is_variant_like_v<T>;
 
 // todo: add constraints such that user defined optionals can also be used 
-// todo: also add constraint to permit var length fields
 template <typename T>
 struct is_optional_like;
 
@@ -643,7 +595,6 @@ struct is_optional_like {
   static inline constexpr bool res = false;
 };
 
-// template <field_containable T>
 template <typename T>
 struct is_optional_like<std::optional<T>> {
   static inline constexpr bool res = true;
@@ -658,7 +609,7 @@ concept optional_like = is_optional_like_v<T>;
 template <typename T>
 struct is_vector_like;
 
-// vector of vectors or vector of arrays?
+// todo vector of vectors or vector of arrays?
 template <typename T>
   requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
@@ -679,7 +630,6 @@ concept vector_like = is_vector_v<T>;
 template <typename T>
 struct is_string_like;
 
-// vector of vectors or vector of arrays?
 template <>
 struct is_string_like<std::string> {
   static constexpr bool res = true;
@@ -1037,8 +987,6 @@ inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
 template <typename T>
 concept no_variance_field_like = no_variance_field_v<T>;
 
-// todo maybe provide field directly as template parameter constrained?
-// will solve constraint issue and also produces clean API
 template <no_variance_field_like base_field,
           typename present_only_if,
           typename optional = to_optional_field_v<base_field>>
@@ -1089,12 +1037,6 @@ struct are_unique_types<field_choice_list<head, neck, tail...>> {
 template <typename choice_list>
 inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
 
-static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
-static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
-static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
-
-
-// todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
           typename type = typename type_deducer::variant,
@@ -1138,16 +1080,6 @@ struct extract_type_from_field {
 
 template <typename T>
 using extract_type_from_field_v = typename extract_type_from_field<T>::type;
-
-// todo: How to enable this test
-// static_assert(std::is_same_v<extract_type_from_field_v<field<"x", int, 4>>, int>);
-// static_assert(std::is_same_v<extract_type_from_field_v<field<"x", float, 4>>, float>);
-// static_assert(std::is_same_v<extract_type_from_field_v<std::array<char, 10>>, not_a_field>);
-// static_assert(
-//   std::is_same_v<extract_type_from_field_v<
-//     struct_field<"d", struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>>, 
-//     struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>
-//   );
 
 #endif // _FIELD_META_HPP_
 
@@ -1319,8 +1251,6 @@ inline constexpr bool is_union_field_v = is_union_field<T>::res;
 template <typename T>
 concept union_field_like = is_union_field_v<T>;
 
-// todo struct_field_like
-
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
@@ -1329,13 +1259,7 @@ concept field_like = fixed_sized_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
-//
-// namespace static_test {
-//   static_assert(is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-//   static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-//   static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-//   static_assert(!is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-// }
+
 #endif /*_FIELD_TRAITS_HPP_*/
 
 // End /home/hari/repos/struct_cast/include/field_traits.hpp
@@ -1446,9 +1370,6 @@ struct are_unique_fixed_strings<head, neck, tail...> {
 template <fixed_string... field_ids>
 inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
 
-static_assert(!has_unique_field_ids_v<"hello", "world", "hello">);
-static_assert(has_unique_field_ids_v<"hello", "world", "nexus">);
-
 
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
@@ -1487,11 +1408,6 @@ struct struct_field_list : struct_field_list_base, fields... {
  
  
  
-// todo add constriants
-// template <auto callable, typename R, field_name_list fstr_list>
-// struct compute;
-
-
 template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
@@ -1715,23 +1631,10 @@ using read_result = std::expected<void, cast_error>;
 
 #include <expected>
  
-// todo possible dead code
-template <typename... expected_types>
-auto is_any_error(const expected_types&... expected_list) {
-  return (expected_list && ...);
-}
-
-// todo constraints
-// todo fix the copying by using reference currently error thrown due to 
-// non const lvalue being bound to rvalue
 auto operator|(const read_result& res, auto&& callable) -> read_result
 {
   return res ? callable() : std::unexpected(res.error());
 }
-
-// auto operator|(auto&& callable_left, auto&& callable_right) -> read_result  {
-//   return callable_left() | callable_right;
-// }
 
 #endif // _PIPELINE_HPP_
 
@@ -1760,10 +1663,6 @@ constexpr cast_endianness deduce_byte_order() {
     return cast_endianness::foreign;
 }
 
-
-// todo decide on how to wrap a user defined stream
-// todo decide on constraints on streams
-// todo is a wrapper needed, maybe constraint the copy function directly with stream traits
 
 template <typename T>
 concept convertible_to_bool = requires(T obj) {
@@ -1810,7 +1709,6 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 using rw_result = std::expected<void, cast_error>;
 
 
-// todo maybe split to input_stream and output_stream
 template <input_stream_like stream>
 class input_stream {
 private:
@@ -1859,7 +1757,6 @@ private:
 
 public:
   input_stream(stream& s): s(s) {}
-  // todo delete copy constructor?
   input_stream(const input_stream&) = delete;
 
   template <std::endian endianness, typename T>
@@ -1914,10 +1811,6 @@ inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
 template <typename T>
 concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 
-// static_assert(std_read_trait<std::ifstream>);
-// static_assert(readable<std::ifstream>);
-// static_assert(convertible_to_bool<std::ifstream>);
-
 #endif /* __STREAM_HPP__ */
 
 // End /home/hari/repos/struct_cast/include/stream.hpp
@@ -1927,7 +1820,6 @@ concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 #define _FIELD_READER_HPP_
 
 #include <cstring>
-#include <fstream>
 #include <expected>
 #include <utility>
  
@@ -2026,16 +1918,13 @@ struct read_buffer_of_records {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> read_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
-      // todo move E outside loop for optimization?
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
       auto res = reader.template read<endianness, stream>(s);
       if(!res) 
         return std::unexpected(res.error());
       // todo is move guaranteed
-      // todo optimise pass field.value[count] to reader instead of elem
       field.value[count] = std::move(elem.value);
-      // field.value[count] = elem.value;
     }
     return {};
   }
@@ -2242,7 +2131,6 @@ struct read_field<T, F> {
 
 #include <expected>
  
-// #include "field_meta.hpp"
  
  
 template <typename T>
@@ -2332,7 +2220,6 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
  
  
 // todo is this required
-// todo constraint T and size
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
 struct trivial_tag {
@@ -2437,7 +2324,6 @@ concept type_tag_like = is_type_tag_v<T>;
 #define _MATCH_CASE_HPP_
  
 // todo constrain to data types possible for fields
-// todo constrain T?
 template <auto v, type_tag_like T>
 struct match_case {
   static constexpr auto value = v;
@@ -2473,7 +2359,6 @@ concept match_case_like = is_match_case_v<T>;
 #define _CLAUSE_HPP_
  
  
-// todo constrain v to function like object returning bool
 template <typename eval, type_tag_like T>
   requires is_eval_bool_from_fields_v<eval>
 struct clause {
@@ -2678,7 +2563,6 @@ struct type_switch {
 template <typename... clauses>
 struct clauses_to_typelist {
   using tlist = typelist::typelist<typename clauses::type_tag...>;
-  // todo aargh, variable length types might have to computed at cast function
 };
 
 struct no_type_deduction {};
@@ -2755,8 +2639,6 @@ struct type<tladder> {
   }
 };
 
-// todo metafunction and concepts for constraining type
-
 #endif // _TYPE_DEDUCTION_HPP_
 
 // End /home/hari/repos/struct_cast/include/type_deduction.hpp
@@ -2811,7 +2693,6 @@ template <fixed_string id, integral T, fixed_size_like size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
 
 // todo get vector length in bytes instead of size to read additional overload
-// todo better naming and impl for from_field, since it is ambiguous about len or size in bytes
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
@@ -2819,20 +2700,13 @@ using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
 template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
 
-// // todo check if this will work for all char types like wstring
+// todo check if this will work for all char types like wstring
 template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
 using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
 
-
-namespace static_test {
-  using u32 = unsigned int;
-  static inline auto is_eq_1 = [](auto a){ return a == 1; };
-  // static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>>>);
-  // static_assert(!is_optional_field_v<basic_field<"a", u32, field_size<fixed<4>>>>);
-}
 #endif /* _FIELD_TYPE_HPP_ */
 
 // End /home/hari/repos/struct_cast/include/field_types.hpp

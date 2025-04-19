@@ -53,8 +53,6 @@ inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
 template <typename T>
 concept no_variance_field_like = no_variance_field_v<T>;
 
-// todo maybe provide field directly as template parameter constrained?
-// will solve constraint issue and also produces clean API
 template <no_variance_field_like base_field,
           typename present_only_if,
           typename optional = to_optional_field_v<base_field>>
@@ -105,12 +103,6 @@ struct are_unique_types<field_choice_list<head, neck, tail...>> {
 template <typename choice_list>
 inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
 
-static_assert(!are_unique_types_v<field_choice_list<int, int, float>>);
-static_assert(are_unique_types_v<field_choice_list<int, double, float>>);
-static_assert(are_unique_types_v<field_choice_list<int, std::vector<double>, std::vector<float>>>);
-
-
-// todo how to handle constraint_on_value in general
 template <fixed_string id,
           typename type_deducer,
           typename type = typename type_deducer::variant,

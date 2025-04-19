@@ -80,8 +80,6 @@ template <typename T>
 inline constexpr bool is_c_array_v = is_c_array<T>::is_same;
 
 // fixed_buffer_like concept
-// todo constrain to array of primitives 
-// todo check if array of records and arrays are possible for implementation
 // todo check if md string is ok
 template <typename T>
 concept fixed_buffer_like = 
@@ -127,7 +125,6 @@ template <typename T>
 concept variant_like = is_variant_like_v<T>;
 
 // todo: add constraints such that user defined optionals can also be used 
-// todo: also add constraint to permit var length fields
 template <typename T>
 struct is_optional_like;
 
@@ -136,7 +133,6 @@ struct is_optional_like {
   static inline constexpr bool res = false;
 };
 
-// template <field_containable T>
 template <typename T>
 struct is_optional_like<std::optional<T>> {
   static inline constexpr bool res = true;
@@ -151,7 +147,7 @@ concept optional_like = is_optional_like_v<T>;
 template <typename T>
 struct is_vector_like;
 
-// vector of vectors or vector of arrays?
+// todo vector of vectors or vector of arrays?
 template <typename T>
   requires (arithmetic<T> || is_fixed_array<T>::is_same)
 struct is_vector_like<std::vector<T>> {
@@ -172,7 +168,6 @@ concept vector_like = is_vector_v<T>;
 template <typename T>
 struct is_string_like;
 
-// vector of vectors or vector of arrays?
 template <>
 struct is_string_like<std::string> {
   static constexpr bool res = true;

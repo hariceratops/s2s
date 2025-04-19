@@ -8,7 +8,6 @@
 
 
 // todo is this required
-// todo constraint T and size
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
 struct trivial_tag {

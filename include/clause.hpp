@@ -5,7 +5,6 @@
 #include "compute_res.hpp"
 
 
-// todo constrain v to function like object returning bool
 template <typename eval, type_tag_like T>
   requires is_eval_bool_from_fields_v<eval>
 struct clause {

@@ -24,10 +24,6 @@ constexpr cast_endianness deduce_byte_order() {
 }
 
 
-// todo decide on how to wrap a user defined stream
-// todo decide on constraints on streams
-// todo is a wrapper needed, maybe constraint the copy function directly with stream traits
-
 template <typename T>
 concept convertible_to_bool = requires(T obj) {
   { obj.operator bool() } -> std::same_as<bool>;
@@ -73,7 +69,6 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 using rw_result = std::expected<void, cast_error>;
 
 
-// todo maybe split to input_stream and output_stream
 template <input_stream_like stream>
 class input_stream {
 private:
@@ -122,7 +117,6 @@ private:
 
 public:
   input_stream(stream& s): s(s) {}
-  // todo delete copy constructor?
   input_stream(const input_stream&) = delete;
 
   template <std::endian endianness, typename T>
@@ -176,9 +170,5 @@ inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
 
 template <typename T>
 concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
-
-// static_assert(std_read_trait<std::ifstream>);
-// static_assert(readable<std::ifstream>);
-// static_assert(convertible_to_bool<std::ifstream>);
 
 #endif /* __STREAM_HPP__ */

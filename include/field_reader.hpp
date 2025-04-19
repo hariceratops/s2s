@@ -2,7 +2,6 @@
 #define _FIELD_READER_HPP_
 
 #include <cstring>
-#include <fstream>
 #include <expected>
 #include <utility>
 #include "field_traits.hpp"
@@ -103,16 +102,13 @@ struct read_buffer_of_records {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> read_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
-      // todo move E outside loop for optimization?
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
       auto res = reader.template read<endianness, stream>(s);
       if(!res) 
         return std::unexpected(res.error());
       // todo is move guaranteed
-      // todo optimise pass field.value[count] to reader instead of elem
       field.value[count] = std::move(elem.value);
-      // field.value[count] = elem.value;
     }
     return {};
   }

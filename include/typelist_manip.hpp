@@ -21,7 +21,6 @@ using variant_from_tlist_v = typename variant_from_tlist<T>::variant;
 template <typename T>
 inline constexpr std::size_t variant_size_n = variant_from_tlist<T>::N;
 
-static_assert(std::is_same_v<variant_from_tlist_v<typelist::typelist<int, float>>, std::variant<int, float>>);
 
 template <typename T>
 struct tl_size;

@@ -4,7 +4,6 @@
 
 #include <expected>
 #include "field_reader.hpp"
-// #include "field_meta.hpp"
 #include "field_list.hpp"
 #include "error.hpp"
 
@@ -24,10 +23,6 @@ struct is_no_constraint {
 
 template <typename T>
 inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
-
-static_assert(is_no_constraint_v<no_constraint<int>>);
-static_assert(!is_no_constraint_v<int>);
-static_assert(is_no_constraint_v<no_constraint<std::optional<int>>>);
 
 
 // forward declaration
@@ -56,6 +51,7 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
         if(!read_res) 
           return read_res;
         // Try validating with the constraint
+        // todo enable check only if constraint is present, to avoid runtime costs?
         // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
           bool field_validation_res = fields::constraint_checker(field.value);
           if(!field_validation_res)

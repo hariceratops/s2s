@@ -12,7 +12,6 @@
 template <typename... clauses>
 struct clauses_to_typelist {
   using tlist = typelist::typelist<typename clauses::type_tag...>;
-  // todo aargh, variable length types might have to computed at cast function
 };
 
 struct no_type_deduction {};
@@ -88,7 +87,5 @@ struct type<tladder> {
     return type_ladder{}(sfl);
   }
 };
-
-// todo metafunction and concepts for constraining type
 
 #endif // _TYPE_DEDUCTION_HPP_

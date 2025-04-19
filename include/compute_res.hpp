@@ -6,10 +6,6 @@
 #include "field_list.hpp"
 #include "fixed_str_list.hpp"
 
-// todo add constriants
-// template <auto callable, typename R, field_name_list fstr_list>
-// struct compute;
-
 
 template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;

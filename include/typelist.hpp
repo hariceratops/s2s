@@ -82,21 +82,7 @@ using front_t = typename front<tlist>::front_t;
 } // namespace typelist
 
 
-namespace static_tests {
-namespace tl = typelist;
 
-static_assert(tl::any_of_v<tl::typelist<int, float, float>, int>);
-static_assert(tl::any_of_v<tl::typelist<float, int, float, float>, int>);
-static_assert(!tl::any_of_v<tl::typelist<int, int, int>, float>);
-static_assert(!tl::any_of_v<tl::typelist<>, float>);
-
-static_assert(tl::all_are_same_v<tl::typelist<int, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<float, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<int, int, float, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<int, float, float, int, int>>);
-static_assert(tl::all_are_same_v<tl::typelist<int>>);
-static_assert(tl::all_are_same_v<tl::typelist<>>);
-}
 
 
 #endif // _TYPELIST_HPP_

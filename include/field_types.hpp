@@ -51,7 +51,6 @@ template <fixed_string id, integral T, fixed_size_like size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
 
 // todo get vector length in bytes instead of size to read additional overload
-// todo better naming and impl for from_field, since it is ambiguous about len or size in bytes
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
@@ -59,18 +58,11 @@ using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
 template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
 
-// // todo check if this will work for all char types like wstring
+// todo check if this will work for all char types like wstring
 template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
 using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
 
-
-namespace static_test {
-  using u32 = unsigned int;
-  static inline auto is_eq_1 = [](auto a){ return a == 1; };
-  // static_assert(is_optional_field_v<maybe_field<"a", u32, field_size<fixed<4>>, parse_if<is_eq_1, with_fields<"a">>>>);
-  // static_assert(!is_optional_field_v<basic_field<"a", u32, field_size<fixed<4>>>>);
-}
 #endif /* _FIELD_TYPE_HPP_ */

@@ -2,7 +2,7 @@
 #define _LIST_HPP_
 
 // todo abstract typelist and non type list to avoid code repetition
-//
+
 #include <type_traits>
 
 template <typename... ts>
@@ -81,21 +81,5 @@ struct front<typelist<>> {
 
 template <typename tlist>
 using front_t = typename front<tlist>::front_t;
-
-namespace static_tests {
-// namespace tl = typelist;
-//
-// static_assert(tl::any_of_v<tl::typelist<int, float, float>, int>);
-// static_assert(tl::any_of_v<tl::typelist<float, int, float, float>, int>);
-// static_assert(!tl::any_of_v<tl::typelist<int, int, int>, float>);
-// static_assert(!tl::any_of_v<tl::typelist<>, float>);
-//
-// static_assert(tl::all_are_same_v<tl::typelist<int, int, int>>);
-// static_assert(!tl::all_are_same_v<tl::typelist<float, int, int>>);
-// static_assert(!tl::all_are_same_v<tl::typelist<int, int, float, int, int>>);
-// static_assert(!tl::all_are_same_v<tl::typelist<int, float, float, int, int>>);
-// static_assert(tl::all_are_same_v<tl::typelist<int>>);
-// static_assert(tl::all_are_same_v<tl::typelist<>>);
-}
 
 #endif // _LIST_HPP_

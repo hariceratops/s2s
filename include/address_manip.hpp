@@ -7,7 +7,6 @@
 #include "fixed_string.hpp"
 
 
-// Function to void pointer cast
 template <typename T>
 void* to_void_ptr(T& obj) {
   return reinterpret_cast<void*>(&obj);
@@ -33,13 +32,6 @@ void* to_void_ptr(std::string& obj) {
   return reinterpret_cast<void*>(obj.data());
 }
 
-// todo add overloads for address manip of std::string
-// template <>
-// void* to_void_ptr(std::string obj) {
-//   return reinterpret_cast<void*>(obj.data());
-// }
-
-// Function to get byte address
 template <typename T>
 char* byte_addressof(T& obj) {
   return reinterpret_cast<char*>(&obj);
