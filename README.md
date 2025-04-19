@@ -55,7 +55,9 @@ The compiler version requirements are
   std::println("len={} str={}", fields["len"_f], fields["str"_f]);
 ```
 
-## Generating API documentation
+## API documentation
+Refer file UserGuide.md for detailed API documentation, for a brief 
+tour, refer the section [Brief Tour]
 
 ## Brief Tour
 ### "Struct"
