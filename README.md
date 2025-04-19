@@ -1,10 +1,10 @@
 
 # struct_cast
-A declarative binary parser to convert a stream into meta-struct with map like 
+A declarative binary parser to convert a stream into meta-struct which has a map like 
 interface. Works extensively based on C++23 TMP. (The read in other direction is work-in-progress)
 
 Library is single header and the file "struct_cast.hpp" from the single_header
-folder can be used.
+folder can be used for direct inclusion into a project
 
 ## Features
 * Single header
@@ -26,15 +26,18 @@ folder can be used.
 
 ## Requirements
 struct_cast has a constraint on minimum version of the std to be C++23 with 
-support for std::expected, std::byteswap. Hence the compiler version requirements are 
+support for std::expected, std::byteswap. As of current implementation, 
+unfortunately MSVC lacks support for std::endian and std::byteswap, 
+hence struct_cast fails to compile, which leads to work-in-progress
+for rolling them out
+
+The compiler version requirements are 
 * x86-64 gcc 13.1
 * arm gcc 13.1
 * arm64 gcc 13.1
 * x86-64 clang 19.1.0
 * armv8-a clang 19.1.0
-As of current implementation, unfortunately MSVC lacks support for std::endian 
-and std::byteswap, hence struct_cast fails to compile, which leads to work-in-progress
-for rolling them out
+
 
 ## Taste of the API
 ```cpp
@@ -49,6 +52,7 @@ for rolling them out
   std::ifstream ifs("sample.bin", std::ios::in | std::ios::binary);
   auto res = struct_cast_le<our_struct>(ifs);
   auto fields = *res;
+  std::println("len={} str={}", fields["len"_f], fields["str"_f]);
 ```
 
 ## Generating API documentation
@@ -64,15 +68,15 @@ a field member for read or write operation. The operator[] when provided with "<
 as key, returns a reference or const reference to the member with name <field_name>
 
 Accessing field not present in the struct_field_list(the "map") will result
-in compilation error for field lookup failure, enforced via concepts 
+in compilation error for field lookup failure, since a check is enforced via concepts 
 
 ```cpp
 template <typename field_accessor = /* field_lookup metafunction */>
-    requires /* field_accessor success */
+    requires /* field_lookup success */
 auto& operator[](field_accessor);
 
 template <typename field_accessor = /* field_lookup metafunction */>
-    requires /* field_accessor success */
+    requires /* field_lookup success */
 const auto& operator[](field_accessor);
 ```
 
@@ -85,21 +89,28 @@ using our_struct =
   >;
 ```
 Library provides users a way to describe the fields contained in the struct_field_list
+Each descriptor is a variadic template, describing the name, type, size, constraint on 
+value along with type deduction or presence deduction guides if any
+
+Available descriptors are: basic_fields, fixed_array, fixed_string, 
+array_of_records, vec_field, str_field, vector_of_records,
+magic_string, magic_number, magic_byte_array, union_field and maybe
 
 ### Cast API
 ```cpp
 template <struct_field_list_like T, stream_like S>
-auto struct_cast_le(S& stream) -> std::expected<T, cast_error>
+auto struct_cast_le(S& stream) -> std::expected<T, cast_error>;
 
 template <struct_field_list_like T, stream_like S>
-auto struct_cast_be(S& stream) -> std::expected<T, cast_error>
+auto struct_cast_be(S& stream) -> std::expected<T, cast_error>;
 ```
 The APIs struct_cast_xx reads from a stream into struct_field_list, when 
 provided a stream as a runtime argument and a struct-schema as a template argument. 
 The xx is either le or be denoting byteorder of all the struct members.
 The APIs return std::expected which either contains a struct_field_list or read_error
 
-The read can currently in one of the three scenarios: field value validation failure,
+Error codes are returned in case a read fails. The read can fail 
+currently in one of the three scenarios: field value validation failure,
 provided input stream is exhausted or when type deduction failed while reading into union
 
 
