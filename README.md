@@ -80,11 +80,11 @@ Accessing field not present in the struct_field_list(the "map") will result
 in compilation error for field lookup failure, since a check is enforced via concepts 
 
 ```cpp
-template <typename field_accessor = /* field_lookup metafunction */>
+template <typename field_accessor, typename field_lookup = /* field_lookup metafunction */>
     requires /* field_lookup success */
 auto& operator[](field_accessor);
 
-template <typename field_accessor = /* field_lookup metafunction */>
+template <typename field_accessor, typename field_lookup = /* field_lookup metafunction */>
     requires /* field_lookup success */
 const auto& operator[](field_accessor);
 ```
