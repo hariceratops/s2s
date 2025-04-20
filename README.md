@@ -1,7 +1,9 @@
 
 # struct_cast
-A declarative binary parser to convert a stream into meta-struct which has a map like 
-interface. Works extensively based on C++23 TMP. (The read in other direction is work-in-progress)
+A declarative binary parser aka serde to convert a stream into meta-struct which has a map like 
+interface.(The read in other direction is work-in-progress)
+
+Works extensively based on C++23 TMP.
 
 Library is single header and the file "struct_cast.hpp" from the single_header
 folder can be used for direct inclusion into a project
@@ -44,7 +46,7 @@ Link to Godbolt: https://godbolt.org/z/cY3n1nW1E
   
   using namespace s2s_literals;
 
-  // Our "struct" has 2 members a length field of size 8 and type
+  // Our "struct" has 2 members. A length field of size 8 and type
   // std::size_t, and a length prefixed string whose length is 
   // derived from the "len" field
   using our_struct = 
@@ -133,6 +135,7 @@ provided input stream is exhausted or when type deduction failed while reading i
 - [ ] Run-time Endianness Handling
 - [ ] Full Support in Freestanding Compilers
 - [ ] Read-Until Delimiter[s]
+- [ ] Alignment and Padding Control
 - [ ] Support for all major compilers
 - [ ] Write struct to stream
 - [ ] struct_view - Zero copy views into buffers
