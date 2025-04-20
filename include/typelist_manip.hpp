@@ -5,6 +5,7 @@
 #include "typelist.hpp"
 #include "fixed_str_list.hpp"
 
+namespace s2s {
 // todo typelist to variant?
 template <typename T>
 struct variant_from_tlist;
@@ -145,5 +146,6 @@ struct iseq_front<std::integer_sequence<std::size_t>> {}; //todo: uh?
 
 template <typename T>
 inline constexpr std::size_t iseq_front_v = iseq_front<T>::size;
+} /* namespace s2s */
 
 #endif // _TYPELIST_MANIP_HPP_

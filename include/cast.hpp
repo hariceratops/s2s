@@ -8,6 +8,7 @@
 #include "error.hpp"
 
 
+namespace s2s {
 template <typename T>
 struct is_no_constraint;
 
@@ -74,14 +75,15 @@ template <field_list_like T, input_stream_like stream>
 constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
-  return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
+  return s2s::struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
 constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
-  return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
+  return s2s::struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
 }
+} /* namespace s2s */
 
 #endif // _CAST_HPP_

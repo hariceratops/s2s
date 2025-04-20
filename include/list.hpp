@@ -5,6 +5,7 @@
 
 #include <type_traits>
 
+namespace s2s {
 template <typename... ts>
 struct type_list;
 
@@ -81,5 +82,6 @@ struct front<typelist<>> {
 
 template <typename tlist>
 using front_t = typename front<tlist>::front_t;
+} /* namespace s2s */
 
 #endif // _LIST_HPP_

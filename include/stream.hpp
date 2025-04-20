@@ -8,7 +8,7 @@
 #include "sc_type_traits.hpp"
 
 
-
+namespace s2s {
 enum cast_endianness {
   host = 0,
   foreign = 1
@@ -170,5 +170,6 @@ inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
 
 template <typename T>
 concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
+} /* namespace s2s */
 
 #endif /* __STREAM_HPP__ */

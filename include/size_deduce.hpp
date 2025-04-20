@@ -6,6 +6,8 @@
 #include "compute_res.hpp"
 #include <utility>
 
+
+namespace s2s {
 template <typename T>
 struct deduce_field_size;
 
@@ -76,5 +78,7 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
     return deduce_field_size_switch<0, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
   }
 };
+} /* namespace s2s */
+
 
 #endif // _SIZE_DEDUCE_HPP_

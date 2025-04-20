@@ -5,6 +5,7 @@
 #include "fixed_str_list.hpp"
 #include "typelist.hpp"
 
+namespace s2s {
 template <typename size_type>
 struct field_size;
 
@@ -122,6 +123,8 @@ concept is_size_like = fixed_size_like<T>    ||
                        variable_size_like<T> ||
                        selectable_size_like<T>;
 
+
+} /* namespace s2s */
 
 
 #endif // _FIELD_SIZE_HPP_

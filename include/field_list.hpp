@@ -4,6 +4,8 @@
 #include "field_traits.hpp"
 #include "field_lookup.hpp"
 
+
+namespace s2s {
 template <fixed_string... arg>
 struct are_unique_fixed_strings;
 
@@ -48,5 +50,7 @@ struct struct_field_list : struct_field_list_base, fields... {
     return static_cast<const field&>(*this).value;
   }
 };
+} /* namespace s2s */
+
 
 #endif // _FIELD_LIST__HPP_

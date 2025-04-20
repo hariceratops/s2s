@@ -7,6 +7,7 @@
 #include "fixed_string.hpp"
 
 
+namespace s2s {
 template <typename T>
 void* to_void_ptr(T& obj) {
   return reinterpret_cast<void*>(&obj);
@@ -55,5 +56,6 @@ char* byte_addressof(std::vector<T>& obj) {
 inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
+} /* namespace s2s */
 
 #endif // _ADDRESS_MANIP_HPP_

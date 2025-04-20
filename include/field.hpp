@@ -7,6 +7,7 @@
 #include "fixed_string.hpp"
 #include <type_traits>
 
+namespace s2s {
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -19,7 +20,6 @@ struct field {
   static constexpr auto constraint_checker = constraint_on_value;
   field_type value;
 };
-
 
 template <typename T>
 struct to_optional_field;
@@ -52,17 +52,6 @@ inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
 
 template <typename T>
 concept no_variance_field_like = no_variance_field_v<T>;
-
-template <no_variance_field_like base_field,
-          typename present_only_if,
-          typename optional = to_optional_field_v<base_field>>
-class maybe_field : public optional
-{
-public:
-  using field_base_type = base_field;
-  using field_presence_checker = present_only_if;
-};
-
 
 template <typename... choices>
 struct field_choice_list {};
@@ -103,6 +92,17 @@ struct are_unique_types<field_choice_list<head, neck, tail...>> {
 template <typename choice_list>
 inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
 
+template <no_variance_field_like base_field,
+          typename present_only_if,
+          typename optional = to_optional_field_v<base_field>>
+class maybe_field : public optional
+{
+public:
+  using field_base_type = base_field;
+  using field_presence_checker = present_only_if;
+};
+
+
 template <fixed_string id,
           typename type_deducer,
           typename type = typename type_deducer::variant,
@@ -117,6 +117,6 @@ struct union_field: public variant {
   using field_choices = field_choices_t;
   static constexpr auto variant_size = std::variant_size_v<type>;
 };
-
+} /* namespace s2s */
 
 #endif // _FIELD__HPP_

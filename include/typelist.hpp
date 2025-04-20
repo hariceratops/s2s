@@ -4,6 +4,8 @@
 #include <string>
 #include <type_traits>
 
+
+namespace s2s {
 template <typename... ts>
 struct field_list{};
 
@@ -80,9 +82,6 @@ template <typename tlist>
 using front_t = typename front<tlist>::front_t;
 
 } // namespace typelist
-
-
-
-
+} /* namespace s2s */
 
 #endif // _TYPELIST_HPP_

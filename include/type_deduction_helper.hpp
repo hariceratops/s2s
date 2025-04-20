@@ -6,6 +6,7 @@
 #include "clause.hpp"
 
 
+namespace s2s {
 template <typename T>
 concept type_condition_like = match_case_like<T> || clause_like<T>;
 
@@ -46,5 +47,6 @@ struct size_choices_from_type_conditions {
 
 template <type_condition_like... cases>
 using size_choices_from_type_conditions_v = size_choices_from_type_conditions<cases...>::choices;
+} /* namespace s2s */ 
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_

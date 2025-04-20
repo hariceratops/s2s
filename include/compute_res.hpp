@@ -7,6 +7,9 @@
 #include "fixed_str_list.hpp"
 
 
+using namespace s2s_literals;
+
+namespace s2s {
 template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
@@ -116,6 +119,6 @@ struct is_eval_size_from_fields {
 
 template <typename T>
 inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::res;
-
+} /* namespace s2s */
 
 #endif // _COMPUTE_RES_

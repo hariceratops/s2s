@@ -7,6 +7,8 @@
 #include <cassert>
 
 
+using namespace s2s_literals;
+
 #define PREPARE_INPUT_FILE(code) \
   []() { \
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary); \
@@ -19,14 +21,14 @@
 #define FIELD_LIST_LE_READ_CHECK(code) \
   do { \
     std::ifstream file("test_input.bin", std::ios::in | std::ios::binary); \
-    auto result = struct_cast_le<test_field_list>(file); \
+    auto result = s2s::struct_cast_le<test_field_list>(file); \
     code; \
   } while(0)
 
 #define FIELD_LIST_BE_READ_CHECK(code) \
   do { \
     std::ifstream file("test_input.bin", std::ios::in | std::ios::binary); \
-    auto result = struct_cast_be<test_field_list>(file); \
+    auto result = s2s::struct_cast_be<test_field_list>(file); \
     code; \
   } while(0)
 
@@ -42,62 +44,62 @@
 //
 //   auto unit = [](auto a){ return a * 1; };
 //   auto is_a_eq_1 = [](auto a){ return a == 1; };
-//   using test_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>
+//   using test_s2s::struct_field_list = 
+//     s2s::struct_field_list<
+//       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+//       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
 //     >;
-//   static_assert(is_invocable<is_a_eq_1, bool, test_struct_field_list, with_fields<"a">>::res);
-//   static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_struct_field_list, with_fields<"a">>);
-//   // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_struct_field_list, with_fields<"a">>);
-//   static_assert(is_invocable<unit, bool, test_struct_field_list, with_fields<"a">>::res);
+//   static_assert(is_invocable<is_a_eq_1, bool, test_s2s::struct_field_list, s2s::with_fields<"a">>::res);
+//   static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_s2s::struct_field_list, s2s::with_fields<"a">>);
+//   // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_s2s::struct_field_list, s2s::with_fields<"a">>);
+//   static_assert(is_invocable<unit, bool, test_s2s::struct_field_list, s2s::with_fields<"a">>::res);
 // }
   // using inner =  
   //   struct_field<
   //       "c", 
-  //       struct_field_list<
-  //         basic_field<"x", u32, field_size<fixed<4>>>,
-  //         basic_field<"y", u32, field_size<fixed<4>>>
+  //       s2s::struct_field_list<
+  //         s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
+  //         s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
   //       >
   //     >;
   // static_assert(struct_field_like<inner>);
   // static_assert(variable_sized_field_like<inner>);
-  // static_assert(fixed_sized_field_like<inner>);
+  // static_assert(s2s::fixed_sized_field_like<inner>);
 // using temp = 
-//   struct_field_list<
-//     basic_field<"a", int, field_size<fixed<4>>>,
-//     basic_field<"b", int, field_size<fixed<4>>>
+//   s2s::struct_field_list<
+//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
+//     s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>
 //   >;
 // will fail
 // using non_unique_temp = 
-//   struct_field_list<
-//     basic_field<"a", int, field_size<fixed<4>>>,
-//     basic_field<"a", int, field_size<fixed<4>>>
+//   s2s::struct_field_list<
+//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
+//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>
 //   >;
 // using u32 = unsigned int;
 // static_assert(array_of_records_like<std::array<temp, 10>>);
 // static_assert(vector_of_records_like<std::vector<temp>>);
 // static_assert(!field_containable<std::array<temp, 10>>);
 // will fail since type choices are not unique
-// using test_struct_field_list = 
-//     struct_field_list<
-//       basic_field<"a", u32, field_size<fixed<4>>>, 
-//       basic_field<"b", u32, field_size<fixed<4>>>,
+// using test_s2s::struct_field_list = 
+//     s2s::struct_field_list<
+//       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+//       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
 //       union_field<
 //         "c", 
 //         type<
 //           match_field<"a">,
 //           type_switch<
-//             match_case<0xcafed00d, type_tag<float, field_size<fixed<4>>>>,
-//             match_case<0xdeadbeef, type_tag<int, field_size<fixed<4>>>>,
-//             match_case<0xbeefbeef, type_tag<int, field_size<fixed<4>>>>
+//             match_case<0xcafed00d, type_tag<float, s2s::field_size<s2s::fixed<4>>>>,
+//             match_case<0xdeadbeef, type_tag<int, s2s::field_size<s2s::fixed<4>>>>,
+//             match_case<0xbeefbeef, type_tag<int, s2s::field_size<s2s::fixed<4>>>>
 //           >
 //         >
 //       >
 //     >;
 //
 // will fail!
-// using size_failure_basic_field = basic_field<"a", int, field_size<fixed<6>>>;
+// using size_failure_s2s::basic_field = s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<6>>>;
 
 // Helper types
 using i32 = int;
@@ -107,35 +109,35 @@ using u16 = unsigned short;
 
 
 TEST_CASE("Test eq field constraint") {
-  auto eq_obj = eq(42);
+  auto eq_obj = s2s::eq(42);
   REQUIRE(eq_obj(42) == true);
   REQUIRE(eq_obj(84) == false);
 }
 
 
 TEST_CASE("Test neq field constraint") {
-  auto neq_obj = neq(42);
+  auto neq_obj = s2s::neq(42);
   REQUIRE(neq_obj(42) == false);
   REQUIRE(neq_obj(84) == true);
 }
 
 
 TEST_CASE("Test lt field constraint") {
-  auto lt_obj = lt(42);
+  auto lt_obj = s2s::lt(42);
   REQUIRE(lt_obj(21) == true);
   REQUIRE(lt_obj(84) == false);
 }
 
 
 TEST_CASE("Test gt field constraint") {
-  auto gt_obj = gt(42);
+  auto gt_obj = s2s::gt(42);
   REQUIRE(gt_obj(21) == false);
   REQUIRE(gt_obj(84) == true);
 }
 
 
 TEST_CASE("Test lte field constraint") {
-  auto lte_obj = lte(42);
+  auto lte_obj = s2s::lte(42);
   REQUIRE(lte_obj(21) == true);
   REQUIRE(lte_obj(42) == true);
   REQUIRE(lte_obj(84) == false);
@@ -143,7 +145,7 @@ TEST_CASE("Test lte field constraint") {
 
 
 TEST_CASE("Test gte field constraint") {
-  auto gte_obj = gte(42);
+  auto gte_obj = s2s::gte(42);
   REQUIRE(gte_obj(21) == false);
   REQUIRE(gte_obj(42) == true);
   REQUIRE(gte_obj(84) == true);
@@ -151,7 +153,7 @@ TEST_CASE("Test gte field constraint") {
 
 
 TEST_CASE("Test any_of field constraint") {
-  auto any_of_obj = any_of(21, 42, 84);
+  auto any_of_obj = s2s::any_of(21, 42, 84);
   REQUIRE(any_of_obj(21) == true);
   REQUIRE(any_of_obj(42) == true);
   REQUIRE(any_of_obj(84) == true);
@@ -174,9 +176,9 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
   });
 
   FIELD_LIST_SCHEMA = 
-   struct_field_list<
-     basic_field<"a", u32, field_size<fixed<4>>>, 
-     basic_field<"b", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -208,14 +210,14 @@ TEST_CASE("Test reading a meta_struct from a binary file but validation of field
   });
 
   FIELD_LIST_SCHEMA = 
-   struct_field_list<
-     basic_field<"a", u32, field_size<fixed<4>>, eq(0xdeadbeef)>, 
-     basic_field<"b", u32, field_size<fixed<4>>, eq(0xcafed00d)>
+   s2s::struct_field_list<
+     s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xdeadbeef)>, 
+     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xcafed00d)>
   >;
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == cast_error::validation_failure);
+    REQUIRE(result.error() == s2s::cast_error::validation_failure);
   });
 }
 
@@ -228,14 +230,14 @@ TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") 
   });
 
   FIELD_LIST_SCHEMA = 
-   struct_field_list<
-     basic_field<"a", u32, field_size<fixed<4>>>, 
-     basic_field<"b", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == cast_error::buffer_exhaustion);
+    REQUIRE(result.error() == s2s::cast_error::buffer_exhaustion);
   });
 }
 
@@ -253,14 +255,14 @@ TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      struct_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::struct_field<
         "c", 
-        struct_field_list<
-          basic_field<"x", u32, field_size<fixed<4>>>,
-          basic_field<"y", u32, field_size<fixed<4>>>
+        s2s::struct_field_list<
+          s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
+          s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
         >
       >
     >;
@@ -278,7 +280,7 @@ TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
 }
 
 
-TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file") {
+TEST_CASE("Test reading a meta_struct with s2s::fixed buffer fields from binary file") {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary); \
     constexpr std::size_t str_len = 10;
@@ -289,10 +291,10 @@ TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file"
   }();
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      // c_str_field<"a", 10>,
-      fixed_string_field<"b", 10>,
-      fixed_array_field<"c", u32, 3>
+    s2s::struct_field_list<
+      // c_s2s::str_field<"a", 10>,
+      s2s::fixed_string_field<"b", 10>,
+      s2s::fixed_array_field<"c", u32, 3>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -306,7 +308,7 @@ TEST_CASE("Test reading a meta_struct with fixed buffer fields from binary file"
 };
 
 
-TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field from binary file") {
+TEST_CASE("Test reading a meta_struct with multidimensional s2s::fixed buffer field from binary file") {
   []() {
     std::ofstream ofs("test_input.bin", std::ios::out | std::ios::binary);
     const u32 u32_arr[3][3] = { 
@@ -318,8 +320,8 @@ TEST_CASE("Test reading a meta_struct with multidimensional fixed buffer field f
   }();
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      fixed_array_field<"arr", std::array<u32, 3>, 3>
+    s2s::struct_field_list<
+      s2s::fixed_array_field<"arr", std::array<u32, 3>, 3>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -350,13 +352,13 @@ TEST_CASE("Test reading a meta_struct with array of records from binary file") {
   }();
 
   using test_struct = 
-    struct_field_list <
-      basic_field<"a", u32, field_size<fixed<4>>>,
-      basic_field<"b", u32, field_size<fixed<4>>>
+    s2s::struct_field_list <
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
     >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      array_of_records<"records", test_struct, 3>
+    s2s::struct_field_list<
+      s2s::array_of_records<"records", test_struct, 3>
     >;
   
   FIELD_LIST_LE_READ_CHECK({
@@ -382,9 +384,9 @@ TEST_CASE("Test magic number") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      magic_number<"magic_num", u32, field_size<fixed<4>>, 0xdeadbeef>,
-      basic_field<"p", u32, field_size<fixed<4>>>
+    s2s::struct_field_list<
+      s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
+      s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -409,9 +411,9 @@ TEST_CASE("Test magic array") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      magic_byte_array<"magic_arr", 10, std::array<unsigned char, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}>,
-      basic_field<"size", u32, field_size<fixed<4>>>
+    s2s::struct_field_list<
+      s2s::magic_byte_array<"magic_arr", 10, std::array<unsigned char, 10>{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}>,
+      s2s::basic_field<"size", u32, s2s::field_size<s2s::fixed<4>>>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -433,15 +435,15 @@ TEST_CASE("Test magic string") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      magic_string<"magic_str", "GIF">,
-      basic_field<"size", u32, field_size<fixed<4>>>
+    s2s::struct_field_list<
+      s2s::magic_string<"magic_str", "GIF">,
+      s2s::basic_field<"size", u32, s2s::field_size<s2s::fixed<4>>>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value());
     auto fields = *result;
-    REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{fixed_string("GIF").data()});
+    REQUIRE(std::string_view{fields["magic_str"_f].data()} == std::string_view{s2s::fixed_string("GIF").data()});
     REQUIRE(fields["size"_f] == 0xcafed00d);
   });
 }
@@ -457,19 +459,19 @@ TEST_CASE("Test failing magic string read") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      magic_string<"magic_str", "GIF">,
-      basic_field<"size", u32, field_size<fixed<4>>>
+    s2s::struct_field_list<
+      s2s::magic_string<"magic_str", "GIF">,
+      s2s::basic_field<"size", u32, s2s::field_size<s2s::fixed<4>>>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(!result.has_value());
-    REQUIRE(result.error() == cast_error::validation_failure);
+    REQUIRE(result.error() == s2s::cast_error::validation_failure);
   });
 }
 
 
-TEST_CASE("Test reading a meta_struct with aliased length prefixed string from binary file") {
+TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed string from binary file") {
   PREPARE_INPUT_FILE({
     constexpr std::size_t str_len = 10;
     const u8 str[] = "foo in bar";
@@ -478,9 +480,9 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      str_field<"str", field_size<len_from_field<"len">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -494,7 +496,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed string from b
 };
 
 
-TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields from binary file") {
+TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer fields from binary file") {
   []() {
     constexpr std::size_t vec_len = 10;
     const u8 str[] = "foo in bar";
@@ -512,9 +514,13 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
   }();
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      vec_field<"vec", u32, field_size<len_from_field<"len">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::vec_field<
+        "vec", 
+        u32, 
+        s2s::field_size<s2s::len_from_field<"len">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -531,7 +537,7 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
 };
 
 
-TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields depending on multiple fields from binary file") {
+TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer fields depending on multiple fields from binary file") {
   []() {
     constexpr std::size_t row = 5;
     constexpr std::size_t col = 2;
@@ -551,10 +557,16 @@ TEST_CASE("Test reading a meta_struct with aliased length prefixed buffer fields
 
   auto size_from_rc = [](auto r, auto c) { return r * c; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"row", std::size_t, field_size<fixed<8>>>,
-      basic_field<"col", std::size_t, field_size<fixed<8>>>,
-      vec_field<"flat_vec", u32, field_size<len_from_fields<size_from_rc, with_fields<"row", "col">>>>
+    s2s::struct_field_list<
+      s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::vec_field<
+        "flat_vec", 
+        u32, 
+        s2s::field_size<
+          s2s::len_from_fields<size_from_rc, s2s::with_fields<"row", "col">>
+        >
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -587,14 +599,18 @@ TEST_CASE("Test reading a meta_struct with vector of records from binary file") 
   }();
 
   using test_struct = 
-    struct_field_list <
-      basic_field<"a", u32, field_size<fixed<4>>>,
-      basic_field<"b", u32, field_size<fixed<4>>>
+    s2s::struct_field_list <
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
     >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      vector_of_records<"records", test_struct, field_size<len_from_field<"len">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::vector_of_records<
+        "records", 
+        test_struct, 
+        s2s::field_size<s2s::len_from_field<"len">>
+      >
     >;
  
   FIELD_LIST_LE_READ_CHECK({
@@ -610,14 +626,14 @@ TEST_CASE("Test reading a meta_struct with vector of records from binary file") 
 
 
 // // todo recursive resize
-// // TEST_CASE("Test reading a meta_struct with aliased length prefixed md_buffer fields depending on multiple fields from binary file") {
+// // TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed md_buffer fields depending on multiple fields from binary file") {
 // //   auto size_from_rc = [](auto r, auto c) { return r * c; };
 // //
 // //   using var_buffer_struct = 
-// //     struct_field_list<
-// //       basic_field<"row", std::size_t, field_size<fixed<8>>>,
-// //       basic_field<"col", std::size_t, field_size<fixed<8>>>,
-// //       vec_field<"matrix", std::vector<u32>, field_size<from_fields<size_from_rc, with_fields<"row", "col">>>>
+// //     s2s::struct_field_list<
+// //       s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+// //       s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+// //       s2s::vec_field<"matrix", std::vector<u32>, s2s::field_size<from_fields<size_from_rc, s2s::with_fields<"row", "col">>>>
 // //     >;
 // //
 // //   constexpr std::size_t row = 5;
@@ -630,13 +646,13 @@ TEST_CASE("Test reading a meta_struct with vector of records from binary file") 
 // //     0xdeadbeef, 0xcafed00d
 // //   };
 // //
-// //   std::ofstream ofs("test_input_md_vec_fields.bin", std::ios::out | std::ios::binary);
+// //   std::ofstream ofs("test_input_md_s2s::vec_fields.bin", std::ios::out | std::ios::binary);
 // //   ofs.write(reinterpret_cast<const char*>(&row), sizeof(row));
 // //   ofs.write(reinterpret_cast<const char*>(&col), sizeof(col));
 // //   ofs.write(reinterpret_cast<const char*>(&u32_arr), sizeof(u32_arr));
 // //   ofs.close();
 // //
-// //   std::ifstream ifs("test_input_md_vec_fields.bin", std::ios::in | std::ios::binary);
+// //   std::ifstream ifs("test_input_md_s2s::vec_fields.bin", std::ios::in | std::ios::binary);
 // //   // oops resizing recursively is not possible
 // //   // auto res = struct_cast<var_buffer_struct>(ifs);
 // //   ifs.close();
@@ -664,18 +680,18 @@ TEST_CASE("Dummy test to verify runtime computation from fields") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<basic_field<"a", u32, field_size<fixed<4>>>, 
-                      basic_field<"b", u32, field_size<fixed<4>>>>;
+    s2s::struct_field_list<s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+                      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>>;
 
   // todo: macro fails to compile
   [](){
     std::ifstream ifs("test_input.bin", std::ios::in | std::ios::binary);
-    auto result = struct_cast_le<test_field_list>(ifs);
+    auto result = s2s::struct_cast_le<test_field_list>(ifs);
     auto callable = [](const u32& a, const u32& b) -> u32 { return a * b; };
     auto fields = *result;
     REQUIRE(fields["a"_f] == 4);
     REQUIRE(fields["b"_f] == 5);
-    auto comp_res = compute<callable, u32, with_fields<"a", "b">>{}(fields);
+    auto comp_res = s2s::compute<callable, u32, s2s::with_fields<"a", "b">>{}(fields);
     REQUIRE(comp_res == 20);
   }();
 }
@@ -693,10 +709,13 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::maybe_field<
+        s2s::basic_field<"c", u32, s2s::field_size<s2s::fixed<4>>>, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -723,10 +742,13 @@ TEST_CASE("Test case to verify option field parsing with parse predicate failure
 
   auto is_a_eq_1 = [](auto& a){ return a == 1; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<basic_field<"c", u32, field_size<fixed<4>>>, parse_if<is_a_eq_1, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::maybe_field<
+        s2s::basic_field<"c", u32, s2s::field_size<s2s::fixed<4>>>, 
+        s2s::parse_if<is_a_eq_1, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -755,15 +777,18 @@ TEST_CASE("Test case to verify optional struct from binary file with successful 
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   using inner = 
-   struct_field_list<
-     basic_field<"x", u32, field_size<fixed<4>>>, 
-     basic_field<"y", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
   >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<struct_field<"c", inner>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::maybe_field<
+        s2s::struct_field<"c", inner>, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -780,7 +805,7 @@ TEST_CASE("Test case to verify optional struct from binary file with successful 
 }
 
 
-TEST_CASE("Test case to verify optional fixed_array from binary file with successful parse predicate") {
+TEST_CASE("Test case to verify optional s2s::fixed_array from binary file with successful parse predicate") {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -793,10 +818,13 @@ TEST_CASE("Test case to verify optional fixed_array from binary file with succes
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<fixed_array_field<"c", u32, 3>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::maybe_field<
+        s2s::fixed_array_field<"c", u32, 3>, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -813,7 +841,7 @@ TEST_CASE("Test case to verify optional fixed_array from binary file with succes
 }
 
 
-TEST_CASE("Test case to verify optional fixed string from binary file with successful parse predicate") {
+TEST_CASE("Test case to verify optional s2s::fixed string from binary file with successful parse predicate") {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -826,10 +854,13 @@ TEST_CASE("Test case to verify optional fixed string from binary file with succe
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<fixed_string_field<"c", 10>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::maybe_field<
+        s2s::fixed_string_field<"c", 10>, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -847,7 +878,7 @@ TEST_CASE("Test case to verify optional fixed string from binary file with succe
 }
 
 
-TEST_CASE("Test case to verify optional length prefixed array from binary file with successful parse predicate") {
+TEST_CASE("Test case to verify optional length pres2s::fixed array from binary file with successful parse predicate") {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -868,11 +899,18 @@ TEST_CASE("Test case to verify optional length prefixed array from binary file w
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      maybe_field<vec_field<"vec", u32, field_size<len_from_field<"len">>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::maybe_field<
+        s2s::vec_field<
+          "vec", 
+          u32, 
+          s2s::field_size<s2s::len_from_field<"len">>
+        >, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -912,15 +950,18 @@ TEST_CASE("Test case to verify optional array of records from binary file with s
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   using test_struct = 
-    struct_field_list <
-      basic_field<"x", u32, field_size<fixed<4>>>,
-      basic_field<"y", u32, field_size<fixed<4>>>
+    s2s::struct_field_list <
+      s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
     >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      maybe_field<array_of_records<"records", test_struct, 3>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::maybe_field<
+        s2s::array_of_records<"records", test_struct, 3>, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -959,16 +1000,23 @@ TEST_CASE("Test case to verify optional vector of records from binary file with 
 
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   using test_struct = 
-    struct_field_list <
-      basic_field<"x", u32, field_size<fixed<4>>>,
-      basic_field<"y", u32, field_size<fixed<4>>>
+    s2s::struct_field_list <
+      s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
     >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      maybe_field<vector_of_records<"records", test_struct, field_size<len_from_field<"len">>>, parse_if<is_a_eq_deadbeef, with_fields<"a">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::maybe_field<
+        s2s::vector_of_records<
+          "records", 
+          test_struct, 
+          s2s::field_size<s2s::len_from_field<"len">>
+        >, 
+        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -1001,26 +1049,26 @@ TEST_CASE("Test case to verify failed parsing variant field") {
   });
 
   using inner_1 = 
-   struct_field_list<
-     basic_field<"x", u32, field_size<fixed<4>>>, 
-     basic_field<"y", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
   >;
   using inner_2 = 
-   struct_field_list<
-     basic_field<"p", u32, field_size<fixed<4>>>, 
-     basic_field<"q", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
   >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, struct_tag<inner_1>>,
-            match_case<0xdeadbeef, struct_tag<inner_2>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
+            s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>
           >
         >
       >
@@ -1029,7 +1077,7 @@ TEST_CASE("Test case to verify failed parsing variant field") {
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == cast_error::type_deduction_failure);
+    REQUIRE(result.error() == s2s::cast_error::type_deduction_failure);
   });
 }
 
@@ -1045,17 +1093,26 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, trivial_tag<u32, field_size<fixed<4>>>>,
-            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<
+              0xcafed00d, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              0xdeadbeef, 
+              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              0xbeefbeef, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1073,7 +1130,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
 }
 
 
-TEST_CASE("Test case to verify variant field with an fixed array parsing from a binary file") {
+TEST_CASE("Test case to verify variant field with an s2s::fixed array parsing from a binary file") {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -1085,17 +1142,26 @@ TEST_CASE("Test case to verify variant field with an fixed array parsing from a 
   }();
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, fixed_buffer_tag<u32, 3>>,
-            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<
+              0xcafed00d, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              0xdeadbeef, 
+              s2s::fixed_buffer_tag<u32, 3>
+            >,
+            s2s::match_case<
+              0xbeefbeef, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1133,18 +1199,27 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
   }();
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, variable_buffer_tag<u32, field_size<len_from_field<"len">>>>,
-            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<
+              0xcafed00d, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              0xdeadbeef, 
+              s2s::variable_buffer_tag<u32, s2s::field_size<s2s::len_from_field<"len">>>
+            >,
+            s2s::match_case<
+              0xbeefbeef, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1169,7 +1244,7 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
 }
 
 
-TEST_CASE("Test case to verify variant field with an fixed string parsing from a binary file") {
+TEST_CASE("Test case to verify variant field with an s2s::fixed string parsing from a binary file") {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -1181,17 +1256,25 @@ TEST_CASE("Test case to verify variant field with an fixed string parsing from a
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, fixed_string_tag<10>>,
-            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<
+              0xcafed00d, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              0xdeadbeef, s2s::fixed_string_tag<10>
+            >,
+            s2s::match_case<
+              0xbeefbeef, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1203,7 +1286,7 @@ TEST_CASE("Test case to verify variant field with an fixed string parsing from a
       auto fields = *result;
       REQUIRE(fields["a"_f] == 0xdeadbeef);
       REQUIRE(fields["b"_f] == 0xcafed00d);
-      auto& str = std::get<fixed_string<10>>(fields["c"_f]);
+      auto& str = std::get<s2s::fixed_string<10>>(fields["c"_f]);
       REQUIRE(std::string_view{str.data()} == std::string_view{"foo in bar"});
     }
   });
@@ -1223,18 +1306,27 @@ TEST_CASE("Test case to verify variant field with a variable string parsing from
   });
 
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<0xdeadbeef, variable_string_tag<field_size<len_from_field<"len">>>>,
-            match_case<0xbeefbeef, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<
+              0xcafed00d, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              0xdeadbeef, 
+              s2s::variable_string_tag<s2s::field_size<s2s::len_from_field<"len">>>
+            >,
+            s2s::match_case<
+              0xbeefbeef, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1265,17 +1357,26 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with com
 
   auto some_complex_calc = [](auto a, auto b){ return a + b; };
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          compute<some_complex_calc, u32, with_fields<"a", "b">>,
-          type_switch<
-            match_case<100, trivial_tag<float, field_size<fixed<4>>>>,
-            match_case<200, trivial_tag<u32, field_size<fixed<4>>>>,
-            match_case<300, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::compute<some_complex_calc, u32, s2s::with_fields<"a", "b">>,
+          s2s::type_switch<
+            s2s::match_case<
+              100, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              200, 
+              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::match_case<
+              300, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1306,26 +1407,26 @@ TEST_CASE("Test case to verify parsing variant field with multiple struct field 
   });
 
   using inner_1 = 
-   struct_field_list<
-     basic_field<"x", u32, field_size<fixed<4>>>, 
-     basic_field<"y", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
   >;
   using inner_2 = 
-   struct_field_list<
-     basic_field<"p", u32, field_size<fixed<4>>>, 
-     basic_field<"q", u32, field_size<fixed<4>>>
+   s2s::struct_field_list<
+     s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
+     s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
   >;
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          match_field<"a">,
-          type_switch<
-            match_case<0xcafed00d, struct_tag<inner_1>>,
-            match_case<0xdeadbeef, struct_tag<inner_2>>
+        s2s::type<
+          s2s::match_field<"a">,
+          s2s::type_switch<
+            s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
+            s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>
           >
         >
       >
@@ -1361,15 +1462,21 @@ TEST_CASE("Test case to verify failed variant field parsing from a binary file w
   // todo type tag entries shall be unique with respect to type
   // todo possible convinent short hand for eval_bool_from_fields
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          type_ladder<
-            clause<predicate<bpred_1, with_fields<"a", "b">>, trivial_tag<float, field_size<fixed<4>>>>,
-            clause<predicate<bpred_2, with_fields<"a", "b">>, trivial_tag<u32, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::type_ladder<
+            s2s::clause<
+              s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::clause<
+              s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
+              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >
@@ -1377,7 +1484,7 @@ TEST_CASE("Test case to verify failed variant field parsing from a binary file w
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == cast_error::type_deduction_failure);
+    REQUIRE(result.error() == s2s::cast_error::type_deduction_failure);
   });
 }
 
@@ -1399,16 +1506,25 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with boo
   // todo type tag entries shall be unique with respect to type
   // todo possible convinent short hand for eval_bool_from_fields
   FIELD_LIST_SCHEMA = 
-    struct_field_list<
-      basic_field<"a", u32, field_size<fixed<4>>>, 
-      basic_field<"b", u32, field_size<fixed<4>>>,
-      union_field<
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::union_field<
         "c", 
-        type<
-          type_ladder<
-            clause<predicate<bpred_1, with_fields<"a", "b">>, trivial_tag<float, field_size<fixed<4>>>>,
-            clause<predicate<bpred_2, with_fields<"a", "b">>, trivial_tag<u32, field_size<fixed<4>>>>,
-            clause<predicate<bpred_3, with_fields<"a", "b">>, trivial_tag<int, field_size<fixed<4>>>>
+        s2s::type<
+          s2s::type_ladder<
+            s2s::clause<
+              s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
+              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::clause<
+              s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
+              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+            >,
+            s2s::clause<
+              s2s::predicate<bpred_3, s2s::with_fields<"a", "b">>, 
+              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+            >
           >
         >
       >

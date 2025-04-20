@@ -9,6 +9,7 @@
 #include <string_view>
 
 
+namespace s2s {
 // todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
@@ -35,7 +36,7 @@ template <std::size_t N1, std::size_t N2>
 constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
   return !(lhs == rhs);
 }
-
+} /* namespace s2s */
 
 #endif // _FIXED_STRING_HPP_
 
@@ -49,6 +50,7 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
 #include <string>
 #include <vector>
  
+namespace s2s {
 template <typename T>
 void* to_void_ptr(T& obj) {
   return reinterpret_cast<void*>(&obj);
@@ -97,6 +99,7 @@ char* byte_addressof(std::vector<T>& obj) {
 inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
+} /* namespace s2s */
 
 #endif // _ADDRESS_MANIP_HPP_
 
@@ -106,16 +109,19 @@ inline char* byte_addressof(std::string& obj) {
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
+namespace s2s {
 template <fixed_string id>
 struct field_accessor {
   static constexpr auto field_id = id;
 };
-
-template <fixed_string id>
-constexpr auto operator""_f() {
-  return field_accessor<id>{};
 }
 
+namespace s2s_literals {
+template <s2s::fixed_string id>
+constexpr auto operator""_f() {
+  return s2s::field_accessor<id>{};
+}
+}
 
 #endif // _FIELD_ACCESSOR_HPP_
 
@@ -125,6 +131,7 @@ constexpr auto operator""_f() {
 #ifndef _FIXED_STR_LIST_HPP_
 #define _FIXED_STR_LIST_HPP_
  
+namespace s2s {
 template <fixed_string... fs>
 struct fixed_string_list {};
 
@@ -219,6 +226,8 @@ using pop_t = typename pop<count, T>::type;
 
 template <typename T>
 concept field_name_list = is_field_name_list_v<T>;
+} /* namespace s2s */
+
 
 #endif // _FIXED_STR_LIST_HPP_
 
@@ -231,6 +240,8 @@ concept field_name_list = is_field_name_list_v<T>;
 #include <string>
 #include <type_traits>
 
+
+namespace s2s {
 template <typename... ts>
 struct field_list{};
 
@@ -307,10 +318,7 @@ template <typename tlist>
 using front_t = typename front<tlist>::front_t;
 
 } // namespace typelist
-
-
-
-
+} /* namespace s2s */
 
 #endif // _TYPELIST_HPP_
 
@@ -322,6 +330,7 @@ using front_t = typename front<tlist>::front_t;
  
  
  
+namespace s2s {
 template <typename size_type>
 struct field_size;
 
@@ -440,6 +449,8 @@ concept is_size_like = fixed_size_like<T>    ||
                        selectable_size_like<T>;
 
 
+} /* namespace s2s */
+
 
 #endif // _FIELD_SIZE_HPP_
 
@@ -451,10 +462,12 @@ concept is_size_like = fixed_size_like<T>    ||
 
 #include <type_traits>
 
+namespace s2s {
 struct struct_field_list_base {};
 
 template <typename T>
 concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
+} /* namespace s2s */
 
 #endif // _STRUCT_FIELD_LIST_BASE_HPP_
 
@@ -469,6 +482,7 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 #include <optional>
  
  
+namespace s2s {
 // Arithmetic concept
 template <typename T>
 concept arithmetic = std::is_arithmetic_v<T>;
@@ -724,6 +738,7 @@ concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
 
 template <typename T>
 concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
+} /* namespace s2s */
 
 #endif // _SC_META_HPP_
 
@@ -742,9 +757,9 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
  
  
  
-namespace tl = typelist;
+namespace tl = s2s::typelist;
 
-
+namespace s2s {
 // Concept for strict callable
 template <typename T, typename Arg>
 concept strict_callable = requires(T t, Arg arg) {
@@ -862,8 +877,8 @@ template <typename t, typename... ts>
 struct is_in_open_range {
   std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
 
-  constexpr is_in_open_range(range<t> range, ::range<ts>... ranges) : open_ranges{range, ranges...} {
-    std::sort(open_ranges.begin(), open_ranges.end(), [](const ::range<t>& r1, const ::range<t>& r2) {
+  constexpr is_in_open_range(range<t> r, range<ts>... rs) : open_ranges{r, rs...} {
+    std::sort(open_ranges.begin(), open_ranges.end(), [](const range<t>& r1, const range<t>& r2) {
       return r1.a < r2.a;
     });
   }
@@ -928,6 +943,7 @@ is_in_open_range(range<t>, range<ts>...) -> is_in_open_range<t, ts...>;
 
 template <typename T, std::size_t N>
 is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
+}
 
 #endif // FIELD_CONSTRAINT_HPP
 
@@ -941,6 +957,7 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
  
 #include <type_traits>
 
+namespace s2s {
 template <fixed_string id,
           typename T,
           typename size_type,
@@ -953,7 +970,6 @@ struct field {
   static constexpr auto constraint_checker = constraint_on_value;
   field_type value;
 };
-
 
 template <typename T>
 struct to_optional_field;
@@ -986,17 +1002,6 @@ inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
 
 template <typename T>
 concept no_variance_field_like = no_variance_field_v<T>;
-
-template <no_variance_field_like base_field,
-          typename present_only_if,
-          typename optional = to_optional_field_v<base_field>>
-class maybe_field : public optional
-{
-public:
-  using field_base_type = base_field;
-  using field_presence_checker = present_only_if;
-};
-
 
 template <typename... choices>
 struct field_choice_list {};
@@ -1037,6 +1042,17 @@ struct are_unique_types<field_choice_list<head, neck, tail...>> {
 template <typename choice_list>
 inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
 
+template <no_variance_field_like base_field,
+          typename present_only_if,
+          typename optional = to_optional_field_v<base_field>>
+class maybe_field : public optional
+{
+public:
+  using field_base_type = base_field;
+  using field_presence_checker = present_only_if;
+};
+
+
 template <fixed_string id,
           typename type_deducer,
           typename type = typename type_deducer::variant,
@@ -1051,7 +1067,7 @@ struct union_field: public variant {
   using field_choices = field_choices_t;
   static constexpr auto variant_size = std::variant_size_v<type>;
 };
-
+} /* namespace s2s */
 
 #endif // _FIELD__HPP_
 
@@ -1063,6 +1079,7 @@ struct union_field: public variant {
  
  
  
+namespace s2s {
 struct not_a_field;
 
 template <typename T>
@@ -1080,6 +1097,7 @@ struct extract_type_from_field {
 
 template <typename T>
 using extract_type_from_field_v = typename extract_type_from_field<T>::type;
+} /* namespace s2s */
 
 #endif // _FIELD_META_HPP_
 
@@ -1091,6 +1109,7 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
  
  
  
+namespace s2s {
 template <typename T>
 struct is_fixed_sized_field;
 
@@ -1259,6 +1278,7 @@ concept field_like = fixed_sized_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
+} /* namespace s2s */
 
 #endif /*_FIELD_TRAITS_HPP_*/
 
@@ -1270,6 +1290,7 @@ concept field_like = fixed_sized_field_like<T> ||
  
  
  
+namespace s2s {
 // Sentinel type for a failed lookup
 struct field_lookup_failed {};
 
@@ -1341,6 +1362,7 @@ struct field_lookup<field_list<>, id> {
 // Alias for easier use
 template <typename field_list_t, fixed_string id>
 using field_lookup_v = typename field_lookup<field_list_t, id>::type;
+} /* namespace s2s */
 
 #endif // _FIELD_LOOKUP_HPP_
 
@@ -1351,6 +1373,7 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 #define _FIELD_LIST__HPP_
  
  
+namespace s2s {
 template <fixed_string... arg>
 struct are_unique_fixed_strings;
 
@@ -1395,6 +1418,8 @@ struct struct_field_list : struct_field_list_base, fields... {
     return static_cast<const field&>(*this).value;
   }
 };
+} /* namespace s2s */
+
 
 #endif // _FIELD_LIST__HPP_
 
@@ -1408,6 +1433,9 @@ struct struct_field_list : struct_field_list_base, fields... {
  
  
  
+using namespace s2s_literals;
+
+namespace s2s {
 template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
@@ -1517,7 +1545,7 @@ struct is_eval_size_from_fields {
 
 template <typename T>
 inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::res;
-
+} /* namespace s2s */
 
 #endif // _COMPUTE_RES_
 
@@ -1531,6 +1559,8 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
  
 #include <utility>
 
+
+namespace s2s {
 template <typename T>
 struct deduce_field_size;
 
@@ -1601,6 +1631,8 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
     return deduce_field_size_switch<0, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
   }
 };
+} /* namespace s2s */
+
 
 #endif // _SIZE_DEDUCE_HPP_
 
@@ -1612,6 +1644,7 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 
 #include <expected>
 
+namespace s2s {
 enum cast_error {
   buffer_exhaustion,
   validation_failure,
@@ -1620,6 +1653,7 @@ enum cast_error {
 
 
 using read_result = std::expected<void, cast_error>;
+} /* namespace s2s */
 
 #endif // _ERROR_HPP_
 
@@ -1631,10 +1665,13 @@ using read_result = std::expected<void, cast_error>;
 
 #include <expected>
  
+namespace s2s {
 auto operator|(const read_result& res, auto&& callable) -> read_result
 {
   return res ? callable() : std::unexpected(res.error());
 }
+} /* namespace s2s */
+
 
 #endif // _PIPELINE_HPP_
 
@@ -1649,6 +1686,7 @@ auto operator|(const read_result& res, auto&& callable) -> read_result
 #include <expected>
  
  
+namespace s2s {
 enum cast_endianness {
   host = 0,
   foreign = 1
@@ -1810,6 +1848,7 @@ inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
 
 template <typename T>
 concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
+} /* namespace s2s */
 
 #endif /* __STREAM_HPP__ */
 
@@ -1829,6 +1868,7 @@ concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
  
  
  
+namespace s2s {
 // todo inheritance for ctor boilerplate removal: read<t,f>?
 template <typename F, typename L>
 struct read_field;
@@ -2119,6 +2159,7 @@ struct read_field<T, F> {
     return {};
   }
 };
+} /* namespace s2s */
 
 #endif // _FIELD_READER_HPP_
 
@@ -2133,6 +2174,7 @@ struct read_field<T, F> {
  
  
  
+namespace s2s {
 template <typename T>
 struct is_no_constraint;
 
@@ -2199,15 +2241,16 @@ template <field_list_like T, input_stream_like stream>
 constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
-  return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
+  return s2s::struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
 constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
-  return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
+  return s2s::struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
 }
+} /* namespace s2s */
 
 #endif // _CAST_HPP_
 
@@ -2220,6 +2263,7 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
  
  
  
+namespace s2s {
 // todo is this required
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
@@ -2314,7 +2358,7 @@ inline constexpr bool is_type_tag_v = is_type_tag<T>::res;
 
 template <typename T>
 concept type_tag_like = is_type_tag_v<T>;
-
+} /* namespace s2s */
 
 #endif // _TYPE_TAG_HPP_
 
@@ -2324,6 +2368,7 @@ concept type_tag_like = is_type_tag_v<T>;
 #ifndef _MATCH_CASE_HPP_
 #define _MATCH_CASE_HPP_
  
+namespace s2s {
 // todo constrain to data types possible for fields
 template <auto v, type_tag_like T>
 struct match_case {
@@ -2349,7 +2394,7 @@ inline constexpr bool is_match_case_v = is_match_case<T>::res;
 
 template <typename T>
 concept match_case_like = is_match_case_v<T>;
-
+} /* namespace s2s */
 
 #endif // _MATCH_CASE_HPP_
 
@@ -2360,6 +2405,7 @@ concept match_case_like = is_match_case_v<T>;
 #define _CLAUSE_HPP_
  
  
+namespace s2s {
 template <typename eval, type_tag_like T>
   requires is_eval_bool_from_fields_v<eval>
 struct clause {
@@ -2386,7 +2432,7 @@ inline constexpr bool is_clause_v = is_clause<T>::res;
 
 template <typename T>
 concept clause_like = is_clause_v<T>;
-
+} /* namespace s2s */
 
 #endif // _CLAUSE_HPP_
 
@@ -2397,6 +2443,7 @@ concept clause_like = is_clause_v<T>;
 #define _TYPE_DEDUCTION_HELPER_HPP_
  
  
+namespace s2s {
 template <typename T>
 concept type_condition_like = match_case_like<T> || clause_like<T>;
 
@@ -2437,6 +2484,7 @@ struct size_choices_from_type_conditions {
 
 template <type_condition_like... cases>
 using size_choices_from_type_conditions_v = size_choices_from_type_conditions<cases...>::choices;
+} /* namespace s2s */ 
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
@@ -2450,6 +2498,7 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #include <expected>
 
 
+namespace s2s {
 // todo return type tag constructed from clause
 template <typename... clauses>
 struct type_ladder;
@@ -2492,7 +2541,7 @@ struct type_ladder<clause_head, clause_rest...> {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }
 };
-
+} /* namespace s2s */
 
 #endif // _TYPE_LADDER_HPP_
 
@@ -2506,6 +2555,7 @@ struct type_ladder<clause_head, clause_rest...> {
  
  
  
+namespace s2s {
 template <std::size_t idx, typename... cases>
 struct type_switch_impl;
 
@@ -2546,6 +2596,8 @@ struct type_switch {
     return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 
 };
+} /* namespace s2s */
+
 
 #endif // _TYPE_SWITCH_HPP_
 
@@ -2561,6 +2613,7 @@ struct type_switch {
  
  
  
+namespace s2s {
 template <typename... clauses>
 struct clauses_to_typelist {
   using tlist = typelist::typelist<typename clauses::type_tag...>;
@@ -2639,6 +2692,8 @@ struct type<tladder> {
     return type_ladder{}(sfl);
   }
 };
+} /* namespace s2s */
+
 
 #endif // _TYPE_DEDUCTION_HPP_
 
@@ -2653,6 +2708,7 @@ struct type<tladder> {
  
  
  
+namespace s2s {
 struct always_true {
   constexpr auto operator()() -> bool {
     return true;
@@ -2707,6 +2763,7 @@ using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+} /* namespace s2s */
 
 #endif /* _FIELD_TYPE_HPP_ */
 

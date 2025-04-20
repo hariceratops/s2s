@@ -4,6 +4,7 @@
 #include "fixed_string.hpp"
 
 
+namespace s2s {
 template <fixed_string... fs>
 struct fixed_string_list {};
 
@@ -98,5 +99,7 @@ using pop_t = typename pop<count, T>::type;
 
 template <typename T>
 concept field_name_list = is_field_name_list_v<T>;
+} /* namespace s2s */
+
 
 #endif // _FIXED_STR_LIST_HPP_

@@ -12,9 +12,9 @@
 #include "typelist.hpp"
 
 
-namespace tl = typelist;
+namespace tl = s2s::typelist;
 
-
+namespace s2s {
 // Concept for strict callable
 template <typename T, typename Arg>
 concept strict_callable = requires(T t, Arg arg) {
@@ -132,8 +132,8 @@ template <typename t, typename... ts>
 struct is_in_open_range {
   std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
 
-  constexpr is_in_open_range(range<t> range, ::range<ts>... ranges) : open_ranges{range, ranges...} {
-    std::sort(open_ranges.begin(), open_ranges.end(), [](const ::range<t>& r1, const ::range<t>& r2) {
+  constexpr is_in_open_range(range<t> r, range<ts>... rs) : open_ranges{r, rs...} {
+    std::sort(open_ranges.begin(), open_ranges.end(), [](const range<t>& r1, const range<t>& r2) {
       return r1.a < r2.a;
     });
   }
@@ -198,5 +198,6 @@ is_in_open_range(range<t>, range<ts>...) -> is_in_open_range<t, ts...>;
 
 template <typename T, std::size_t N>
 is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
+}
 
 #endif // FIELD_CONSTRAINT_HPP

@@ -6,6 +6,7 @@
 #include <expected>
 
 
+namespace s2s {
 // todo return type tag constructed from clause
 template <typename... clauses>
 struct type_ladder;
@@ -48,6 +49,6 @@ struct type_ladder<clause_head, clause_rest...> {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }
 };
-
+} /* namespace s2s */
 
 #endif // _TYPE_LADDER_HPP_

@@ -10,6 +10,7 @@
 #include "compute_res.hpp"
 
 
+namespace s2s {
 struct always_true {
   constexpr auto operator()() -> bool {
     return true;
@@ -64,5 +65,6 @@ using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+} /* namespace s2s */
 
 #endif /* _FIELD_TYPE_HPP_ */

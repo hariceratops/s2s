@@ -7,6 +7,7 @@
 #include "type_deduction_helper.hpp"
 
 
+namespace s2s {
 template <std::size_t idx, typename... cases>
 struct type_switch_impl;
 
@@ -47,5 +48,7 @@ struct type_switch {
     return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 
 };
+} /* namespace s2s */
+
 
 #endif // _TYPE_SWITCH_HPP_

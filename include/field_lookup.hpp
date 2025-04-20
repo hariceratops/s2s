@@ -7,6 +7,7 @@
 #include "field.hpp"
 
 
+namespace s2s {
 // Sentinel type for a failed lookup
 struct field_lookup_failed {};
 
@@ -78,5 +79,6 @@ struct field_lookup<field_list<>, id> {
 // Alias for easier use
 template <typename field_list_t, fixed_string id>
 using field_lookup_v = typename field_lookup<field_list_t, id>::type;
+} /* namespace s2s */
 
 #endif // _FIELD_LOOKUP_HPP_

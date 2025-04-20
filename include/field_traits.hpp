@@ -7,6 +7,7 @@
 #include "sc_type_traits.hpp"
 
 
+namespace s2s {
 template <typename T>
 struct is_fixed_sized_field;
 
@@ -175,5 +176,6 @@ concept field_like = fixed_sized_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
+} /* namespace s2s */
 
 #endif /*_FIELD_TRAITS_HPP_*/

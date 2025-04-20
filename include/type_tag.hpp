@@ -7,6 +7,7 @@
 #include "size_deduce.hpp"
 
 
+namespace s2s {
 // todo is this required
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
@@ -101,6 +102,6 @@ inline constexpr bool is_type_tag_v = is_type_tag<T>::res;
 
 template <typename T>
 concept type_tag_like = is_type_tag_v<T>;
-
+} /* namespace s2s */
 
 #endif // _TYPE_TAG_HPP_

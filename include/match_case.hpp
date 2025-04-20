@@ -3,6 +3,8 @@
 
 #include "type_tag.hpp"
 
+
+namespace s2s {
 // todo constrain to data types possible for fields
 template <auto v, type_tag_like T>
 struct match_case {
@@ -28,6 +30,6 @@ inline constexpr bool is_match_case_v = is_match_case<T>::res;
 
 template <typename T>
 concept match_case_like = is_match_case_v<T>;
-
+} /* namespace s2s */
 
 #endif // _MATCH_CASE_HPP_

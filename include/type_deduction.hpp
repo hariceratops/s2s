@@ -9,6 +9,7 @@
 #include "type_switch.hpp"
 
 
+namespace s2s {
 template <typename... clauses>
 struct clauses_to_typelist {
   using tlist = typelist::typelist<typename clauses::type_tag...>;
@@ -87,5 +88,7 @@ struct type<tladder> {
     return type_ladder{}(sfl);
   }
 };
+} /* namespace s2s */
+
 
 #endif // _TYPE_DEDUCTION_HPP_

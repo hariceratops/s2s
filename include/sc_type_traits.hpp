@@ -7,6 +7,8 @@
 #include "fixed_string.hpp"
 #include "struct_field_list_base.hpp"
 
+
+namespace s2s {
 // Arithmetic concept
 template <typename T>
 concept arithmetic = std::is_arithmetic_v<T>;
@@ -262,5 +264,6 @@ concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
 
 template <typename T>
 concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
+} /* namespace s2s */
 
 #endif // _SC_META_HPP_

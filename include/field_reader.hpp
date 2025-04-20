@@ -13,6 +13,7 @@
 #include "stream.hpp"
 
 
+namespace s2s {
 // todo inheritance for ctor boilerplate removal: read<t,f>?
 template <typename F, typename L>
 struct read_field;
@@ -303,5 +304,6 @@ struct read_field<T, F> {
     return {};
   }
 };
+} /* namespace s2s */
 
 #endif // _FIELD_READER_HPP_
