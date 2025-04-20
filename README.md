@@ -37,6 +37,7 @@ The compiler version requirements are
 
 
 ## Taste of the API
+Link to Godbolt: https://godbolt.org/z/cY3n1nW1E
 ```cpp
   #include "struct_cast.hpp"
   #include <print>
