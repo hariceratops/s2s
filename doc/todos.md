@@ -1,0 +1,5 @@
+- [ ] Size dependency resolution checks
+- [ ] Parse dependency resolution checks
+- [ ] Static test cases for all type traits and concepts
+- [ ] Remove dead code
+- [ ] Refactor type and non-type list
