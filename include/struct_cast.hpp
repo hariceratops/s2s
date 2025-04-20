@@ -5,8 +5,9 @@
 #include "field_accessor.hpp"
 #include "field.hpp"
 #include "field_list.hpp"
-#include "compute_res.hpp"
-#include "cast.hpp"
+#include "computation_from_fields.hpp"
+#include "cast_error.hpp"
 #include "field_types.hpp"
+#include "cast_impl.hpp"
 
 #endif // STRUCT_CAST_HPP

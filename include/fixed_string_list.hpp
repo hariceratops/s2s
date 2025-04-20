@@ -1,5 +1,5 @@
-#ifndef _FIXED_STR_LIST_HPP_
-#define _FIXED_STR_LIST_HPP_
+#ifndef _FIXED_STRING_LIST_HPP_
+#define _FIXED_STRING_LIST_HPP_
 
 #include "fixed_string.hpp"
 
@@ -102,4 +102,4 @@ concept field_name_list = is_field_name_list_v<T>;
 } /* namespace s2s */
 
 
-#endif // _FIXED_STR_LIST_HPP_
+#endif // _FIXED_STRING_LIST_HPP_

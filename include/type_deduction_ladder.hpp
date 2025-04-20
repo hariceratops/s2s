@@ -1,7 +1,7 @@
-#ifndef _TYPE_LADDER_HPP_
-#define _TYPE_LADDER_HPP_
+#ifndef _TYPE_DEDUCTION_LADDER_HPP_
+#define _TYPE_DEDUCTION_LADDER_HPP_
 
-#include "error.hpp"
+#include "cast_error.hpp"
 #include "type_deduction_helper.hpp"
 #include <expected>
 

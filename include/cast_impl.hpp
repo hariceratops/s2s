@@ -1,14 +1,21 @@
-#ifndef _CAST_HPP_
-#define _CAST_HPP_
+#ifndef _CAST_IMPL_HPP_
+#define _CAST_IMPL_HPP_
 
 
 #include <expected>
 #include "field_reader.hpp"
 #include "field_list.hpp"
-#include "error.hpp"
+#include "cast_error.hpp"
+#include "stream.hpp"
 
 
 namespace s2s {
+
+auto operator|(const read_result& res, auto&& callable) -> read_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
 template <typename T>
 struct is_no_constraint;
 
@@ -75,15 +82,15 @@ template <field_list_like T, input_stream_like stream>
 constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
-  return s2s::struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
+  return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
 constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
-  return s2s::struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
+  return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
 }
 } /* namespace s2s */
 
-#endif // _CAST_HPP_
+#endif // _CAST_IMPL_HPP_

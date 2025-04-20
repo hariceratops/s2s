@@ -1,5 +1,5 @@
-#ifndef _ERROR_HPP_
-#define _ERROR_HPP_
+#ifndef _CAST_ERROR_HPP_
+#define _CAST_ERROR_HPP_
 
 #include <expected>
 
@@ -14,4 +14,4 @@ enum cast_error {
 using read_result = std::expected<void, cast_error>;
 } /* namespace s2s */
 
-#endif // _ERROR_HPP_
+#endif // _CAST_ERROR_HPP_

@@ -1,9 +1,9 @@
-#ifndef _TYPE_SWITCH_HPP_
-#define _TYPE_SWITCH_HPP_
+#ifndef _TYPE_DEDUCTION_SWITCH_HPP_
+#define _TYPE_DEDUCTION_SWITCH_HPP_
 
 #include <expected>
-#include "error.hpp"
-#include "match_case.hpp"
+#include "cast_error.hpp"
+#include "type_deduction_match_case.hpp"
 #include "type_deduction_helper.hpp"
 
 

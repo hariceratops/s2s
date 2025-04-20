@@ -1,5 +1,5 @@
-#ifndef _FIELD_LIST__HPP_
-#define _FIELD_LIST__HPP_
+#ifndef _FIELD_LIST_HPP_
+#define _FIELD_LIST_HPP_
 
 #include "field_traits.hpp"
 #include "field_lookup.hpp"
@@ -53,4 +53,4 @@ struct struct_field_list : struct_field_list_base, fields... {
 } /* namespace s2s */
 
 
-#endif // _FIELD_LIST__HPP_
+#endif // _FIELD_LIST_HPP_

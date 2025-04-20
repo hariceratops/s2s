@@ -4,8 +4,9 @@
 
 #include <concepts>
 #include <expected>
-#include "error.hpp"
-#include "sc_type_traits.hpp"
+
+#include "cast_error.hpp"
+#include "s2s_type_traits.hpp"
 
 
 namespace s2s {

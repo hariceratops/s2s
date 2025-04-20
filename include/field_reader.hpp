@@ -6,9 +6,8 @@
 #include <utility>
 #include "field_traits.hpp"
 #include "field_meta.hpp"
-#include "size_deduce.hpp"
-#include "error.hpp"
-#include "pipeline.hpp"
+#include "field_size_deduce.hpp"
+#include "cast_error.hpp"
 #include "field.hpp"
 #include "stream.hpp"
 

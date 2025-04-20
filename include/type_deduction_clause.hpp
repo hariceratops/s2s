@@ -1,8 +1,8 @@
-#ifndef _CLAUSE_HPP_
-#define _CLAUSE_HPP_
+#ifndef _TYPE_DEDUCTION_CLAUSE_HPP_
+#define _TYPE_DEDUCTION_CLAUSE_HPP_
 
-#include "type_tag.hpp"
-#include "compute_res.hpp"
+#include "type_deduction_tags.hpp"
+#include "computation_from_fields.hpp"
 
 
 namespace s2s {
@@ -34,4 +34,4 @@ template <typename T>
 concept clause_like = is_clause_v<T>;
 } /* namespace s2s */
 
-#endif // _CLAUSE_HPP_
+#endif // _TYPE_DEDUCTION_CLAUSE_HPP_

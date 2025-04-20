@@ -2,7 +2,7 @@
 #define _FIELD_SIZE_HPP_
 
 #include "field_accessor.hpp"
-#include "fixed_str_list.hpp"
+#include "fixed_string_list.hpp"
 #include "typelist.hpp"
 
 namespace s2s {

@@ -1,5 +1,5 @@
-#ifndef FIELD_CONSTRAINT_HPP
-#define FIELD_CONSTRAINT_HPP
+#ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
+#define _FIELD_VALUE_CONSTRAINTS_HPP_ 
 
 #include <algorithm>
 #include <array>
@@ -7,7 +7,7 @@
 #include <cassert>
 #include <cstdio>
 #include <type_traits>
-#include "sc_type_traits.hpp"
+#include "s2s_type_traits.hpp"
 #include "fixed_string.hpp"
 #include "typelist.hpp"
 
@@ -200,4 +200,4 @@ template <typename T, std::size_t N>
 is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 }
 
-#endif // FIELD_CONSTRAINT_HPP
+#endif // _FIELD_VALUE_CONSTRAINTS_HPP_

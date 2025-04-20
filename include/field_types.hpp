@@ -2,12 +2,12 @@
 #define _FIELD_TYPE_HPP_
 
 
-#include "sc_type_traits.hpp"
+#include "s2s_type_traits.hpp"
 #include "field.hpp"
 #include "field_size.hpp"
-#include "size_deduce.hpp"
+#include "field_size_deduce.hpp"
 #include "type_deduction.hpp" 
-#include "compute_res.hpp"
+#include "computation_from_fields.hpp"
 
 
 namespace s2s {

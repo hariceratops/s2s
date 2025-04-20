@@ -1,9 +1,9 @@
-#ifndef _SIZE_DEDUCE_HPP_
-#define _SIZE_DEDUCE_HPP_
+#ifndef _FIELD_SIZE_DEDUCE_HPP_
+#define _FIELD_SIZE_DEDUCE_HPP_
 
 #include "field_size.hpp"
 #include "field_list.hpp"
-#include "compute_res.hpp"
+#include "computation_from_fields.hpp"
 #include <utility>
 
 
@@ -81,4 +81,4 @@ struct deduce_field_size<field_size<size_choices<sizes...>>> {
 } /* namespace s2s */
 
 
-#endif // _SIZE_DEDUCE_HPP_
+#endif // _FIELD_SIZE_DEDUCE_HPP_

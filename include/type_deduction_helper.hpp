@@ -2,8 +2,8 @@
 #define _TYPE_DEDUCTION_HELPER_HPP_
 
 
-#include "match_case.hpp"
-#include "clause.hpp"
+#include "type_deduction_match_case.hpp"
+#include "type_deduction_clause.hpp"
 
 
 namespace s2s {

@@ -1,5 +1,5 @@
-#ifndef _SC_META_HPP_
-#define _SC_META_HPP_
+#ifndef _S2S_TYPE_TRAITS_HPP_
+#define _S2S_TYPE_TRAITS_HPP_
 
 #include <vector>
 #include <variant>
@@ -266,4 +266,4 @@ template <typename T>
 concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 } /* namespace s2s */
 
-#endif // _SC_META_HPP_
+#endif // _S2S_TYPE_TRAITS_HPP_

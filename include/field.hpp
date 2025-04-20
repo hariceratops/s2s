@@ -1,9 +1,9 @@
-#ifndef _FIELD__HPP_
-#define _FIELD__HPP_
+#ifndef _FIELD_HPP_
+#define _FIELD_HPP_
 
 
 #include "field_size.hpp"
-#include "field_constraints.hpp"
+#include "field_value_constraints.hpp"
 #include "fixed_string.hpp"
 #include <type_traits>
 
@@ -119,4 +119,4 @@ struct union_field: public variant {
 };
 } /* namespace s2s */
 
-#endif // _FIELD__HPP_
+#endif // _FIELD_HPP_

@@ -4,7 +4,7 @@
 
 #include "field.hpp"
 #include "field_size.hpp"
-#include "sc_type_traits.hpp"
+#include "s2s_type_traits.hpp"
 
 
 namespace s2s {
