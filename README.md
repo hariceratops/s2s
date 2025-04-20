@@ -12,7 +12,7 @@ folder can be used for direct inclusion into a project
     * Trivial
     * Array of trivials 
     * Array of records 
-    * Length prexied vector of trivials
+    * Length prefixed vector of trivials
     * Length prefixed vector of records
     * Const sized strings
     * Length prefixed strings
@@ -32,27 +32,31 @@ hence struct_cast fails to compile, which leads to work-in-progress
 for rolling them out
 
 The compiler version requirements are 
-* x86-64 gcc 13.1
-* arm gcc 13.1
-* arm64 gcc 13.1
-* x86-64 clang 19.1.0
-* armv8-a clang 19.1.0
+* gcc 13.1 : x86-64, arm, arm64 gcc 13.1
+* clang 19.1.0 : x86-64, armv8-a
 
 
 ## Taste of the API
 ```cpp
   #include "struct_cast.hpp"
   #include <print>
+  
+  using namespace s2s_literals;
 
+  // Our "struct" has 2 members a length field of size 8 and type
+  // std::size_t, and a length prefixed string whose length is 
+  // derived from the "len" field
   using our_struct = 
-    struct_field_list<
-      basic_field<"len", std::size_t, field_size<fixed<8>>>,
-      str_field<"str", field_size<len_from_field<"len">>>
+    s2s::struct_field_list<
+      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
     >;
   std::ifstream ifs("sample.bin", std::ios::in | std::ios::binary);
-  auto res = struct_cast_le<our_struct>(ifs);
-  auto fields = *res;
-  std::println("len={} str={}", fields["len"_f], fields["str"_f]);
+  auto res = s2s::struct_cast_le<our_struct>(ifs);
+  if(res) {
+    auto fields = *res;
+    std::println("len={} str={}", fields["len"_f], fields["str"_f]);
+  }
 ```
 
 ## API documentation
@@ -85,9 +89,9 @@ const auto& operator[](field_accessor);
 ### Writing a data member schema
 ```cpp
 using our_struct = 
-  struct_field_list<
-    basic_field<"len", std::size_t, field_size<fixed<8>>>,
-    str_field<"str", field_size<len_from_field<"len">>>
+  s2s::struct_field_list<
+    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
   >;
 ```
 Library provides users a way to describe the fields contained in the struct_field_list
