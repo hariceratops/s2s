@@ -1,5 +1,5 @@
-#ifndef _STRUCT_FIELD_LIST_TRAITS_HPP_
-#define _STRUCT_FIELD_LIST_TRAITS_HPP_
+#ifndef _FIELD_LIST_TRAITS_HPP_
+#define _FIELD_LIST_TRAITS_HPP_
 
 #include <type_traits>
 #include "field_list.hpp"

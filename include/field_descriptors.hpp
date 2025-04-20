@@ -1,5 +1,5 @@
-#ifndef _FIELD_TYPE_HPP_
-#define _FIELD_TYPE_HPP_
+#ifndef _FIELD_DESCRIPTORS_HPP_
+#define _FIELD_DESCRIPTORS_HPP_
 
 
 #include "s2s_type_traits.hpp"
@@ -67,4 +67,4 @@ template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
 } /* namespace s2s */
 
-#endif /* _FIELD_TYPE_HPP_ */
+#endif /* _FIELD_DESCRIPTORS_HPP_ */

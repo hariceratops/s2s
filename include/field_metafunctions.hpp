@@ -1,5 +1,5 @@
-#ifndef _FIELD_META_HPP_
-#define _FIELD_META_HPP_
+#ifndef _FIELD_METAFUNCTIONS_HPP_
+#define _FIELD_METAFUNCTIONS_HPP_
 
 #include "fixed_string.hpp"
 #include "field_size.hpp"
@@ -26,4 +26,4 @@ template <typename T>
 using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 } /* namespace s2s */
 
-#endif // _FIELD_META_HPP_
+#endif // _FIELD_METAFUNCTIONS_HPP_

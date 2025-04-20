@@ -2,7 +2,7 @@
 #define _FIELD_LIST_HPP_
 
 #include "field_traits.hpp"
-#include "field_lookup.hpp"
+#include "field_list_metafunctions.hpp"
 
 
 namespace s2s {

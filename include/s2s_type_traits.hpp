@@ -5,7 +5,7 @@
 #include <variant>
 #include <optional>
 #include "fixed_string.hpp"
-#include "struct_field_list_base.hpp"
+#include "field_list_base.hpp"
 
 
 namespace s2s {

@@ -6,7 +6,7 @@
 #include "field_reader.hpp"
 #include "field_list.hpp"
 #include "cast_error.hpp"
-#include "stream.hpp"
+#include "stream_wrapper_impl.hpp"
 
 
 namespace s2s {

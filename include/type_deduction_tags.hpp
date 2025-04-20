@@ -2,7 +2,7 @@
 #define _TYPE_DEDUCTION_TAGS_
 
 #include "s2s_type_traits.hpp"
-#include "struct_field_list_base.hpp"
+#include "field_list_base.hpp"
 #include "field_size.hpp"
 #include "field_size_deduce.hpp"
 

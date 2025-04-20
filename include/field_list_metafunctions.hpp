@@ -1,5 +1,5 @@
-#ifndef _FIELD_LOOKUP_HPP_
-#define _FIELD_LOOKUP_HPP_
+#ifndef _FIELD_LIST_METAFUNCTIONS_HPP_
+#define _FIELD_LIST_METAFUNCTIONS_HPP_
 
 
 #include "typelist.hpp"
@@ -81,4 +81,4 @@ template <typename field_list_t, fixed_string id>
 using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 } /* namespace s2s */
 
-#endif // _FIELD_LOOKUP_HPP_
+#endif // _FIELD_LIST_METAFUNCTIONS_HPP_

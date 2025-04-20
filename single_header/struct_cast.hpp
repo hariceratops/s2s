@@ -477,9 +477,9 @@ concept is_size_like = fixed_size_like<T>    ||
 
 // End /home/hari/repos/struct_cast/include/field_size.hpp
 
-// Begin /home/hari/repos/struct_cast/include/struct_field_list_base.hpp
-#ifndef _STRUCT_FIELD_LIST_BASE_HPP_
-#define _STRUCT_FIELD_LIST_BASE_HPP_
+// Begin /home/hari/repos/struct_cast/include/field_list_base.hpp
+#ifndef _FIELD_LIST_BASE_HPP_
+#define _FIELD_LIST_BASE_HPP_
 
 #include <type_traits>
 
@@ -490,9 +490,9 @@ template <typename T>
 concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 } /* namespace s2s */
 
-#endif // _STRUCT_FIELD_LIST_BASE_HPP_
+#endif // _FIELD_LIST_BASE_HPP_
 
-// End /home/hari/repos/struct_cast/include/struct_field_list_base.hpp
+// End /home/hari/repos/struct_cast/include/field_list_base.hpp
 
 // Begin /home/hari/repos/struct_cast/include/s2s_type_traits.hpp
 #ifndef _S2S_TYPE_TRAITS_HPP_
@@ -1275,9 +1275,9 @@ concept field_like = fixed_sized_field_like<T> ||
 
 // End /home/hari/repos/struct_cast/include/field_traits.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_lookup.hpp
-#ifndef _FIELD_LOOKUP_HPP_
-#define _FIELD_LOOKUP_HPP_
+// Begin /home/hari/repos/struct_cast/include/field_list_metafunctions.hpp
+#ifndef _FIELD_LIST_METAFUNCTIONS_HPP_
+#define _FIELD_LIST_METAFUNCTIONS_HPP_
  
  
  
@@ -1355,9 +1355,9 @@ template <typename field_list_t, fixed_string id>
 using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 } /* namespace s2s */
 
-#endif // _FIELD_LOOKUP_HPP_
+#endif // _FIELD_LIST_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_lookup.hpp
+// End /home/hari/repos/struct_cast/include/field_list_metafunctions.hpp
 
 // Begin /home/hari/repos/struct_cast/include/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
@@ -2072,9 +2072,9 @@ struct type<tladder> {
 
 // End /home/hari/repos/struct_cast/include/type_deduction.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_types.hpp
-#ifndef _FIELD_TYPE_HPP_
-#define _FIELD_TYPE_HPP_
+// Begin /home/hari/repos/struct_cast/include/field_descriptors.hpp
+#ifndef _FIELD_DESCRIPTORS_HPP_
+#define _FIELD_DESCRIPTORS_HPP_
  
  
  
@@ -2138,13 +2138,13 @@ template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
 } /* namespace s2s */
 
-#endif /* _FIELD_TYPE_HPP_ */
+#endif /* _FIELD_DESCRIPTORS_HPP_ */
 
-// End /home/hari/repos/struct_cast/include/field_types.hpp
+// End /home/hari/repos/struct_cast/include/field_descriptors.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_meta.hpp
-#ifndef _FIELD_META_HPP_
-#define _FIELD_META_HPP_
+// Begin /home/hari/repos/struct_cast/include/field_metafunctions.hpp
+#ifndef _FIELD_METAFUNCTIONS_HPP_
+#define _FIELD_METAFUNCTIONS_HPP_
  
  
  
@@ -2168,33 +2168,17 @@ template <typename T>
 using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 } /* namespace s2s */
 
-#endif // _FIELD_META_HPP_
+#endif // _FIELD_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_meta.hpp
+// End /home/hari/repos/struct_cast/include/field_metafunctions.hpp
 
-// Begin /home/hari/repos/struct_cast/include/stream.hpp
-#ifndef __STREAM_HPP__
-#define __STREAM_HPP__
+// Begin /home/hari/repos/struct_cast/include/stream_traits.hpp
+#ifndef _STREAM_TRAITS_HPP_
+#define _STREAM_TRAITS_HPP_
 
 
 #include <concepts>
-#include <expected>
- 
- 
-namespace s2s {
-enum cast_endianness {
-  host = 0,
-  foreign = 1
-};
-
-
-template <std::endian endianness>
-constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) 
-    return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) 
-    return cast_endianness::foreign;
-}
+#include <iostream>
 
 
 template <typename T>
@@ -2238,6 +2222,34 @@ concept input_stream_like = readable<T> && convertible_to_bool<T>;
 template <typename T>
 concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
+#endif /* _STREAM_TRAITS_HPP_ */
+
+// End /home/hari/repos/struct_cast/include/stream_traits.hpp
+
+// Begin /home/hari/repos/struct_cast/include/stream_wrapper_impl.hpp
+#ifndef _STREAM_WRAPPER_IMPL_HPP_
+#define _STREAM_WRAPPER_IMPL_HPP_
+
+
+#include <concepts>
+#include <expected>
+ 
+ 
+ 
+namespace s2s {
+enum cast_endianness {
+  host = 0,
+  foreign = 1
+};
+
+
+template <std::endian endianness>
+constexpr cast_endianness deduce_byte_order() {
+  if constexpr(std::endian::native == endianness) 
+    return cast_endianness::host;
+  else if constexpr(std::endian::native != endianness) 
+    return cast_endianness::foreign;
+}
 
 using rw_result = std::expected<void, cast_error>;
 
@@ -2345,9 +2357,9 @@ template <typename T>
 concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 } /* namespace s2s */
 
-#endif /* __STREAM_HPP__ */
+#endif /* _STREAM_WRAPPER_IMPL_HPP_ */
 
-// End /home/hari/repos/struct_cast/include/stream.hpp
+// End /home/hari/repos/struct_cast/include/stream_wrapper_impl.hpp
 
 // Begin /home/hari/repos/struct_cast/include/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
