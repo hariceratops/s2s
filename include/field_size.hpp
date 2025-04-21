@@ -47,7 +47,7 @@ struct size_choices;
 
 template <typename... size_type>
 struct size_choices {
-  using choices = typelist::typelist<size_type...>;
+  using choices = typelist::list<size_type...>;
   static auto constexpr num_of_choices = sizeof...(size_type);
 };
 
@@ -122,8 +122,6 @@ template <typename T>
 concept is_size_like = fixed_size_like<T>    ||
                        variable_size_like<T> ||
                        selectable_size_like<T>;
-
-
 } /* namespace s2s */
 
 

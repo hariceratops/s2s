@@ -26,7 +26,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list) {}
   
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
     return s.template read<endianness>(field.value, size_to_read);
@@ -44,7 +44,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return s.template read<endianness>(field.value, len_to_read);
@@ -100,7 +100,7 @@ struct read_buffer_of_records {
     : field(field), field_list(field_list), len_to_read(len_to_read) {}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
@@ -123,7 +123,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using array_type = typename T::field_type;
     using array_element_field = create_field_from_array_of_records_v<T>;
     using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
@@ -145,7 +145,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     using field_size = typename T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
@@ -172,11 +172,13 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
     auto res = struct_cast<stream, field_list_t, endianness>(s);
-    if(!res)
-      return std::unexpected(res.error());
+    if(!res) {
+      auto err = res.error();
+      return std::unexpected(err.failure_reason);
+    }
     // todo move?
     field.value = *res;
     return {};
@@ -194,7 +196,7 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
   
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
+  constexpr auto read(stream& s) -> rw_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;
       return {};
@@ -226,7 +228,7 @@ struct read_variant_impl {
       variant(variant), field_list(field_list), idx_r(idx_r) {}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
+  constexpr auto read(stream& s) -> rw_result {
     if (idx_r != idx) 
       return {};
 
@@ -240,6 +242,10 @@ struct read_variant_impl {
   }
 };
 
+auto operator|(const rw_result& res, auto&& callable) -> rw_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
 
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
@@ -254,8 +260,8 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
     : field(field), field_list(field_list), idx_r(idx_r) {}
   
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
-    read_result pipeline_seed{};
+  constexpr auto read(stream& s) -> rw_result {
+    rw_result pipeline_seed{};
     return (
       pipeline_seed |
       ... | 
@@ -278,7 +284,7 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
+  constexpr auto read(stream& s) -> rw_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;

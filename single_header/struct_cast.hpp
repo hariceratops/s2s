@@ -242,20 +242,17 @@ concept field_name_list = is_field_name_list_v<T>;
 
 
 namespace s2s {
-template <typename... ts>
-struct field_list{};
-
 namespace typelist {
 struct null {};
 
 template <typename... ts>
-struct typelist;
+struct list;
 
 template <typename... ts>
-struct typelist{};
+struct list{};
 
 template <>
-struct typelist<>{};
+struct list<>{};
 
 template <typename... ts>
 struct any_of;
@@ -264,60 +261,60 @@ template <typename... ts>
 struct any_of {};
 
 template <typename t>
-struct any_of<typelist<>, t> { static constexpr bool res = false; };
+struct any_of<list<>, t> { static constexpr bool res = false; };
 
 template <typename t, typename... rest>
-struct any_of<typelist<t, rest...>, t> { static constexpr bool res = true; };
+struct any_of<list<t, rest...>, t> { static constexpr bool res = true; };
 
 template <typename t, typename u, typename... rest>
-struct any_of<typelist<u, rest...>, t> { static constexpr bool res = false || any_of<typelist<rest...>, t>::res; };
+struct any_of<list<u, rest...>, t> { static constexpr bool res = false || any_of<list<rest...>, t>::res; };
 
-template <typename typelist, typename type>
-inline constexpr bool any_of_v = any_of<typelist, type>::res;
+template <typename list, typename type>
+inline constexpr bool any_of_v = any_of<list, type>::res;
 
 template <typename... ts>
 struct all_are_same;
 
 template <>
-struct all_are_same<typelist<>> {
+struct all_are_same<list<>> {
   static constexpr auto all_same = true;
 };
 
 template <typename T>
-struct all_are_same<typelist<T>> {
+struct all_are_same<list<T>> {
   static constexpr auto all_same = true;
 };
 
 template <typename T, typename U, typename... rest>
-struct all_are_same<typelist<T, U, rest...>> {
-  static constexpr auto all_same = std::is_same_v<T, U> && all_are_same<typelist<U, rest...>>::all_same;
+struct all_are_same<list<T, U, rest...>> {
+  static constexpr auto all_same = std::is_same_v<T, U> && all_are_same<list<U, rest...>>::all_same;
 };
 
 template <typename T, typename... rest>
-struct all_are_same<typelist<T, rest...>> {
+struct all_are_same<list<T, rest...>> {
   static constexpr auto all_same = false;
 };
 
-template <typename tlist>
-inline constexpr bool all_are_same_v = all_are_same<tlist>::all_same;
+template <typename L>
+inline constexpr bool all_are_same_v = all_are_same<L>::all_same;
 
 template <typename... ts>
 struct front;
 
 template <typename t, typename... ts>
-struct front<typelist<t, ts...>> {
+struct front<list<t, ts...>> {
   using front_t = t;
 };
 
 template <>
-struct front<typelist<>> {
+struct front<list<>> {
   using front_t = null;
 };
 
-template <typename tlist>
-using front_t = typename front<tlist>::front_t;
+template <typename L>
+using front_t = typename front<L>::front_t;
 
-} // namespace typelist
+} // namespace list
 } /* namespace s2s */
 
 #endif // _TYPELIST_HPP_
@@ -372,7 +369,7 @@ struct size_choices;
 
 template <typename... size_type>
 struct size_choices {
-  using choices = typelist::typelist<size_type...>;
+  using choices = typelist::list<size_type...>;
   static auto constexpr num_of_choices = sizeof...(size_type);
 };
 
@@ -447,8 +444,6 @@ template <typename T>
 concept is_size_like = fixed_size_like<T>    ||
                        variable_size_like<T> ||
                        selectable_size_like<T>;
-
-
 } /* namespace s2s */
 
 
@@ -759,8 +754,6 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
  
  
  
-namespace tl = s2s::typelist;
-
 namespace s2s {
 // Concept for strict callable
 template <typename T, typename Arg>
@@ -845,7 +838,7 @@ struct no_constraint {
 };
 
 template <typename T, typename... Ts>
-  requires (tl::all_are_same_v<tl::typelist<T, Ts...>>)
+  requires (typelist::all_are_same_v<typelist::list<T, Ts...>>)
 struct any_of {
   std::array<T, 1 + sizeof...(Ts)> possible_values;
 
@@ -875,7 +868,7 @@ range(T, T) -> range<T>;
 
 // Struct to check if a value is in any of the open intervals
 template <typename t, typename... ts>
-  requires (tl::all_are_same_v<tl::typelist<ts...>>)
+  requires (typelist::all_are_same_v<typelist::list<ts...>>)
 struct is_in_open_range {
   std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
 
@@ -1270,7 +1263,7 @@ namespace s2s {
 struct field_lookup_failed {};
 
 // Primary template declaration for field_lookup
-template <typename field_list, fixed_string id>
+template <typename L, fixed_string id>
 struct field_lookup;
 
 // Success case 1: Match a field with the given id
@@ -1280,7 +1273,7 @@ template <fixed_string id,
           auto constraint, 
           typename... rest>
 struct field_lookup<
-    field_list<field<id, T, size_type, constraint>, rest...>, id
+    typelist::list<field<id, T, size_type, constraint>, rest...>, id
   >
 {
   using type = field<id, T, size_type, constraint>;
@@ -1295,7 +1288,7 @@ template <fixed_string id,
           typename optional,
           typename... rest>
 struct field_lookup<
-    field_list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>, id
+    typelist::list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>, id
   > 
 {
   using type = 
@@ -1316,7 +1309,7 @@ template <fixed_string id,
           typename field_choices_t,
           typename... rest>
 struct field_lookup<
-    field_list<union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>, rest...>, id
+    typelist::list<union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>, rest...>, id
   >
 {
   using type = union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>;
@@ -1324,19 +1317,19 @@ struct field_lookup<
 
 // Recursive case: id does not match the head, continue searching in the rest
 template <typename head, typename... rest, fixed_string id>
-struct field_lookup<field_list<head, rest...>, id> {
-  using type = typename field_lookup<field_list<rest...>, id>::type;
+struct field_lookup<typelist::list<head, rest...>, id> {
+  using type = typename field_lookup<typelist::list<rest...>, id>::type;
 };
 
 // Failure case: Reached the end of the field list without finding a match
 template <fixed_string id>
-struct field_lookup<field_list<>, id> {
+struct field_lookup<typelist::list<>, id> {
   using type = field_lookup_failed;
 };
 
 // Alias for easier use
-template <typename field_list_t, fixed_string id>
-using field_lookup_v = typename field_lookup<field_list_t, id>::type;
+template <typename L, fixed_string id>
+using field_lookup_v = typename field_lookup<L, id>::type;
 } /* namespace s2s */
 
 #endif // _FIELD_LIST_METAFUNCTIONS_HPP_
@@ -1346,6 +1339,7 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 // Begin /home/hari/repos/struct_cast/include/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
+ 
  
  
  
@@ -1374,7 +1368,91 @@ inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_id
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
-// todo: impl size resolution size_indices_resolved_v<field_list<fields...>>
+ 
+// template <typename flist, typename glist>
+// struct size_indices_resolved;
+//  
+// // if the second list is empty, we have processed all the fields without short circuiting
+// // so we can treat that we have checked all the fields and all checks have passed
+// template <typename... xs>
+// struct size_indices_resolved<
+//   field_list<xs...>, 
+//   field_list<>> {
+//   static constexpr bool is_resolved = true;
+// };
+//  
+// template <fixed_string id, typename T, typename size, auto constraint, typename... rest>
+// struct size_indices_resolved<
+//   field_list<>, 
+//   field_list<field<id, T, size, constraint>, rest...>> {
+//   static constexpr bool is_resolved = 
+//     true && 
+//     size_indices_resolved<
+//       field_list<field<id, T, field_size<size>, constraint>>, 
+//       field_list<rest...>
+//     >::is_resolved;
+// };
+
+// // a struct nested inside a struct shall not have a size dependant on another field, so we can skip
+// template <fixed_string id, typename T, typename... head, typename... rest>
+// struct size_indices_resolved<
+//   field_list<head...>, 
+//   field_list<struct_field<id, T>, rest...>> {
+//   static constexpr bool is_resolved = 
+//     true &&
+//     size_indices_resolved<
+//       field_list<head..., struct_field<id, T>>, 
+//       field_list<rest...>
+//     >::is_resolved;
+// };
+ 
+// // if the first field has the size dependant on a field, then its size cannot be deduced
+// template <fixed_string id, typename T, fixed_string size_source, auto constraint, typename... rest>
+// struct size_indices_resolved<
+//   field_list<>, 
+//   field_list<field<id, T, field_size<size_source>, constraint>, rest...>> {
+//   field_list<runtime_field<id, T, runtime_size<from_field<size_source>>, constraint>, rest...>> {
+//   static constexpr bool is_resolved = false;
+// };
+//  
+// template <fixed_string id, typename T, std::size_t size, auto constraint, 
+//           typename x, typename... xs, typename... rest>
+// struct size_indices_resolved<
+//   field_list<x, xs...>, 
+//   field_list<field<id, T, field_size<size>, constraint>, rest...>> {
+//   static constexpr bool is_resolved =
+//     true &&
+//     size_indices_resolved<
+//       field_list<x, xs..., field<id, T, field_size<size>, constraint>>, 
+//       field_list<rest...>
+//     >::is_resolved;
+// };
+//  
+// template <fixed_string id, typename T, fixed_string size_source, auto constraint, 
+//           typename x, typename... xs, typename... rest>
+// struct size_indices_resolved<
+//   field_list<x, xs...>, 
+//   field_list<field<id, T, field_size<size_source>, constraint>, rest...>> {
+//   field_list<runtime_field<id, T, runtime_size<from_field<size_source>>, constraint>, rest...>> {
+//  
+//   using f = field_lookup_v<field_list<x, xs...>, size_source>;
+//   static constexpr bool is_resolved =
+//     !std::is_same_v<f, field_lookup_failed> &&
+//     // std::is_same_v<typename f::field_type, std::size_t> &&
+//     // todo ensure that the field type is integral
+//     // std::is_same_v<extract_type_from_field_v<f>, std::size_t> &&
+//     size_indices_resolved<
+//       field_list<x, xs..., field<id, T, field_size<size_source>, constraint>>, 
+//       field_list<x, xs..., field<id, T, runtime_size<from_field<size_source>>, constraint>>, 
+//       field_list<rest...>
+//     >::is_resolved;
+// };
+//  
+// template <typename list>
+// inline constexpr bool size_indices_resolved_v = size_indices_resolved<typelist::list<>, list>::is_resolved;
+//
+
+// todo: impl size resolution size_indices_resolved_v<typelist::list<fields...>>
 // todo: impl dependencies resolution
 template <typename... fields>
   requires all_field_like<fields...> &&
@@ -1382,14 +1460,14 @@ template <typename... fields>
 struct struct_field_list : struct_field_list_base, fields... {
   struct_field_list() = default;
   template <typename field_accessor, 
-            typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
+            typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
   constexpr auto& operator[](field_accessor)  {
     return static_cast<field&>(*this).value;
   }
 
   template <typename field_accessor,
-            typename field = field_lookup_v<field_list<fields...>, field_accessor::field_id>>
+            typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)
   constexpr const auto& operator[](field_accessor) const {
     return static_cast<const field&>(*this).value;
@@ -1649,17 +1727,28 @@ using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
 
+
 #include <expected>
+#include <string>
+
 
 namespace s2s {
-enum cast_error {
+enum error_reason {
   buffer_exhaustion,
   validation_failure,
   type_deduction_failure
 };
 
 
-using read_result = std::expected<void, cast_error>;
+struct cast_error {
+  error_reason failure_reason;
+  std::string failed_at;
+};
+
+
+using rw_result = std::expected<void, error_reason>;
+using cast_result = std::expected<void, cast_error>;
+
 } /* namespace s2s */
 
 #endif // _CAST_ERROR_HPP_
@@ -1919,9 +2008,9 @@ struct type_ladder_impl;
 template <std::size_t idx>
 struct type_ladder_impl<idx> {
   constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
-    return std::unexpected(cast_error::type_deduction_failure);
+    return std::unexpected(error_reason::type_deduction_failure);
   }
 };
 
@@ -1930,7 +2019,7 @@ template <std::size_t idx, typename clause_head, typename... clause_rest>
 struct type_ladder_impl<idx, clause_head, clause_rest...> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list<fields...>& field_list) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     bool eval_result = clause_head::e(field_list);
     if(eval_result) return idx;
@@ -1946,7 +2035,7 @@ struct type_ladder<clause_head, clause_rest...> {
 
   template <typename... fields>
   constexpr auto operator()(const struct_field_list<fields...>& field_list) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }
@@ -1972,9 +2061,9 @@ struct type_switch_impl;
 template <std::size_t idx>
 struct type_switch_impl<idx> {
   constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
-    return std::unexpected(cast_error::type_deduction_failure);
+    return std::unexpected(error_reason::type_deduction_failure);
   }
 };
 
@@ -1982,7 +2071,7 @@ struct type_switch_impl<idx> {
 template <std::size_t idx, match_case_like match_case_head, match_case_like... match_case_rest>
 struct type_switch_impl<idx, match_case_head, match_case_rest...> {
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     if(v == match_case_head::value) return idx;
     else return type_switch_impl<idx + 1, match_case_rest...>{}(v);
@@ -2001,7 +2090,7 @@ struct type_switch {
 
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 
@@ -2066,7 +2155,7 @@ struct type<eval_expression, tswitch> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, cast_error> const {
+    -> std::expected<std::size_t, error_reason> const {
     return type_switch{}(eval_expression{}(sfl)); 
   }
 };
@@ -2079,7 +2168,7 @@ struct type<match_field<id>, tswitch> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, cast_error> const {
+    -> std::expected<std::size_t, error_reason> const {
     return type_switch{}(sfl[field_accessor<id>{}]); 
   }
 };
@@ -2093,7 +2182,7 @@ struct type<tladder> {
 
   template <typename... fields>
   auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, cast_error> const {
+    -> std::expected<std::size_t, error_reason> const {
     return type_ladder{}(sfl);
   }
 };
@@ -2213,9 +2302,6 @@ constexpr cast_endianness deduce_byte_order() {
     return cast_endianness::foreign;
 }
 
-using rw_result = std::expected<void, cast_error>;
-
-
 template <input_stream_like stream>
 class input_stream {
 private:
@@ -2224,7 +2310,7 @@ private:
   template <typename T>
   constexpr auto read_native_impl(T& obj, std::size_t size_to_read) -> rw_result {
     if(!s.read(byte_addressof(obj), size_to_read)) {
-      return std::unexpected(cast_error::buffer_exhaustion);
+      return std::unexpected(error_reason::buffer_exhaustion);
     }
     return {};
   }
@@ -2294,7 +2380,7 @@ public:
     // eof = buffer_exhaustion
     // bad | fail = io_error
     if(!s.write(src_mem, size_to_read))
-      return std::unexpected(cast_error::buffer_exhaustion);
+      return std::unexpected(error_reason::buffer_exhaustion);
     return {};
   }
 };
@@ -2350,7 +2436,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list) {}
   
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
     return s.template read<endianness>(field.value, size_to_read);
@@ -2368,7 +2454,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return s.template read<endianness>(field.value, len_to_read);
@@ -2424,7 +2510,7 @@ struct read_buffer_of_records {
     : field(field), field_list(field_list), len_to_read(len_to_read) {}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
@@ -2447,7 +2533,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using array_type = typename T::field_type;
     using array_element_field = create_field_from_array_of_records_v<T>;
     using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
@@ -2469,7 +2555,7 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     using field_size = typename T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
@@ -2496,11 +2582,13 @@ struct read_field<T, F> {
     : field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> read_result {
+  constexpr auto read(stream& s) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
     auto res = struct_cast<stream, field_list_t, endianness>(s);
-    if(!res)
-      return std::unexpected(res.error());
+    if(!res) {
+      auto err = res.error();
+      return std::unexpected(err.failure_reason);
+    }
     // todo move?
     field.value = *res;
     return {};
@@ -2518,7 +2606,7 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
   
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
+  constexpr auto read(stream& s) -> rw_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;
       return {};
@@ -2550,7 +2638,7 @@ struct read_variant_impl {
       variant(variant), field_list(field_list), idx_r(idx_r) {}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
+  constexpr auto read(stream& s) -> rw_result {
     if (idx_r != idx) 
       return {};
 
@@ -2564,6 +2652,10 @@ struct read_variant_impl {
   }
 };
 
+auto operator|(const rw_result& res, auto&& callable) -> rw_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
 
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
@@ -2578,8 +2670,8 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
     : field(field), field_list(field_list), idx_r(idx_r) {}
   
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
-    read_result pipeline_seed{};
+  constexpr auto read(stream& s) -> rw_result {
+    rw_result pipeline_seed{};
     return (
       pipeline_seed |
       ... | 
@@ -2602,7 +2694,7 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
 
   template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> read_result {
+  constexpr auto read(stream& s) -> rw_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
@@ -2633,24 +2725,11 @@ struct read_field<T, F> {
 
 // End /home/hari/repos/struct_cast/include/field_reader.hpp
 
-// Begin /home/hari/repos/struct_cast/include/cast_impl.hpp
-#ifndef _CAST_IMPL_HPP_
-#define _CAST_IMPL_HPP_
-
-
-#include <expected>
- 
- 
- 
- 
+// Begin /home/hari/repos/struct_cast/include/field_value_constraints_traits.hpp
+#ifndef _FIELD_VALE_CONSTRAINT_TRAITS_HPP_
+#define _FIELD_VALE_CONSTRAINT_TRAITS_HPP_
  
 namespace s2s {
-
-auto operator|(const read_result& res, auto&& callable) -> read_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
 template <typename T>
 struct is_no_constraint;
 
@@ -2666,7 +2745,31 @@ struct is_no_constraint {
 
 template <typename T>
 inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
+}
 
+
+#endif /* _FIELD_VALE_CONSTRAINT_TRAITS_HPP_ */
+
+// End /home/hari/repos/struct_cast/include/field_value_constraints_traits.hpp
+
+// Begin /home/hari/repos/struct_cast/include/cast_impl.hpp
+#ifndef _CAST_IMPL_HPP_
+#define _CAST_IMPL_HPP_
+
+
+#include <expected>
+ 
+ 
+ 
+ 
+ 
+ 
+namespace s2s {
+
+auto operator|(const cast_result& res, auto&& callable) -> cast_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
 
 // forward declaration
 template <s2s_input_stream_like stream, field_list_like T, auto endianness>
@@ -2682,23 +2785,31 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
 
   constexpr auto operator()(stream& s) -> R {
     S field_list;
-    read_result pipeline_seed{};
+    cast_result pipeline_seed{};
     auto res = (
       pipeline_seed |
       ... |
-      [&]() -> read_result {
+      [&]() -> cast_result {
         auto& field = static_cast<fields&>(field_list);
         auto reader = read_field<fields, S>(field, field_list);
         auto read_res = reader.template read<endianness>(s);
         // Short circuit the remaining pipeline since read failed for current field
-        if(!read_res) 
-          return read_res;
+        if(!read_res) {
+          auto field_name = std::string{fields::field_id.data()};
+          auto err = read_res.error();
+          auto validation_err = cast_error{err, field_name};
+          return std::unexpected(validation_err);
+        }
         // Try validating with the constraint
         // todo enable check only if constraint is present, to avoid runtime costs?
         // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
           bool field_validation_res = fields::constraint_checker(field.value);
-          if(!field_validation_res)
-            return std::unexpected(cast_error::validation_failure);
+          if(!field_validation_res) {
+            auto field_name = std::string{fields::field_id.data()};
+            auto err = error_reason::validation_failure;
+            auto validation_err = cast_error{err, field_name};
+            return std::unexpected(validation_err);
+          }
         // }
         // Both reading and validating went well
         return {};

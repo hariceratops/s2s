@@ -14,9 +14,9 @@ struct type_switch_impl;
 template <std::size_t idx>
 struct type_switch_impl<idx> {
   constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
-    return std::unexpected(cast_error::type_deduction_failure);
+    return std::unexpected(error_reason::type_deduction_failure);
   }
 };
 
@@ -24,7 +24,7 @@ struct type_switch_impl<idx> {
 template <std::size_t idx, match_case_like match_case_head, match_case_like... match_case_rest>
 struct type_switch_impl<idx, match_case_head, match_case_rest...> {
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     if(v == match_case_head::value) return idx;
     else return type_switch_impl<idx + 1, match_case_rest...>{}(v);
@@ -43,7 +43,7 @@ struct type_switch {
 
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 

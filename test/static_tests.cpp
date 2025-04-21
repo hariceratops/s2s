@@ -84,4 +84,74 @@ std::is_same_v<extract_type_from_field_v<
   struct_field<"d", struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>>, 
   struct_field_list<field<"x", int, 4>, field<"y", int, 4>>>
 );
+
+// todo static tests
+//// namespace static_test {
+//   // implicit conversion produces false positive in second static_assert, 
+//   // must be checked with std::is_same_v additionally
+//   // auto constexpr unit = [](int a)-> int { return a * 1; };
+//   // static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
+//   // static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
+//   // static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);
+//
+//   auto unit = [](auto a){ return a * 1; };
+//   auto is_a_eq_1 = [](auto a){ return a == 1; };
+//   using test_s2s::struct_field_list = 
+//     s2s::struct_field_list<
+//       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+//       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+//     >;
+//   static_assert(is_invocable<is_a_eq_1, bool, test_s2s::struct_field_list, s2s::with_fields<"a">>::res);
+//   static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_s2s::struct_field_list, s2s::with_fields<"a">>);
+//   // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_s2s::struct_field_list, s2s::with_fields<"a">>);
+//   static_assert(is_invocable<unit, bool, test_s2s::struct_field_list, s2s::with_fields<"a">>::res);
+// }
+  // using inner =  
+  //   struct_field<
+  //       "c", 
+  //       s2s::struct_field_list<
+  //         s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
+  //         s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+  //       >
+  //     >;
+  // static_assert(struct_field_like<inner>);
+  // static_assert(variable_sized_field_like<inner>);
+  // static_assert(s2s::fixed_sized_field_like<inner>);
+// using temp = 
+//   s2s::struct_field_list<
+//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
+//     s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>
+//   >;
+// will fail
+// using non_unique_temp = 
+//   s2s::struct_field_list<
+//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
+//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>
+//   >;
+// using u32 = unsigned int;
+// static_assert(array_of_records_like<std::array<temp, 10>>);
+// static_assert(vector_of_records_like<std::vector<temp>>);
+// static_assert(!field_containable<std::array<temp, 10>>);
+// will fail since type choices are not unique
+// using test_s2s::struct_field_list = 
+//     s2s::struct_field_list<
+//       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+//       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+//       union_field<
+//         "c", 
+//         type<
+//           match_field<"a">,
+//           type_switch<
+//             match_case<0xcafed00d, type_tag<float, s2s::field_size<s2s::fixed<4>>>>,
+//             match_case<0xdeadbeef, type_tag<int, s2s::field_size<s2s::fixed<4>>>>,
+//             match_case<0xbeefbeef, type_tag<int, s2s::field_size<s2s::fixed<4>>>>
+//           >
+//         >
+//       >
+//     >;
+//
+// will fail!
+// using size_failure_s2s::basic_field = s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<6>>>;
+
+
 }

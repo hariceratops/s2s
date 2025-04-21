@@ -17,9 +17,9 @@ struct type_ladder_impl;
 template <std::size_t idx>
 struct type_ladder_impl<idx> {
   constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
-    return std::unexpected(cast_error::type_deduction_failure);
+    return std::unexpected(error_reason::type_deduction_failure);
   }
 };
 
@@ -28,7 +28,7 @@ template <std::size_t idx, typename clause_head, typename... clause_rest>
 struct type_ladder_impl<idx, clause_head, clause_rest...> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list<fields...>& field_list) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     bool eval_result = clause_head::e(field_list);
     if(eval_result) return idx;
@@ -44,7 +44,7 @@ struct type_ladder<clause_head, clause_rest...> {
 
   template <typename... fields>
   constexpr auto operator()(const struct_field_list<fields...>& field_list) const -> 
-    std::expected<std::size_t, cast_error> 
+    std::expected<std::size_t, error_reason> 
   {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }

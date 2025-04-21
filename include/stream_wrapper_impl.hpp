@@ -25,9 +25,6 @@ constexpr cast_endianness deduce_byte_order() {
     return cast_endianness::foreign;
 }
 
-using rw_result = std::expected<void, cast_error>;
-
-
 template <input_stream_like stream>
 class input_stream {
 private:
@@ -36,7 +33,7 @@ private:
   template <typename T>
   constexpr auto read_native_impl(T& obj, std::size_t size_to_read) -> rw_result {
     if(!s.read(byte_addressof(obj), size_to_read)) {
-      return std::unexpected(cast_error::buffer_exhaustion);
+      return std::unexpected(error_reason::buffer_exhaustion);
     }
     return {};
   }
@@ -106,7 +103,7 @@ public:
     // eof = buffer_exhaustion
     // bad | fail = io_error
     if(!s.write(src_mem, size_to_read))
-      return std::unexpected(cast_error::buffer_exhaustion);
+      return std::unexpected(error_reason::buffer_exhaustion);
     return {};
   }
 };

@@ -33,74 +33,6 @@ using namespace s2s_literals;
   } while(0)
 
 
-// todo static tests
-//// namespace static_test {
-//   // implicit conversion produces false positive in second static_assert, 
-//   // must be checked with std::is_same_v additionally
-//   // auto constexpr unit = [](int a)-> int { return a * 1; };
-//   // static_assert(std::is_invocable_r_v<int, decltype(unit), int>);
-//   // static_assert(std::is_invocable_r_v<float, decltype(unit), int>);
-//   // static_assert(std::is_invocable_r_v<char*, decltype(unit), int>);
-//
-//   auto unit = [](auto a){ return a * 1; };
-//   auto is_a_eq_1 = [](auto a){ return a == 1; };
-//   using test_s2s::struct_field_list = 
-//     s2s::struct_field_list<
-//       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-//       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
-//     >;
-//   static_assert(is_invocable<is_a_eq_1, bool, test_s2s::struct_field_list, s2s::with_fields<"a">>::res);
-//   static_assert(can_eval_R_from_fields<is_a_eq_1, int, test_s2s::struct_field_list, s2s::with_fields<"a">>);
-//   // static_assert(can_eval_R_from_fields<is_a_eq_1, char*, test_s2s::struct_field_list, s2s::with_fields<"a">>);
-//   static_assert(is_invocable<unit, bool, test_s2s::struct_field_list, s2s::with_fields<"a">>::res);
-// }
-  // using inner =  
-  //   struct_field<
-  //       "c", 
-  //       s2s::struct_field_list<
-  //         s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-  //         s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
-  //       >
-  //     >;
-  // static_assert(struct_field_like<inner>);
-  // static_assert(variable_sized_field_like<inner>);
-  // static_assert(s2s::fixed_sized_field_like<inner>);
-// using temp = 
-//   s2s::struct_field_list<
-//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
-//     s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>
-//   >;
-// will fail
-// using non_unique_temp = 
-//   s2s::struct_field_list<
-//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
-//     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>
-//   >;
-// using u32 = unsigned int;
-// static_assert(array_of_records_like<std::array<temp, 10>>);
-// static_assert(vector_of_records_like<std::vector<temp>>);
-// static_assert(!field_containable<std::array<temp, 10>>);
-// will fail since type choices are not unique
-// using test_s2s::struct_field_list = 
-//     s2s::struct_field_list<
-//       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-//       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-//       union_field<
-//         "c", 
-//         type<
-//           match_field<"a">,
-//           type_switch<
-//             match_case<0xcafed00d, type_tag<float, s2s::field_size<s2s::fixed<4>>>>,
-//             match_case<0xdeadbeef, type_tag<int, s2s::field_size<s2s::fixed<4>>>>,
-//             match_case<0xbeefbeef, type_tag<int, s2s::field_size<s2s::fixed<4>>>>
-//           >
-//         >
-//       >
-//     >;
-//
-// will fail!
-// using size_failure_s2s::basic_field = s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<6>>>;
-
 // Helper types
 using i32 = int;
 using u32 = unsigned int;
@@ -217,7 +149,9 @@ TEST_CASE("Test reading a meta_struct from a binary file but validation of field
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == s2s::cast_error::validation_failure);
+    auto err = result.error();
+    REQUIRE(err.failure_reason == s2s::error_reason::validation_failure);
+    REQUIRE(err.failed_at == "b");
   });
 }
 
@@ -237,7 +171,9 @@ TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") 
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == s2s::cast_error::buffer_exhaustion);
+    auto err = result.error();
+    REQUIRE(err.failure_reason == s2s::error_reason::buffer_exhaustion);
+    REQUIRE(err.failed_at == "b");
   });
 }
 
@@ -466,7 +402,9 @@ TEST_CASE("Test failing magic string read") {
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(!result.has_value());
-    REQUIRE(result.error() == s2s::cast_error::validation_failure);
+    auto err = result.error();
+    REQUIRE(err.failure_reason == s2s::error_reason::validation_failure);
+    REQUIRE(err.failed_at == "magic_str");
   });
 }
 
@@ -1077,7 +1015,9 @@ TEST_CASE("Test case to verify failed parsing variant field") {
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == s2s::cast_error::type_deduction_failure);
+    auto err = result.error();
+    REQUIRE(err.failure_reason == s2s::error_reason::type_deduction_failure);
+    REQUIRE(err.failed_at == "c");
   });
 }
 
@@ -1484,7 +1424,9 @@ TEST_CASE("Test case to verify failed variant field parsing from a binary file w
 
   FIELD_LIST_LE_READ_CHECK({
     REQUIRE(result.has_value() == false);
-    REQUIRE(result.error() == s2s::cast_error::type_deduction_failure);
+    auto err = result.error();
+    REQUIRE(err.failure_reason == s2s::error_reason::type_deduction_failure);
+    REQUIRE(err.failed_at == "c");
   });
 }
 

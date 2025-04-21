@@ -7,12 +7,10 @@
 #include <cassert>
 #include <cstdio>
 #include <type_traits>
+#include "typelist.hpp"
 #include "fixed_string.hpp"
 #include "s2s_type_traits.hpp"
-#include "typelist.hpp"
 
-
-namespace tl = s2s::typelist;
 
 namespace s2s {
 // Concept for strict callable
@@ -98,7 +96,7 @@ struct no_constraint {
 };
 
 template <typename T, typename... Ts>
-  requires (tl::all_are_same_v<tl::typelist<T, Ts...>>)
+  requires (typelist::all_are_same_v<typelist::list<T, Ts...>>)
 struct any_of {
   std::array<T, 1 + sizeof...(Ts)> possible_values;
 
@@ -128,7 +126,7 @@ range(T, T) -> range<T>;
 
 // Struct to check if a value is in any of the open intervals
 template <typename t, typename... ts>
-  requires (tl::all_are_same_v<tl::typelist<ts...>>)
+  requires (typelist::all_are_same_v<typelist::list<ts...>>)
 struct is_in_open_range {
   std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
 
