@@ -1,6 +1,9 @@
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
 
+
+#include "fixed_string.hpp"
+#include "field_list_base.hpp"
 #include "field_traits.hpp"
 #include "field_list_metafunctions.hpp"
 

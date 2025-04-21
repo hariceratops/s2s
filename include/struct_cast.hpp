@@ -8,6 +8,7 @@
 #include "computation_from_fields.hpp"
 #include "cast_error.hpp"
 #include "field_descriptors.hpp"
+#include "type_deduction.hpp"
 #include "cast_impl.hpp"
 
 #endif // STRUCT_CAST_HPP

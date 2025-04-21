@@ -10,11 +10,6 @@
 
 
 namespace s2s {
-template <typename... clauses>
-struct clauses_to_typelist {
-  using tlist = typelist::typelist<typename clauses::type_tag...>;
-};
-
 struct no_type_deduction {};
 
 template <typename T>

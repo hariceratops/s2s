@@ -2,10 +2,13 @@
 #define _FIELD_HPP_
 
 
+#include <type_traits>
+#include <variant>
+#include <optional>
+#include "fixed_string.hpp"
 #include "field_size.hpp"
 #include "field_value_constraints.hpp"
-#include "fixed_string.hpp"
-#include <type_traits>
+
 
 namespace s2s {
 template <fixed_string id,

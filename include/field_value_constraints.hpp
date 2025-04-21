@@ -7,8 +7,8 @@
 #include <cassert>
 #include <cstdio>
 #include <type_traits>
-#include "s2s_type_traits.hpp"
 #include "fixed_string.hpp"
+#include "s2s_type_traits.hpp"
 #include "typelist.hpp"
 
 

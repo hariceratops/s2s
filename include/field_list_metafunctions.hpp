@@ -12,7 +12,7 @@ namespace s2s {
 struct field_lookup_failed {};
 
 // Primary template declaration for field_lookup
-template <typename FieldList, fixed_string Id>
+template <typename field_list, fixed_string id>
 struct field_lookup;
 
 // Success case 1: Match a field with the given id

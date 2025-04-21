@@ -105,27 +105,6 @@ inline char* byte_addressof(std::string& obj) {
 
 // End /home/hari/repos/struct_cast/include/address_manip.hpp
 
-// Begin /home/hari/repos/struct_cast/include/cast_error.hpp
-#ifndef _CAST_ERROR_HPP_
-#define _CAST_ERROR_HPP_
-
-#include <expected>
-
-namespace s2s {
-enum cast_error {
-  buffer_exhaustion,
-  validation_failure,
-  type_deduction_failure
-};
-
-
-using read_result = std::expected<void, cast_error>;
-} /* namespace s2s */
-
-#endif // _CAST_ERROR_HPP_
-
-// End /home/hari/repos/struct_cast/include/cast_error.hpp
-
 // Begin /home/hari/repos/struct_cast/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
@@ -498,6 +477,8 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
 
+#include <array>
+#include <string>
 #include <vector>
 #include <variant>
 #include <optional>
@@ -973,11 +954,14 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 // Begin /home/hari/repos/struct_cast/include/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
- 
- 
- 
-#include <type_traits>
 
+
+#include <type_traits>
+#include <variant>
+#include <optional>
+ 
+ 
+ 
 namespace s2s {
 template <fixed_string id,
           typename T,
@@ -1286,7 +1270,7 @@ namespace s2s {
 struct field_lookup_failed {};
 
 // Primary template declaration for field_lookup
-template <typename FieldList, fixed_string Id>
+template <typename field_list, fixed_string id>
 struct field_lookup;
 
 // Success case 1: Match a field with the given id
@@ -1362,6 +1346,8 @@ using field_lookup_v = typename field_lookup<field_list_t, id>::type;
 // Begin /home/hari/repos/struct_cast/include/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
+ 
+ 
  
  
 namespace s2s {
@@ -1548,9 +1534,7 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
  
  
  
-#include <utility>
-
-
+ 
 namespace s2s {
 template <typename T>
 struct deduce_field_size;
@@ -1564,9 +1548,6 @@ struct deduce_field_size<field_size<fixed<N>>> {
   }
 };
 
-// Can work with from_field since from_field is an alias for runtime_size with single field dependency
-// template <fixed_string id>
-// using from_field = runtime_size<field_accessor<id>>;
 template <fixed_string id>
 struct deduce_field_size<field_size<field_accessor<id>>> {
   using field_size_type = field_accessor<id>;
@@ -1585,49 +1566,105 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
     return field_size_type{}(struct_fields);
   }
 };
-
-// todo: decide on upcounting vs downcounting for this mess
-template <std::size_t size_idx, typename... sizes>
-struct deduce_field_size_switch;
-
-template <std::size_t size_idx>
-struct deduce_field_size_switch<size_idx, field_size<size_choices<>>> {
-  template <typename... fields>
-  constexpr auto operator()(std::size_t, const struct_field_list<fields...>&) -> std::size_t {
-    std::unreachable();
-  }
-};
-
-template <std::size_t size_idx, typename head, typename... tail>
-struct deduce_field_size_switch<size_idx, field_size<size_choices<head, tail...>>> {
-  template <typename... fields>
-  constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    if(size_idx_r == size_idx) {
-      if constexpr(fixed_size_like<head>) return deduce_field_size<head>{}();
-      else return deduce_field_size<head>{}(struct_fields);
-    } else {
-      return deduce_field_size_switch<size_idx + 1, field_size<size_choices<tail...>>>{}(size_idx_r, struct_fields);
-    } 
-  }
-};
-
-// todo meta function for size_choice count
-// template <atomic_size... sizes>
-template <typename... sizes>
-struct deduce_field_size<field_size<size_choices<sizes...>>> {
-  constexpr static auto num_of_choices = sizeof...(sizes);
-
-  template <typename... fields>
-  constexpr auto operator()(std::size_t size_idx_r, const struct_field_list<fields...>& struct_fields) -> std::size_t {
-    return deduce_field_size_switch<0, field_size<size_choices<sizes...>>>{}(size_idx_r, struct_fields);
-  }
-};
 } /* namespace s2s */
 
 
 #endif // _FIELD_SIZE_DEDUCE_HPP_
 
 // End /home/hari/repos/struct_cast/include/field_size_deduce.hpp
+
+// Begin /home/hari/repos/struct_cast/include/field_descriptors.hpp
+#ifndef _FIELD_DESCRIPTORS_HPP_
+#define _FIELD_DESCRIPTORS_HPP_
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+namespace s2s {
+struct always_true {
+  constexpr auto operator()() -> bool {
+    return true;
+  }
+};
+
+using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
+
+// todo better naming for this concept
+template <typename size, typename field_type>
+concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
+
+template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
+  requires field_fits_to_underlying_type<size_type, T>
+using basic_field = field<id, T, size_type, constraint_on_value>;
+
+template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
+using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+
+template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
+using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
+
+template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
+using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
+
+template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<T[N]>{}>
+using c_arr_field = field<id, T[N], field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+
+template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<char[N + 1]>{}>
+using c_str_field = field<id, char[N + 1], field_size<fixed<N * sizeof(char) + 1>>, constraint_on_value>;
+
+template <fixed_string id, std::size_t N, auto expected>
+using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixed<N>>, eq{expected}>;
+
+template <fixed_string id, fixed_string expected>
+using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
+
+template <fixed_string id, integral T, fixed_size_like size, auto expected>
+using magic_number = field<id, T, size, eq{expected}>;
+
+// todo get vector length in bytes instead of size to read additional overload
+// todo how user can provide user defined vector impl or allocator
+template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
+
+template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
+
+// todo check if this will work for all char types like wstring
+template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
+using str_field = field<id, std::string, size, constraint_on_value>;
+
+template <fixed_string id, field_list_like T>
+using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+} /* namespace s2s */
+
+#endif /* _FIELD_DESCRIPTORS_HPP_ */
+
+// End /home/hari/repos/struct_cast/include/field_descriptors.hpp
+
+// Begin /home/hari/repos/struct_cast/include/cast_error.hpp
+#ifndef _CAST_ERROR_HPP_
+#define _CAST_ERROR_HPP_
+
+#include <expected>
+
+namespace s2s {
+enum cast_error {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure
+};
+
+
+using read_result = std::expected<void, cast_error>;
+} /* namespace s2s */
+
+#endif // _CAST_ERROR_HPP_
+
+// End /home/hari/repos/struct_cast/include/cast_error.hpp
 
 // Begin /home/hari/repos/struct_cast/include/type_deduction_tags.hpp
 #ifndef _TYPE_DEDUCTION_TAGS_
@@ -1987,11 +2024,6 @@ struct type_switch {
  
  
 namespace s2s {
-template <typename... clauses>
-struct clauses_to_typelist {
-  using tlist = typelist::typelist<typename clauses::type_tag...>;
-};
-
 struct no_type_deduction {};
 
 template <typename T>
@@ -2071,76 +2103,6 @@ struct type<tladder> {
 #endif // _TYPE_DEDUCTION_HPP_
 
 // End /home/hari/repos/struct_cast/include/type_deduction.hpp
-
-// Begin /home/hari/repos/struct_cast/include/field_descriptors.hpp
-#ifndef _FIELD_DESCRIPTORS_HPP_
-#define _FIELD_DESCRIPTORS_HPP_
- 
- 
- 
- 
- 
- 
-namespace s2s {
-struct always_true {
-  constexpr auto operator()() -> bool {
-    return true;
-  }
-};
-
-using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
-
-// todo better naming for this concept
-template <typename size, typename field_type>
-concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
-
-template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
-  requires field_fits_to_underlying_type<size_type, T>
-using basic_field = field<id, T, size_type, constraint_on_value>;
-
-template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
-
-template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
-
-template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
-using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
-
-template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<T[N]>{}>
-using c_arr_field = field<id, T[N], field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
-
-template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<char[N + 1]>{}>
-using c_str_field = field<id, char[N + 1], field_size<fixed<N * sizeof(char) + 1>>, constraint_on_value>;
-
-template <fixed_string id, std::size_t N, auto expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixed<N>>, eq{expected}>;
-
-template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
-
-template <fixed_string id, integral T, fixed_size_like size, auto expected>
-using magic_number = field<id, T, size, eq{expected}>;
-
-// todo get vector length in bytes instead of size to read additional overload
-// todo how user can provide user defined vector impl or allocator
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
-using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
-
-template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
-using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
-
-// todo check if this will work for all char types like wstring
-template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
-using str_field = field<id, std::string, size, constraint_on_value>;
-
-template <fixed_string id, field_list_like T>
-using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
-} /* namespace s2s */
-
-#endif /* _FIELD_DESCRIPTORS_HPP_ */
-
-// End /home/hari/repos/struct_cast/include/field_descriptors.hpp
 
 // Begin /home/hari/repos/struct_cast/include/field_metafunctions.hpp
 #ifndef _FIELD_METAFUNCTIONS_HPP_
@@ -2681,6 +2643,7 @@ struct read_field<T, F> {
  
  
  
+ 
 namespace s2s {
 
 auto operator|(const read_result& res, auto&& callable) -> read_result
@@ -2772,6 +2735,7 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
 // Begin /home/hari/repos/struct_cast/include/struct_cast.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
+ 
  
  
  

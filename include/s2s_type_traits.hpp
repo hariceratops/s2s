@@ -1,6 +1,8 @@
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
 
+#include <array>
+#include <string>
 #include <vector>
 #include <variant>
 #include <optional>
