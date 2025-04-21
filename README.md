@@ -27,15 +27,12 @@ folder can be used for direct inclusion into a project
 * Pluggable interfaces working with custom streams
 
 ## Requirements
-struct_cast has a constraint on minimum version of the std to be C++23 with 
-support for std::expected, std::byteswap. As of current implementation, 
-unfortunately MSVC lacks support for std::endian and std::byteswap, 
-hence struct_cast fails to compile, which leads to work-in-progress
-for rolling them out
+struct_cast currently has a constraint on minimum version of the std to be C++23
 
 The compiler version requirements are 
 * gcc 13.1 : x86-64, arm, arm64 gcc 13.1
 * clang 19.1.0 : x86-64, armv8-a
+* msvc v19.39, VS 17.9 : x64, x86, arm64
 
 
 ## Taste of the API
@@ -43,22 +40,29 @@ Link to Godbolt: https://godbolt.org/z/cY3n1nW1E
 ```cpp
   #include "struct_cast.hpp"
   #include <print>
-  
+
   using namespace s2s_literals;
 
-  // Our "struct" has 2 members. A length field of size 8 and type
-  // std::size_t, and a length prefixed string whose length is 
-  // derived from the "len" field
-  using our_struct = 
-    s2s::struct_field_list<
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-      s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
-    >;
-  std::ifstream ifs("sample.bin", std::ios::in | std::ios::binary);
-  auto res = s2s::struct_cast_le<our_struct>(ifs);
-  if(res) {
-    auto fields = *res;
-    std::println("len={} str={}", fields["len"_f], fields["str"_f]);
+  auto main(void) -> int {
+    // Our "struct" has 2 members. A length field of size 8 and type
+    // std::size_t, and a length prefixed string whose length is 
+    // derived from the "len" field
+    using our_struct = 
+      s2s::struct_field_list<
+        s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+        s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+      >;
+    std::ifstream ifs("sample.bin", std::ios::in | std::ios::binary);
+    auto res = 
+      s2s::struct_cast_le<our_struct>(ifs)
+          .transform([](const our_struct& fields){
+            std::println("len={} str={}", fields["len"_f], fields["str"_f]);
+            return fields;
+          }).transform_error([](const s2s::cast_error& err){
+            std::println("failure_reason={} failed_at=", static_cast<int>(err.failure_reason), err.failed_at);
+            return err;
+          });
+    return 0;
   }
 ```
 
