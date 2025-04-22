@@ -122,6 +122,26 @@ template <typename T>
 concept is_size_like = fixed_size_like<T>    ||
                        variable_size_like<T> ||
                        selectable_size_like<T>;
+
+template <typename T>
+struct is_size_dont_care;
+
+template <>
+struct is_size_dont_care<field_size<size_dont_care>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_size_dont_care {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_size_dont_care_v = is_size_dont_care<T>::res;
+
+template <typename T>
+concept size_dont_care_like = is_size_dont_care_v<T>;
+
 } /* namespace s2s */
 
 
