@@ -1463,6 +1463,17 @@ struct size_indices_resolved<
     >::is_resolved;
 };
 
+
+template <typename field_list, typename field_id_list>
+struct bulk_look_up;
+
+template <typename... fields, fixed_string... field_names>
+struct bulk_look_up<typelist::list<fields...>, fixed_string_list<field_names...>> {
+  using field_list = typelist::list<fields...>;
+  static constexpr bool res = !typelist::any_of_v<typelist::list<field_lookup_v<field_list, field_names>...>, field_lookup_failed>;
+};
+
+
 template <fixed_string id, typename T, auto callable, field_name_list req_fields, auto constraint, 
           typename x, typename... xs, typename... rest>
 struct size_indices_resolved<
@@ -1472,7 +1483,7 @@ struct size_indices_resolved<
 {
   // todo enable actual checking such each req_field occurs left to current field
   static constexpr bool is_resolved =
-    true &&
+    bulk_look_up<typelist::list<x, xs...>, req_fields>::res &&
     size_indices_resolved<
       typelist::list<x, xs..., field<id, T, field_size<len_from_fields<callable, req_fields>>, constraint>>, 
       typelist::list<rest...>
