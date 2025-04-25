@@ -34,6 +34,9 @@ inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_id
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
+
+template <typename field_list, typename field_id_list>
+struct bulk_look_up;
  
 template <typename flist, typename glist>
 struct size_dependencies_resolved;
@@ -108,20 +111,10 @@ struct size_dependencies_resolved<
     >::is_resolved;
 };
 
-
-template <typename field_list, typename field_id_list>
-struct bulk_look_up;
-
 template <typename... fields, fixed_string... field_names>
 struct bulk_look_up<typelist::list<fields...>, fixed_string_list<field_names...>> {
   using field_list = typelist::list<fields...>;
   static constexpr bool res = !typelist::any_of_v<typelist::list<field_lookup_v<field_list, field_names>...>, field_lookup_failed>;
-};
-
-template <typename... fields, typename... field_needles>
-struct bulk_look_up<typelist::list<fields...>, field_choice_list<field_needles...>> {
-  using haystack = typelist::list<fields...>;
-  static constexpr bool res = (... && (size_dependencies_resolved<haystack, typelist::list<field_needles>>::is_resolved));
 };
 
 template <fixed_string id, typename T, auto callable, field_name_list req_fields, auto constraint, 
@@ -156,6 +149,12 @@ struct size_dependencies_resolved<
     >::is_resolved;
 };
 
+template <typename... fields, typename... field_needles>
+struct bulk_look_up<typelist::list<fields...>, field_choice_list<field_needles...>> {
+  using haystack = typelist::list<fields...>;
+  static constexpr bool res = (... && (size_dependencies_resolved<haystack, typelist::list<field_needles>>::is_resolved));
+};
+
 template <fixed_string id, typename type_deducer, typename type,
           auto constraint_on_value, typename variant, typename field_choices_t,
           typename size, typename... xs, typename... rest>
@@ -164,8 +163,6 @@ struct size_dependencies_resolved<
   typelist::list<union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choices_t>, rest...>
 > 
 {
-  // using dummy_field_list = typelist::list<field<id, dummy, choices, constraint_on_value>...>;
-  // todo check resolution for each size in the size_type
   static constexpr bool is_resolved =
     bulk_look_up<typelist::list<xs...>, field_choices_t>::res &&
     // true &&
@@ -179,7 +176,6 @@ template <typename list>
 inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<typelist::list<>, list>::is_resolved;
 
 
-// todo: impl dependencies resolution
 template <typename... fields>
   requires all_field_like<fields...> &&
            has_unique_field_ids_v<fields::field_id...> &&

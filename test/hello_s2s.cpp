@@ -20,7 +20,7 @@
             std::println("len={} str={}", fields["len"_f], fields["str"_f]);
             return fields;
           }).transform_error([](const s2s::cast_error& err){
-            std::println("failure_reason={} failed_at=", static_cast<int>(err.failure_reason), err.failed_at);
+            std::println("failure_reason={} failed_at={}", static_cast<int>(err.failure_reason), err.failed_at);
             return err;
           });
     return 0;

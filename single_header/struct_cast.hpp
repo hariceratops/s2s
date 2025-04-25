@@ -1389,6 +1389,9 @@ inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_id
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
+
+template <typename field_list, typename field_id_list>
+struct bulk_look_up;
  
 template <typename flist, typename glist>
 struct size_dependencies_resolved;
@@ -1463,20 +1466,10 @@ struct size_dependencies_resolved<
     >::is_resolved;
 };
 
-
-template <typename field_list, typename field_id_list>
-struct bulk_look_up;
-
 template <typename... fields, fixed_string... field_names>
 struct bulk_look_up<typelist::list<fields...>, fixed_string_list<field_names...>> {
   using field_list = typelist::list<fields...>;
   static constexpr bool res = !typelist::any_of_v<typelist::list<field_lookup_v<field_list, field_names>...>, field_lookup_failed>;
-};
-
-template <typename... fields, typename... field_needles>
-struct bulk_look_up<typelist::list<fields...>, field_choice_list<field_needles...>> {
-  using haystack = typelist::list<fields...>;
-  static constexpr bool res = (... && (size_dependencies_resolved<haystack, typelist::list<field_needles>>::is_resolved));
 };
 
 template <fixed_string id, typename T, auto callable, field_name_list req_fields, auto constraint, 
@@ -1511,6 +1504,12 @@ struct size_dependencies_resolved<
     >::is_resolved;
 };
 
+template <typename... fields, typename... field_needles>
+struct bulk_look_up<typelist::list<fields...>, field_choice_list<field_needles...>> {
+  using haystack = typelist::list<fields...>;
+  static constexpr bool res = (... && (size_dependencies_resolved<haystack, typelist::list<field_needles>>::is_resolved));
+};
+
 template <fixed_string id, typename type_deducer, typename type,
           auto constraint_on_value, typename variant, typename field_choices_t,
           typename size, typename... xs, typename... rest>
@@ -1519,8 +1518,6 @@ struct size_dependencies_resolved<
   typelist::list<union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choices_t>, rest...>
 > 
 {
-  // using dummy_field_list = typelist::list<field<id, dummy, choices, constraint_on_value>...>;
-  // todo check resolution for each size in the size_type
   static constexpr bool is_resolved =
     bulk_look_up<typelist::list<xs...>, field_choices_t>::res &&
     // true &&
@@ -1534,7 +1531,6 @@ template <typename list>
 inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<typelist::list<>, list>::is_resolved;
 
 
-// todo: impl dependencies resolution
 template <typename... fields>
   requires all_field_like<fields...> &&
            has_unique_field_ids_v<fields::field_id...> &&
@@ -1799,6 +1795,11 @@ using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+
+template <no_variance_field_like base_field, typename present_only_if>
+  requires is_eval_bool_from_fields_v<present_only_if>
+using maybe = maybe_field<base_field, present_only_if>;
+
 } /* namespace s2s */
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
@@ -2678,9 +2679,57 @@ struct read_field<T, F> {
 };
 
 
+template <typename field_list>
+struct extract_fields;
+
+struct not_struct_field_list{};
+
+template <typename... fields>
+struct extract_fields<struct_field_list<fields...>> {
+  using res = typelist::list<fields...>;
+};
+
+template <typename T>
+struct extract_fields {
+  using res = not_struct_field_list;
+};
+
+template <typename T>
+using extract_fields_v = extract_fields<T>::res;
+
+
+template <typename presence_checker>
+struct extract_req_fields;
+
+template <auto callable, fixed_string... req_fields>
+struct extract_req_fields<parse_if<callable, fixed_string_list<req_fields...>>> {
+  using res = fixed_string_list<req_fields...>;
+};
+
+template <typename presence_checker>
+using extract_req_fields_v = extract_req_fields<presence_checker>::res;
+
+template <typename field_list, typename presence_checker>
+struct parse_dependencies_resolved;
+
+template <typename field_list, typename presence_checker>
+struct parse_dependencies_resolved {
+  using haystack = extract_fields_v<field_list>;
+  using needles = extract_req_fields_v<presence_checker>;
+
+  static constexpr bool res = bulk_look_up<haystack, needles>::res;
+};
+
+
+template <typename field_list, typename presence_checker>
+static constexpr bool parse_dependencies_resolved_v = parse_dependencies_resolved<field_list, presence_checker>::res;
+
 // todo restore constexpr
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
+  using optional_field_presence_checker = typename T::field_presence_checker;
+  using enclosing_struct_field_list = F;
+
   T& field;
   F& field_list;
   
@@ -2688,6 +2737,7 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
   
   template <auto endianness, typename stream>
+    requires parse_dependencies_resolved_v<enclosing_struct_field_list, optional_field_presence_checker>
   constexpr auto read(stream& s) -> rw_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;
