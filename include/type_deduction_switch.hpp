@@ -48,6 +48,26 @@ struct type_switch {
     return type_switch_impl<0, case_head, case_rest...>{}(v);
   } 
 };
+
+template <typename T>
+struct is_type_switch;
+
+template <typename T>
+struct is_type_switch {
+  static constexpr bool res = false;
+};
+
+template <match_case_like case_head, match_case_like... case_tail>
+struct is_type_switch<type_switch<case_head, case_tail...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+static constexpr bool is_type_switch_v = is_type_switch<T>::res;
+
+template <typename T>
+concept type_switch_like = is_type_switch_v<T>;
+
 } /* namespace s2s */
 
 

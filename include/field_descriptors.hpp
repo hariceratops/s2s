@@ -10,6 +10,7 @@
 #include "field_size_deduce.hpp"
 #include "field_value_constraints.hpp"
 #include "computation_from_fields.hpp"
+#include "type_deduction.hpp"
 
 
 namespace s2s {
@@ -72,6 +73,10 @@ template <no_variance_field_like base_field, typename present_only_if>
   requires is_eval_bool_from_fields_v<present_only_if>
 using maybe = maybe_field<base_field, present_only_if>;
 
+template <fixed_string id, typename type_deducer>
+  requires type_deduction_like<type_deducer>
+using variance = union_field<id, type_deducer>;
+ 
 } /* namespace s2s */
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */

@@ -36,7 +36,7 @@ struct type_ladder_impl<idx, clause_head, clause_rest...> {
   }
 };
 
-template <typename clause_head, typename... clause_rest>
+template <clause_like clause_head, clause_like... clause_rest>
 struct type_ladder<clause_head, clause_rest...> {
   // ? is this ok
   using variant = variant_from_type_conditions_v<clause_head, clause_rest...>;
@@ -49,6 +49,25 @@ struct type_ladder<clause_head, clause_rest...> {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
   }
 };
+
+template <typename T>
+struct is_type_ladder;
+
+template <typename T>
+struct is_type_ladder {
+  static constexpr bool res = false;
+};
+
+template <clause_like clause_head, clause_like... clause_tail>
+struct is_type_ladder<type_ladder<clause_head, clause_tail...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+static constexpr bool is_type_ladder_v = is_type_ladder<T>::res;
+
+template <typename T>
+concept type_ladder_like = is_type_ladder_v<T>;
 } /* namespace s2s */
 
 #endif // _TYPE_LADDER_HPP_

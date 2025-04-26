@@ -34,7 +34,7 @@ TEST_CASE("Test case to verify failed parsing variant field") {
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -70,7 +70,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -119,7 +119,7 @@ TEST_CASE("Test case to verify variant field with an s2s::fixed array parsing fr
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -177,7 +177,7 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
       s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -233,7 +233,7 @@ TEST_CASE("Test case to verify variant field with an s2s::fixed string parsing f
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -284,7 +284,7 @@ TEST_CASE("Test case to verify variant field with a variable string parsing from
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
       s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -334,7 +334,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with com
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::compute<some_complex_calc, u32, s2s::with_fields<"a", "b">>,
@@ -394,7 +394,7 @@ TEST_CASE("Test case to verify parsing variant field with multiple struct field 
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::match_field<"a">,
@@ -439,7 +439,7 @@ TEST_CASE("Test case to verify failed variant field parsing from a binary file w
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::type_ladder<
@@ -485,7 +485,7 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with boo
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
       s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::union_field<
+      s2s::variance<
         "c", 
         s2s::type<
           s2s::type_ladder<
