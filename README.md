@@ -1,9 +1,11 @@
 
 # struct_cast
 A declarative binary parser aka serde to convert a stream into meta-struct which has a map like 
-interface.(The read in other direction is work-in-progress)
+interface.
 
-Works extensively based on C++23 TMP.
+(The read in other direction is work-in-progress)
+
+Implemented as a Embedded DSL which works extensively based on C++23 TMP.
 
 Library is single header and the file "struct_cast.hpp" from the single_header
 folder can be used for direct inclusion into a project
@@ -32,7 +34,9 @@ struct_cast currently has a constraint on minimum version of the std to be C++23
 The compiler version requirements are 
 * gcc 13.1 : x86-64, arm, arm64 gcc 13.1
 * clang 19.1.0 : x86-64, armv8-a
-* msvc v19.39, VS 17.9 : x64, x86, arm64
+
+With hand rolled endian and byteswap the library should work with 
+msvc v19.39, VS 17.9 : x64, x86, arm64, hence it is work-in-progress
 
 
 ## Taste of the API
@@ -77,8 +81,9 @@ template <typename... fields>
 struct struct_field_list { /* implementation */ };
 ```
 A struct_field_list datatype is a meta-struct with a map-like interface to access
-a field member for read or write operation. The operator[] when provided with "<field_name>"_f
-as key, returns a reference or const reference to the member with name <field_name>
+a field member for read or write operation. The operator[] when provided with 
+custom literal "<field_name>"_f as key, returns a reference or const reference 
+to the member with name <field_name>
 
 Accessing field not present in the struct_field_list(the "map") will result
 in compilation error for field lookup failure, since a check is enforced via concepts 
