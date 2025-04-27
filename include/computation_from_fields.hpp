@@ -1,16 +1,15 @@
-#ifndef _COMPUTE_RES_
-#define _COMPUTE_RES_
+#ifndef _COMPUTATION_FROM_FIELDS_HPP_
+#define _COMPUTATION_FROM_FIELDS_HPP_
 
 #include <type_traits>
 #include "field_accessor.hpp"
 #include "field_list.hpp"
-#include "fixed_str_list.hpp"
-
-// todo add constriants
-// template <auto callable, typename R, field_name_list fstr_list>
-// struct compute;
+#include "fixed_string_list.hpp"
 
 
+using namespace s2s_literals;
+
+namespace s2s {
 template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
 
@@ -120,6 +119,6 @@ struct is_eval_size_from_fields {
 
 template <typename T>
 inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::res;
+} /* namespace s2s */
 
-
-#endif // _COMPUTE_RES_
+#endif // _COMPUTATION_FROM_FIELDS_HPP_

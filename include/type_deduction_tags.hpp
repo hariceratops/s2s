@@ -1,14 +1,14 @@
-#ifndef _TYPE_TAG_HPP_
-#define _TYPE_TAG_HPP_
+#ifndef _TYPE_DEDUCTION_TAGS_
+#define _TYPE_DEDUCTION_TAGS_
 
-#include "sc_type_traits.hpp"
-#include "struct_field_list_base.hpp"
+#include "s2s_type_traits.hpp"
+#include "field_list_base.hpp"
 #include "field_size.hpp"
-#include "size_deduce.hpp"
+#include "field_size_deduce.hpp"
 
 
+namespace s2s {
 // todo is this required
-// todo constraint T and size
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
 struct trivial_tag {
@@ -102,6 +102,6 @@ inline constexpr bool is_type_tag_v = is_type_tag<T>::res;
 
 template <typename T>
 concept type_tag_like = is_type_tag_v<T>;
+} /* namespace s2s */
 
-
-#endif // _TYPE_TAG_HPP_
+#endif // _TYPE_DEDUCTION_TAGS_

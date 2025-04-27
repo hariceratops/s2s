@@ -1,9 +1,10 @@
-#ifndef _FIXED_STR_LIST_HPP_
-#define _FIXED_STR_LIST_HPP_
+#ifndef _FIXED_STRING_LIST_HPP_
+#define _FIXED_STRING_LIST_HPP_
 
 #include "fixed_string.hpp"
 
 
+namespace s2s {
 template <fixed_string... fs>
 struct fixed_string_list {};
 
@@ -98,18 +99,7 @@ using pop_t = typename pop<count, T>::type;
 
 template <typename T>
 concept field_name_list = is_field_name_list_v<T>;
+} /* namespace s2s */
 
 
-using typelist_ex = fixed_string_list<"a", "b", "c", "d">;
-inline constexpr auto idx_list = std::make_integer_sequence<std::size_t, size_v<typelist_ex>>{};
-static_assert(fixed_string("a") == front_t<typelist_ex>);
-static_assert(std::is_same_v<fixed_string_list<"a", "b", "c", "d">, pop_t<0, typelist_ex>>);
-static_assert(std::is_same_v<fixed_string_list<"b", "c", "d">, pop_t<1, typelist_ex>>);
-static_assert(std::is_same_v<fixed_string_list<"c", "d">, pop_t<2, typelist_ex>>);
-static_assert(fixed_string("c") == front_t<pop_t<2, typelist_ex>>);
-static_assert(fixed_string("c") == get_t<2, typelist_ex>);
-static_assert(size_v<typelist_ex> == 4);
-
-
-
-#endif // _FIXED_STR_LIST_HPP_
+#endif // _FIXED_STRING_LIST_HPP_

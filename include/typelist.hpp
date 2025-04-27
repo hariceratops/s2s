@@ -4,20 +4,19 @@
 #include <string>
 #include <type_traits>
 
-template <typename... ts>
-struct field_list{};
 
+namespace s2s {
 namespace typelist {
 struct null {};
 
 template <typename... ts>
-struct typelist;
+struct list;
 
 template <typename... ts>
-struct typelist{};
+struct list{};
 
 template <>
-struct typelist<>{};
+struct list<>{};
 
 template <typename... ts>
 struct any_of;
@@ -26,77 +25,60 @@ template <typename... ts>
 struct any_of {};
 
 template <typename t>
-struct any_of<typelist<>, t> { static constexpr bool res = false; };
+struct any_of<list<>, t> { static constexpr bool res = false; };
 
 template <typename t, typename... rest>
-struct any_of<typelist<t, rest...>, t> { static constexpr bool res = true; };
+struct any_of<list<t, rest...>, t> { static constexpr bool res = true; };
 
 template <typename t, typename u, typename... rest>
-struct any_of<typelist<u, rest...>, t> { static constexpr bool res = false || any_of<typelist<rest...>, t>::res; };
+struct any_of<list<u, rest...>, t> { static constexpr bool res = false || any_of<list<rest...>, t>::res; };
 
-template <typename typelist, typename type>
-inline constexpr bool any_of_v = any_of<typelist, type>::res;
+template <typename list, typename type>
+inline constexpr bool any_of_v = any_of<list, type>::res;
 
 template <typename... ts>
 struct all_are_same;
 
 template <>
-struct all_are_same<typelist<>> {
+struct all_are_same<list<>> {
   static constexpr auto all_same = true;
 };
 
 template <typename T>
-struct all_are_same<typelist<T>> {
+struct all_are_same<list<T>> {
   static constexpr auto all_same = true;
 };
 
 template <typename T, typename U, typename... rest>
-struct all_are_same<typelist<T, U, rest...>> {
-  static constexpr auto all_same = std::is_same_v<T, U> && all_are_same<typelist<U, rest...>>::all_same;
+struct all_are_same<list<T, U, rest...>> {
+  static constexpr auto all_same = std::is_same_v<T, U> && all_are_same<list<U, rest...>>::all_same;
 };
 
 template <typename T, typename... rest>
-struct all_are_same<typelist<T, rest...>> {
+struct all_are_same<list<T, rest...>> {
   static constexpr auto all_same = false;
 };
 
-template <typename tlist>
-inline constexpr bool all_are_same_v = all_are_same<tlist>::all_same;
+template <typename L>
+inline constexpr bool all_are_same_v = all_are_same<L>::all_same;
 
 template <typename... ts>
 struct front;
 
 template <typename t, typename... ts>
-struct front<typelist<t, ts...>> {
+struct front<list<t, ts...>> {
   using front_t = t;
 };
 
 template <>
-struct front<typelist<>> {
+struct front<list<>> {
   using front_t = null;
 };
 
-template <typename tlist>
-using front_t = typename front<tlist>::front_t;
+template <typename L>
+using front_t = typename front<L>::front_t;
 
-} // namespace typelist
-
-
-namespace static_tests {
-namespace tl = typelist;
-
-static_assert(tl::any_of_v<tl::typelist<int, float, float>, int>);
-static_assert(tl::any_of_v<tl::typelist<float, int, float, float>, int>);
-static_assert(!tl::any_of_v<tl::typelist<int, int, int>, float>);
-static_assert(!tl::any_of_v<tl::typelist<>, float>);
-
-static_assert(tl::all_are_same_v<tl::typelist<int, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<float, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<int, int, float, int, int>>);
-static_assert(!tl::all_are_same_v<tl::typelist<int, float, float, int, int>>);
-static_assert(tl::all_are_same_v<tl::typelist<int>>);
-static_assert(tl::all_are_same_v<tl::typelist<>>);
-}
-
+} // namespace list
+} /* namespace s2s */
 
 #endif // _TYPELIST_HPP_

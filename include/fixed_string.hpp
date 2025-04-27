@@ -7,6 +7,7 @@
 #include <string_view>
 
 
+namespace s2s {
 // todo extend for other char types like wchar
 template <std::size_t N>
 struct fixed_string {
@@ -33,10 +34,6 @@ template <std::size_t N1, std::size_t N2>
 constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
   return !(lhs == rhs);
 }
-
-namespace static_test {
-static_assert(fixed_string("hello").size() == 5);
-}
-
+} /* namespace s2s */
 
 #endif // _FIXED_STRING_HPP_

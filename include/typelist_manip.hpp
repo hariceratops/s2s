@@ -3,8 +3,9 @@
 
 #include <variant>
 #include "typelist.hpp"
-#include "fixed_str_list.hpp"
+#include "fixed_string_list.hpp"
 
+namespace s2s {
 // todo typelist to variant?
 template <typename T>
 struct variant_from_tlist;
@@ -21,7 +22,6 @@ using variant_from_tlist_v = typename variant_from_tlist<T>::variant;
 template <typename T>
 inline constexpr std::size_t variant_size_n = variant_from_tlist<T>::N;
 
-static_assert(std::is_same_v<variant_from_tlist_v<typelist::typelist<int, float>>, std::variant<int, float>>);
 
 template <typename T>
 struct tl_size;
@@ -146,5 +146,6 @@ struct iseq_front<std::integer_sequence<std::size_t>> {}; //todo: uh?
 
 template <typename T>
 inline constexpr std::size_t iseq_front_v = iseq_front<T>::size;
+} /* namespace s2s */
 
 #endif // _TYPELIST_MANIP_HPP_

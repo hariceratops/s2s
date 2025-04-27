@@ -2,9 +2,10 @@
 #define _FIELD_SIZE_HPP_
 
 #include "field_accessor.hpp"
-#include "fixed_str_list.hpp"
+#include "fixed_string_list.hpp"
 #include "typelist.hpp"
 
+namespace s2s {
 template <typename size_type>
 struct field_size;
 
@@ -46,7 +47,7 @@ struct size_choices;
 
 template <typename... size_type>
 struct size_choices {
-  using choices = typelist::typelist<size_type...>;
+  using choices = typelist::list<size_type...>;
   static auto constexpr num_of_choices = sizeof...(size_type);
 };
 
@@ -122,12 +123,26 @@ concept is_size_like = fixed_size_like<T>    ||
                        variable_size_like<T> ||
                        selectable_size_like<T>;
 
-namespace static_test {
-static_assert(is_variable_size_v<field_size<len_from_field<"hello">>>);
-static_assert(is_fixed_size_v<field_size<fixed<4>>>);
-static_assert(!is_fixed_size_v<int>);
-static_assert(!is_variable_size_v<int>);
-static_assert(field_size<fixed<6>>::size_type_t::count == 6);
-}
+template <typename T>
+struct is_size_dont_care;
+
+template <>
+struct is_size_dont_care<field_size<size_dont_care>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_size_dont_care {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_size_dont_care_v = is_size_dont_care<T>::res;
+
+template <typename T>
+concept size_dont_care_like = is_size_dont_care_v<T>;
+
+} /* namespace s2s */
+
 
 #endif // _FIELD_SIZE_HPP_

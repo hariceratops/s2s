@@ -4,16 +4,61 @@
 #include <expected>
 #include "field_accessor.hpp"
 #include "typelist.hpp"
-#include "error.hpp"
-#include "type_ladder.hpp"
-#include "type_switch.hpp"
+#include "cast_error.hpp"
+#include "type_deduction_ladder.hpp"
+#include "type_deduction_switch.hpp"
 
 
-template <typename... clauses>
-struct clauses_to_typelist {
-  using tlist = typelist::typelist<typename clauses::type_tag...>;
-  // todo aargh, variable length types might have to computed at cast function
+namespace s2s {
+template <typename... Args>
+struct type;
+
+
+template <fixed_string id>
+using match_field = field_accessor<id>;
+
+// todo constraints compute like
+template <typename eval_expression, typename tswitch>
+struct type<eval_expression, tswitch> {
+  using expression = eval_expression;
+  using type_switch = tswitch;
+  using variant = tswitch::variant;
+  using sizes = tswitch::sizes;
+
+  template <typename... fields>
+  auto operator()(const struct_field_list<fields...>& sfl)
+    -> std::expected<std::size_t, error_reason> const {
+    return type_switch{}(eval_expression{}(sfl)); 
+  }
 };
+
+template <fixed_string id, typename tswitch>
+struct type<match_field<id>, tswitch> {
+  using type_switch = tswitch;
+  using variant = tswitch::variant;
+  using sizes = tswitch::sizes;
+
+  template <typename... fields>
+  auto operator()(const struct_field_list<fields...>& sfl)
+    -> std::expected<std::size_t, error_reason> const {
+    return type_switch{}(sfl[field_accessor<id>{}]); 
+  }
+};
+
+// todo constraints
+template <typename tladder>
+struct type<tladder> {
+  using type_ladder = tladder;
+  using variant = tladder::variant;
+  using sizes = tladder::sizes;
+
+  template <typename... fields>
+  auto operator()(const struct_field_list<fields...>& sfl)
+    -> std::expected<std::size_t, error_reason> const {
+    return type_ladder{}(sfl);
+  }
+};
+
 
 struct no_type_deduction {};
 
@@ -37,58 +82,41 @@ template <typename T>
 concept no_type_deduction_like = is_no_type_deduction_v<T>;
 
 
-template <typename... Args>
-struct type;
+template <typename T>
+struct is_type_deduction;
 
-template <no_type_deduction_like T>
-struct type<T> {};
+template <>
+struct is_type_deduction<no_type_deduction> {
+  static constexpr bool res = true;
+};
 
-
-template <fixed_string id>
-using match_field = field_accessor<id>;
-
-// todo constraints compute like
 template <typename eval_expression, typename tswitch>
-struct type<eval_expression, tswitch> {
-  using expression = eval_expression;
-  using type_switch = tswitch;
-  using variant = tswitch::variant;
-  using sizes = tswitch::sizes;
-
-  template <typename... fields>
-  auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, cast_error> const {
-    return type_switch{}(eval_expression{}(sfl)); 
-  }
+struct is_type_deduction<type<eval_expression, tswitch>> {
+  static constexpr bool res = is_compute_like_v<eval_expression> && 
+                              type_switch_like<tswitch>;
 };
 
 template <fixed_string id, typename tswitch>
-struct type<match_field<id>, tswitch> {
-  using type_switch = tswitch;
-  using variant = tswitch::variant;
-  using sizes = tswitch::sizes;
-
-  template <typename... fields>
-  auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, cast_error> const {
-    return type_switch{}(sfl[field_accessor<id>{}]); 
-  }
+struct is_type_deduction<type<match_field<id>, tswitch>> {
+  static constexpr bool res = type_switch_like<tswitch>;
 };
 
-// todo constraints
 template <typename tladder>
-struct type<tladder> {
-  using type_ladder = tladder;
-  using variant = tladder::variant;
-  using sizes = tladder::sizes;
-
-  template <typename... fields>
-  auto operator()(const struct_field_list<fields...>& sfl)
-    -> std::expected<std::size_t, cast_error> const {
-    return type_ladder{}(sfl);
-  }
+struct is_type_deduction<type<tladder>> {
+  static constexpr bool res = type_ladder_like<tladder>;
 };
 
-// todo metafunction and concepts for constraining type
+template <typename T>
+struct is_type_deduction {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+static constexpr bool is_type_deduction_v = is_type_deduction<T>::res;
+
+template <typename T>
+concept type_deduction_like = is_type_deduction_v<T>;
+} /* namespace s2s */
+
 
 #endif // _TYPE_DEDUCTION_HPP_

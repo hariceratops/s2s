@@ -1,5 +1,5 @@
-#ifndef FIELD_CONSTRAINT_HPP
-#define FIELD_CONSTRAINT_HPP
+#ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
+#define _FIELD_VALUE_CONSTRAINTS_HPP_ 
 
 #include <algorithm>
 #include <array>
@@ -7,14 +7,12 @@
 #include <cassert>
 #include <cstdio>
 #include <type_traits>
-#include "sc_type_traits.hpp"
-#include "fixed_string.hpp"
 #include "typelist.hpp"
+#include "fixed_string.hpp"
+#include "s2s_type_traits.hpp"
 
 
-namespace tl = typelist;
-
-
+namespace s2s {
 // Concept for strict callable
 template <typename T, typename Arg>
 concept strict_callable = requires(T t, Arg arg) {
@@ -98,7 +96,7 @@ struct no_constraint {
 };
 
 template <typename T, typename... Ts>
-  requires (tl::all_are_same_v<tl::typelist<T, Ts...>>)
+  requires (typelist::all_are_same_v<typelist::list<T, Ts...>>)
 struct any_of {
   std::array<T, 1 + sizeof...(Ts)> possible_values;
 
@@ -128,12 +126,12 @@ range(T, T) -> range<T>;
 
 // Struct to check if a value is in any of the open intervals
 template <typename t, typename... ts>
-  requires (tl::all_are_same_v<tl::typelist<ts...>>)
+  requires (typelist::all_are_same_v<typelist::list<ts...>>)
 struct is_in_open_range {
   std::array<range<t>, 1 + sizeof...(ts)> open_ranges;
 
-  constexpr is_in_open_range(range<t> range, ::range<ts>... ranges) : open_ranges{range, ranges...} {
-    std::sort(open_ranges.begin(), open_ranges.end(), [](const ::range<t>& r1, const ::range<t>& r2) {
+  constexpr is_in_open_range(range<t> r, range<ts>... rs) : open_ranges{r, rs...} {
+    std::sort(open_ranges.begin(), open_ranges.end(), [](const range<t>& r1, const range<t>& r2) {
       return r1.a < r2.a;
     });
   }
@@ -198,5 +196,6 @@ is_in_open_range(range<t>, range<ts>...) -> is_in_open_range<t, ts...>;
 
 template <typename T, std::size_t N>
 is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
+}
 
-#endif // FIELD_CONSTRAINT_HPP
+#endif // _FIELD_VALUE_CONSTRAINTS_HPP_

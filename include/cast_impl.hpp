@@ -1,34 +1,22 @@
-#ifndef _CAST_HPP_
-#define _CAST_HPP_
+#ifndef _CAST_IMPL_HPP_
+#define _CAST_IMPL_HPP_
 
 
 #include <expected>
-#include "field_reader.hpp"
-// #include "field_meta.hpp"
+#include "cast_error.hpp"
+#include "field.hpp"
 #include "field_list.hpp"
-#include "error.hpp"
+#include "stream_wrapper_impl.hpp"
+#include "field_reader.hpp"
+#include "field_value_constraints_traits.hpp"
 
 
-template <typename T>
-struct is_no_constraint;
+namespace s2s {
 
-template <typename T>
-struct is_no_constraint<no_constraint<T>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_no_constraint {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
-
-static_assert(is_no_constraint_v<no_constraint<int>>);
-static_assert(!is_no_constraint_v<int>);
-static_assert(is_no_constraint_v<no_constraint<std::optional<int>>>);
-
+auto operator|(const cast_result& res, auto&& callable) -> cast_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
 
 // forward declaration
 template <s2s_input_stream_like stream, field_list_like T, auto endianness>
@@ -44,22 +32,31 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
 
   constexpr auto operator()(stream& s) -> R {
     S field_list;
-    read_result pipeline_seed{};
+    cast_result pipeline_seed{};
     auto res = (
       pipeline_seed |
       ... |
-      [&]() -> read_result {
+      [&]() -> cast_result {
         auto& field = static_cast<fields&>(field_list);
         auto reader = read_field<fields, S>(field, field_list);
         auto read_res = reader.template read<endianness>(s);
         // Short circuit the remaining pipeline since read failed for current field
-        if(!read_res) 
-          return read_res;
+        if(!read_res) {
+          auto field_name = std::string{fields::field_id.data()};
+          auto err = read_res.error();
+          auto validation_err = cast_error{err, field_name};
+          return std::unexpected(validation_err);
+        }
         // Try validating with the constraint
+        // todo enable check only if constraint is present, to avoid runtime costs?
         // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
           bool field_validation_res = fields::constraint_checker(field.value);
-          if(!field_validation_res)
-            return std::unexpected(cast_error::validation_failure);
+          if(!field_validation_res) {
+            auto field_name = std::string{fields::field_id.data()};
+            auto err = error_reason::validation_failure;
+            auto validation_err = cast_error{err, field_name};
+            return std::unexpected(validation_err);
+          }
         // }
         // Both reading and validating went well
         return {};
@@ -87,5 +84,6 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   stream_wrapper wrapped(s);
   return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
 }
+} /* namespace s2s */
 
-#endif // _CAST_HPP_
+#endif // _CAST_IMPL_HPP_

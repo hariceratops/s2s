@@ -4,9 +4,10 @@
 
 #include "field.hpp"
 #include "field_size.hpp"
-#include "sc_type_traits.hpp"
+#include "s2s_type_traits.hpp"
 
 
+namespace s2s {
 template <typename T>
 struct is_fixed_sized_field;
 
@@ -167,8 +168,6 @@ inline constexpr bool is_union_field_v = is_union_field<T>::res;
 template <typename T>
 concept union_field_like = is_union_field_v<T>;
 
-// todo struct_field_like
-
 template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
@@ -177,11 +176,6 @@ concept field_like = fixed_sized_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
                      union_field_like<T>;
-//
-// namespace static_test {
-//   static_assert(is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-//   static_assert(!is_field_with_runtime_size_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-//   static_assert(is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-//   static_assert(!is_field_v<field<"hello", int, runtime_size<from_field<"a">>>>);
-// }
+} /* namespace s2s */
+
 #endif /*_FIELD_TRAITS_HPP_*/

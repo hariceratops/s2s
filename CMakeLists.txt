@@ -58,10 +58,59 @@ endif()
 add_custom_target(generate_single_header ALL DEPENDS ${OUTPUT_HEADER})
 
 # Add the test executable
-add_executable(test_struct_cast ${TEST_DIR}/test_struct_cast.cpp)
-target_link_libraries(test_struct_cast PRIVATE Catch2::Catch2)
-target_include_directories(test_struct_cast PRIVATE ${catch2_SOURCE_DIR}/single_include)
+add_executable(test_s2s_arr_of_recs_fields ${TEST_DIR}/test_s2s_arr_of_recs_fields.cpp)
+target_link_libraries(test_s2s_arr_of_recs_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_arr_of_recs_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_computation_from_fields ${TEST_DIR}/test_s2s_computation_from_fields.cpp)
+target_link_libraries(test_s2s_computation_from_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_computation_from_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_field_validators ${TEST_DIR}/test_s2s_field_validators.cpp)
+target_link_libraries(test_s2s_field_validators PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_field_validators PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_fixed_buffer_fields ${TEST_DIR}/test_s2s_fixed_buffer_fields.cpp)
+target_link_libraries(test_s2s_fixed_buffer_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_fixed_buffer_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_magic_fields ${TEST_DIR}/test_s2s_magic_fields.cpp)
+target_link_libraries(test_s2s_magic_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_magic_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_optional_fields ${TEST_DIR}/test_s2s_optional_fields.cpp)
+target_link_libraries(test_s2s_optional_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_magic_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_trivial_fields ${TEST_DIR}/test_s2s_trivial_fields.cpp)
+target_link_libraries(test_s2s_trivial_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_trivial_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_union_fields ${TEST_DIR}/test_s2s_union_fields.cpp)
+target_link_libraries(test_s2s_union_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_union_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_variable_buffer_fields ${TEST_DIR}/test_s2s_variable_buffer_fields.cpp)
+target_link_libraries(test_s2s_variable_buffer_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_variable_buffer_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+add_executable(test_s2s_vec_of_recs_fields ${TEST_DIR}/test_s2s_vec_of_recs_fields.cpp)
+target_link_libraries(test_s2s_vec_of_recs_fields PRIVATE Catch2::Catch2)
+target_include_directories(test_s2s_vec_of_recs_fields PRIVATE ${catch2_SOURCE_DIR}/single_include)
 
 # temporary tests with out catch for easier debugging in gdb
-# add_executable(test_temp ${TEST_DIR}/test_temp.cpp)
-# target_include_directories(test_temp PRIVATE ${catch2_SOURCE_DIR}/single_include)
+add_executable(hello_s2s ${TEST_DIR}/hello_s2s.cpp)
+target_include_directories(hello_s2s PRIVATE ${catch2_SOURCE_DIR}/single_include)
+
+enable_testing()
+add_test(NAME s2s_arr_of_recs_fields COMMAND test_s2s_arr_of_recs_fields)
+add_test(NAME s2s_computation_from_fields COMMAND test_s2s_computation_from_fields)
+add_test(NAME s2s_field_validators COMMAND test_s2s_field_validators)
+add_test(NAME s2s_fixed_buffer_fields COMMAND test_s2s_fixed_buffer_fields)
+add_test(NAME s2s_magic_fields COMMAND test_s2s_magic_fields)
+add_test(NAME s2s_optional_fields COMMAND test_s2s_optional_fields)
+add_test(NAME s2s_trivial_fields COMMAND test_s2s_trivial_fields)
+add_test(NAME s2s_union_fields COMMAND test_s2s_union_fields)
+add_test(NAME s2s_variable_buffer_fields COMMAND test_s2s_variable_buffer_fields)
+add_test(NAME s2s_vec_of_recs_fields COMMAND test_s2s_vec_of_recs_fields)
+
