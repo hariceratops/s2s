@@ -5,7 +5,7 @@ interface.
 
 (The read in other direction is work-in-progress)
 
-Implemented as a Embedded DSL which works extensively based on C++23 TMP.
+Implemented as an embedded DSL which works extensively based on C++23 TMP.
 
 Library is single header and the file "struct_cast.hpp" from the single_header
 folder can be used for direct inclusion into a project
@@ -40,7 +40,7 @@ msvc v19.39, VS 17.9 : x64, x86, arm64, hence it is work-in-progress
 
 
 ## Taste of the API
-Link to Godbolt: https://godbolt.org/z/cY3n1nW1E
+Link to Godbolt: https://godbolt.org/z/eGTvdoejP
 ```cpp
   #include "struct_cast.hpp"
   #include <print>
