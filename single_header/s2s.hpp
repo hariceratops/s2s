@@ -2509,8 +2509,8 @@ private:
   }
 
 public:
-  input_stream(stream& s): s(s) {}
-  input_stream(const input_stream&) = delete;
+  constexpr input_stream(stream& s): s(s) {}
+  constexpr input_stream(const input_stream&) = delete;
 
   template <std::endian endianness, typename T>
   constexpr auto read(T& obj, std::size_t N) -> rw_result {
