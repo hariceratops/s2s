@@ -1,5 +1,5 @@
 
-# struct_cast
+# s2s
 A declarative binary parser aka serde to convert a stream into meta-struct which has a map like 
 interface.
 
@@ -7,7 +7,7 @@ interface.
 
 Implemented as a Embedded DSL which works extensively based on C++23 TMP.
 
-Library is single header and the file "struct_cast.hpp" from the single_header
+Library is single header and the file "s2s.hpp" from the single_header
 folder can be used for direct inclusion into a project
 
 ## Features
@@ -40,9 +40,9 @@ msvc v19.39, VS 17.9 : x64, x86, arm64, hence it is work-in-progress
 
 
 ## Taste of the API
-Link to Godbolt: https://godbolt.org/z/cY3n1nW1E
+Link to Godbolt: https://godbolt.org/z/KT9ov7cTP
 ```cpp
-  #include "struct_cast.hpp"
+  #include "s2s.hpp"
   #include <print>
 
   using namespace s2s_literals;

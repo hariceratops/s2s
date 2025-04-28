@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch.hpp>
-#include "../single_header/struct_cast.hpp"
+#include "../single_header/s2s.hpp"
 #include "s2s_test_utils.hpp"
 
 
