@@ -3052,7 +3052,7 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
 
 // End /home/hari/repos/struct_cast/include/cast_impl.hpp
 
-// Begin /home/hari/repos/struct_cast/include/struct_cast.hpp
+// Begin /home/hari/repos/struct_cast/include/s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
  
@@ -3066,4 +3066,4 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
  
 #endif // STRUCT_CAST_HPP
 
-// End /home/hari/repos/struct_cast/include/struct_cast.hpp
+// End /home/hari/repos/struct_cast/include/s2s.hpp

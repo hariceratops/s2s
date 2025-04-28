@@ -28,8 +28,8 @@ set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 set(SINGLE_HEADER_DIR "${CMAKE_SOURCE_DIR}/single_header")
 set(TEST_DIR "${CMAKE_SOURCE_DIR}/test")
 # Define the input and output for quom
-set(INPUT_HEADER "${INCLUDE_DIR}/struct_cast.hpp")
-set(OUTPUT_HEADER "${SINGLE_HEADER_DIR}/struct_cast.hpp")
+set(INPUT_HEADER "${INCLUDE_DIR}/s2s.hpp")
+set(OUTPUT_HEADER "${SINGLE_HEADER_DIR}/s2s.hpp")
 # Get all header files in the include directory
 file(GLOB_RECURSE HEADER_FILES "${INCLUDE_DIR}/*.hpp")
 

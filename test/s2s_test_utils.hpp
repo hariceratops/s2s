@@ -2,7 +2,7 @@
 #define _S2S_TEST_UTILS_HPP_
 
 
-#include "../single_header/struct_cast.hpp"
+#include "../single_header/s2s.hpp"
 
 
 #define PREPARE_INPUT_FILE(code) \

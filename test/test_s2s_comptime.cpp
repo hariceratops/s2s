@@ -1,4 +1,4 @@
-#include "../single_header/struct_cast.hpp"
+#include "../single_header/s2s.hpp"
 
 namespace static_tests {
 
