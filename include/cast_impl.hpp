@@ -67,19 +67,19 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
 };
 
 template <s2s_input_stream_like stream_wrapper, field_list_like T, auto endianness>
-constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
+[[nodiscard]] constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
   return struct_cast_impl<T, stream_wrapper, endianness>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
-constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
+[[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
   return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
-constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
+[[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
   return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
