@@ -1,5 +1,5 @@
 
-// Begin /home/hari/repos/struct_cast/include/fixed_string.hpp
+// Begin /home/hari/repos/s2s/include/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
 
@@ -21,6 +21,9 @@ struct fixed_string {
   constexpr const char* data() const { return value.data(); }
   constexpr char* data() { return value.data(); }
   constexpr auto size() const { return N; }
+  constexpr auto to_sv() -> std::string_view {
+    return std::string_view{data()};
+  }
 };
 
 template <std::size_t N>
@@ -40,9 +43,9 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
 
 #endif // _FIXED_STRING_HPP_
 
-// End /home/hari/repos/struct_cast/include/fixed_string.hpp
+// End /home/hari/repos/s2s/include/fixed_string.hpp
 
-// Begin /home/hari/repos/struct_cast/include/address_manip.hpp
+// Begin /home/hari/repos/s2s/include/address_manip.hpp
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
 
@@ -103,9 +106,9 @@ inline char* byte_addressof(std::string& obj) {
 
 #endif // _ADDRESS_MANIP_HPP_
 
-// End /home/hari/repos/struct_cast/include/address_manip.hpp
+// End /home/hari/repos/s2s/include/address_manip.hpp
 
-// Begin /home/hari/repos/struct_cast/include/cast_error.hpp
+// Begin /home/hari/repos/s2s/include/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
 
@@ -135,9 +138,9 @@ using cast_result = std::expected<void, cast_error>;
 
 #endif // _CAST_ERROR_HPP_
 
-// End /home/hari/repos/struct_cast/include/cast_error.hpp
+// End /home/hari/repos/s2s/include/cast_error.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_accessor.hpp
+// Begin /home/hari/repos/s2s/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
@@ -157,9 +160,9 @@ constexpr auto operator""_f() {
 
 #endif // _FIELD_ACCESSOR_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_accessor.hpp
+// End /home/hari/repos/s2s/include/field_accessor.hpp
 
-// Begin /home/hari/repos/struct_cast/include/fixed_string_list.hpp
+// Begin /home/hari/repos/s2s/include/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
 #define _FIXED_STRING_LIST_HPP_
  
@@ -263,9 +266,9 @@ concept field_name_list = is_field_name_list_v<T>;
 
 #endif // _FIXED_STRING_LIST_HPP_
 
-// End /home/hari/repos/struct_cast/include/fixed_string_list.hpp
+// End /home/hari/repos/s2s/include/fixed_string_list.hpp
 
-// Begin /home/hari/repos/struct_cast/include/typelist.hpp
+// Begin /home/hari/repos/s2s/include/typelist.hpp
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -351,9 +354,9 @@ using front_t = typename front<L>::front_t;
 
 #endif // _TYPELIST_HPP_
 
-// End /home/hari/repos/struct_cast/include/typelist.hpp
+// End /home/hari/repos/s2s/include/typelist.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_size.hpp
+// Begin /home/hari/repos/s2s/include/field_size.hpp
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
  
@@ -501,9 +504,9 @@ concept size_dont_care_like = is_size_dont_care_v<T>;
 
 #endif // _FIELD_SIZE_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_size.hpp
+// End /home/hari/repos/s2s/include/field_size.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_list_base.hpp
+// Begin /home/hari/repos/s2s/include/field_list_base.hpp
 #ifndef _FIELD_LIST_BASE_HPP_
 #define _FIELD_LIST_BASE_HPP_
 
@@ -518,9 +521,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 
 #endif // _FIELD_LIST_BASE_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_list_base.hpp
+// End /home/hari/repos/s2s/include/field_list_base.hpp
 
-// Begin /home/hari/repos/struct_cast/include/s2s_type_traits.hpp
+// Begin /home/hari/repos/s2s/include/s2s_type_traits.hpp
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
 
@@ -791,9 +794,9 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 
 #endif // _S2S_TYPE_TRAITS_HPP_
 
-// End /home/hari/repos/struct_cast/include/s2s_type_traits.hpp
+// End /home/hari/repos/s2s/include/s2s_type_traits.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_value_constraints.hpp
+// Begin /home/hari/repos/s2s/include/field_value_constraints.hpp
 #ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
 #define _FIELD_VALUE_CONSTRAINTS_HPP_ 
 
@@ -994,9 +997,9 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // _FIELD_VALUE_CONSTRAINTS_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_value_constraints.hpp
+// End /home/hari/repos/s2s/include/field_value_constraints.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field.hpp
+// Begin /home/hari/repos/s2s/include/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
@@ -1121,9 +1124,9 @@ struct union_field: public variant {
 
 #endif // _FIELD_HPP_
 
-// End /home/hari/repos/struct_cast/include/field.hpp
+// End /home/hari/repos/s2s/include/field.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_traits.hpp
+// Begin /home/hari/repos/s2s/include/field_traits.hpp
 #ifndef _FIELD_TRAITS_HPP_
 #define _FIELD_TRAITS_HPP_
  
@@ -1302,9 +1305,9 @@ concept field_like = fixed_sized_field_like<T> ||
 
 #endif /*_FIELD_TRAITS_HPP_*/
 
-// End /home/hari/repos/struct_cast/include/field_traits.hpp
+// End /home/hari/repos/s2s/include/field_traits.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_list_metafunctions.hpp
+// Begin /home/hari/repos/s2s/include/field_list_metafunctions.hpp
 #ifndef _FIELD_LIST_METAFUNCTIONS_HPP_
 #define _FIELD_LIST_METAFUNCTIONS_HPP_
  
@@ -1386,9 +1389,9 @@ using field_lookup_v = typename field_lookup<L, id>::type;
 
 #endif // _FIELD_LIST_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_list_metafunctions.hpp
+// End /home/hari/repos/s2s/include/field_list_metafunctions.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_list.hpp
+// Begin /home/hari/repos/s2s/include/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
  
@@ -1588,9 +1591,9 @@ struct struct_field_list : struct_field_list_base, fields... {
 
 #endif // _FIELD_LIST_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_list.hpp
+// End /home/hari/repos/s2s/include/field_list.hpp
 
-// Begin /home/hari/repos/struct_cast/include/computation_from_fields.hpp
+// Begin /home/hari/repos/s2s/include/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
 #define _COMPUTATION_FROM_FIELDS_HPP_
 
@@ -1714,9 +1717,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTATION_FROM_FIELDS_HPP_
 
-// End /home/hari/repos/struct_cast/include/computation_from_fields.hpp
+// End /home/hari/repos/s2s/include/computation_from_fields.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_size_deduce.hpp
+// Begin /home/hari/repos/s2s/include/field_size_deduce.hpp
 #ifndef _FIELD_SIZE_DEDUCE_HPP_
 #define _FIELD_SIZE_DEDUCE_HPP_
  
@@ -1759,9 +1762,9 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
 
 #endif // _FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_size_deduce.hpp
+// End /home/hari/repos/s2s/include/field_size_deduce.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction_tags.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction_tags.hpp
 #ifndef _TYPE_DEDUCTION_TAGS_
 #define _TYPE_DEDUCTION_TAGS_
  
@@ -1867,9 +1870,9 @@ concept type_tag_like = is_type_tag_v<T>;
 
 #endif // _TYPE_DEDUCTION_TAGS_
 
-// End /home/hari/repos/struct_cast/include/type_deduction_tags.hpp
+// End /home/hari/repos/s2s/include/type_deduction_tags.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction_match_case.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction_match_case.hpp
 #ifndef _TYPE_DEDUCTION_MATCH_CASE_HPP_
 #define _TYPE_DEDUCTION_MATCH_CASE_HPP_
  
@@ -1903,9 +1906,9 @@ concept match_case_like = is_match_case_v<T>;
 
 #endif // _TYPE_DEDUCTION_MATCH_CASE_HPP_
 
-// End /home/hari/repos/struct_cast/include/type_deduction_match_case.hpp
+// End /home/hari/repos/s2s/include/type_deduction_match_case.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction_clause.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction_clause.hpp
 #ifndef _TYPE_DEDUCTION_CLAUSE_HPP_
 #define _TYPE_DEDUCTION_CLAUSE_HPP_
  
@@ -1941,9 +1944,9 @@ concept clause_like = is_clause_v<T>;
 
 #endif // _TYPE_DEDUCTION_CLAUSE_HPP_
 
-// End /home/hari/repos/struct_cast/include/type_deduction_clause.hpp
+// End /home/hari/repos/s2s/include/type_deduction_clause.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction_helper.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction_helper.hpp
 #ifndef _TYPE_DEDUCTION_HELPER_HPP_
 #define _TYPE_DEDUCTION_HELPER_HPP_
  
@@ -1993,9 +1996,9 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/repos/struct_cast/include/type_deduction_helper.hpp
+// End /home/hari/repos/s2s/include/type_deduction_helper.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction_ladder.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction_ladder.hpp
 #ifndef _TYPE_DEDUCTION_LADDER_HPP_
 #define _TYPE_DEDUCTION_LADDER_HPP_
  
@@ -2069,9 +2072,9 @@ concept type_ladder_like = is_type_ladder_v<T>;
 
 #endif // _TYPE_LADDER_HPP_
 
-// End /home/hari/repos/struct_cast/include/type_deduction_ladder.hpp
+// End /home/hari/repos/s2s/include/type_deduction_ladder.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction_switch.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction_switch.hpp
 #ifndef _TYPE_DEDUCTION_SWITCH_HPP_
 #define _TYPE_DEDUCTION_SWITCH_HPP_
 
@@ -2145,9 +2148,9 @@ concept type_switch_like = is_type_switch_v<T>;
 
 #endif // _TYPE_SWITCH_HPP_
 
-// End /home/hari/repos/struct_cast/include/type_deduction_switch.hpp
+// End /home/hari/repos/s2s/include/type_deduction_switch.hpp
 
-// Begin /home/hari/repos/struct_cast/include/type_deduction.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction.hpp
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
 
@@ -2269,9 +2272,9 @@ concept type_deduction_like = is_type_deduction_v<T>;
 
 #endif // _TYPE_DEDUCTION_HPP_
 
-// End /home/hari/repos/struct_cast/include/type_deduction.hpp
+// End /home/hari/repos/s2s/include/type_deduction.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_descriptors.hpp
+// Begin /home/hari/repos/s2s/include/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
 #define _FIELD_DESCRIPTORS_HPP_
  
@@ -2351,9 +2354,9 @@ using variance = union_field<id, type_deducer>;
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
 
-// End /home/hari/repos/struct_cast/include/field_descriptors.hpp
+// End /home/hari/repos/s2s/include/field_descriptors.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_metafunctions.hpp
+// Begin /home/hari/repos/s2s/include/field_metafunctions.hpp
 #ifndef _FIELD_METAFUNCTIONS_HPP_
 #define _FIELD_METAFUNCTIONS_HPP_
  
@@ -2381,9 +2384,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 #endif // _FIELD_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_metafunctions.hpp
+// End /home/hari/repos/s2s/include/field_metafunctions.hpp
 
-// Begin /home/hari/repos/struct_cast/include/stream_traits.hpp
+// Begin /home/hari/repos/s2s/include/stream_traits.hpp
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
 
@@ -2435,9 +2438,9 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
 #endif /* _STREAM_TRAITS_HPP_ */
 
-// End /home/hari/repos/struct_cast/include/stream_traits.hpp
+// End /home/hari/repos/s2s/include/stream_traits.hpp
 
-// Begin /home/hari/repos/struct_cast/include/stream_wrapper_impl.hpp
+// Begin /home/hari/repos/s2s/include/stream_wrapper_impl.hpp
 #ifndef _STREAM_WRAPPER_IMPL_HPP_
 #define _STREAM_WRAPPER_IMPL_HPP_
 
@@ -2567,9 +2570,9 @@ concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 
 #endif /* _STREAM_WRAPPER_IMPL_HPP_ */
 
-// End /home/hari/repos/struct_cast/include/stream_wrapper_impl.hpp
+// End /home/hari/repos/s2s/include/stream_wrapper_impl.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_reader.hpp
+// Begin /home/hari/repos/s2s/include/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
 
@@ -2932,9 +2935,9 @@ struct read_field<T, F> {
 
 #endif // _FIELD_READER_HPP_
 
-// End /home/hari/repos/struct_cast/include/field_reader.hpp
+// End /home/hari/repos/s2s/include/field_reader.hpp
 
-// Begin /home/hari/repos/struct_cast/include/field_value_constraints_traits.hpp
+// Begin /home/hari/repos/s2s/include/field_value_constraints_traits.hpp
 #ifndef _FIELD_VALE_CONSTRAINT_TRAITS_HPP_
 #define _FIELD_VALE_CONSTRAINT_TRAITS_HPP_
  
@@ -2959,9 +2962,9 @@ inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
 
 #endif /* _FIELD_VALE_CONSTRAINT_TRAITS_HPP_ */
 
-// End /home/hari/repos/struct_cast/include/field_value_constraints_traits.hpp
+// End /home/hari/repos/s2s/include/field_value_constraints_traits.hpp
 
-// Begin /home/hari/repos/struct_cast/include/cast_impl.hpp
+// Begin /home/hari/repos/s2s/include/cast_impl.hpp
 #ifndef _CAST_IMPL_HPP_
 #define _CAST_IMPL_HPP_
 
@@ -3029,19 +3032,19 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
 };
 
 template <s2s_input_stream_like stream_wrapper, field_list_like T, auto endianness>
-constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
+[[nodiscard]] constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
   return struct_cast_impl<T, stream_wrapper, endianness>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
-constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
+[[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
   return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
 }
 
 template <field_list_like T, input_stream_like stream>
-constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
+[[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   using stream_wrapper = input_stream<stream>;
   stream_wrapper wrapped(s);
   return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
@@ -3050,9 +3053,9 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
 
 #endif // _CAST_IMPL_HPP_
 
-// End /home/hari/repos/struct_cast/include/cast_impl.hpp
+// End /home/hari/repos/s2s/include/cast_impl.hpp
 
-// Begin /home/hari/repos/struct_cast/include/s2s.hpp
+// Begin /home/hari/repos/s2s/include/s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
  
@@ -3066,4 +3069,4 @@ constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
  
 #endif // STRUCT_CAST_HPP
 
-// End /home/hari/repos/struct_cast/include/s2s.hpp
+// End /home/hari/repos/s2s/include/s2s.hpp
