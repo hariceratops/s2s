@@ -34,9 +34,7 @@ struct_cast currently has a constraint on minimum version of the std to be C++23
 The compiler version requirements are 
 * gcc 13.1 : x86-64, arm, arm64 gcc 13.1
 * clang 19.1.0 : x86-64, armv8-a
-
-With hand rolled endian and byteswap the library should work with 
-msvc v19.39, VS 17.9 : x64, x86, arm64, hence it is work-in-progress
+* msvc v19.39, VS 17.9 : x64, x86, arm64
 
 
 ## Taste of the API
@@ -139,14 +137,17 @@ provided input stream is exhausted or when type deduction failed while reading i
 - [x] Optionals
 - [x] Unions
 - [ ] Bitfields
-- [x] Compile-time Endianness Handling
-- [ ] Modules
-- [ ] Run-time Endianness Handling
-- [ ] Full Support in Freestanding Compilers
 - [ ] Read-Until Delimiter[s]
-- [ ] Alignment and Padding Control
-- [ ] Support for all major compilers
+- [x] Support for all major compilers
+- [ ] Full Support in Freestanding Compilers
+- [x] Compile-time Endianness Handling
+- [ ] Run-time Endianness Handling
+- [ ] Modules
 - [ ] Write struct to stream
 - [ ] struct_view - Zero copy views into buffers
 - [ ] Asynchronous Read-Write
 - [ ] Support for seeking
+- [ ] Compile time functions for struct_field_list - 
+    - [ ] Query fields
+    - [ ] Extend wit another list
+    - [ ] Alignment and Padding Control
