@@ -6,6 +6,7 @@
 #include <iostream>
 
 
+namespace s2s {
 template <typename T>
 concept convertible_to_bool = requires(T obj) {
   { obj.operator bool() } -> std::same_as<bool>;
@@ -46,5 +47,6 @@ concept input_stream_like = readable<T> && convertible_to_bool<T>;
 
 template <typename T>
 concept output_stream_like = writeable<T> && convertible_to_bool<T>;
+}
 
 #endif /* _STREAM_TRAITS_HPP_ */

@@ -1,6 +1,10 @@
 #ifndef _MP_HPP_
 #define _MP_HPP_
 
+#include <cstdint>
+#include <array>
+#include <utility>
+
 
 namespace meta {
 using type_identifier = std::size_t;

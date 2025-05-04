@@ -5,6 +5,7 @@
 #include <ranges>
 #include "fixed_string.hpp"
 
+// todo namespace algorithms
 constexpr auto find_index(auto t, const std::ranges::range auto& ts) -> std::size_t {
   for(auto i = 0u; i < ts.size(); ++i) {
     if(ts[i] == t) {
@@ -13,6 +14,17 @@ constexpr auto find_index(auto t, const std::ranges::range auto& ts) -> std::siz
   }
 
   return ts.size();
+}
+
+constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
+  if(xs.size() != ys.size()) return false;
+
+  for(auto i = 0u; i < xs.size(); ++i) {
+    if(xs[i] != ys[i])
+      return false;
+  }
+
+  return true;
 }
 
 

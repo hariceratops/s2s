@@ -21,7 +21,7 @@ struct fixed_string {
   constexpr const char* data() const { return value.data(); }
   constexpr char* data() { return value.data(); }
   constexpr std::size_t size() const { return N; }
-  constexpr auto to_sv() -> std::string_view {
+  constexpr auto to_sv() -> std::string_view const {
     return std::string_view{data()};
   }
 };
@@ -1391,14 +1391,143 @@ using field_lookup_v = typename field_lookup<L, id>::type;
 
 // End /home/hari/repos/s2s/include/field_list_metafunctions.hpp
 
+// Begin /home/hari/repos/s2s/include/algorithms.hpp
+#ifndef _ALGORITHMS_HPP_
+#define _ALGORITHMS_HPP_
+
+
+#include <ranges>
+ 
+// todo namespace algorithms
+constexpr auto find_index(auto t, const std::ranges::range auto& ts) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(ts[i] == t) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
+  if(xs.size() != ys.size()) return false;
+
+  for(auto i = 0u; i < xs.size(); ++i) {
+    if(xs[i] != ys[i])
+      return false;
+  }
+
+  return true;
+}
+
+
+static_assert(
+  0 == 
+  find_index(
+    s2s::fixed_string("hello").to_sv(), 
+    std::array{s2s::fixed_string("hello").to_sv(), s2s::fixed_string("world").to_sv()})
+  );
+
+#endif /* _ALGORITHMS_HPP_ */
+
+// End /home/hari/repos/s2s/include/algorithms.hpp
+
+// Begin /home/hari/repos/s2s/include/containers.hpp
+#ifndef _CONTAINERS_HPP_
+#define _CONTAINERS_HPP_
+
+
+#include <cstdint>
+ 
+template <typename T, std::size_t N>
+struct static_vector {
+  constexpr static_vector() = default;
+  constexpr auto push_back(const T& value) { 
+    values[vec_size] = value; 
+    vec_size++;
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return values[i]; }
+  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
+  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
+  [[nodiscard]] constexpr auto size() const { return vec_size; }
+  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+  T values[N]{};
+  std::size_t vec_size{0};
+};
+
+
+template <typename T, std::size_t N>
+struct static_set {
+  constexpr static_set() = default;
+  constexpr static_set(const static_vector<T, N>& vec) {
+    for(auto value: vec) { push_back(value); }
+  }
+  constexpr static_set(const std::array<T, N>& vec) {
+    for(auto value: vec) { push_back(value); }
+  }
+  constexpr auto push_back(const T& value) { 
+    if(find_index(value, *this) == set.size()) {
+      set.push_back(value);
+    }
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return set[i]; }
+  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
+  [[nodiscard]] constexpr auto end() const { return set.end(); }
+  [[nodiscard]] constexpr auto size() const { return set.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+  static_vector<T, N> set{};
+};
+
+// constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
+//   static_set<std::string_view, 5> set;
+//   set.push_back("hello");
+//   set.push_back("world");
+//   set.push_back("foo");
+//   set.push_back("bar");
+//   set.push_back("bar");
+//
+//   return set;
+// }
+//
+// constexpr auto generate_test_vector() -> static_vector<std::string_view, 5> {
+//   static_vector<std::string_view, 5> vec;
+//   vec.push_back("hello");
+//   vec.push_back("world");
+//   vec.push_back("foo");
+//   vec.push_back("bar");
+//
+//   return vec;
+// }
+//
+// static constexpr auto set = generate_test_set();
+// static constexpr auto vec = generate_test_vector();
+// static_assert(set[0] == std::string_view{"hello"});
+// static_assert(set.size() == 4);
+// static_assert(equal_ranges(set, vec));
+// static constexpr static_set<std::string_view, 5> s(vec);
+// static_assert(s[0] == std::string_view{"hello"});
+// static_assert(s.size() == 4);
+
+#endif /* _CONTAINERS_HPP_ */
+
+// End /home/hari/repos/s2s/include/containers.hpp
+
 // Begin /home/hari/repos/s2s/include/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
+
+
+#include <ranges>
  
  
  
  
  
+  
  
 namespace s2s {
 template <fixed_string... arg>
@@ -1566,11 +1695,33 @@ template <typename list>
 inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<typelist::list<>, list>::is_resolved;
 
 
+template <std::size_t N>
+constexpr bool check_for_field_id_uniqueness(const std::array<std::string_view, N>& field_id_list) {
+  static_set<std::string_view, N> field_id_set(field_id_list);
+  return equal_ranges(field_id_list, field_id_set);
+}
+
+// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
+// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
+
+template <std::size_t N>
+constexpr auto as_string_view(const fixed_string<N>& str) {
+  return std::string_view{str.data()};
+}
+
+template <typename... fields>
+concept has_unique_field_ids = check_for_field_id_uniqueness(std::array{as_string_view(fields::field_id)...});
+
+template <typename T>
+struct extract_field_id;
+
 template <typename... fields>
   requires all_field_like<fields...> &&
-           has_unique_field_ids_v<fields::field_id...> &&
+           has_unique_field_ids<fields...> &&
            size_dependencies_resolved_v<typelist::list<fields...>>
 struct struct_field_list : struct_field_list_base, fields... {
+  static constexpr std::array field_id_list{std::string_view{fields::field_id.data()}...};
+
   struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
@@ -2395,6 +2546,7 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 #include <iostream>
 
 
+namespace s2s {
 template <typename T>
 concept convertible_to_bool = requires(T obj) {
   { obj.operator bool() } -> std::same_as<bool>;
@@ -2435,6 +2587,7 @@ concept input_stream_like = readable<T> && convertible_to_bool<T>;
 
 template <typename T>
 concept output_stream_like = writeable<T> && convertible_to_bool<T>;
+}
 
 #endif /* _STREAM_TRAITS_HPP_ */
 
@@ -3012,7 +3165,7 @@ inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
  
 namespace s2s {
 
-auto operator|(const cast_result& res, auto&& callable) -> cast_result
+constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
 {
   return res ? callable() : std::unexpected(res.error());
 }

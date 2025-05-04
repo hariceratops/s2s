@@ -13,7 +13,7 @@
 
 namespace s2s {
 
-auto operator|(const cast_result& res, auto&& callable) -> cast_result
+constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
 {
   return res ? callable() : std::unexpected(res.error());
 }

@@ -2,12 +2,16 @@
 #define _FIELD_LIST_HPP_
 
 
+#include <ranges>
 #include "field.hpp"
 #include "typelist.hpp"
 #include "fixed_string.hpp"
 #include "field_list_base.hpp"
 #include "field_traits.hpp"
 #include "field_list_metafunctions.hpp"
+
+#include "algorithms.hpp"
+#include "containers.hpp"
 
 
 namespace s2s {
@@ -176,11 +180,33 @@ template <typename list>
 inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<typelist::list<>, list>::is_resolved;
 
 
+template <std::size_t N>
+constexpr bool check_for_field_id_uniqueness(const std::array<std::string_view, N>& field_id_list) {
+  static_set<std::string_view, N> field_id_set(field_id_list);
+  return equal_ranges(field_id_list, field_id_set);
+}
+
+// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
+// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
+
+template <std::size_t N>
+constexpr auto as_string_view(const fixed_string<N>& str) {
+  return std::string_view{str.data()};
+}
+
+template <typename... fields>
+concept has_unique_field_ids = check_for_field_id_uniqueness(std::array{as_string_view(fields::field_id)...});
+
+template <typename T>
+struct extract_field_id;
+
 template <typename... fields>
   requires all_field_like<fields...> &&
-           has_unique_field_ids_v<fields::field_id...> &&
+           has_unique_field_ids<fields...> &&
            size_dependencies_resolved_v<typelist::list<fields...>>
 struct struct_field_list : struct_field_list_base, fields... {
+  static constexpr std::array field_id_list{std::string_view{fields::field_id.data()}...};
+
   struct_field_list() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
