@@ -20,7 +20,7 @@ struct fixed_string {
   }
   constexpr const char* data() const { return value.data(); }
   constexpr char* data() { return value.data(); }
-  constexpr auto size() const { return N; }
+  constexpr std::size_t size() const { return N; }
   constexpr auto to_sv() -> std::string_view {
     return std::string_view{data()};
   }
