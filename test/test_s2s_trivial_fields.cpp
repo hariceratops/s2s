@@ -1,14 +1,12 @@
-#define CATCH_CONFIG_MAIN
-
-#include <catch2/catch.hpp>
+#include <gtest/gtest.h>
 #include "../single_header/s2s.hpp"
 #include "s2s_test_utils.hpp"
+#include <fstream>
 
 
 using namespace s2s_literals;
 
-
-TEST_CASE("Test reading a meta_struct from a binary file") {
+TEST(MetaStructTest, ReadingMetaStructFromBinaryFile) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -17,32 +15,31 @@ TEST_CASE("Test reading a meta_struct from a binary file") {
   });
 
   FIELD_LIST_SCHEMA = 
-   s2s::struct_field_list<
-     s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
-  >;
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+    >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
-    if(result) {
+    ASSERT_TRUE(result.has_value());
+    if (result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
+      EXPECT_EQ(fields["a"_f], 0xdeadbeef);
+      EXPECT_EQ(fields["b"_f], 0xcafed00d);
     }
   });
 
   FIELD_LIST_BE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
-    if(result) {
+    ASSERT_TRUE(result.has_value());
+    if (result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xefbeadde);
-      REQUIRE(fields["b"_f] == 0x0dd0feca);
+      EXPECT_EQ(fields["a"_f], 0xefbeadde);
+      EXPECT_EQ(fields["b"_f], 0x0dd0feca);
     }
   });
 }
 
-
-TEST_CASE("Test reading a meta_struct from a binary file but validation of field value fails") {
+TEST(MetaStructTest, ValidationFailureOnFieldValue) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xdeadbeef;
@@ -51,21 +48,20 @@ TEST_CASE("Test reading a meta_struct from a binary file but validation of field
   });
 
   FIELD_LIST_SCHEMA = 
-   s2s::struct_field_list<
-     s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xdeadbeef)>, 
-     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xcafed00d)>
-  >;
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xdeadbeef)>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xcafed00d)>
+    >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == false);
+    ASSERT_FALSE(result.has_value());
     auto err = result.error();
-    REQUIRE(err.failure_reason == s2s::error_reason::validation_failure);
-    REQUIRE(err.failed_at == "b");
+    EXPECT_EQ(err.failure_reason, s2s::error_reason::validation_failure);
+    EXPECT_EQ(err.failed_at, "b");
   });
 }
 
-
-TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") {
+TEST(MetaStructTest, BufferExhaustionWhenReadingBinaryFile) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     file.write(reinterpret_cast<const char*>(&a), sizeof(a));
@@ -73,21 +69,20 @@ TEST_CASE("Test reading a meta_struct from a binary when file buffer exhausts") 
   });
 
   FIELD_LIST_SCHEMA = 
-   s2s::struct_field_list<
-     s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
-  >;
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+    >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == false);
+    ASSERT_FALSE(result.has_value());
     auto err = result.error();
-    REQUIRE(err.failure_reason == s2s::error_reason::buffer_exhaustion);
-    REQUIRE(err.failed_at == "b");
+    EXPECT_EQ(err.failure_reason, s2s::error_reason::buffer_exhaustion);
+    EXPECT_EQ(err.failed_at, "b");
   });
 }
 
-
-TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
+TEST(MetaStructTest, NestedStructReadingFromBinaryFile) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -113,13 +108,13 @@ TEST_CASE("Test reading a meta_struct with nested struct from a binary file") {
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
-    if(result) {
+    ASSERT_TRUE(result.has_value());
+    if (result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["c"_f]["x"_f] == 0xbeefbeef);
-      REQUIRE(fields["c"_f]["y"_f] == 0xdeadbeef);
+      EXPECT_EQ(fields["a"_f], 0xdeadbeef);
+      EXPECT_EQ(fields["b"_f], 0xcafed00d);
+      EXPECT_EQ(fields["c"_f]["x"_f], 0xbeefbeef);
+      EXPECT_EQ(fields["c"_f]["y"_f], 0xdeadbeef);
     }
   });
 }

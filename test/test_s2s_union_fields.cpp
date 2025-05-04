@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
 
-#include <catch2/catch.hpp>
+#include <gtest/gtest.h>
 #include "../single_header/s2s.hpp"
 #include "s2s_test_utils.hpp"
 
@@ -8,7 +7,7 @@
 using namespace s2s_literals;
 
 
-TEST_CASE("Test case to verify failed parsing variant field") {
+TEST(S2STest, failed_parsing_variant_field) {
   PREPARE_INPUT_FILE({
     u32 a = 0xbeefbeef;
     u32 b = 0xbeefbeef;
@@ -48,15 +47,15 @@ TEST_CASE("Test case to verify failed parsing variant field") {
 
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == false);
+    ASSERT_EQ(result.has_value(), false);
     auto err = result.error();
-    REQUIRE(err.failure_reason == s2s::error_reason::type_deduction_failure);
-    REQUIRE(err.failed_at == "c");
+    ASSERT_EQ(err.failure_reason, s2s::error_reason::type_deduction_failure);
+    ASSERT_EQ(err.failed_at, "c");
   });
 }
 
 
-TEST_CASE("Test case to verify variant field parsing from a binary file") {
+TEST(S2STest, successful_variant_field_parsing) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -93,18 +92,18 @@ TEST_CASE("Test case to verify variant field parsing from a binary file") {
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_EQ(std::get<u32>(fields["c"_f]), 0xbeefbeef);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify variant field with an s2s::fixed array parsing from a binary file") {
+TEST(S2STest, variant_field_with_fixed_array) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -142,18 +141,19 @@ TEST_CASE("Test case to verify variant field with an s2s::fixed array parsing fr
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(std::get<std::array<u32, 3>>(fields["c"_f]) == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      auto c = (std::get<std::array<u32, 3>>(fields["c"_f]));
+      ASSERT_EQ(c, (std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef}));
     }
   });
 }
 
 
-TEST_CASE("Test case to verify variant field with an variable sized array parsing from a binary file") {
+TEST(S2STest, variant_field_with_variable_sized_array) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -200,25 +200,25 @@ TEST_CASE("Test case to verify variant field with an variable sized array parsin
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["len"_f] == 10);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_EQ(fields["len"_f], 10);
       auto& vec = std::get<std::vector<u32>>(fields["c"_f]);
-      REQUIRE(vec.size() == 10);
-      REQUIRE(vec == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+      ASSERT_EQ(vec.size(), 10);
+      ASSERT_EQ(vec, (std::vector<u32>{0xdeadbeef, 0xcafed00d, 
                                       0xdeadbeef, 0xcafed00d,
                                       0xdeadbeef, 0xcafed00d,
                                       0xdeadbeef, 0xcafed00d, 
-                                      0xdeadbeef, 0xcafed00d});
+                                      0xdeadbeef, 0xcafed00d}));
     }
   });
 }
 
 
-TEST_CASE("Test case to verify variant field with an s2s::fixed string parsing from a binary file") {
+TEST(S2STest, variant_field_with_fixed_string) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -255,19 +255,19 @@ TEST_CASE("Test case to verify variant field with an s2s::fixed string parsing f
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
       auto& str = std::get<s2s::fixed_string<10>>(fields["c"_f]);
-      REQUIRE(std::string_view{str.data()} == std::string_view{"foo in bar"});
+      ASSERT_EQ(std::string_view{str.data()}, std::string_view{"foo in bar"});
     }
   });
 }
 
 
-TEST_CASE("Test case to verify variant field with a variable string parsing from a binary file") {
+TEST(S2STest, variant_field_with_variable_string) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -307,19 +307,19 @@ TEST_CASE("Test case to verify variant field with a variable string parsing from
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
       auto& str = std::get<std::string>(fields["c"_f]);
-      REQUIRE(str == std::string{"foo in bar"});
+      ASSERT_EQ(str, std::string{"foo in bar"});
     }
   });
 }
 
 
-TEST_CASE("Test case to verify variant field parsing from a binary file with complex type predicate") {
+TEST(S2STest, variant_field_parsing_with_complex_type_predicate) {
   PREPARE_INPUT_FILE({
     u32 a = 100;
     u32 b = 100;
@@ -357,18 +357,18 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with com
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 100);
-      REQUIRE(fields["b"_f] == 100);
-      REQUIRE(std::get<u32>(fields["c"_f]) == 0xbeefbeef);
+      ASSERT_EQ(fields["a"_f], 100);
+      ASSERT_EQ(fields["b"_f], 100);
+      ASSERT_EQ(std::get<u32>(fields["c"_f]), 0xbeefbeef);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify parsing variant field with multiple struct field choices") {
+TEST(S2STest, variant_field_struct_fields) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -407,20 +407,20 @@ TEST_CASE("Test case to verify parsing variant field with multiple struct field 
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
       auto c = std::get<inner_2>(fields["c"_f]);
-      REQUIRE(c["p"_f] == 0xbeefbeef);
-      REQUIRE(c["q"_f] == 0xbeefd00d);
+      ASSERT_EQ(c["p"_f], 0xbeefbeef);
+      ASSERT_EQ(c["q"_f], 0xbeefd00d);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify failed variant field parsing from a binary file with boolean clauses") {
+TEST(S2STest, variant_field_parsing_with_boolean_clauses) {
   PREPARE_INPUT_FILE({
     u32 a = 50000;
     u32 b = 50000;
@@ -457,15 +457,15 @@ TEST_CASE("Test case to verify failed variant field parsing from a binary file w
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == false);
+    ASSERT_EQ(result.has_value(), false);
     auto err = result.error();
-    REQUIRE(err.failure_reason == s2s::error_reason::type_deduction_failure);
-    REQUIRE(err.failed_at == "c");
+    ASSERT_EQ(err.failure_reason, s2s::error_reason::type_deduction_failure);
+    ASSERT_EQ(err.failed_at, "c");
   });
 }
 
 
-TEST_CASE("Test case to verify variant field parsing from a binary file with boolean clauses") {
+TEST(S2STest, variant_field_with_boolean_clauses) {
   PREPARE_INPUT_FILE({
     u32 a = 12000;
     u32 b = 12000;
@@ -507,12 +507,12 @@ TEST_CASE("Test case to verify variant field parsing from a binary file with boo
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 12000);
-      REQUIRE(fields["b"_f] == 12000);
-      REQUIRE(std::get<float>(fields["c"_f]) == 3.14f);
+      ASSERT_EQ(fields["a"_f], 12000);
+      ASSERT_EQ(fields["b"_f], 12000);
+      ASSERT_EQ(std::get<float>(fields["c"_f]), 3.14f);
     }
   });
 }

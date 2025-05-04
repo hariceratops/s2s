@@ -2,6 +2,7 @@
 #define _S2S_TEST_UTILS_HPP_
 
 
+#include <fstream>
 #include "../single_header/s2s.hpp"
 
 
@@ -27,6 +28,23 @@
     auto result = s2s::struct_cast_be<test_field_list>(file); \
     code; \
   } while(0)
+
+// constexpr auto operator""_field_list_be_read_check(auto callable) {
+//   callable();
+// }
+
+template <typename struct_field_list>
+struct field_list_le_read_check {
+  using callable = void(*)(void);
+  callable fn;
+
+  template <typename Fn>
+  constexpr field_list_le_read_check(Fn&& fn): fn(+fn) {}
+
+  constexpr void operator()() { 
+    fn(); 
+  }
+};
 
 
 // Helper types

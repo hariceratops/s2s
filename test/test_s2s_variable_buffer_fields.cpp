@@ -1,14 +1,11 @@
-#define CATCH_CONFIG_MAIN
-
-#include <catch2/catch.hpp>
+#include <gtest/gtest.h>
 #include "../single_header/s2s.hpp"
 #include "s2s_test_utils.hpp"
 
 
 using namespace s2s_literals;
 
-
-TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed string from binary file") {
+TEST(S2STest, ReadMetaStructWithPrefixedLengthString) {
   PREPARE_INPUT_FILE({
     constexpr std::size_t str_len = 10;
     const u8 str[] = "foo in bar";
@@ -16,24 +13,23 @@ TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed string f
     file.write(reinterpret_cast<const char*>(&str), str_len);
   });
 
-  FIELD_LIST_SCHEMA = 
+  FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
       s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
       s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value());
+    ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    REQUIRE(fields["len"_f] == 10);
-    REQUIRE(fields["str"_f].size() == 10);
+    ASSERT_EQ(fields["len"_f], 10);
+    ASSERT_EQ(fields["str"_f].size(), 10);
     std::string_view expected{"foo in bar"};
-    REQUIRE(std::string_view{fields["str"_f]} == expected);
+    ASSERT_EQ(std::string_view{fields["str"_f]}, expected);
   });
-};
+}
 
-
-TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer fields from binary file") {
+TEST(S2STest, ReadMetaStructWithAliasedLengthFixedBufferFields) {
   []() {
     constexpr std::size_t vec_len = 10;
     const u8 str[] = "foo in bar";
@@ -50,31 +46,30 @@ TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer f
     file.write(reinterpret_cast<const char*>(&str), vec_len + 1);
   }();
 
-  FIELD_LIST_SCHEMA = 
+  FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
       s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
       s2s::vec_field<
-        "vec", 
-        u32, 
+        "vec",
+        u32,
         s2s::field_size<s2s::len_from_field<"len">>
       >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value());
+    ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    REQUIRE(fields["len"_f] == 10);
-    REQUIRE(fields["vec"_f].size() == 10);
-    REQUIRE(fields["vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
-                                                0xdeadbeef, 0xcafed00d,
-                                                0xdeadbeef, 0xcafed00d,
-                                                0xdeadbeef, 0xcafed00d, 
-                                                0xdeadbeef, 0xcafed00d});
+    ASSERT_EQ(fields["len"_f], 10);
+    ASSERT_EQ(fields["vec"_f].size(), 10);
+    ASSERT_EQ(fields["vec"_f], (std::vector<u32>{0xdeadbeef, 0xcafed00d,
+                                                 0xdeadbeef, 0xcafed00d,
+                                                 0xdeadbeef, 0xcafed00d,
+                                                 0xdeadbeef, 0xcafed00d,
+                                                 0xdeadbeef, 0xcafed00d}));
   });
-};
+}
 
-
-TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer fields depending on multiple fields from binary file") {
+TEST(S2STest, ReadMetaStructWithAliasedLengthFixedBufferFieldsDependingOnMultipleFields) {
   []() {
     constexpr std::size_t row = 5;
     constexpr std::size_t col = 2;
@@ -93,13 +88,13 @@ TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer f
   }();
 
   auto size_from_rc = [](auto r, auto c) { return r * c; };
-  FIELD_LIST_SCHEMA = 
+  FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
       s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
       s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
       s2s::vec_field<
-        "flat_vec", 
-        u32, 
+        "flat_vec",
+        u32,
         s2s::field_size<
           s2s::len_from_fields<size_from_rc, s2s::with_fields<"row", "col">>
         >
@@ -107,18 +102,18 @@ TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed buffer f
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value());
+    ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    REQUIRE(fields["row"_f] == 5);
-    REQUIRE(fields["col"_f] == 2);
-    REQUIRE(fields["flat_vec"_f].size() == 10);
-    REQUIRE(fields["flat_vec"_f] == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+    ASSERT_EQ(fields["row"_f], 5);
+    ASSERT_EQ(fields["col"_f], 2);
+    ASSERT_EQ(fields["flat_vec"_f].size(), 10);
+    ASSERT_EQ(fields["flat_vec"_f], (std::vector<u32>{0xdeadbeef, 0xcafed00d,
                                                      0xdeadbeef, 0xcafed00d,
                                                      0xdeadbeef, 0xcafed00d,
-                                                     0xdeadbeef, 0xcafed00d, 
-                                                     0xdeadbeef, 0xcafed00d});
+                                                     0xdeadbeef, 0xcafed00d,
+                                                     0xdeadbeef, 0xcafed00d}));
   });
-};
+}
 
 // todo recursive resize
 // TEST_CASE("Test reading a meta_struct with aliased length pres2s::fixed md_buffer fields depending on multiple fields from binary file") {
