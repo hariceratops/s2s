@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
 
-#include <catch2/catch.hpp>
+#include <gtest/gtest.h>
 #include "../single_header/s2s.hpp"
 #include "s2s_test_utils.hpp"
 
@@ -8,7 +7,7 @@
 using namespace s2s_literals;
 
 
-TEST_CASE("Test case to verify option field parsing from binary file with successful parse predicate") {
+TEST(S2STest, successful_parse_predicate) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -30,18 +29,18 @@ TEST_CASE("Test case to verify option field parsing from binary file with succes
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(*(fields["c"_f]) == 0xbeefbeef);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_EQ(*(fields["c"_f]), 0xbeefbeef);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify option field parsing with parse predicate failure") {
+TEST(S2STest, parse_predicate_failure) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -63,18 +62,18 @@ TEST_CASE("Test case to verify option field parsing with parse predicate failure
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["c"_f] == std::nullopt);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_EQ(fields["c"_f], std::nullopt);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify optional struct from binary file with successful parse predicate") {
+TEST(S2STest, optional_struct_successful_parse_predicate) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -103,20 +102,20 @@ TEST_CASE("Test case to verify optional struct from binary file with successful 
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
       auto opt_struct = *(fields["c"_f]);
-      REQUIRE(opt_struct["x"_f] == 0xbeefbeef);
-      REQUIRE(opt_struct["y"_f] == 0xbeefd00d);
+      ASSERT_EQ(opt_struct["x"_f], 0xbeefbeef);
+      ASSERT_EQ(opt_struct["y"_f], 0xbeefd00d);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify optional s2s::fixed_array from binary file with successful parse predicate") {
+TEST(S2STest, optional_fixed_array_successful_parse_predicate) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -139,20 +138,20 @@ TEST_CASE("Test case to verify optional s2s::fixed_array from binary file with s
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["c"_f]);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_TRUE(fields["c"_f]);
       auto opt_array = *(fields["c"_f]);
-      REQUIRE(opt_array == std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef});
+      ASSERT_EQ(opt_array, (std::array<u32, 3>{0xdeadbeef, 0xcafed00d, 0xbeefbeef}));
     }
   });
 }
 
 
-TEST_CASE("Test case to verify optional s2s::fixed string from binary file with successful parse predicate") {
+TEST(S2STest, optional_fixed_string_with_successful_parse_predicate) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -176,20 +175,20 @@ TEST_CASE("Test case to verify optional s2s::fixed string from binary file with 
 
   FIELD_LIST_LE_READ_CHECK({
     std::string_view expected{"foo in bar"};
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["c"_f]);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_TRUE(fields["c"_f]);
       auto opt_fixed_str = *(fields["c"_f]);
-      REQUIRE(std::string_view{opt_fixed_str.data()} == expected);
+      ASSERT_EQ(std::string_view{opt_fixed_str.data()}, expected);
     }
   });
 }
 
 
-TEST_CASE("Test case to verify optional length pres2s::fixed array from binary file with successful parse predicate") {
+TEST(S2STest, optional_length_prefixed_array_with_successful_parse_predicate) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -225,26 +224,26 @@ TEST_CASE("Test case to verify optional length pres2s::fixed array from binary f
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["len"_f] == 10);
-      REQUIRE(fields["vec"_f]);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_EQ(fields["len"_f], 10);
+      ASSERT_TRUE(fields["vec"_f]);
       auto vec = *(fields["vec"_f]);
-      REQUIRE(vec.size() == 10);
-      REQUIRE(vec == std::vector<u32>{0xdeadbeef, 0xcafed00d, 
+      ASSERT_EQ(vec.size(), 10);
+      ASSERT_EQ(vec, (std::vector<u32>{0xdeadbeef, 0xcafed00d, 
                                       0xdeadbeef, 0xcafed00d,
                                       0xdeadbeef, 0xcafed00d,
                                       0xdeadbeef, 0xcafed00d, 
-                                      0xdeadbeef, 0xcafed00d});
+                                      0xdeadbeef, 0xcafed00d}));
     }
   });
 }
 
 
-TEST_CASE("Test case to verify optional array of records from binary file with successful parse predicate") {
+TEST(S2STest, optional_array_of_records_with_successful_parse_predicate) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -276,23 +275,23 @@ TEST_CASE("Test case to verify optional array of records from binary file with s
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["records"_f]);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_TRUE(fields["records"_f]);
       auto records = fields["records"_f];
       for(auto record: *records) {
-        REQUIRE(record["x"_f] == 0xdeadbeef);
-        REQUIRE(record["y"_f] == 0xbeefbeef);
+        ASSERT_EQ(record["x"_f], 0xdeadbeef);
+        ASSERT_EQ(record["y"_f], 0xbeefbeef);
       }
     }
   });
 }
 
 
-TEST_CASE("Test case to verify optional vector of records from binary file with successful parse predicate") {
+TEST(S2STest, optional_vector_of_records_with_successful_parse_predicate) {
   []() {
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -331,16 +330,16 @@ TEST_CASE("Test case to verify optional vector of records from binary file with 
     >;
 
   FIELD_LIST_LE_READ_CHECK({
-    REQUIRE(result.has_value() == true);
+    ASSERT_EQ(result.has_value(), true);
     if(result) {
       auto fields = *result;
-      REQUIRE(fields["a"_f] == 0xdeadbeef);
-      REQUIRE(fields["b"_f] == 0xcafed00d);
-      REQUIRE(fields["records"_f]);
+      ASSERT_EQ(fields["a"_f], 0xdeadbeef);
+      ASSERT_EQ(fields["b"_f], 0xcafed00d);
+      ASSERT_TRUE(fields["records"_f]);
       auto records = fields["records"_f];
       for(auto record: *records) {
-        REQUIRE(record["x"_f] == 0xdeadbeef);
-        REQUIRE(record["y"_f] == 0xbeefbeef);
+        ASSERT_EQ(record["x"_f], 0xdeadbeef);
+        ASSERT_EQ(record["y"_f], 0xbeefbeef);
       }
     }
   });
