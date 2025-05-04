@@ -112,7 +112,7 @@ template <fixed_string id,
           typename size_type = typename type_deducer::sizes,
           auto constraint_on_value = no_constraint<type>{},
           typename variant = field<id, type, size_type, constraint_on_value>,
-          typename field_choices_t = to_field_choices<id, type, size_type>::choices
+          typename field_choices_t = typename to_field_choices<id, type, size_type>::choices
   >
   requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {

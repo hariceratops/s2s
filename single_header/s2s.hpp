@@ -1112,7 +1112,7 @@ template <fixed_string id,
           typename size_type = typename type_deducer::sizes,
           auto constraint_on_value = no_constraint<type>{},
           typename variant = field<id, type, size_type, constraint_on_value>,
-          typename field_choices_t = to_field_choices<id, type, size_type>::choices
+          typename field_choices_t = typename to_field_choices<id, type, size_type>::choices
   >
   requires are_unique_types_v<field_choices_t>
 struct union_field: public variant {
@@ -2447,6 +2447,7 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
 #include <concepts>
 #include <expected>
+#include <bit>
  
  
  
@@ -2455,6 +2456,39 @@ enum cast_endianness {
   host = 0,
   foreign = 1
 };
+
+
+// template <std::integral T>
+// constexpr auto byteswap(T value) -> T {
+//   constexpr auto object_size = sizeof(T);
+//   auto value_rep = std::bit_cast<std::array<std::byte, object_size>>(value);
+//   for(std::size_t fwd_idx = 0, rev_idx = object_size - 1; 
+//       fwd_idx <= rev_idx; 
+//       ++fwd_idx, --rev_idx) 
+//   {
+//     auto tmp = value_rep[fwd_idx];
+//     value_rep[fwd_idx] = value_rep[rev_idx];
+//     value_rep[rev_idx] = tmp;
+//   }
+//   return std::bit_cast<T>(value_rep);
+// }
+//
+//
+// constexpr auto is_little() -> bool {
+//   constexpr uint32_t bait = 0xdeadbeef;
+//   constexpr auto bait_size = sizeof(bait);
+//   auto value_rep = std::bit_cast<std::array<std::byte, bait_size>>(bait);
+//   return value_rep[0] == std::byte{0xef};
+// }
+//
+// static_assert(byteswap(0xdeadbeef) == 0xefbeadde);
+//
+//
+// enum endian: uint32_t {
+//   little = 0xdeadbeef,
+//   big = 0xefbeadde,
+//   native = is_little() ? little : big
+// };
 
 
 template <std::endian endianness>
