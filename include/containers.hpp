@@ -48,6 +48,46 @@ struct static_set {
   static_vector<T, N> set{};
 };
 
+template <typename T>
+constexpr void swap(T& a, T& b) {
+  T temp{a};
+  a = b;
+  b = temp;
+}
+
+template <typename Key, typename Value, std::size_t N>
+struct static_map {
+  struct Node {
+    Key key;
+    Value value;
+  };
+
+  constexpr static_map() = default;
+  constexpr auto& operator[](const Key& key, Value value) {
+    std::size_t key_index = 0;
+    for (std::size_t idx = 0u; idx < map.size(); ++idx) {
+      if(map[idx].key == key) {
+        key_index = idx;
+        break;
+      }
+    }
+    if(key_index == map.size()) {
+      map.push_back(Node(key, value));
+      return map[map.size() - 1];
+    }
+    
+    map[key_index] = value;
+    return map[key_index];
+  }
+  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
+  [[nodiscard]] constexpr auto end() const { return map.end(); }
+  [[nodiscard]] constexpr auto size() const { return map.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+  static_vector<Node, N> map{};
+};
+
 // constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
 //   static_set<std::string_view, 5> set;
 //   set.push_back("hello");

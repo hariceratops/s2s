@@ -16,7 +16,7 @@ enum error_reason {
 
 struct cast_error {
   error_reason failure_reason;
-  std::string failed_at;
+  std::string_view failed_at;
 };
 
 

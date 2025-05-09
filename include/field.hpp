@@ -21,7 +21,7 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  field_type value;
+  field_type value{};
 };
 
 template <typename T>

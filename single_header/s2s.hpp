@@ -127,7 +127,7 @@ enum error_reason {
 
 struct cast_error {
   error_reason failure_reason;
-  std::string failed_at;
+  std::string_view failed_at;
 };
 
 
@@ -1021,7 +1021,7 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
-  field_type value;
+  field_type value{};
 };
 
 template <typename T>
@@ -1482,6 +1482,46 @@ struct static_set {
   static_vector<T, N> set{};
 };
 
+template <typename T>
+constexpr void swap(T& a, T& b) {
+  T temp{a};
+  a = b;
+  b = temp;
+}
+
+template <typename Key, typename Value, std::size_t N>
+struct static_map {
+  struct Node {
+    Key key;
+    Value value;
+  };
+
+  constexpr static_map() = default;
+  constexpr auto& operator[](const Key& key, Value value) {
+    std::size_t key_index = 0;
+    for (std::size_t idx = 0u; idx < map.size(); ++idx) {
+      if(map[idx].key == key) {
+        key_index = idx;
+        break;
+      }
+    }
+    if(key_index == map.size()) {
+      map.push_back(Node(key, value));
+      return map[map.size() - 1];
+    }
+    
+    map[key_index] = value;
+    return map[key_index];
+  }
+  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
+  [[nodiscard]] constexpr auto end() const { return map.end(); }
+  [[nodiscard]] constexpr auto size() const { return map.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+  static_vector<Node, N> map{};
+};
+
 // constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
 //   static_set<std::string_view, 5> set;
 //   set.push_back("hello");
@@ -1696,7 +1736,7 @@ inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<
 
 
 template <std::size_t N>
-constexpr bool check_for_field_id_uniqueness(const std::array<std::string_view, N>& field_id_list) {
+constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field_id_list) {
   static_set<std::string_view, N> field_id_set(field_id_list);
   return equal_ranges(field_id_list, field_id_set);
 }
@@ -1705,12 +1745,12 @@ constexpr bool check_for_field_id_uniqueness(const std::array<std::string_view, 
 // static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
 
 template <std::size_t N>
-constexpr auto as_string_view(const fixed_string<N>& str) {
+constexpr auto as_sv(const fixed_string<N>& str) {
   return std::string_view{str.data()};
 }
 
 template <typename... fields>
-concept has_unique_field_ids = check_for_field_id_uniqueness(std::array{as_string_view(fields::field_id)...});
+concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::field_id)...});
 
 template <typename T>
 struct extract_field_id;
@@ -1720,7 +1760,10 @@ template <typename... fields>
            has_unique_field_ids<fields...> &&
            size_dependencies_resolved_v<typelist::list<fields...>>
 struct struct_field_list : struct_field_list_base, fields... {
+  // use a map of name to field type_id, use it for lookup, compile time [] in map if null opt
+  // roll out optional type if result not null opt, use type_of
   static constexpr std::array field_id_list{std::string_view{fields::field_id.data()}...};
+  // a constexpr field_list metadata? with type map, size dependencies and parse dependencies
 
   struct_field_list() = default;
   template <typename field_accessor, 
@@ -2541,12 +2584,13 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
 
-
+#include <array>
 #include <concepts>
 #include <iostream>
 
 
 namespace s2s {
+
 template <typename T>
 concept convertible_to_bool = requires(T obj) {
   { obj.operator bool() } -> std::same_as<bool>;
@@ -2573,17 +2617,31 @@ concept write_trait = requires(T obj, const char* src_mem, std::size_t size_to_r
   { obj.write(src_mem, size_to_read) } -> std::same_as<T&>;
 };
 
+template <typename T, std::size_t N>
+concept constexpr_read_trait = requires(T obj, std::array<char, N>& dest_mem, std::streamsize size_to_read) {
+  { obj.read(dest_mem, size_to_read) } -> std::same_as<T&>;
+};
+
+template <typename T, std::size_t N>
+concept constexpr_write_trait = requires(T obj, const std::array<char, N>& src_mem, std::size_t size_to_read) {
+  { obj.write(src_mem, size_to_read) } -> std::same_as<T&>;
+};
 
 // todo add operator bool, seekg, tellg, fail, bad, eof/s constaint
+struct constexpr_stream{};
 
 template <typename T>
+concept identified_as_constexpr_stream = std::is_base_of_v<constexpr_stream, T>;
+
+template <typename T>
+// concept writeable = std_write_trait<T> || write_trait<T> || constexpr_write_trait<T, N>;
 concept writeable = std_write_trait<T> || write_trait<T>;
 
 template <typename T>
 concept readable = std_read_trait<T> || read_trait<T>;
 
 template <typename T>
-concept input_stream_like = readable<T> && convertible_to_bool<T>;
+concept input_stream_like = (identified_as_constexpr_stream<T> || readable<T>) && convertible_to_bool<T>;
 
 template <typename T>
 concept output_stream_like = writeable<T> && convertible_to_bool<T>;
@@ -2644,6 +2702,55 @@ enum cast_endianness {
 // };
 
 
+template <input_stream_like stream, typename T>
+char* byte_addressof(T& obj) {
+  return reinterpret_cast<char*>(&obj);
+}
+
+template <input_stream_like stream, typename T, std::size_t N>
+char* byte_addressof(std::array<T, N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <input_stream_like stream, std::size_t N>
+char* byte_addressof(fixed_string<N>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <input_stream_like stream, typename T>
+char* byte_addressof(std::vector<T>& obj) {
+  return reinterpret_cast<char*>(obj.data());
+}
+
+template <input_stream_like stream>
+inline char* byte_addressof(std::string& obj) {
+  return reinterpret_cast<char*>(&obj[0]);
+}
+
+template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>
+constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
+  return std::bit_cast<std::array<char, size>>(obj);
+}
+
+// template <typename T, std::size_t N, std::size_t size = N * sizeof(T)>
+// constexpr auto as_byte_buffer(std::array<T, N>& obj) -> std::array<char, size> {
+//   return std::bit_cast<std::array<char, size>>(obj);
+// }
+//
+// template <std::size_t N, std::size_t size = N>
+// constexpr auto as_byte_buffer(fixed_string<N>& obj) {
+//   return std::bit_cast<std::array<char, size>>(obj.data());
+// }
+
+// template <typename T>
+// constexpr auto byte_addressof(std::vector<T>& obj) {
+//   return reinterpret_cast<char*>(obj.data());
+// }
+//
+// constexpr auto byte_addressof(std::string& obj) {
+//   return reinterpret_cast<char*>(&obj[0]);
+// }
+
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
   if constexpr(std::endian::native == endianness) 
@@ -2652,70 +2759,136 @@ constexpr cast_endianness deduce_byte_order() {
     return cast_endianness::foreign;
 }
 
-template <input_stream_like stream>
-class input_stream {
-private:
-  stream& s;
+template <typename T, identified_as_constexpr_stream stream>
+constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
+  auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
+  if(!s.read(as_byte_buffer_rep, size_to_read)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  obj = std::bit_cast<T>(as_byte_buffer_rep);
+  return {};
+}
 
-  template <typename T>
-  constexpr auto read_native_impl(T& obj, std::size_t size_to_read) -> rw_result {
-    if(!s.read(byte_addressof(obj), size_to_read)) {
-      return std::unexpected(error_reason::buffer_exhaustion);
-    }
+template <typename T, readable stream>
+constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
+  if(!s.read(byte_addressof<stream>(obj), size_to_read)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <constant_sized_like T, input_stream_like stream>
+constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
+  return read_native_impl(s, obj, size_to_read);   
+}
+
+template <variable_sized_buffer_like T, input_stream_like stream>
+constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
+  obj.resize(len_to_read);
+  return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+}
+
+template <trivial T, input_stream_like stream>
+constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
+  auto res = read_native_impl(s, obj, size_to_read);
+  if(res) {
+    // todo rollout byteswap if freestanding compiler doesnt provide one
+    obj = std::byteswap(obj);
     return {};
   }
+  return res;
+}
 
-  template <constant_sized_like T>
-  constexpr auto read_native(T& obj, std::size_t size_to_read) -> rw_result {
-    return read_native_impl(obj, size_to_read);   
-  }
-
-  template <variable_sized_buffer_like T>
-  constexpr auto read_native(T& obj, std::size_t len_to_read) -> rw_result {
-    obj.resize(len_to_read);
-    return read_native_impl(obj, len_to_read * sizeof(T{}[0]));
-  }
-
-  template <trivial T>
-  constexpr auto read_foreign_scalar(T& obj, std::size_t size_to_read) -> rw_result {
-    auto res = read_native_impl(obj, size_to_read);
-    if(res) {
-      // todo rollout byteswap if freestanding compiler doesnt provide one
+template <buffer_like T, input_stream_like stream>
+constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
+  auto res = read_native(s, obj, len_to_read);
+  if(res) {
+    for(auto& elem: obj) 
       obj = std::byteswap(obj);
-      return {};
-    }
-    return res;
+    return {};
   }
+  return res;
+}
 
-  template <buffer_like T>
-  constexpr auto read_foreign_buffer(T& obj, std::size_t len_to_read) -> rw_result {
-    auto res = read_native(obj, len_to_read);
-    if(res) {
-      for(auto& elem: obj) 
-        obj = std::byteswap(obj);
-      return {};
-    }
-    return res;
-  }
-
-public:
-  constexpr input_stream(stream& s): s(s) {}
-  constexpr input_stream(const input_stream&) = delete;
-
-  template <std::endian endianness, typename T>
-  constexpr auto read(T& obj, std::size_t N) -> rw_result {
-    auto constexpr byte_order = deduce_byte_order<endianness>();
-    if constexpr(byte_order == cast_endianness::host) {
-      return read_native(obj, N); 
-    } else if constexpr(byte_order == cast_endianness::foreign) {
-      if constexpr(trivial<T>) {
-        return read_foreign_scalar(obj, N);
-      } else if constexpr(buffer_like<T>) {
-        return read_foreign_buffer(obj, N);
-      }
+template <std::endian endianness, typename T, input_stream_like stream>
+constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
+  auto constexpr byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return read_native(s, obj, N); 
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    if constexpr(trivial<T>) {
+      return read_foreign_scalar(s, obj, N);
+    } else if constexpr(buffer_like<T>) {
+      return read_foreign_buffer(s, obj, N);
     }
   }
-};
+}
+
+
+// template <input_stream_like stream>
+// class input_stream {
+// private:
+//   stream& s;
+//
+//   template <typename T>
+//   constexpr auto read_native_impl(T& obj, std::size_t size_to_read) -> rw_result {
+//     if(!s.read(byte_addressof(obj), size_to_read)) {
+//       return std::unexpected(error_reason::buffer_exhaustion);
+//     }
+//     return {};
+//   }
+//
+//   template <constant_sized_like T>
+//   constexpr auto read_native(T& obj, std::size_t size_to_read) -> rw_result {
+//     return read_native_impl(obj, size_to_read);   
+//   }
+//
+//   template <variable_sized_buffer_like T>
+//   constexpr auto read_native(T& obj, std::size_t len_to_read) -> rw_result {
+//     obj.resize(len_to_read);
+//     return read_native_impl(obj, len_to_read * sizeof(T{}[0]));
+//   }
+//
+//   template <trivial T>
+//   constexpr auto read_foreign_scalar(T& obj, std::size_t size_to_read) -> rw_result {
+//     auto res = read_native_impl(obj, size_to_read);
+//     if(res) {
+//       // todo rollout byteswap if freestanding compiler doesnt provide one
+//       obj = std::byteswap(obj);
+//       return {};
+//     }
+//     return res;
+//   }
+//
+//   template <buffer_like T>
+//   constexpr auto read_foreign_buffer(T& obj, std::size_t len_to_read) -> rw_result {
+//     auto res = read_native(obj, len_to_read);
+//     if(res) {
+//       for(auto& elem: obj) 
+//         obj = std::byteswap(obj);
+//       return {};
+//     }
+//     return res;
+//   }
+//
+// public:
+//   constexpr input_stream(stream& s): s(s) {}
+//   constexpr input_stream(const input_stream&) = delete;
+//
+//   template <std::endian endianness, typename T>
+//   constexpr auto read(T& obj, std::size_t N) -> rw_result {
+//     auto constexpr byte_order = deduce_byte_order<endianness>();
+//     if constexpr(byte_order == cast_endianness::host) {
+//       return read_native(obj, N); 
+//     } else if constexpr(byte_order == cast_endianness::foreign) {
+//       if constexpr(trivial<T>) {
+//         return read_foreign_scalar(obj, N);
+//       } else if constexpr(buffer_like<T>) {
+//         return read_foreign_buffer(obj, N);
+//       }
+//     }
+//   }
+// };
 
 
 template <output_stream_like stream>
@@ -2735,24 +2908,24 @@ public:
   }
 };
 
-template <typename S>
-struct is_s2s_input_stream;
-
-template <typename S>
-struct is_s2s_input_stream {
-  static constexpr bool res = false;
-};
-
-template <typename S>
-struct is_s2s_input_stream<input_stream<S>> {
-  static constexpr bool res = true;
-};
-
-template <typename S>
-inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
-
-template <typename T>
-concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
+// template <typename S>
+// struct is_s2s_input_stream;
+//
+// template <typename S>
+// struct is_s2s_input_stream {
+//   static constexpr bool res = false;
+// };
+//
+// template <typename S>
+// struct is_s2s_input_stream<input_stream<S>> {
+//   static constexpr bool res = true;
+// };
+//
+// template <typename S>
+// inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
+//
+// template <typename T>
+// concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 } /* namespace s2s */
 
 #endif /* _STREAM_WRAPPER_IMPL_HPP_ */
@@ -2789,7 +2962,7 @@ struct read_field<T, F> {
   constexpr auto read(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
-    return s.template read<endianness>(field.value, size_to_read);
+    return read_impl<endianness>(s, field.value, size_to_read);
   }
 };
 
@@ -2807,7 +2980,7 @@ struct read_field<T, F> {
   constexpr auto read(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return s.template read<endianness>(field.value, len_to_read);
+    return read_impl<endianness>(s, field.value, len_to_read);
   }
 };
 
@@ -2920,8 +3093,11 @@ struct read_field<T, F> {
 
 
 // Forward declaration
-template <s2s_input_stream_like stream, field_list_like T, auto endianness>
-constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
+// template <s2s_input_stream_like stream, field_list_like T, auto endianness>
+// constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
+
+template <typename F, typename stream, auto endianness>
+struct struct_cast_impl;
 
 template <struct_field_like T, field_list_like F>
 struct read_field<T, F> {
@@ -2934,7 +3110,7 @@ struct read_field<T, F> {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    auto res = struct_cast<stream, field_list_t, endianness>(s);
+    auto res = struct_cast_impl<field_list_t, stream, endianness>{}(s);
     if(!res) {
       auto err = res.error();
       return std::unexpected(err.failure_reason);
@@ -3171,8 +3347,9 @@ constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
 }
 
 // forward declaration
-template <s2s_input_stream_like stream, field_list_like T, auto endianness>
-constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
+// template <s2s_input_stream_like stream, field_list_like T, auto endianness>
+// template <input_stream_like stream, field_list_like T>
+// constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
 
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
@@ -3194,7 +3371,7 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
         auto read_res = reader.template read<endianness>(s);
         // Short circuit the remaining pipeline since read failed for current field
         if(!read_res) {
-          auto field_name = std::string{fields::field_id.data()};
+          auto field_name = std::string_view{fields::field_id.data()};
           auto err = read_res.error();
           auto validation_err = cast_error{err, field_name};
           return std::unexpected(validation_err);
@@ -3204,7 +3381,7 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
         // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
           bool field_validation_res = fields::constraint_checker(field.value);
           if(!field_validation_res) {
-            auto field_name = std::string{fields::field_id.data()};
+            auto field_name = std::string_view{fields::field_id.data()};
             auto err = error_reason::validation_failure;
             auto validation_err = cast_error{err, field_name};
             return std::unexpected(validation_err);
@@ -3218,23 +3395,25 @@ struct struct_cast_impl<struct_field_list<fields...>, stream, endianness> {
   }
 };
 
-template <s2s_input_stream_like stream_wrapper, field_list_like T, auto endianness>
-[[nodiscard]] constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream_wrapper, endianness>{}(wrapped);
-}
+// template <s2s_input_stream_like stream_wrapper, field_list_like T, auto endianness>
+// [[nodiscard]] constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
+//   return struct_cast_impl<T, stream_wrapper, endianness>{}(wrapped);
+// }
 
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
-  using stream_wrapper = input_stream<stream>;
-  stream_wrapper wrapped(s);
-  return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
+  // using stream_wrapper = input_stream<stream>;
+  // stream_wrapper wrapped(s);
+  // return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
+  return struct_cast_impl<T, stream, std::endian::little>{}(s);
 }
 
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
-  using stream_wrapper = input_stream<stream>;
-  stream_wrapper wrapped(s);
-  return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
+  // using stream_wrapper = input_stream<stream>;
+  // stream_wrapper wrapped(s);
+  // return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
+  return struct_cast_impl<T, stream, std::endian::big>{}(s);
 }
 } /* namespace s2s */
 
