@@ -181,7 +181,7 @@ inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<
 
 
 template <std::size_t N>
-constexpr bool check_for_field_id_uniqueness(const std::array<std::string_view, N>& field_id_list) {
+constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field_id_list) {
   static_set<std::string_view, N> field_id_set(field_id_list);
   return equal_ranges(field_id_list, field_id_set);
 }
@@ -190,12 +190,12 @@ constexpr bool check_for_field_id_uniqueness(const std::array<std::string_view, 
 // static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
 
 template <std::size_t N>
-constexpr auto as_string_view(const fixed_string<N>& str) {
+constexpr auto as_sv(const fixed_string<N>& str) {
   return std::string_view{str.data()};
 }
 
 template <typename... fields>
-concept has_unique_field_ids = check_for_field_id_uniqueness(std::array{as_string_view(fields::field_id)...});
+concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::field_id)...});
 
 template <typename T>
 struct extract_field_id;
@@ -205,7 +205,10 @@ template <typename... fields>
            has_unique_field_ids<fields...> &&
            size_dependencies_resolved_v<typelist::list<fields...>>
 struct struct_field_list : struct_field_list_base, fields... {
+  // use a map of name to field type_id, use it for lookup, compile time [] in map if null opt
+  // roll out optional type if result not null opt, use type_of
   static constexpr std::array field_id_list{std::string_view{fields::field_id.data()}...};
+  // a constexpr field_list metadata? with type map, size dependencies and parse dependencies
 
   struct_field_list() = default;
   template <typename field_accessor, 
