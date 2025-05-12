@@ -76,29 +76,18 @@ inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 
+constexpr std::size_t constexpr_buffer_size = 2048;
+
 template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>
 constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
   return std::bit_cast<std::array<char, size>>(obj);
 }
 
-// template <typename T, std::size_t N, std::size_t size = N * sizeof(T)>
+// template <typename T, std::size_t N, std::size_t size = N * constexpr_buffer_size>
 // constexpr auto as_byte_buffer(std::array<T, N>& obj) -> std::array<char, size> {
 //   return std::bit_cast<std::array<char, size>>(obj);
 // }
-//
-// template <std::size_t N, std::size_t size = N>
-// constexpr auto as_byte_buffer(fixed_string<N>& obj) {
-//   return std::bit_cast<std::array<char, size>>(obj.data());
-// }
 
-// template <typename T>
-// constexpr auto byte_addressof(std::vector<T>& obj) {
-//   return reinterpret_cast<char*>(obj.data());
-// }
-//
-// constexpr auto byte_addressof(std::string& obj) {
-//   return reinterpret_cast<char*>(&obj[0]);
-// }
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
