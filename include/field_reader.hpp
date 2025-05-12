@@ -294,7 +294,7 @@ struct read_variant_impl {
   }
 };
 
-auto operator|(const rw_result& res, auto&& callable) -> rw_result
+constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
 {
   return res ? callable() : std::unexpected(res.error());
 }

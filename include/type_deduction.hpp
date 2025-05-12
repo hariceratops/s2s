@@ -26,7 +26,7 @@ struct type<eval_expression, tswitch> {
   using sizes = tswitch::sizes;
 
   template <typename... fields>
-  auto operator()(const struct_field_list<fields...>& sfl)
+  constexpr auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return type_switch{}(eval_expression{}(sfl)); 
   }
@@ -39,7 +39,7 @@ struct type<match_field<id>, tswitch> {
   using sizes = tswitch::sizes;
 
   template <typename... fields>
-  auto operator()(const struct_field_list<fields...>& sfl)
+  constexpr auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return type_switch{}(sfl[field_accessor<id>{}]); 
   }
@@ -53,7 +53,7 @@ struct type<tladder> {
   using sizes = tladder::sizes;
 
   template <typename... fields>
-  auto operator()(const struct_field_list<fields...>& sfl)
+  constexpr auto operator()(const struct_field_list<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return type_ladder{}(sfl);
   }
