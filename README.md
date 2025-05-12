@@ -68,6 +68,60 @@ Link to Godbolt: https://godbolt.org/z/eGTvdoejP
   }
 ```
 
+Or let's go constexpr everything, as long we do not fields which we would
+allocate, say vector or string
+```cpp
+using inner_1 = 
+ s2s::struct_field_list<
+   s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
+   s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+>;
+using inner_2 = 
+ s2s::struct_field_list<
+   s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
+   s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+>;
+using unionish = 
+  s2s::struct_field_list<
+    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
+    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::variance<
+      "c", 
+      s2s::type<
+        s2s::match_field<"a">,
+        s2s::type_switch<
+          s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
+          s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>
+        >
+      >
+    >
+  >;
+
+
+constexpr auto parse_union_field_struct() -> std::expected<unionish, s2s::cast_error>
+{
+  std::array<u8, 16> buffer{
+    0xef, 0xbe, 0xad, 0xde, 
+    0x0d, 0xd0, 0xfe, 0xca,
+    0xef, 0xbe, 0xad, 0xde, 
+    0x0d, 0xd0, 0xfe, 0xca,
+  };
+  // custom stream written for compile time struct_cast
+  memstream<16> stream(buffer);
+  return s2s::struct_cast_le<unionish>(stream);
+}
+
+// complete marshalling and validation in compile time
+constexpr auto union_res = parse_union_field_struct();
+static_assert(union_res);
+constexpr auto union_fields = *union_res;
+static_assert(union_fields["a"_f] == 0xdeadbeef);
+static_assert(union_fields["b"_f] == 0xcafed00d);
+constexpr auto inner_2_obj = std::get<inner_2>(union_fields["c"_f]);
+static_assert(inner_2_obj["p"_f] == 0xdeadbeef);
+static_assert(inner_2_obj["q"_f] == 0xcafed00d);
+```
+
 ## API documentation
 Refer file UserGuide.md for detailed API documentation, for a brief 
 tour, refer the section [Brief Tour](#Brief-Tour)
