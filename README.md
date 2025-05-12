@@ -12,6 +12,7 @@ folder can be used for direct inclusion into a project
 
 ## Features
 * Single header
+* constexpr! as much as possible
 * Support for 
     * Trivial
     * Array of trivials 
@@ -68,7 +69,7 @@ Link to Godbolt: https://godbolt.org/z/eGTvdoejP
   }
 ```
 
-Or let's go constexpr everything, as long we do not fields which we would
+Or let's go constexpr everything, as long we do not have fields which we would
 allocate, say vector or string
 ```cpp
 using inner_1 = 
