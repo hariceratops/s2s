@@ -246,6 +246,7 @@ static_assert(inner_2_obj["q"_f] == 0xcafed00d);
 auto main(void) -> int {
   test_001();
   test_002();
+  std::cout << sizeof(our_struct) << " " << sizeof(unionish) << " " << sizeof(opt_field_struct) << " " << sizeof(arr_recs_struct);
   return 0;
 }
 

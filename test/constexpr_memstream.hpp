@@ -23,9 +23,7 @@ public:
   [[nodiscard]] constexpr auto read(std::array<char, dest_buffer_size>& dest, std::size_t size_to_read) -> memstream<N>& {
     std::size_t idx{0};
     while(idx < size_to_read) {
-      // std::cout << "idx=" << idx << ' ' <<  "read_idx=" << read_idx << " " << is_bad << '\n';
       if(read_idx > max_read_idx) {
-        // std::cout << "buffer_exhaust" << '\n';
         is_bad = true;
         return *this;
       }
