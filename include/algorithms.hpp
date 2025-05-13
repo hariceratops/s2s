@@ -16,6 +16,16 @@ constexpr auto find_index(auto t, const std::ranges::range auto& ts) -> std::siz
   return ts.size();
 }
 
+constexpr auto find_index_if(auto predicate, const std::ranges::range auto& ts) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(predicate(ts[i])) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
 constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
   if(xs.size() != ys.size()) return false;
 
