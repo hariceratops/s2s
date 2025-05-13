@@ -74,7 +74,7 @@ allocate, say vector or string.
 Link to Godbolt: https://godbolt.org/z/G5GWTEEq3
 ```cpp
   #include "s2s.hpp"
-  #include "constexpr_memstream.hpp"
+  #include "test/constexpr_memstream.hpp"
   #include <print>
 
   using namespace s2s_literals;
@@ -91,6 +91,8 @@ Link to Godbolt: https://godbolt.org/z/G5GWTEEq3
   {
     std::array<u8, 8> buffer{0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe, 0xca};
     // custom stream written for compile time struct_cast
+    // refer constexpr_memstream.hpp for implementation which can 
+    // be extended as required
     memstream<8> stream(buffer);
     return s2s::struct_cast_le<our_struct>(stream);
   }
@@ -103,6 +105,9 @@ Link to Godbolt: https://godbolt.org/z/G5GWTEEq3
   static_assert(fields["b"_f] == 0xcafed00d);
 
   auto main(void) -> int {
+    // Compile might emit assembly for [] operators
+    // We can further optimize to store [] operator results
+    // in constexpr variable
     std::println("{} {}", fields["a"_f], fields["b"_f]);
     return 0;
   }
