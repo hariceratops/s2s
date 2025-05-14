@@ -6,7 +6,7 @@
 #include "fixed_string.hpp"
 
 // todo namespace algorithms
-constexpr auto find_index(auto t, const std::ranges::range auto& ts) -> std::size_t {
+constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
   for(auto i = 0u; i < ts.size(); ++i) {
     if(ts[i] == t) {
       return i;
@@ -16,7 +16,7 @@ constexpr auto find_index(auto t, const std::ranges::range auto& ts) -> std::siz
   return ts.size();
 }
 
-constexpr auto find_index_if(auto predicate, const std::ranges::range auto& ts) -> std::size_t {
+constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
   for(auto i = 0u; i < ts.size(); ++i) {
     if(predicate(ts[i])) {
       return i;
@@ -37,12 +37,21 @@ constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges
   return true;
 }
 
+template <typename T>
+constexpr void swap_objects(T& a, T& b) {
+  T temp = a;
+  a = b;
+  b = temp;
+}
 
-static_assert(
-  0 == 
-  find_index(
-    s2s::fixed_string("hello").to_sv(), 
-    std::array{s2s::fixed_string("hello").to_sv(), s2s::fixed_string("world").to_sv()})
-  );
+constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    for(auto j = 0u; j < ts.size() - 1; ++j) {
+      if(predicate(ts[j + 1], ts[j])) {
+        swap_objects(ts[j], ts[j + 1]);
+      }
+    }
+  }
+}
 
 #endif /* _ALGORITHMS_HPP_ */
