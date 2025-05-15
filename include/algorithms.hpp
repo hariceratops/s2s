@@ -54,4 +54,5 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
   }
 }
 
+
 #endif /* _ALGORITHMS_HPP_ */

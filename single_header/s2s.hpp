@@ -257,6 +257,7 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
   }
 }
 
+
 #endif /* _ALGORITHMS_HPP_ */
 
 // End /home/hari/repos/s2s/include/algorithms.hpp
@@ -1445,7 +1446,8 @@ struct union_field: public variant {
  
  
 namespace s2s {
-static inline constexpr std::size_t max_dep_count = 8;
+static inline constexpr std::size_t max_union_dep_count = 8;
+static inline constexpr std::size_t max_dep_count = 64;
 static inline constexpr std::size_t max_field_count = 256;
 
 // todo better name
@@ -1504,13 +1506,30 @@ struct extract_length_dependencies<
   static constexpr auto value = extract_length_dependencies<f>::value;
 };
 
+template <std::size_t N>
+constexpr auto flatten(const static_vector<sv, max_dep_count> (&vecs)[N]) -> static_vector<sv, max_dep_count> {
+  static_vector<sv, max_dep_count> vec;
+  for(auto i = 0u; i < N; i++) {
+    for(auto& elem: vecs[i]) {
+      vec.push_back(elem);
+    }
+  }
+  return vec;
+}
+
+// constexpr static_vector<sv, max_dep_count> vecs[2] = {static_vector<sv, max_dep_count>("hello", "world"), static_vector<sv, max_dep_count>("foo", "bar")};
+// constexpr auto flat = flatten(vecs);
+// static_assert(flat[0] == "hello");
+// static_assert(flat[3] == "bar");
+
 template <fixed_string id, typename type_deducer, typename type, typename size,
-          auto constraint_on_value, typename variant, typename field_choices_t>
+          auto constraint_on_value, typename variant, typename... field_choices>
 struct extract_length_dependencies<
-  union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choices_t>
+  union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choice_list<field_choices...>>
 > 
 {
-  static constexpr auto value = static_vector<sv, max_dep_count>();
+  static constexpr static_vector<sv, max_dep_count> deps[64] = {static_vector<sv, max_dep_count>(extract_length_dependencies<field_choices>::value)...};
+  static constexpr auto value = flatten(deps);
 };
  
 

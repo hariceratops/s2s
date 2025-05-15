@@ -10,7 +10,9 @@
 
 
 namespace s2s {
-static inline constexpr std::size_t max_dep_count = 8;
+static inline constexpr std::size_t max_dep_count_per_field = 8;
+static inline constexpr std::size_t max_union_choices = 8;
+static inline constexpr std::size_t max_dep_count_per_struct = max_dep_count_per_field * max_union_choices;
 static inline constexpr std::size_t max_field_count = 256;
 
 // todo better name
@@ -21,7 +23,7 @@ struct field_node {
 
 using sv = std::string_view;
 using field_table_t = static_map<sv, field_node, max_field_count>;
-using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count>, max_field_count>;
+using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>;
 
 // extract dependencies metafunction
 template <typename T>
@@ -32,7 +34,7 @@ struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count>();
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
 template <fixed_string id, typename T, size_dont_care_like size, auto constraint>
@@ -40,7 +42,7 @@ struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count>();
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
 template <fixed_string id, typename T, fixed_string len_source, auto constraint>
@@ -48,7 +50,7 @@ struct extract_length_dependencies<
   field<id, T, field_size<len_from_field<len_source>>, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count>(as_sv(len_source));
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(len_source));
 };
 
 template <fixed_string id, typename T, auto callable, auto constraint, fixed_string... req_fields>
@@ -56,7 +58,7 @@ struct extract_length_dependencies<
   field<id, T, field_size<len_from_fields<callable, fixed_string_list<req_fields...>>>, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count>(as_sv(req_fields)...);
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
 };
 
 template <fixed_string id, typename T, typename size, auto constraint, 
@@ -69,13 +71,30 @@ struct extract_length_dependencies<
   static constexpr auto value = extract_length_dependencies<f>::value;
 };
 
+template <std::size_t N>
+constexpr auto flatten(const static_vector<sv, max_dep_count_per_struct> (&vecs)[N]) -> static_vector<sv, max_dep_count_per_struct> {
+  static_vector<sv, max_dep_count_per_struct> vec;
+  for(auto i = 0u; i < N; i++) {
+    for(auto& elem: vecs[i]) {
+      vec.push_back(elem);
+    }
+  }
+  return vec;
+}
+
+// constexpr static_vector<sv, max_dep_count> vecs[2] = {static_vector<sv, max_dep_count>("hello", "world"), static_vector<sv, max_dep_count>("foo", "bar")};
+// constexpr auto flat = flatten(vecs);
+// static_assert(flat[0] == "hello");
+// static_assert(flat[3] == "bar");
+
 template <fixed_string id, typename type_deducer, typename type, typename size,
-          auto constraint_on_value, typename variant, typename field_choices_t>
+          auto constraint_on_value, typename variant, typename... field_choices>
 struct extract_length_dependencies<
-  union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choices_t>
+  union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choice_list<field_choices...>>
 > 
 {
-  static constexpr auto value = static_vector<sv, max_dep_count>();
+  static constexpr static_vector<sv, max_dep_count_per_struct> deps[64] = {static_vector<sv, max_dep_count_per_struct>(extract_length_dependencies<field_choices>::value)...};
+  static constexpr auto value = flatten(deps);
 };
  
 
@@ -94,7 +113,7 @@ struct field_list_metadata {
   }
 
   static constexpr auto generate_len_dep_table() {
-    return static_map<sv, static_vector<sv, max_dep_count>, max_field_count>(
+    return static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>(
       {
         {as_sv(fields::field_id), extract_length_dependencies_v<fields>}...
       }
