@@ -5,6 +5,8 @@ using u32 = unsigned int;
 
 auto size_from_rc = [](auto r, auto c) { return r * c; };
 auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+auto some_complex_calc = [](auto a, auto b){ return a + b; };
+
 using inner_1 = 
  s2s::struct_field_list<
    s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
@@ -79,6 +81,26 @@ using list_metadata =
           >
         >
       >
+    >,
+    s2s::variance<
+      "complex_v", 
+      s2s::type<
+        s2s::compute<some_complex_calc, u32, s2s::with_fields<"a", "b">>,
+        s2s::type_switch<
+          s2s::match_case<
+            100, 
+            s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+          >,
+          s2s::match_case<
+            200, 
+            s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+          >,
+          s2s::match_case<
+            300, 
+            s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+          >
+        >
+      >
     >
   >;
 
@@ -120,3 +142,8 @@ constexpr auto parse_dep_table = list_metadata::parse_dependency_table;
 static_assert(parse_dep_table["vec"]->size() == 1);
 static_assert(parse_dep_table["a"]->size() == 0);
 
+constexpr auto type_deduction_dep_table = list_metadata::type_deduction_dep_table;
+static_assert(type_deduction_dep_table["v"]);
+static_assert(type_deduction_dep_table["v"]->size() == 1);
+static_assert(type_deduction_dep_table["complex_v"]);
+static_assert(type_deduction_dep_table["complex_v"]->size() == 2);

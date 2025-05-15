@@ -7,6 +7,7 @@
 #include "fixed_string.hpp"
 #include "field.hpp"
 #include "field_size.hpp"
+#include "type_deduction.hpp"
 
 
 namespace s2s {
@@ -23,6 +24,7 @@ struct field_node {
 };
 
 using sv = std::string_view;
+using dep_vec = static_vector<sv, max_dep_count_per_struct>;
 using field_table_t = static_map<sv, field_node, max_field_count>;
 using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>;
 
@@ -73,8 +75,8 @@ struct extract_length_dependencies<
 };
 
 template <std::size_t N>
-constexpr auto flatten(const static_vector<sv, max_dep_count_per_struct> (&vecs)[N]) -> static_vector<sv, max_dep_count_per_struct> {
-  static_vector<sv, max_dep_count_per_struct> vec;
+constexpr auto flatten(const dep_vec (&vecs)[N]) -> dep_vec {
+  dep_vec vec;
   for(auto i = 0u; i < N; i++) {
     for(auto& elem: vecs[i]) {
       vec.push_back(elem);
@@ -94,7 +96,6 @@ struct extract_length_dependencies<
   union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choice_list<field_choices...>>
 > 
 {
-  using dep_vec = static_vector<sv, max_dep_count_per_struct>;
   static constexpr dep_vec deps[64] = {dep_vec(extract_length_dependencies<field_choices>::value)...};
   static constexpr auto value = flatten(deps);
 };
@@ -103,10 +104,7 @@ struct extract_length_dependencies<
 template <typename T>
 inline constexpr auto extract_length_dependencies_v = extract_length_dependencies<T>::value;
 
-// template <auto callable, fixed_string... req_fields>
-// struct extract_req_fields<parse_if<callable, fixed_string_list<req_fields...>>> {
-//
-// };
+
 template <auto callable, typename R, field_name_list Fs>
 struct compute;
 
@@ -129,6 +127,66 @@ struct extract_parse_dependencies<
 
 template <typename T>
 inline constexpr auto extract_parse_dependencies_v = extract_parse_dependencies<T>::value;
+
+// template <typename eval_expression, typename tswitch>
+// struct is_type_deduction<type<eval_expression, tswitch>> {
+//   static constexpr bool res = is_compute_like_v<eval_expression> && 
+//                               type_switch_like<tswitch>;
+// };
+//
+// template <fixed_string id, typename tswitch>
+// struct is_type_deduction<type<match_field<id>, tswitch>> {
+//   static constexpr bool res = type_switch_like<tswitch>;
+// };
+//
+// template <typename tladder>
+// struct is_type_deduction<type<tladder>> {
+//   static constexpr bool res 
+
+template <typename T>
+struct extract_type_deduction_dependencies;
+
+template <typename T>
+struct extract_type_deduction_dependencies {
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
+};
+
+template <fixed_string id, fixed_string matched_id, type_switch_like type_switch, typename types, typename size,
+          auto constraint_on_value, typename variant, typename... field_choices>
+struct extract_type_deduction_dependencies<
+  union_field<
+    id,
+    type<match_field<matched_id>, type_switch>,
+    types,
+    size,
+    constraint_on_value,
+    variant,
+    field_choice_list<field_choices...>
+  >
+> 
+{
+  static constexpr auto value = dep_vec(as_sv(matched_id));
+};
+
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch, typename types, typename size,
+          auto constraint_on_value, typename variant, typename... field_choices>
+struct extract_type_deduction_dependencies<
+  union_field<
+    id,
+    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>,
+    types,
+    size,
+    constraint_on_value,
+    variant,
+    field_choice_list<field_choices...>
+  >
+> 
+{
+  static constexpr auto value = dep_vec(as_sv(req_fields)...);
+};
+
+template <typename T>
+inline constexpr auto extract_type_deduction_dependencies_v = extract_type_deduction_dependencies<T>::value;
 
 template <typename... fields>
 struct field_list_metadata {
@@ -157,10 +215,18 @@ struct field_list_metadata {
     );
   }
 
+  static constexpr auto generate_type_deduction_dependency_table() {
+    return static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>(
+      {
+        {as_sv(fields::field_id), extract_type_deduction_dependencies_v<fields>}...
+      }
+    );
+  }
+
   static constexpr field_table_t field_table = generate_field_table(std::make_index_sequence<sizeof...(fields)>{});
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
-  static constexpr dependency_table_t type_deduction_dep_table{};
+  static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
  
 };
 }
