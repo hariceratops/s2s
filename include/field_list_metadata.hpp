@@ -8,6 +8,7 @@
 #include "field.hpp"
 #include "field_size.hpp"
 #include "type_deduction.hpp"
+#include "type_deduction_clause.hpp"
 
 
 namespace s2s {
@@ -85,11 +86,6 @@ constexpr auto flatten(const dep_vec (&vecs)[N]) -> dep_vec {
   return vec;
 }
 
-// constexpr static_vector<sv, max_dep_count> vecs[2] = {static_vector<sv, max_dep_count>("hello", "world"), static_vector<sv, max_dep_count>("foo", "bar")};
-// constexpr auto flat = flatten(vecs);
-// static_assert(flat[0] == "hello");
-// static_assert(flat[3] == "bar");
-
 template <fixed_string id, typename type_deducer, typename type, typename size,
           auto constraint_on_value, typename variant, typename... field_choices>
 struct extract_length_dependencies<
@@ -128,20 +124,6 @@ struct extract_parse_dependencies<
 template <typename T>
 inline constexpr auto extract_parse_dependencies_v = extract_parse_dependencies<T>::value;
 
-// template <typename eval_expression, typename tswitch>
-// struct is_type_deduction<type<eval_expression, tswitch>> {
-//   static constexpr bool res = is_compute_like_v<eval_expression> && 
-//                               type_switch_like<tswitch>;
-// };
-//
-// template <fixed_string id, typename tswitch>
-// struct is_type_deduction<type<match_field<id>, tswitch>> {
-//   static constexpr bool res = type_switch_like<tswitch>;
-// };
-//
-// template <typename tladder>
-// struct is_type_deduction<type<tladder>> {
-//   static constexpr bool res 
 
 template <typename T>
 struct extract_type_deduction_dependencies;
@@ -183,6 +165,51 @@ struct extract_type_deduction_dependencies<
 > 
 {
   static constexpr auto value = dep_vec(as_sv(req_fields)...);
+};
+
+template <typename T>
+struct extract_req_fields_from_clause;
+
+template <auto callable, fixed_string... req_fields, type_tag_like T>
+struct extract_req_fields_from_clause<
+  clause<
+    compute<callable, bool, fixed_string_list<req_fields...>>,
+    T
+  >
+>
+{
+  static constexpr auto value = dep_vec(as_sv(req_fields)...);
+};
+
+template <typename T>
+inline constexpr auto extract_req_fields_from_clause_v = extract_req_fields_from_clause<T>::value;
+
+
+constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
+  static_set<sv, vec.capacity()> set(vec);
+  dep_vec res;
+  for(auto item: set)
+    res.push_back(item);
+  return res;
+}
+
+template <fixed_string id, typename... clauses, typename types, typename size,
+          auto constraint_on_value, typename variant, typename... field_choices>
+struct extract_type_deduction_dependencies<
+  union_field<
+    id,
+    type<type_ladder<clauses...>>,
+    types,
+    size,
+    constraint_on_value,
+    variant,
+    field_choice_list<field_choices...>
+  >
+> 
+{
+  static constexpr dep_vec deps[64] = {dep_vec(extract_req_fields_from_clause_v<clauses>)...};
+  static constexpr auto flat_values = flatten(deps);
+  static constexpr auto value = remove_duplicates(flat_values);
 };
 
 template <typename T>

@@ -6,6 +6,9 @@ using u32 = unsigned int;
 auto size_from_rc = [](auto r, auto c) { return r * c; };
 auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
 auto some_complex_calc = [](auto a, auto b){ return a + b; };
+auto bpred_1 = [](auto a, auto b){ return a + b >= 20000 && a + b < 40000; };
+auto bpred_2 = [](auto a, auto b){ return a + b <= 40000 && a + b < 60000; };
+auto bpred_3 = [](auto a, auto b){ return a + b >= 60000; };
 
 using inner_1 = 
  s2s::struct_field_list<
@@ -101,6 +104,25 @@ using list_metadata =
           >
         >
       >
+    >,
+    s2s::variance<
+      "laddered", 
+      s2s::type<
+        s2s::type_ladder<
+          s2s::clause<
+            s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
+            s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+          >,
+          s2s::clause<
+            s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
+            s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+          >,
+          s2s::clause<
+            s2s::predicate<bpred_3, s2s::with_fields<"a", "b">>, 
+            s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+          >
+        >
+      >
     >
   >;
 
@@ -147,3 +169,6 @@ static_assert(type_deduction_dep_table["v"]);
 static_assert(type_deduction_dep_table["v"]->size() == 1);
 static_assert(type_deduction_dep_table["complex_v"]);
 static_assert(type_deduction_dep_table["complex_v"]->size() == 2);
+static_assert(type_deduction_dep_table["laddered"]);
+static_assert(type_deduction_dep_table["laddered"]->size() == 2);
+
