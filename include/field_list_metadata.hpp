@@ -1,12 +1,12 @@
 #ifndef _FIELD_LIST_METADATA_HPP_
 #define _FIELD_LIST_METADATA_HPP_
 
-#include <cstdint>
 #include "mp.hpp"
 #include "containers.hpp"
 #include "fixed_string.hpp"
 #include "field.hpp"
 #include "field_size.hpp"
+#include "field_node.hpp"
 #include "type_deduction.hpp"
 #include "type_deduction_clause.hpp"
 
@@ -18,11 +18,6 @@ static inline constexpr std::size_t max_union_choices = 8;
 static inline constexpr std::size_t max_dep_count_per_struct = max_dep_count_per_field * max_union_choices;
 static inline constexpr std::size_t max_field_count = 256;
 
-// todo better name
-struct field_node {
-  meta::type_identifier id;
-  std::size_t occurs_at_idx;
-};
 
 using sv = std::string_view;
 using dep_vec = static_vector<sv, max_dep_count_per_struct>;
@@ -184,7 +179,7 @@ struct extract_req_fields_from_clause<
 template <typename T>
 inline constexpr auto extract_req_fields_from_clause_v = extract_req_fields_from_clause<T>::value;
 
-
+// todo better implementation
 constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
   static_set<sv, vec.capacity()> set(vec);
   dep_vec res;
@@ -256,6 +251,13 @@ struct field_list_metadata {
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
  
 };
+
+template <typename list_metadata>
+constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
+  auto field_table = list_metadata::field_table;
+  return field_table[field_name];
+}
+
 }
 
 #endif /* _FIELD_LIST_METADATA_HPP_ */
