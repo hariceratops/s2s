@@ -12,6 +12,8 @@
 
 #include "algorithms.hpp"
 #include "containers.hpp"
+#include "mp.hpp"
+#include "s2s_type_traits.hpp"
 
 
 namespace s2s {
@@ -34,6 +36,8 @@ struct are_unique_fixed_strings<head, neck, tail...> {
 template <fixed_string... field_ids>
 inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
 
+// inline constexpr auto a = meta::type_id<std::array<int, 10>>;
+// static_assert(10 == meta::invoke<extract_size_from_array>(a));
 
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
@@ -200,17 +204,17 @@ concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::fie
 template <typename T>
 struct extract_field_id;
 
-template <typename... fields>
-  requires all_field_like<fields...> &&
-           has_unique_field_ids<fields...> &&
-           size_dependencies_resolved_v<typelist::list<fields...>>
-struct struct_field_list : struct_field_list_base, fields... {
+template <typename metadata, typename... fields>
+  // requires all_field_like<fields...> &&
+  //          has_unique_field_ids<fields...> &&
+  //          size_dependencies_resolved_v<typelist::list<fields...>>
+struct struct_field_list_impl : struct_field_list_base, fields... {
   // use a map of name to field type_id, use it for lookup, compile time [] in map if null opt
   // roll out optional type if result not null opt, use type_of
-  static constexpr std::array field_id_list{std::string_view{fields::field_id.data()}...};
   // a constexpr field_list metadata? with type map, size dependencies and parse dependencies
+  using list_metadata = metadata;
 
-  struct_field_list() = default;
+  struct_field_list_impl() = default;
   template <typename field_accessor, 
             typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
     requires (!std::is_same_v<field_lookup_failed, field>)

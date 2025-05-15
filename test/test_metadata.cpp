@@ -1,0 +1,62 @@
+#include "../single_header/s2s.hpp"
+
+using u32 = unsigned int;
+
+
+auto size_from_rc = [](auto r, auto c) { return r * c; };
+auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
+
+using list_metadata =
+  s2s::field_list_metadata<
+    s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>,
+    s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+    s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+    s2s::vec_field<
+      "flat_vec",
+      u32,
+      s2s::field_size<
+        s2s::len_from_fields<size_from_rc, s2s::with_fields<"row", "col">>
+      >
+    >,
+    s2s::maybe<
+      s2s::basic_field<"c", u32, s2s::field_size<s2s::fixed<4>>>, 
+      s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+    >,
+    s2s::struct_field<"d",
+      s2s::struct_field_list<
+         s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
+         s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+      >
+    >
+  >;
+
+constexpr auto fields_table = list_metadata::field_table;
+static_assert(not fields_table["unknown"]);
+static_assert(fields_table["a"]->occurs_at_idx == 0);
+static_assert(fields_table["b"]->occurs_at_idx == 1);
+static_assert(fields_table["len"]->occurs_at_idx == 2);
+static_assert(fields_table["str"]->occurs_at_idx == 3);
+static_assert(fields_table["row"]->occurs_at_idx == 4);
+static_assert(fields_table["col"]->occurs_at_idx == 5);
+static_assert(fields_table["flat_vec"]->occurs_at_idx == 6);
+static_assert(fields_table["c"]->occurs_at_idx == 7);
+static_assert(fields_table["d"]->occurs_at_idx == 8);
+
+constexpr auto len_dep_table = list_metadata::length_dependency_table;
+static_assert(len_dep_table["a"]->size() == 0);
+static_assert(len_dep_table["b"]->size() == 0);
+static_assert(len_dep_table["len"]->size() == 0);
+static_assert(len_dep_table["str"]->size() == 1);
+constexpr auto str_len_dep = *len_dep_table["str"];
+static_assert(str_len_dep[0] == "len");
+static_assert(len_dep_table["row"]->size() == 0);
+static_assert(len_dep_table["col"]->size() == 0);
+constexpr auto vec_len_dep = *len_dep_table["flat_vec"];
+static_assert(vec_len_dep[0] == "row");
+static_assert(vec_len_dep[1] == "col");
+static_assert(len_dep_table["c"]->size() == 0);
+static_assert(len_dep_table["d"]->size() == 0);
+
