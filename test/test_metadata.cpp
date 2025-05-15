@@ -115,3 +115,8 @@ static_assert(len_dep_table["vec"]->size() == 1);
 static_assert(len_dep_table["v"]->size() == 0);
 static_assert(len_dep_table["vec_union"]->size() == 1);
 
+
+constexpr auto parse_dep_table = list_metadata::parse_dependency_table;
+static_assert(parse_dep_table["vec"]->size() == 1);
+static_assert(parse_dep_table["a"]->size() == 0);
+
