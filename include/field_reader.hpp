@@ -189,52 +189,7 @@ struct read_field<T, F> {
 };
 
 
-template <typename field_list>
-struct extract_fields;
 
-struct not_struct_field_list{};
-
-template <typename... fields>
-struct extract_fields<struct_field_list_impl<fields...>> {
-  using res = typelist::list<fields...>;
-};
-
-template <typename T>
-struct extract_fields {
-  using res = not_struct_field_list;
-};
-
-template <typename T>
-using extract_fields_v = extract_fields<T>::res;
-
-
-template <typename presence_checker>
-struct extract_req_fields;
-
-template <auto callable, fixed_string... req_fields>
-struct extract_req_fields<parse_if<callable, fixed_string_list<req_fields...>>> {
-  using res = fixed_string_list<req_fields...>;
-};
-
-template <typename presence_checker>
-using extract_req_fields_v = extract_req_fields<presence_checker>::res;
-
-template <typename field_list, typename presence_checker>
-struct parse_dependencies_resolved;
-
-template <typename field_list, typename presence_checker>
-struct parse_dependencies_resolved {
-  using haystack = extract_fields_v<field_list>;
-  using needles = extract_req_fields_v<presence_checker>;
-
-  static constexpr bool res = bulk_look_up<haystack, needles>::res;
-};
-
-
-template <typename field_list, typename presence_checker>
-static constexpr bool parse_dependencies_resolved_v = parse_dependencies_resolved<field_list, presence_checker>::res;
-
-// todo restore constexpr
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
   using optional_field_presence_checker = typename T::field_presence_checker;
@@ -247,7 +202,6 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
   
   template <auto endianness, typename stream>
-    requires parse_dependencies_resolved_v<enclosing_struct_field_list, optional_field_presence_checker>
   constexpr auto read(stream& s) -> rw_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;

@@ -108,6 +108,254 @@ inline char* byte_addressof(std::string& obj) {
 
 // End /home/hari/repos/s2s/include/address_manip.hpp
 
+// Begin /home/hari/repos/s2s/include/algorithms.hpp
+#ifndef _ALGORITHMS_HPP_
+#define _ALGORITHMS_HPP_
+
+
+#include <ranges>
+ 
+// todo namespace algorithms
+constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(ts[i] == t) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(predicate(ts[i])) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
+  if(xs.size() != ys.size()) return false;
+
+  for(auto i = 0u; i < xs.size(); ++i) {
+    if(xs[i] != ys[i])
+      return false;
+  }
+
+  return true;
+}
+
+template <typename T>
+constexpr void swap_objects(T& a, T& b) {
+  T temp = a;
+  a = b;
+  b = temp;
+}
+
+constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    for(auto j = 0u; j < ts.size() - 1; ++j) {
+      if(predicate(ts[j + 1], ts[j])) {
+        swap_objects(ts[j], ts[j + 1]);
+      }
+    }
+  }
+}
+
+
+#endif /* _ALGORITHMS_HPP_ */
+
+// End /home/hari/repos/s2s/include/algorithms.hpp
+
+// Begin /home/hari/repos/s2s/include/containers.hpp
+#ifndef _CONTAINERS_HPP_
+#define _CONTAINERS_HPP_
+
+
+#include <cstdint>
+#include <utility>
+ 
+template <typename T, std::size_t N>
+class static_vector {
+public:
+  constexpr static_vector() = default;
+  template <typename... Args>
+  constexpr static_vector(Args&&... entries) {
+    (push_back(entries), ...);
+  }
+  constexpr auto push_back(const T& value) { 
+    values[vec_size] = value; 
+    vec_size++;
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return values[i]; }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return values[i]; }
+  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
+  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
+  [[nodiscard]] constexpr auto size() const { return vec_size; }
+  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  T values[N]{};
+  std::size_t vec_size{0};
+};
+
+
+template <typename T, std::size_t N>
+class static_set {
+public:
+  constexpr static_set() = default;
+  template <typename... Args>
+  constexpr static_set(Args&&... entries) {
+    (insert(entries), ...);
+  }
+  constexpr static_set(const static_vector<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr static_set(const std::array<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr auto insert(const T& value) { 
+    if(find_index(*this, value) == set.size()) {
+      set.push_back(value);
+    }
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return set[i]; }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return set[i]; }
+  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
+  [[nodiscard]] constexpr auto end() const { return set.end(); }
+  [[nodiscard]] constexpr auto size() const { return set.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<T, N> set{};
+};
+
+
+template <typename Key, typename Value>
+class Node {
+public:
+  std::pair<Key, Value> element;
+
+  constexpr Node() = default;
+  constexpr Node(Key&& key, Value&& value): element(key, value) {}
+  constexpr Node(const Key& key, const Value& value): element(key, value) {}
+  constexpr Node(const Node& other): element(other.element) {}
+  constexpr Node& operator=(const Node& other) {
+    element.first = other.element.first;
+    element.second = other.element.second;
+    return *this;
+  }
+
+  constexpr bool operator<(const Node& rhs) const noexcept {
+    return element.first < rhs.element.first;
+  }
+
+  constexpr const auto& operator*() const noexcept {
+    return element;
+  }
+
+  constexpr const auto* operator->() const noexcept {
+    return &element;
+  }
+};
+
+
+template <typename Key, typename Value, std::size_t N /*, compare? */>
+class static_map {
+public:
+  constexpr static_map() = default;
+  constexpr static_map(const std::pair<Key, Value> (&entries)[N]): 
+    map(generate_map<N>(entries, std::make_index_sequence<N>{})) {}
+  constexpr auto operator[](const Key& key) const  -> std::optional<Value> {
+    auto key_index = find_index_if(map, [&key](auto t){ return t.element.first == key; });
+    if(key_index != map.size())
+      return map[key_index].element.second;
+    return std::nullopt;
+  }
+  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
+  [[nodiscard]] constexpr auto end() const { return map.end(); }
+  [[nodiscard]] constexpr auto size() const { return map.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<Node<Key, Value>, N> map{};
+  template <std::size_t C, std::size_t... Is>
+  constexpr auto generate_map(const std::pair<Key, Value> (&entries)[C], std::index_sequence<Is...>) {
+    static_vector<Node<Key, Value>, N> m{};
+    ([&]() {
+      auto key = entries[Is].first;
+      auto key_index = find_index_if(m, [&key](auto t){ return t.element.first == key; });
+      if(key_index == m.size()) {
+        m.push_back(Node(entries[Is].first, entries[Is].second));
+        return;
+      }
+      m[key_index].element.second = entries[Is].second;
+    }(), ...);
+    sort_ranges(m, std::less<>{});
+    return m;
+  }
+};
+
+// template <typename Key, typename Value, std::size_t N, std::size_t C>
+// constexpr auto map(const std::pair<Key, Value> (&entries)[C]) -> static_map_impl<Key, Value, N> {
+//   return static_map_impl<Key, Value, N>(entries);
+// }
+// using N = Node<std::string_view, std::string_view>;
+// static_assert(N("hello", "world") < N("world", "nothing"));
+//
+// constexpr auto generate_test_map() -> static_map<std::string_view, std::string_view, 5> {
+//   return static_map<std::string_view, std::string_view, 5> (
+//     { 
+//       {"hello", "world"}, {"foo", "bar"},
+//       {"world", "nothing"}, {"arc", "not-arc"},
+//       {"algebra", "math"}
+//     }
+//   );
+// }
+// constexpr auto map = generate_test_map();
+// static_assert(*map["hello"] == "world");
+// static_assert(*map["world"] == "nothing");
+
+// constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
+  // static_set<std::string_view, 5> set;
+  // set.insert("hello");
+  // set.insert("world");
+  // set.insert("foo");
+  // set.insert("bar");
+  // set.insert("bar");
+
+  // static_set<std::string_view, 5> set("hello", "world", "foo", "bar", "bar");
+  // return set;
+// }
+//
+// constexpr auto generate_test_vector() -> static_vector<std::string_view, 5> {
+//   static_vector<std::string_view, 5> vec;
+//   vec.push_back("hello");
+//   vec.push_back("world");
+//   vec.push_back("foo");
+//   vec.push_back("bar");
+//
+//   return vec;
+// }
+//
+// static constexpr auto set = generate_test_set();
+// static constexpr auto vec = generate_test_vector();
+// static_assert(set[0] == std::string_view{"hello"});
+// static_assert(set.size() == 4);
+// static_assert(equal_ranges(set, vec));
+// static constexpr static_set<std::string_view, 5> s(vec);
+// static_assert(s[0] == std::string_view{"hello"});
+// static_assert(s.size() == 4);
+
+#endif /* _CONTAINERS_HPP_ */
+
+// End /home/hari/repos/s2s/include/containers.hpp
+
 // Begin /home/hari/repos/s2s/include/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
@@ -139,6 +387,115 @@ using cast_result = std::expected<void, cast_error>;
 #endif // _CAST_ERROR_HPP_
 
 // End /home/hari/repos/s2s/include/cast_error.hpp
+
+// Begin /home/hari/repos/s2s/include/mp.hpp
+#ifndef _MP_HPP_
+#define _MP_HPP_
+
+#include <cstdint>
+#include <array>
+#include <utility>
+
+
+namespace meta {
+using type_identifier = std::size_t;
+
+namespace meta_impl {
+template <type_identifier>
+struct type_id_key {
+  constexpr auto friend get(type_id_key);
+};
+
+template <typename T>
+struct type_id_value {
+  using value_type = T;
+
+  template <std::size_t left = 0u, std::size_t right = 1024u - 1u>
+  static constexpr auto gen() -> std::size_t {
+    if constexpr (left >= right) {
+      constexpr bool exists = requires { get(type_id_key<type_identifier{left}>{}); };
+      return (exists ? left + 1 : left);
+    } else if constexpr (
+      constexpr std::size_t mid = left + (right - left) / 2u; 
+      requires { get(type_id_key<type_identifier{mid}>{}); }) 
+    {
+      return gen<mid + 1u, right>();
+    } else {
+      return gen<left, mid - 1u>();
+    }
+  }
+
+  static constexpr auto id = type_identifier{gen()};
+
+  constexpr auto friend get(type_id_key<id>) { 
+    return type_id_value{}; 
+  }
+};
+}
+
+template<class T>
+inline constexpr type_identifier type_id = meta_impl::type_id_value<T>::id;
+
+template<type_identifier our_id>
+using type_of = typename decltype(get(meta_impl::type_id_key<our_id>{}))::value_type;
+
+static_assert(type_id<void> != type_id<int>);
+static_assert(type_id<int> == type_id<int>);
+
+
+template<class Fn, class T = decltype([]{})>
+[[nodiscard]] inline constexpr auto invoke(Fn&& fn, type_identifier meta) {
+  constexpr auto dispatch = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
+    return std::array{
+      []<type_identifier N> {
+        return +[](Fn fn) {
+          if constexpr (requires { fn.template operator()<N>(); }) {
+            return fn.template operator()<N>();
+          }
+        };
+      }.template operator()<type_identifier{Ns}>()...
+    };
+  }(std::make_index_sequence<std::size_t{type_id<T>}>{});
+  return dispatch[std::size_t{meta}](fn);
+}
+
+template <template<typename...> typename T, class... Ts, auto = []{}>
+[[nodiscard]] inline constexpr auto invoke(type_identifier id) {
+  return invoke([]<type_identifier id> {
+    using type = type_of<id>;
+    if constexpr(requires { T<Ts..., type>::value; }) {
+      return T<Ts..., type>::value;
+    } else {
+      return type_id<typename T<Ts..., type>::type>;
+    }
+  }, id);
+}
+
+static_assert(invoke<std::is_const>(type_id<const int>));
+static_assert(not invoke<std::is_const>(type_id<int>));
+static_assert(type_id<int> == invoke<std::remove_pointer>(type_id<int*>));
+}
+
+
+#endif /* _MP_HPP_ */
+
+// End /home/hari/repos/s2s/include/mp.hpp
+
+// Begin /home/hari/repos/s2s/include/field_node.hpp
+#ifndef _FIELD_NODE_HPP_
+#define _FIELD_NODE_HPP_
+
+#include <cstdint>
+ 
+// todo better name
+struct field_node {
+  meta::type_identifier id;
+  std::size_t occurs_at_idx;
+};
+
+#endif /* _FIELD_NODE_HPP_ */
+
+// End /home/hari/repos/s2s/include/field_node.hpp
 
 // Begin /home/hari/repos/s2s/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
@@ -1391,573 +1748,43 @@ using field_lookup_v = typename field_lookup<L, id>::type;
 
 // End /home/hari/repos/s2s/include/field_list_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/algorithms.hpp
-#ifndef _ALGORITHMS_HPP_
-#define _ALGORITHMS_HPP_
-
-
-#include <ranges>
- 
-// todo namespace algorithms
-constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    if(ts[i] == t) {
-      return i;
-    }
-  }
-
-  return ts.size();
-}
-
-constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    if(predicate(ts[i])) {
-      return i;
-    }
-  }
-
-  return ts.size();
-}
-
-constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
-  if(xs.size() != ys.size()) return false;
-
-  for(auto i = 0u; i < xs.size(); ++i) {
-    if(xs[i] != ys[i])
-      return false;
-  }
-
-  return true;
-}
-
-template <typename T>
-constexpr void swap_objects(T& a, T& b) {
-  T temp = a;
-  a = b;
-  b = temp;
-}
-
-constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    for(auto j = 0u; j < ts.size() - 1; ++j) {
-      if(predicate(ts[j + 1], ts[j])) {
-        swap_objects(ts[j], ts[j + 1]);
-      }
-    }
-  }
-}
-
-
-#endif /* _ALGORITHMS_HPP_ */
-
-// End /home/hari/repos/s2s/include/algorithms.hpp
-
-// Begin /home/hari/repos/s2s/include/containers.hpp
-#ifndef _CONTAINERS_HPP_
-#define _CONTAINERS_HPP_
-
-
-#include <cstdint>
-#include <utility>
- 
-template <typename T, std::size_t N>
-class static_vector {
-public:
-  constexpr static_vector() = default;
-  template <typename... Args>
-  constexpr static_vector(Args&&... entries) {
-    (push_back(entries), ...);
-  }
-  constexpr auto push_back(const T& value) { 
-    values[vec_size] = value; 
-    vec_size++;
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return values[i]; }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return values[i]; }
-  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
-  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
-  [[nodiscard]] constexpr auto size() const { return vec_size; }
-  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  T values[N]{};
-  std::size_t vec_size{0};
-};
-
-
-template <typename T, std::size_t N>
-class static_set {
-public:
-  constexpr static_set() = default;
-  template <typename... Args>
-  constexpr static_set(Args&&... entries) {
-    (insert(entries), ...);
-  }
-  constexpr static_set(const static_vector<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr static_set(const std::array<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr auto insert(const T& value) { 
-    if(find_index(*this, value) == set.size()) {
-      set.push_back(value);
-    }
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return set[i]; }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return set[i]; }
-  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
-  [[nodiscard]] constexpr auto end() const { return set.end(); }
-  [[nodiscard]] constexpr auto size() const { return set.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<T, N> set{};
-};
-
-
-template <typename Key, typename Value>
-class Node {
-public:
-  std::pair<Key, Value> element;
-
-  constexpr Node() = default;
-  constexpr Node(Key&& key, Value&& value): element(key, value) {}
-  constexpr Node(const Key& key, const Value& value): element(key, value) {}
-  constexpr Node(const Node& other): element(other.element) {}
-  constexpr Node& operator=(const Node& other) {
-    element.first = other.element.first;
-    element.second = other.element.second;
-    return *this;
-  }
-
-  constexpr bool operator<(const Node& rhs) const noexcept {
-    return element.first < rhs.element.first;
-  }
-
-  constexpr const auto& operator*() const noexcept {
-    return element;
-  }
-
-  constexpr const auto* operator->() const noexcept {
-    return &element;
-  }
-};
-
-
-template <typename Key, typename Value, std::size_t N /*, compare? */>
-class static_map {
-public:
-  constexpr static_map() = default;
-  constexpr static_map(const std::pair<Key, Value> (&entries)[N]): 
-    map(generate_map<N>(entries, std::make_index_sequence<N>{})) {}
-  constexpr auto operator[](const Key& key) const  -> std::optional<Value> {
-    auto key_index = find_index_if(map, [&key](auto t){ return t.element.first == key; });
-    if(key_index != map.size())
-      return map[key_index].element.second;
-    return std::nullopt;
-  }
-  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
-  [[nodiscard]] constexpr auto end() const { return map.end(); }
-  [[nodiscard]] constexpr auto size() const { return map.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<Node<Key, Value>, N> map{};
-  template <std::size_t C, std::size_t... Is>
-  constexpr auto generate_map(const std::pair<Key, Value> (&entries)[C], std::index_sequence<Is...>) {
-    static_vector<Node<Key, Value>, N> m{};
-    ([&]() {
-      auto key = entries[Is].first;
-      auto key_index = find_index_if(m, [&key](auto t){ return t.element.first == key; });
-      if(key_index == m.size()) {
-        m.push_back(Node(entries[Is].first, entries[Is].second));
-        return;
-      }
-      m[key_index].element.second = entries[Is].second;
-    }(), ...);
-    sort_ranges(m, std::less<>{});
-    return m;
-  }
-};
-
-// template <typename Key, typename Value, std::size_t N, std::size_t C>
-// constexpr auto map(const std::pair<Key, Value> (&entries)[C]) -> static_map_impl<Key, Value, N> {
-//   return static_map_impl<Key, Value, N>(entries);
-// }
-// using N = Node<std::string_view, std::string_view>;
-// static_assert(N("hello", "world") < N("world", "nothing"));
-//
-// constexpr auto generate_test_map() -> static_map<std::string_view, std::string_view, 5> {
-//   return static_map<std::string_view, std::string_view, 5> (
-//     { 
-//       {"hello", "world"}, {"foo", "bar"},
-//       {"world", "nothing"}, {"arc", "not-arc"},
-//       {"algebra", "math"}
-//     }
-//   );
-// }
-// constexpr auto map = generate_test_map();
-// static_assert(*map["hello"] == "world");
-// static_assert(*map["world"] == "nothing");
-
-// constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
-  // static_set<std::string_view, 5> set;
-  // set.insert("hello");
-  // set.insert("world");
-  // set.insert("foo");
-  // set.insert("bar");
-  // set.insert("bar");
-
-  // static_set<std::string_view, 5> set("hello", "world", "foo", "bar", "bar");
-  // return set;
-// }
-//
-// constexpr auto generate_test_vector() -> static_vector<std::string_view, 5> {
-//   static_vector<std::string_view, 5> vec;
-//   vec.push_back("hello");
-//   vec.push_back("world");
-//   vec.push_back("foo");
-//   vec.push_back("bar");
-//
-//   return vec;
-// }
-//
-// static constexpr auto set = generate_test_set();
-// static constexpr auto vec = generate_test_vector();
-// static_assert(set[0] == std::string_view{"hello"});
-// static_assert(set.size() == 4);
-// static_assert(equal_ranges(set, vec));
-// static constexpr static_set<std::string_view, 5> s(vec);
-// static_assert(s[0] == std::string_view{"hello"});
-// static_assert(s.size() == 4);
-
-#endif /* _CONTAINERS_HPP_ */
-
-// End /home/hari/repos/s2s/include/containers.hpp
-
-// Begin /home/hari/repos/s2s/include/mp.hpp
-#ifndef _MP_HPP_
-#define _MP_HPP_
-
-#include <cstdint>
-#include <array>
-#include <utility>
-
-
-namespace meta {
-using type_identifier = std::size_t;
-
-namespace meta_impl {
-template <type_identifier>
-struct type_id_key {
-  constexpr auto friend get(type_id_key);
-};
-
-template <typename T>
-struct type_id_value {
-  using value_type = T;
-
-  template <std::size_t left = 0u, std::size_t right = 1024u - 1u>
-  static constexpr auto gen() -> std::size_t {
-    if constexpr (left >= right) {
-      constexpr bool exists = requires { get(type_id_key<type_identifier{left}>{}); };
-      return (exists ? left + 1 : left);
-    } else if constexpr (
-      constexpr std::size_t mid = left + (right - left) / 2u; 
-      requires { get(type_id_key<type_identifier{mid}>{}); }) 
-    {
-      return gen<mid + 1u, right>();
-    } else {
-      return gen<left, mid - 1u>();
-    }
-  }
-
-  static constexpr auto id = type_identifier{gen()};
-
-  constexpr auto friend get(type_id_key<id>) { 
-    return type_id_value{}; 
-  }
-};
-}
-
-template<class T>
-inline constexpr type_identifier type_id = meta_impl::type_id_value<T>::id;
-
-template<type_identifier our_id>
-using type_of = typename decltype(get(meta_impl::type_id_key<our_id>{}))::value_type;
-
-static_assert(type_id<void> != type_id<int>);
-static_assert(type_id<int> == type_id<int>);
-
-
-template<class Fn, class T = decltype([]{})>
-[[nodiscard]] inline constexpr auto invoke(Fn&& fn, type_identifier meta) {
-  constexpr auto dispatch = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
-    return std::array{
-      []<type_identifier N> {
-        return +[](Fn fn) {
-          if constexpr (requires { fn.template operator()<N>(); }) {
-            return fn.template operator()<N>();
-          }
-        };
-      }.template operator()<type_identifier{Ns}>()...
-    };
-  }(std::make_index_sequence<std::size_t{type_id<T>}>{});
-  return dispatch[std::size_t{meta}](fn);
-}
-
-template <template<typename...> typename T, class... Ts, auto = []{}>
-[[nodiscard]] inline constexpr auto invoke(type_identifier id) {
-  return invoke([]<type_identifier id> {
-    using type = type_of<id>;
-    if constexpr(requires { T<Ts..., type>::value; }) {
-      return T<Ts..., type>::value;
-    } else {
-      return type_id<typename T<Ts..., type>::type>;
-    }
-  }, id);
-}
-
-static_assert(invoke<std::is_const>(type_id<const int>));
-static_assert(not invoke<std::is_const>(type_id<int>));
-static_assert(type_id<int> == invoke<std::remove_pointer>(type_id<int*>));
-}
-
-
-#endif /* _MP_HPP_ */
-
-// End /home/hari/repos/s2s/include/mp.hpp
-
 // Begin /home/hari/repos/s2s/include/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
-
-
-#include <ranges>
  
  
  
  
  
-  
  
  
  
 namespace s2s {
-template <fixed_string... arg>
-struct are_unique_fixed_strings;
 
-template <fixed_string head>
-struct are_unique_fixed_strings<head> {
-  static constexpr bool res = true;
-};
-
-template <fixed_string head, fixed_string neck, fixed_string... tail>
-struct are_unique_fixed_strings<head, neck, tail...> {
-  constexpr static bool res =
-    ((head != neck) && ... && (head != tail)) &&
-    are_unique_fixed_strings<neck, tail...>::res;
-};
-
-
-template <fixed_string... field_ids>
-inline constexpr bool has_unique_field_ids_v = are_unique_fixed_strings<field_ids...>::res;
-
-// inline constexpr auto a = meta::type_id<std::array<int, 10>>;
-// static_assert(10 == meta::invoke<extract_size_from_array>(a));
-
-template <typename... fields>
-concept all_field_like = (field_like<fields> && ...);
-
-
-template <typename field_list, typename field_id_list>
-struct bulk_look_up;
- 
-template <typename flist, typename glist>
-struct size_dependencies_resolved;
- 
-// if the second list is empty, we have processed all the fields without short circuiting
-// so we can treat that we have checked all the fields and all checks have passed
-template <typename... xs>
-struct size_dependencies_resolved<
-  typelist::list<xs...>, 
-  typelist::list<>
-> 
-{
-  static constexpr bool is_resolved = true;
-};
-
-
-// if the first field has the size dependant on a field, then its size cannot be deduced
-template <fixed_string id, typename T, variable_size_like size, auto constraint, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<>, 
-  typelist::list<field<id, T, size, constraint>, rest...>
-> 
-{
-  static constexpr bool is_resolved = false;
-};
-
-template <fixed_string id, typename T, fixed_size_like size, auto constraint, 
-          typename... xs, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<xs...>, 
-  typelist::list<field<id, T, size, constraint>, rest...>
-> 
-{
-  static constexpr bool is_resolved =
-    true &&
-    size_dependencies_resolved<
-      typelist::list<xs..., field<id, T, size, constraint>>, 
-      typelist::list<rest...>
-    >::is_resolved;
-};
-
-template <fixed_string id, typename T, size_dont_care_like size, auto constraint, 
-          typename... xs, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<xs...>, 
-  typelist::list<field<id, T, size, constraint>, rest...>
-> 
-{
-  static constexpr bool is_resolved =
-    true &&
-    size_dependencies_resolved<
-      typelist::list<xs..., field<id, T, size, constraint>>, 
-      typelist::list<rest...>
-    >::is_resolved;
-};
-
-template <fixed_string id, typename T, fixed_string len_source, auto constraint, 
-          typename x, typename... xs, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<x, xs...>, 
-  typelist::list<field<id, T, field_size<len_from_field<len_source>>, constraint>, rest...>
-> 
-{
-  using f = field_lookup_v<typelist::list<x, xs...>, len_source>;
-  static constexpr bool is_resolved =
-    !std::is_same_v<f, field_lookup_failed> &&
-    // todo ensure that the field type is integral
-    // std::is_same_v<extract_type_from_field_v<f>, std::size_t> &&
-    size_dependencies_resolved<
-      typelist::list<x, xs..., field<id, T, field_size<len_from_field<len_source>>, constraint>>, 
-      typelist::list<rest...>
-    >::is_resolved;
-};
-
-template <typename... fields, fixed_string... field_names>
-struct bulk_look_up<typelist::list<fields...>, fixed_string_list<field_names...>> {
-  using field_list = typelist::list<fields...>;
-  static constexpr bool res = !typelist::any_of_v<typelist::list<field_lookup_v<field_list, field_names>...>, field_lookup_failed>;
-};
-
-template <fixed_string id, typename T, auto callable, field_name_list req_fields, auto constraint, 
-          typename x, typename... xs, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<x, xs...>, 
-  typelist::list<field<id, T, field_size<len_from_fields<callable, req_fields>>, constraint>, rest...>
-> 
-{
-  static constexpr bool is_resolved =
-    bulk_look_up<typelist::list<x, xs...>, req_fields>::res &&
-    size_dependencies_resolved<
-      typelist::list<x, xs..., field<id, T, field_size<len_from_fields<callable, req_fields>>, constraint>>, 
-      typelist::list<rest...>
-    >::is_resolved;
-};
-
-template <fixed_string id, typename T, typename size, auto constraint, 
-          typename present_only_if, typename optional,
-          typename... xs, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<xs...>, 
-  typelist::list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>
-> 
-{
-  // we create a dummy field and wrap it in a list to reuse size_indices_resolved
-  static constexpr bool is_resolved =
-    size_dependencies_resolved<typelist::list<xs...>, typelist::list<field<id, T, size, constraint>>>::is_resolved &&
-    size_dependencies_resolved<
-      typelist::list<xs..., maybe_field<field<id, T, size, constraint>, present_only_if, optional>>, 
-      typelist::list<rest...>
-    >::is_resolved;
-};
-
-template <typename... fields, typename... field_needles>
-struct bulk_look_up<typelist::list<fields...>, field_choice_list<field_needles...>> {
-  using haystack = typelist::list<fields...>;
-  static constexpr bool res = (... && (size_dependencies_resolved<haystack, typelist::list<field_needles>>::is_resolved));
-};
-
-template <fixed_string id, typename type_deducer, typename type,
-          auto constraint_on_value, typename variant, typename field_choices_t,
-          typename size, typename... xs, typename... rest>
-struct size_dependencies_resolved<
-  typelist::list<xs...>, 
-  typelist::list<union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choices_t>, rest...>
-> 
-{
-  static constexpr bool is_resolved =
-    bulk_look_up<typelist::list<xs...>, field_choices_t>::res &&
-    // true &&
-    size_dependencies_resolved<
-      typelist::list<xs..., union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choices_t>>, 
-      typelist::list<rest...>
-    >::is_resolved;
-};
-
-template <typename list>
-inline constexpr bool size_dependencies_resolved_v = size_dependencies_resolved<typelist::list<>, list>::is_resolved;
-
-
-template <std::size_t N>
-constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field_id_list) {
-  static_set<std::string_view, N> field_id_set(field_id_list);
-  return equal_ranges(field_id_list, field_id_set);
-}
-
-// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
-// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
-
-template <std::size_t N>
-constexpr auto as_sv(const fixed_string<N>& str) {
-  return std::string_view{str.data()};
-}
-
-template <typename... fields>
-concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::field_id)...});
-
-template <typename T>
-struct extract_field_id;
+template <typename list_metadata>
+constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_node>;
 
 template <typename metadata, typename... fields>
-  // requires all_field_like<fields...> &&
-  //          has_unique_field_ids<fields...> &&
-  //          size_dependencies_resolved_v<typelist::list<fields...>>
+  // requires size_dependencies_resolved_v<typelist::list<fields...>>
 struct struct_field_list_impl : struct_field_list_base, fields... {
-  // use a map of name to field type_id, use it for lookup, compile time [] in map if null opt
-  // roll out optional type if result not null opt, use type_of
-  // a constexpr field_list metadata? with type map, size dependencies and parse dependencies
   using list_metadata = metadata;
 
   struct_field_list_impl() = default;
-  template <typename field_accessor, 
-            typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
-    requires (!std::is_same_v<field_lookup_failed, field>)
+
+  template <typename field_accessor>
+    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
   constexpr auto& operator[](field_accessor)  {
-    return static_cast<field&>(*this).value;
+    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+    using field_type_ref = meta::type_of<res->id>&;
+    return static_cast<field_type_ref>(*this).value;
   }
 
-  template <typename field_accessor,
-            typename field = field_lookup_v<typelist::list<fields...>, field_accessor::field_id>>
-    requires (!std::is_same_v<field_lookup_failed, field>)
+  template <typename field_accessor>
+    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
   constexpr const auto& operator[](field_accessor) const {
-    return static_cast<const field&>(*this).value;
+    constexpr auto field_node_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+    using field_type_cref = const meta::type_of<field_node_lookup_res->id>&;
+    return static_cast<field_type_cref>(*this).value;
   }
 };
 } /* namespace s2s */
@@ -2652,8 +2479,7 @@ concept type_deduction_like = is_type_deduction_v<T>;
 // Begin /home/hari/repos/s2s/include/field_list_metadata.hpp
 #ifndef _FIELD_LIST_METADATA_HPP_
 #define _FIELD_LIST_METADATA_HPP_
-
-#include <cstdint>
+ 
  
  
  
@@ -2668,11 +2494,6 @@ static inline constexpr std::size_t max_union_choices = 8;
 static inline constexpr std::size_t max_dep_count_per_struct = max_dep_count_per_field * max_union_choices;
 static inline constexpr std::size_t max_field_count = 256;
 
-// todo better name
-struct field_node {
-  meta::type_identifier id;
-  std::size_t occurs_at_idx;
-};
 
 using sv = std::string_view;
 using dep_vec = static_vector<sv, max_dep_count_per_struct>;
@@ -2834,7 +2655,7 @@ struct extract_req_fields_from_clause<
 template <typename T>
 inline constexpr auto extract_req_fields_from_clause_v = extract_req_fields_from_clause<T>::value;
 
-
+// todo better implementation
 constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
   static_set<sv, vec.capacity()> set(vec);
   dep_vec res;
@@ -2906,6 +2727,13 @@ struct field_list_metadata {
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
  
 };
+
+template <typename list_metadata>
+constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
+  auto field_table = list_metadata::field_table;
+  return field_table[field_name];
+}
+
 }
 
 #endif /* _FIELD_LIST_METADATA_HPP_ */
@@ -2925,9 +2753,9 @@ struct field_list_metadata {
  
  
  
-#include <chrono>
-
-
+ 
+ 
+ 
 namespace s2s {
 struct always_true {
   constexpr auto operator()() -> bool {
@@ -2992,13 +2820,27 @@ template <fixed_string id, typename type_deducer>
   requires type_deduction_like<type_deducer>
 using variance = union_field<id, type_deducer>;
 
-// template <typename... fields>
-// struct add_metadata {
-//   using type = struct_field_list_impl<field_list_metadata<fields...>, fields...>;
-// };
-//
-// template <typename... fields>
-// using add_metadata_v = add_metadata<fields...>::type;
+
+template <typename... fields>
+concept all_field_like = (field_like<fields> && ...);
+
+template <std::size_t N>
+constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field_id_list) {
+  static_set<std::string_view, N> field_id_set(field_id_list);
+  return equal_ranges(field_id_list, field_id_set);
+}
+
+// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
+// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
+
+template <std::size_t N>
+constexpr auto as_sv(const fixed_string<N>& str) {
+  return std::string_view{str.data()};
+}
+
+template <typename... fields>
+concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::field_id)...});
+
 
 template <typename... fields>
   requires all_field_like<fields...> &&
@@ -3572,52 +3414,7 @@ struct read_field<T, F> {
 };
 
 
-template <typename field_list>
-struct extract_fields;
 
-struct not_struct_field_list{};
-
-template <typename... fields>
-struct extract_fields<struct_field_list_impl<fields...>> {
-  using res = typelist::list<fields...>;
-};
-
-template <typename T>
-struct extract_fields {
-  using res = not_struct_field_list;
-};
-
-template <typename T>
-using extract_fields_v = extract_fields<T>::res;
-
-
-template <typename presence_checker>
-struct extract_req_fields;
-
-template <auto callable, fixed_string... req_fields>
-struct extract_req_fields<parse_if<callable, fixed_string_list<req_fields...>>> {
-  using res = fixed_string_list<req_fields...>;
-};
-
-template <typename presence_checker>
-using extract_req_fields_v = extract_req_fields<presence_checker>::res;
-
-template <typename field_list, typename presence_checker>
-struct parse_dependencies_resolved;
-
-template <typename field_list, typename presence_checker>
-struct parse_dependencies_resolved {
-  using haystack = extract_fields_v<field_list>;
-  using needles = extract_req_fields_v<presence_checker>;
-
-  static constexpr bool res = bulk_look_up<haystack, needles>::res;
-};
-
-
-template <typename field_list, typename presence_checker>
-static constexpr bool parse_dependencies_resolved_v = parse_dependencies_resolved<field_list, presence_checker>::res;
-
-// todo restore constexpr
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
   using optional_field_presence_checker = typename T::field_presence_checker;
@@ -3630,7 +3427,6 @@ struct read_field<T, F> {
     field(field), field_list(field_list){}
   
   template <auto endianness, typename stream>
-    requires parse_dependencies_resolved_v<enclosing_struct_field_list, optional_field_presence_checker>
   constexpr auto read(stream& s) -> rw_result {
     if(!typename T::field_presence_checker{}(field_list)) {
       field.value = std::nullopt;

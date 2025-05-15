@@ -12,7 +12,9 @@
 #include "field_value_constraints.hpp"
 #include "computation_from_fields.hpp"
 #include "type_deduction.hpp"
-#include <chrono>
+#include "algorithms.hpp"
+#include "containers.hpp"
+#include "s2s_type_traits.hpp"
 
 
 namespace s2s {
@@ -79,13 +81,27 @@ template <fixed_string id, typename type_deducer>
   requires type_deduction_like<type_deducer>
 using variance = union_field<id, type_deducer>;
 
-// template <typename... fields>
-// struct add_metadata {
-//   using type = struct_field_list_impl<field_list_metadata<fields...>, fields...>;
-// };
-//
-// template <typename... fields>
-// using add_metadata_v = add_metadata<fields...>::type;
+
+template <typename... fields>
+concept all_field_like = (field_like<fields> && ...);
+
+template <std::size_t N>
+constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field_id_list) {
+  static_set<std::string_view, N> field_id_set(field_id_list);
+  return equal_ranges(field_id_list, field_id_set);
+}
+
+// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
+// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
+
+template <std::size_t N>
+constexpr auto as_sv(const fixed_string<N>& str) {
+  return std::string_view{str.data()};
+}
+
+template <typename... fields>
+concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::field_id)...});
+
 
 template <typename... fields>
   requires all_field_like<fields...> &&
