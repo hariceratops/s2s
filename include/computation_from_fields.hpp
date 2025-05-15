@@ -50,15 +50,16 @@ concept can_eval_R_from_fields =
 template <auto callable, typename R, field_name_list Fs>
 struct compute;
 
+// todo: static_vector over fixed_string list?
 template <auto callable, typename R, fixed_string... req_fields>
 struct compute<callable, R, fixed_string_list<req_fields...>>{
   template <typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
-                struct_field_list<fields...>,
+                struct_field_list_impl<fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list<fields...>& flist) const -> R {
+  constexpr auto operator()(const struct_field_list_impl<fields...>& flist) const -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };

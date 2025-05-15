@@ -26,7 +26,7 @@ struct deduce_field_size<field_size<field_accessor<id>>> {
   using field_size_type = field_accessor<id>;
   
   template <typename... fields>
-  constexpr auto operator()(const struct_field_list<fields...>& struct_fields) -> std::size_t {
+  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
     return struct_fields[field_size_type{}];
   }
 };
@@ -35,7 +35,7 @@ template <auto callable, field_name_list req_fields>
 struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
   using field_size_type = compute<callable, std::size_t, req_fields>;
   template <typename... fields>
-  constexpr auto operator()(const struct_field_list<fields...>& struct_fields) -> std::size_t {
+  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
     return field_size_type{}(struct_fields);
   }
 };

@@ -252,11 +252,11 @@ struct extract_size_from_array;
 
 template <typename T, std::size_t N>
 struct extract_size_from_array<std::array<T, N>> {
-  static constexpr auto size = N;
+  static constexpr auto value = N;
 };
 
 template <typename T>
-inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::size;
+inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array<T>::value;
 
 template <typename T>
 concept variable_sized_buffer_like = vector_like<T> || string_like<T>;

@@ -27,7 +27,7 @@ struct type_ladder_impl<idx> {
 template <std::size_t idx, typename clause_head, typename... clause_rest>
 struct type_ladder_impl<idx, clause_head, clause_rest...> {
   template <typename... fields>
-  constexpr auto operator()(const struct_field_list<fields...>& field_list) const -> 
+  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     std::expected<std::size_t, error_reason> 
   {
     bool eval_result = clause_head::e(field_list);
@@ -43,7 +43,7 @@ struct type_ladder<clause_head, clause_rest...> {
   using sizes = size_choices_from_type_conditions_v<clause_head, clause_rest...>;
 
   template <typename... fields>
-  constexpr auto operator()(const struct_field_list<fields...>& field_list) const -> 
+  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     std::expected<std::size_t, error_reason> 
   {
     return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);

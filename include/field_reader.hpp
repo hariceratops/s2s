@@ -195,7 +195,7 @@ struct extract_fields;
 struct not_struct_field_list{};
 
 template <typename... fields>
-struct extract_fields<struct_field_list<fields...>> {
+struct extract_fields<struct_field_list_impl<fields...>> {
   using res = typelist::list<fields...>;
 };
 

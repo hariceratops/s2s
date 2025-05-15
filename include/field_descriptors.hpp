@@ -2,6 +2,7 @@
 #define _FIELD_DESCRIPTORS_HPP_
 
 
+#include "field_list_metadata.hpp"
 #include "s2s_type_traits.hpp"
 #include "field.hpp"
 #include "field_list_base.hpp"
@@ -11,6 +12,7 @@
 #include "field_value_constraints.hpp"
 #include "computation_from_fields.hpp"
 #include "type_deduction.hpp"
+#include <chrono>
 
 
 namespace s2s {
@@ -76,7 +78,20 @@ using maybe = maybe_field<base_field, present_only_if>;
 template <fixed_string id, typename type_deducer>
   requires type_deduction_like<type_deducer>
 using variance = union_field<id, type_deducer>;
- 
+
+// template <typename... fields>
+// struct add_metadata {
+//   using type = struct_field_list_impl<field_list_metadata<fields...>, fields...>;
+// };
+//
+// template <typename... fields>
+// using add_metadata_v = add_metadata<fields...>::type;
+
+template <typename... fields>
+  requires all_field_like<fields...> &&
+           has_unique_field_ids<fields...>
+using struct_field_list = struct_field_list_impl<field_list_metadata<fields...>, fields...>;
+
 } /* namespace s2s */
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
