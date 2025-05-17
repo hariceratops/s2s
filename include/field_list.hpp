@@ -16,9 +16,12 @@ namespace s2s {
 
 template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_node>;
+template <typename list_metadata>
+constexpr bool size_dependencies_resolved();
+
 
 template <typename metadata, typename... fields>
-  // requires size_dependencies_resolved_v<typelist::list<fields...>>
+  requires (size_dependencies_resolved<metadata>())
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 
