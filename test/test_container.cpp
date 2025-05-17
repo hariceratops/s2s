@@ -13,6 +13,11 @@ auto main(void) -> int {
     std::cout << entry->first <<  " " << entry->second << '\n';
   }
 
+  for(auto& entry: map) {
+    auto& [a, b] = *entry;
+    std::cout << entry->first <<  " " << entry->second << '\n';
+  }
+
   auto vec = static_vector<int, 5>(1, 9, 5, 3, 0);
   sort_ranges(vec, std::less<int>{});
   for(auto e: vec) { std::cout << e << '\n'; }

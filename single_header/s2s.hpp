@@ -1763,15 +1763,19 @@ namespace s2s {
 
 template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_node>;
+template <typename list_metadata>
+constexpr bool size_dependencies_resolved();
+
 
 template <typename metadata, typename... fields>
-  // requires size_dependencies_resolved_v<typelist::list<fields...>>
+  requires (size_dependencies_resolved<metadata>())
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 
   struct_field_list_impl() = default;
 
   template <typename field_accessor>
+    // todo custom optional to use as nttp for cleaner template
     requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
   constexpr auto& operator[](field_accessor)  {
     constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
@@ -2732,6 +2736,28 @@ template <typename list_metadata>
 constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
   auto field_table = list_metadata::field_table;
   return field_table[field_name];
+}
+
+
+template <typename list_metadata>
+constexpr bool size_dependencies_resolved() {
+  auto field_table = list_metadata::field_table;
+  auto length_dependency_table = list_metadata::length_dependency_table;
+
+  for(auto& entry: length_dependency_table) {
+    auto& [field_name, dependencies] = *entry; 
+    auto field_info = field_table[field_name];
+    auto field_idx = field_info->occurs_at_idx;
+    if(length_dependency_table.size() > 0) {
+      for(auto dep_field: dependencies) {
+        auto dep_field_info = field_table[dep_field];
+        auto dep_field_idx = dep_field_info->occurs_at_idx;
+        if(dep_field_idx > field_idx)
+          return false;
+      }
+    }
+  }
+  return true;
 }
 
 }

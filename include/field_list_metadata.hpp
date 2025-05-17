@@ -10,7 +10,6 @@
 #include "type_deduction.hpp"
 #include "type_deduction_clause.hpp"
 
-
 namespace s2s {
 // todo fix these numbers and possibly generate them
 static inline constexpr std::size_t max_dep_count_per_field = 8;
@@ -256,6 +255,28 @@ template <typename list_metadata>
 constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
   auto field_table = list_metadata::field_table;
   return field_table[field_name];
+}
+
+
+template <typename list_metadata>
+constexpr bool size_dependencies_resolved() {
+  auto field_table = list_metadata::field_table;
+  auto length_dependency_table = list_metadata::length_dependency_table;
+
+  for(auto& entry: length_dependency_table) {
+    auto& [field_name, dependencies] = *entry; 
+    auto field_info = field_table[field_name];
+    auto field_idx = field_info->occurs_at_idx;
+    if(length_dependency_table.size() > 0) {
+      for(auto dep_field: dependencies) {
+        auto dep_field_info = field_table[dep_field];
+        auto dep_field_idx = dep_field_info->occurs_at_idx;
+        if(dep_field_idx > field_idx)
+          return false;
+      }
+    }
+  }
+  return true;
 }
 
 }
