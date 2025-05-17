@@ -36,7 +36,7 @@ TEST(S2STest, failed_parsing_variant_field) {
       s2s::variance<
         "c", 
         s2s::type<
-          s2s::match_field<"a">,
+          s2s::match_field<"d">,
           s2s::type_switch<
             s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
             s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>

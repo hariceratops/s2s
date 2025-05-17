@@ -1607,10 +1607,15 @@ template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_node>;
 template <typename list_metadata>
 constexpr bool size_dependencies_resolved();
-
+template <typename list_metadata>
+constexpr bool parse_dependencies_resolved();
+template <typename list_metadata>
+constexpr bool type_deduction_dependencies_resolved();
 
 template <typename metadata, typename... fields>
-  requires (size_dependencies_resolved<metadata>())
+  requires (size_dependencies_resolved<metadata>() &&
+            parse_dependencies_resolved<metadata>() &&
+            type_deduction_dependencies_resolved<metadata>())
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 
@@ -2580,17 +2585,13 @@ constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
   return field_table[field_name];
 }
 
-// todo use algorithms over raw loops
-template <typename list_metadata>
-constexpr bool size_dependencies_resolved() {
-  auto field_table = list_metadata::field_table;
-  auto length_dependency_table = list_metadata::length_dependency_table;
 
-  for(auto& entry: length_dependency_table) {
+constexpr bool is_dependencies_resolved(const field_table_t& field_table, const dependency_table_t& dependency_table) {
+  for(auto& entry: dependency_table) {
     auto& [field_name, dependencies] = *entry; 
     auto field_info = field_table[field_name];
     auto field_idx = field_info->occurs_at_idx;
-    if(length_dependency_table.size() > 0) {
+    if(dependency_table.size() > 0) {
       for(auto dep_field: dependencies) {
         auto dep_field_info = field_table[dep_field];
         auto dep_field_idx = dep_field_info->occurs_at_idx;
@@ -2600,6 +2601,44 @@ constexpr bool size_dependencies_resolved() {
     }
   }
   return true;
+}
+
+
+// todo use algorithms over raw loops
+template <typename list_metadata>
+constexpr bool size_dependencies_resolved() {
+  auto field_table = list_metadata::field_table;
+  auto length_dependency_table = list_metadata::length_dependency_table;
+  return is_dependencies_resolved(field_table, length_dependency_table);
+
+  // for(auto& entry: length_dependency_table) {
+  //   auto& [field_name, dependencies] = *entry; 
+  //   auto field_info = field_table[field_name];
+  //   auto field_idx = field_info->occurs_at_idx;
+  //   if(length_dependency_table.size() > 0) {
+  //     for(auto dep_field: dependencies) {
+  //       auto dep_field_info = field_table[dep_field];
+  //       auto dep_field_idx = dep_field_info->occurs_at_idx;
+  //       if(dep_field_idx > field_idx)
+  //         return false;
+  //     }
+  //   }
+  // }
+  // return true;
+}
+
+template <typename list_metadata>
+constexpr bool parse_dependencies_resolved() {
+  auto field_table = list_metadata::field_table;
+  auto parse_dependency_table = list_metadata::parse_dependency_table;
+  return is_dependencies_resolved(field_table, parse_dependency_table);
+}
+
+template <typename list_metadata>
+constexpr bool type_deduction_dependencies_resolved() {
+  auto field_table = list_metadata::field_table;
+  auto type_deduction_dep_table = list_metadata::type_deduction_dep_table;
+  return is_dependencies_resolved(field_table, type_deduction_dep_table);
 }
 
 }
@@ -3186,9 +3225,6 @@ struct read_field<T, F> {
 
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
-  using optional_field_presence_checker = typename T::field_presence_checker;
-  using enclosing_struct_field_list = F;
-
   T& field;
   F& field_list;
   

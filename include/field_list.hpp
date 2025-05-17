@@ -18,10 +18,15 @@ template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_node>;
 template <typename list_metadata>
 constexpr bool size_dependencies_resolved();
-
+template <typename list_metadata>
+constexpr bool parse_dependencies_resolved();
+template <typename list_metadata>
+constexpr bool type_deduction_dependencies_resolved();
 
 template <typename metadata, typename... fields>
-  requires (size_dependencies_resolved<metadata>())
+  requires (size_dependencies_resolved<metadata>() &&
+            parse_dependencies_resolved<metadata>() &&
+            type_deduction_dependencies_resolved<metadata>())
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 
