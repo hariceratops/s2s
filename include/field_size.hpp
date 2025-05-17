@@ -12,7 +12,6 @@ struct field_size;
 template <typename size_type>
 struct field_size {
   using size_type_t = size_type;
-  // static constexpr auto size = size_type{};
 };
 
 struct size_dont_care {};

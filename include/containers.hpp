@@ -7,6 +7,32 @@
 #include "algorithms.hpp"
 
 
+template <typename T>
+struct static_optional {
+  T value{};
+  bool has_value{false};
+
+  // Constructors
+  constexpr static_optional() = default;
+  constexpr static_optional(const T& val)
+    : value(val), has_value(true) {}
+  constexpr static_optional(T&& val)
+    : value(std::move(val)), has_value(true) {}
+
+  [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& get() const { return value; }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& operator*() const { return value; }
+  [[nodiscard]] constexpr T& operator*() { return value; }
+  [[nodiscard]] constexpr const T* operator->() const { return &value; }
+  [[nodiscard]] constexpr T* operator->() { return &value; }
+  [[nodiscard]] constexpr auto operator<=>(const static_optional&) const = default;
+};
+
+using static_nullopt_t = static_optional<void>;
+inline constexpr static_nullopt_t static_nullopt();
+
+
 template <typename T, std::size_t N>
 class static_vector {
 public:
@@ -130,56 +156,5 @@ private:
     return m;
   }
 };
-
-// template <typename Key, typename Value, std::size_t N, std::size_t C>
-// constexpr auto map(const std::pair<Key, Value> (&entries)[C]) -> static_map_impl<Key, Value, N> {
-//   return static_map_impl<Key, Value, N>(entries);
-// }
-// using N = Node<std::string_view, std::string_view>;
-// static_assert(N("hello", "world") < N("world", "nothing"));
-//
-// constexpr auto generate_test_map() -> static_map<std::string_view, std::string_view, 5> {
-//   return static_map<std::string_view, std::string_view, 5> (
-//     { 
-//       {"hello", "world"}, {"foo", "bar"},
-//       {"world", "nothing"}, {"arc", "not-arc"},
-//       {"algebra", "math"}
-//     }
-//   );
-// }
-// constexpr auto map = generate_test_map();
-// static_assert(*map["hello"] == "world");
-// static_assert(*map["world"] == "nothing");
-
-// constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
-  // static_set<std::string_view, 5> set;
-  // set.insert("hello");
-  // set.insert("world");
-  // set.insert("foo");
-  // set.insert("bar");
-  // set.insert("bar");
-
-  // static_set<std::string_view, 5> set("hello", "world", "foo", "bar", "bar");
-  // return set;
-// }
-//
-// constexpr auto generate_test_vector() -> static_vector<std::string_view, 5> {
-//   static_vector<std::string_view, 5> vec;
-//   vec.push_back("hello");
-//   vec.push_back("world");
-//   vec.push_back("foo");
-//   vec.push_back("bar");
-//
-//   return vec;
-// }
-//
-// static constexpr auto set = generate_test_set();
-// static constexpr auto vec = generate_test_vector();
-// static_assert(set[0] == std::string_view{"hello"});
-// static_assert(set.size() == 4);
-// static_assert(equal_ranges(set, vec));
-// static constexpr static_set<std::string_view, 5> s(vec);
-// static_assert(s[0] == std::string_view{"hello"});
-// static_assert(s.size() == 4);
 
 #endif /* _CONTAINERS_HPP_ */

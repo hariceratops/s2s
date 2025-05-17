@@ -45,69 +45,6 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
 
 // End /home/hari/repos/s2s/include/fixed_string.hpp
 
-// Begin /home/hari/repos/s2s/include/address_manip.hpp
-#ifndef _ADDRESS_MANIP_HPP_
-#define _ADDRESS_MANIP_HPP_
-
-#include <array>
-#include <string>
-#include <vector>
- 
-namespace s2s {
-template <typename T>
-void* to_void_ptr(T& obj) {
-  return reinterpret_cast<void*>(&obj);
-}
-
-template <typename T, std::size_t N>
-void* to_void_ptr(std::array<T, N>& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <std::size_t N>
-void* to_void_ptr(fixed_string<N>& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <typename T>
-void* to_void_ptr(std::vector<T>& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <typename T>
-void* to_void_ptr(std::string& obj) {
-  return reinterpret_cast<void*>(obj.data());
-}
-
-template <typename T>
-char* byte_addressof(T& obj) {
-  return reinterpret_cast<char*>(&obj);
-}
-
-template <typename T, std::size_t N>
-char* byte_addressof(std::array<T, N>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <std::size_t N>
-char* byte_addressof(fixed_string<N>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <typename T>
-char* byte_addressof(std::vector<T>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-inline char* byte_addressof(std::string& obj) {
-  return reinterpret_cast<char*>(&obj[0]);
-}
-} /* namespace s2s */
-
-#endif // _ADDRESS_MANIP_HPP_
-
-// End /home/hari/repos/s2s/include/address_manip.hpp
-
 // Begin /home/hari/repos/s2s/include/algorithms.hpp
 #ifndef _ALGORITHMS_HPP_
 #define _ALGORITHMS_HPP_
@@ -177,6 +114,32 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
 #include <cstdint>
 #include <utility>
  
+template <typename T>
+struct static_optional {
+  T value{};
+  bool has_value{false};
+
+  // Constructors
+  constexpr static_optional() = default;
+  constexpr static_optional(const T& val)
+    : value(val), has_value(true) {}
+  constexpr static_optional(T&& val)
+    : value(std::move(val)), has_value(true) {}
+
+  [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& get() const { return value; }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& operator*() const { return value; }
+  [[nodiscard]] constexpr T& operator*() { return value; }
+  [[nodiscard]] constexpr const T* operator->() const { return &value; }
+  [[nodiscard]] constexpr T* operator->() { return &value; }
+  [[nodiscard]] constexpr auto operator<=>(const static_optional&) const = default;
+};
+
+using static_nullopt_t = static_optional<void>;
+inline constexpr static_nullopt_t static_nullopt();
+
+
 template <typename T, std::size_t N>
 class static_vector {
 public:
@@ -301,57 +264,6 @@ private:
   }
 };
 
-// template <typename Key, typename Value, std::size_t N, std::size_t C>
-// constexpr auto map(const std::pair<Key, Value> (&entries)[C]) -> static_map_impl<Key, Value, N> {
-//   return static_map_impl<Key, Value, N>(entries);
-// }
-// using N = Node<std::string_view, std::string_view>;
-// static_assert(N("hello", "world") < N("world", "nothing"));
-//
-// constexpr auto generate_test_map() -> static_map<std::string_view, std::string_view, 5> {
-//   return static_map<std::string_view, std::string_view, 5> (
-//     { 
-//       {"hello", "world"}, {"foo", "bar"},
-//       {"world", "nothing"}, {"arc", "not-arc"},
-//       {"algebra", "math"}
-//     }
-//   );
-// }
-// constexpr auto map = generate_test_map();
-// static_assert(*map["hello"] == "world");
-// static_assert(*map["world"] == "nothing");
-
-// constexpr auto generate_test_set() -> static_set<std::string_view, 5> {
-  // static_set<std::string_view, 5> set;
-  // set.insert("hello");
-  // set.insert("world");
-  // set.insert("foo");
-  // set.insert("bar");
-  // set.insert("bar");
-
-  // static_set<std::string_view, 5> set("hello", "world", "foo", "bar", "bar");
-  // return set;
-// }
-//
-// constexpr auto generate_test_vector() -> static_vector<std::string_view, 5> {
-//   static_vector<std::string_view, 5> vec;
-//   vec.push_back("hello");
-//   vec.push_back("world");
-//   vec.push_back("foo");
-//   vec.push_back("bar");
-//
-//   return vec;
-// }
-//
-// static constexpr auto set = generate_test_set();
-// static constexpr auto vec = generate_test_vector();
-// static_assert(set[0] == std::string_view{"hello"});
-// static_assert(set.size() == 4);
-// static_assert(equal_ranges(set, vec));
-// static constexpr static_set<std::string_view, 5> s(vec);
-// static_assert(s[0] == std::string_view{"hello"});
-// static_assert(s.size() == 4);
-
 #endif /* _CONTAINERS_HPP_ */
 
 // End /home/hari/repos/s2s/include/containers.hpp
@@ -401,6 +313,7 @@ namespace meta {
 using type_identifier = std::size_t;
 
 namespace meta_impl {
+// todo: fix warning due to friend injection
 template <type_identifier>
 struct type_id_key {
   constexpr auto friend get(type_id_key);
@@ -522,6 +435,7 @@ constexpr auto operator""_f() {
 // Begin /home/hari/repos/s2s/include/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
 #define _FIXED_STRING_LIST_HPP_
+// status: might be deprecated due to value MP
  
 namespace s2s {
 template <fixed_string... fs>
@@ -629,6 +543,9 @@ concept field_name_list = is_field_name_list_v<T>;
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
+
+// status: might be deprecated due to value MP
+
 #include <string>
 #include <type_traits>
 
@@ -726,7 +643,6 @@ struct field_size;
 template <typename size_type>
 struct field_size {
   using size_type_t = size_type;
-  // static constexpr auto size = size_type{};
 };
 
 struct size_dont_care {};
@@ -1667,82 +1583,8 @@ concept field_like = fixed_sized_field_like<T> ||
 // Begin /home/hari/repos/s2s/include/field_list_metafunctions.hpp
 #ifndef _FIELD_LIST_METAFUNCTIONS_HPP_
 #define _FIELD_LIST_METAFUNCTIONS_HPP_
- 
- 
- 
-namespace s2s {
-// Sentinel type for a failed lookup
-struct field_lookup_failed {};
 
-// Primary template declaration for field_lookup
-template <typename L, fixed_string id>
-struct field_lookup;
-
-// Success case 1: Match a field with the given id
-template <fixed_string id, 
-          typename T, 
-          typename size_type, 
-          auto constraint, 
-          typename... rest>
-struct field_lookup<
-    typelist::list<field<id, T, size_type, constraint>, rest...>, id
-  >
-{
-  using type = field<id, T, size_type, constraint>;
-};
-
-// Success case 2: Match a maybe_field with the given id
-template <fixed_string id, 
-          typename T, 
-          typename size, 
-          typename present_only_if, 
-          auto constraint, 
-          typename optional,
-          typename... rest>
-struct field_lookup<
-    typelist::list<maybe_field<field<id, T, size, constraint>, present_only_if, optional>, rest...>, id
-  > 
-{
-  using type = 
-    maybe_field<
-      field<id, T, size, constraint>,
-      present_only_if, 
-      optional
-    >;
-};
-
-// Success case 3: Match a union_field with the given id
-template <fixed_string id,
-          typename type_deducer,
-          auto constraint_on_value,
-          typename T,
-          typename size_type,
-          typename variant,
-          typename field_choices_t,
-          typename... rest>
-struct field_lookup<
-    typelist::list<union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>, rest...>, id
-  >
-{
-  using type = union_field<id, type_deducer, T, size_type, constraint_on_value, variant, field_choices_t>;
-};
-
-// Recursive case: id does not match the head, continue searching in the rest
-template <typename head, typename... rest, fixed_string id>
-struct field_lookup<typelist::list<head, rest...>, id> {
-  using type = typename field_lookup<typelist::list<rest...>, id>::type;
-};
-
-// Failure case: Reached the end of the field list without finding a match
-template <fixed_string id>
-struct field_lookup<typelist::list<>, id> {
-  using type = field_lookup_failed;
-};
-
-// Alias for easier use
-template <typename L, fixed_string id>
-using field_lookup_v = typename field_lookup<L, id>::type;
-} /* namespace s2s */
+// status: might be deprecated, use the file for reorganising components
 
 #endif // _FIELD_LIST_METAFUNCTIONS_HPP_
 
@@ -1786,8 +1628,8 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
   template <typename field_accessor>
     requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
   constexpr const auto& operator[](field_accessor) const {
-    constexpr auto field_node_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
-    using field_type_cref = const meta::type_of<field_node_lookup_res->id>&;
+    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+    using field_type_cref = const meta::type_of<res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 };
@@ -2738,7 +2580,7 @@ constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
   return field_table[field_name];
 }
 
-
+// todo use algorithms over raw loops
 template <typename list_metadata>
 constexpr bool size_dependencies_resolved() {
   auto field_table = list_metadata::field_table;
@@ -2856,9 +2698,6 @@ constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field
   return equal_ranges(field_id_list, field_id_set);
 }
 
-// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
-// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
-
 template <std::size_t N>
 constexpr auto as_sv(const fixed_string<N>& str) {
   return std::string_view{str.data()};
@@ -2963,7 +2802,6 @@ template <typename T>
 concept identified_as_constexpr_stream = std::is_base_of_v<constexpr_stream, T>;
 
 template <typename T>
-// concept writeable = std_write_trait<T> || write_trait<T> || constexpr_write_trait<T, N>;
 concept writeable = std_write_trait<T> || write_trait<T>;
 
 template <typename T>
@@ -2997,7 +2835,7 @@ enum cast_endianness {
   foreign = 1
 };
 
-
+// todo check if this handrolled implementation is required
 // template <std::integral T>
 // constexpr auto byteswap(T value) -> T {
 //   constexpr auto object_size = sizeof(T);
@@ -3062,12 +2900,6 @@ template <identified_as_constexpr_stream stream, typename T, std::size_t size = 
 constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
   return std::bit_cast<std::array<char, size>>(obj);
 }
-
-// template <typename T, std::size_t N, std::size_t size = N * constexpr_buffer_size>
-// constexpr auto as_byte_buffer(std::array<T, N>& obj) -> std::array<char, size> {
-//   return std::bit_cast<std::array<char, size>>(obj);
-// }
-
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
@@ -3143,72 +2975,6 @@ constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
 }
 
 
-// template <input_stream_like stream>
-// class input_stream {
-// private:
-//   stream& s;
-//
-//   template <typename T>
-//   constexpr auto read_native_impl(T& obj, std::size_t size_to_read) -> rw_result {
-//     if(!s.read(byte_addressof(obj), size_to_read)) {
-//       return std::unexpected(error_reason::buffer_exhaustion);
-//     }
-//     return {};
-//   }
-//
-//   template <constant_sized_like T>
-//   constexpr auto read_native(T& obj, std::size_t size_to_read) -> rw_result {
-//     return read_native_impl(obj, size_to_read);   
-//   }
-//
-//   template <variable_sized_buffer_like T>
-//   constexpr auto read_native(T& obj, std::size_t len_to_read) -> rw_result {
-//     obj.resize(len_to_read);
-//     return read_native_impl(obj, len_to_read * sizeof(T{}[0]));
-//   }
-//
-//   template <trivial T>
-//   constexpr auto read_foreign_scalar(T& obj, std::size_t size_to_read) -> rw_result {
-//     auto res = read_native_impl(obj, size_to_read);
-//     if(res) {
-//       // todo rollout byteswap if freestanding compiler doesnt provide one
-//       obj = std::byteswap(obj);
-//       return {};
-//     }
-//     return res;
-//   }
-//
-//   template <buffer_like T>
-//   constexpr auto read_foreign_buffer(T& obj, std::size_t len_to_read) -> rw_result {
-//     auto res = read_native(obj, len_to_read);
-//     if(res) {
-//       for(auto& elem: obj) 
-//         obj = std::byteswap(obj);
-//       return {};
-//     }
-//     return res;
-//   }
-//
-// public:
-//   constexpr input_stream(stream& s): s(s) {}
-//   constexpr input_stream(const input_stream&) = delete;
-//
-//   template <std::endian endianness, typename T>
-//   constexpr auto read(T& obj, std::size_t N) -> rw_result {
-//     auto constexpr byte_order = deduce_byte_order<endianness>();
-//     if constexpr(byte_order == cast_endianness::host) {
-//       return read_native(obj, N); 
-//     } else if constexpr(byte_order == cast_endianness::foreign) {
-//       if constexpr(trivial<T>) {
-//         return read_foreign_scalar(obj, N);
-//       } else if constexpr(buffer_like<T>) {
-//         return read_foreign_buffer(obj, N);
-//       }
-//     }
-//   }
-// };
-
-
 template <output_stream_like stream>
 class output_stream {
 private:
@@ -3225,25 +2991,6 @@ public:
     return {};
   }
 };
-
-// template <typename S>
-// struct is_s2s_input_stream;
-//
-// template <typename S>
-// struct is_s2s_input_stream {
-//   static constexpr bool res = false;
-// };
-//
-// template <typename S>
-// struct is_s2s_input_stream<input_stream<S>> {
-//   static constexpr bool res = true;
-// };
-//
-// template <typename S>
-// inline constexpr bool is_s2s_input_stream_v = is_s2s_input_stream<S>::res;
-//
-// template <typename T>
-// concept s2s_input_stream_like = is_s2s_input_stream_v<T>;
 } /* namespace s2s */
 
 #endif /* _STREAM_WRAPPER_IMPL_HPP_ */
@@ -3410,10 +3157,6 @@ struct read_field<T, F> {
 };
 
 
-// Forward declaration
-// template <s2s_input_stream_like stream, field_list_like T, auto endianness>
-// constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
-
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 
@@ -3531,7 +3274,6 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
 };
 
 
-// todo restore constexpr
 template <union_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -3618,10 +3360,6 @@ constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
   return res ? callable() : std::unexpected(res.error());
 }
 
-// forward declaration
-// template <s2s_input_stream_like stream, field_list_like T, auto endianness>
-// template <input_stream_like stream, field_list_like T>
-// constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
 
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
@@ -3667,24 +3405,14 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
   }
 };
 
-// template <s2s_input_stream_like stream_wrapper, field_list_like T, auto endianness>
-// [[nodiscard]] constexpr auto struct_cast(stream_wrapper& wrapped) -> std::expected<T, cast_error> {
-//   return struct_cast_impl<T, stream_wrapper, endianness>{}(wrapped);
-// }
 
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
-  // using stream_wrapper = input_stream<stream>;
-  // stream_wrapper wrapped(s);
-  // return struct_cast_impl<T, stream_wrapper, std::endian::little>{}(wrapped);
   return struct_cast_impl<T, stream, std::endian::little>{}(s);
 }
 
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
-  // using stream_wrapper = input_stream<stream>;
-  // stream_wrapper wrapped(s);
-  // return struct_cast_impl<T, stream_wrapper, std::endian::big>{}(wrapped);
   return struct_cast_impl<T, stream, std::endian::big>{}(s);
 }
 } /* namespace s2s */
@@ -3696,7 +3424,6 @@ template <field_list_like T, input_stream_like stream>
 // Begin /home/hari/repos/s2s/include/s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
- 
  
  
  

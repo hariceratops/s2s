@@ -1,6 +1,6 @@
 #ifndef _FIXED_STRING_LIST_HPP_
 #define _FIXED_STRING_LIST_HPP_
-
+// status: might be deprecated due to value MP
 #include "fixed_string.hpp"
 
 
