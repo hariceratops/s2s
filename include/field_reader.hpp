@@ -188,9 +188,6 @@ struct read_field<T, F> {
 
 template <optional_field_like T, field_list_like F>
 struct read_field<T, F> {
-  using optional_field_presence_checker = typename T::field_presence_checker;
-  using enclosing_struct_field_list = F;
-
   T& field;
   F& field_list;
   
