@@ -159,10 +159,6 @@ struct read_field<T, F> {
 };
 
 
-// Forward declaration
-// template <s2s_input_stream_like stream, field_list_like T, auto endianness>
-// constexpr auto struct_cast(stream&) -> std::expected<T, cast_error>;
-
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 
@@ -280,7 +276,6 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
 };
 
 
-// todo restore constexpr
 template <union_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;

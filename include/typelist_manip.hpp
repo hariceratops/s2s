@@ -5,6 +5,9 @@
 #include "typelist.hpp"
 #include "fixed_string_list.hpp"
 
+
+// status: might be deprecated due to value MP
+
 namespace s2s {
 // todo typelist to variant?
 template <typename T>

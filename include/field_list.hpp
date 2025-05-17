@@ -39,8 +39,8 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
   template <typename field_accessor>
     requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
   constexpr const auto& operator[](field_accessor) const {
-    constexpr auto field_node_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
-    using field_type_cref = const meta::type_of<field_node_lookup_res->id>&;
+    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+    using field_type_cref = const meta::type_of<res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 };

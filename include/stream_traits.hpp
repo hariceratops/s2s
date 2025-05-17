@@ -51,7 +51,6 @@ template <typename T>
 concept identified_as_constexpr_stream = std::is_base_of_v<constexpr_stream, T>;
 
 template <typename T>
-// concept writeable = std_write_trait<T> || write_trait<T> || constexpr_write_trait<T, N>;
 concept writeable = std_write_trait<T> || write_trait<T>;
 
 template <typename T>

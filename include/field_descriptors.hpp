@@ -91,9 +91,6 @@ constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field
   return equal_ranges(field_id_list, field_id_set);
 }
 
-// static_assert(check_for_field_id_uniqueness(std::array{std::string_view{"hello"}}));
-// static_assert(!check_for_field_id_uniqueness(std::array{std::string_view{"hello"}, std::string_view{"world"}, std::string_view{"hello"}}));
-
 template <std::size_t N>
 constexpr auto as_sv(const fixed_string<N>& str) {
   return std::string_view{str.data()};

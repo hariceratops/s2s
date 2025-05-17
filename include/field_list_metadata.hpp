@@ -257,7 +257,7 @@ constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
   return field_table[field_name];
 }
 
-
+// todo use algorithms over raw loops
 template <typename list_metadata>
 constexpr bool size_dependencies_resolved() {
   auto field_table = list_metadata::field_table;

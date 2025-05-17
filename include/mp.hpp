@@ -10,6 +10,7 @@ namespace meta {
 using type_identifier = std::size_t;
 
 namespace meta_impl {
+// todo: fix warning due to friend injection
 template <type_identifier>
 struct type_id_key {
   constexpr auto friend get(type_id_key);
