@@ -394,21 +394,21 @@ static_assert(type_id<int> == invoke<std::remove_pointer>(type_id<int*>));
 
 // End /home/hari/repos/s2s/include/mp.hpp
 
-// Begin /home/hari/repos/s2s/include/field_node.hpp
+// Begin /home/hari/repos/s2s/include/field_type_info.hpp
 #ifndef _FIELD_NODE_HPP_
 #define _FIELD_NODE_HPP_
 
 #include <cstdint>
  
 // todo better name
-struct field_node {
+struct field_type_info {
   meta::type_identifier id;
   std::size_t occurs_at_idx;
 };
 
 #endif /* _FIELD_NODE_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_node.hpp
+// End /home/hari/repos/s2s/include/field_type_info.hpp
 
 // Begin /home/hari/repos/s2s/include/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
@@ -1379,20 +1379,31 @@ public:
 };
 
 
-template <fixed_string id,
-          typename type_deducer,
-          typename type = typename type_deducer::variant,
-          typename size_type = typename type_deducer::sizes,
-          auto constraint_on_value = no_constraint<type>{},
-          typename variant = field<id, type, size_type, constraint_on_value>,
-          typename field_choices_t = typename to_field_choices<id, type, size_type>::choices
+template <fixed_string id, typename type_deducer>
+  requires are_unique_types_v<
+    typename to_field_choices<
+      id, 
+      typename type_deducer::variant, 
+      typename type_deducer::sizes
+    >::choices
   >
-  requires are_unique_types_v<field_choices_t>
-struct union_field: public variant {
+struct union_field: public 
+    field<
+      id, 
+      typename type_deducer::variant, 
+      typename type_deducer::sizes, 
+      no_constraint<typename type_deducer::variant>{}
+    > 
+{
   using type_deduction_guide = type_deducer;
-  using field_choices = field_choices_t;
-  static constexpr auto variant_size = std::variant_size_v<type>;
+  static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
+  using field_choices = to_field_choices<
+      id, 
+      typename type_deducer::variant, 
+      typename type_deducer::sizes
+    >::choices;
 };
+
 } /* namespace s2s */
 
 #endif // _FIELD_HPP_
@@ -1541,15 +1552,9 @@ concept optional_field_like = is_optional_field_v<T>;
 template <typename T>
 struct is_union_field;
 
-template <fixed_string id,
-          typename type_deducer,
-          typename type,
-          typename size_type,
-          auto constraint_on_value,
-          typename variant,
-          typename field_choices_t>
+template <fixed_string id, typename type_deducer>
 struct is_union_field<
-    union_field<id, type_deducer, type, size_type, constraint_on_value, variant, field_choices_t>
+    union_field<id, type_deducer>
   > 
 {
   static constexpr bool res = true;
@@ -1604,7 +1609,7 @@ concept field_like = fixed_sized_field_like<T> ||
 namespace s2s {
 
 template <typename list_metadata>
-constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_node>;
+constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
 template <typename list_metadata>
 constexpr bool size_dependencies_resolved();
 template <typename list_metadata>
@@ -1612,10 +1617,19 @@ constexpr bool parse_dependencies_resolved();
 template <typename list_metadata>
 constexpr bool type_deduction_dependencies_resolved();
 
+template <typename metadata>
+concept all_size_dependencies_resolved = size_dependencies_resolved<metadata>();
+template <typename metadata>
+concept all_parse_dependencies_resolved = parse_dependencies_resolved<metadata>();
+template <typename metadata>
+concept all_type_deduction_dependencies_resolved = type_deduction_dependencies_resolved<metadata>();
+
 template <typename metadata, typename... fields>
-  requires (size_dependencies_resolved<metadata>() &&
-            parse_dependencies_resolved<metadata>() &&
-            type_deduction_dependencies_resolved<metadata>())
+  requires (
+    all_size_dependencies_resolved<metadata> &&
+    all_parse_dependencies_resolved<metadata> &&
+    all_type_deduction_dependencies_resolved<metadata>
+  )
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 
@@ -2348,7 +2362,7 @@ static inline constexpr std::size_t max_field_count = 256;
 
 using sv = std::string_view;
 using dep_vec = static_vector<sv, max_dep_count_per_struct>;
-using field_table_t = static_map<sv, field_node, max_field_count>;
+using field_table_t = static_map<sv, field_type_info, max_field_count>;
 using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>;
 
 // extract dependencies metafunction
@@ -2408,14 +2422,26 @@ constexpr auto flatten(const dep_vec (&vecs)[N]) -> dep_vec {
   return vec;
 }
 
-template <fixed_string id, typename type_deducer, typename type, typename size,
-          auto constraint_on_value, typename variant, typename... field_choices>
+template <typename... Ts>
+struct extract_length_dependencies_from_field_choices;
+
+template <typename... Ts>
+struct extract_length_dependencies_from_field_choices<field_choice_list<Ts...>>{
+  static constexpr dep_vec deps[64] = {dep_vec(extract_length_dependencies<Ts>::value)...};
+  static constexpr auto value = flatten(deps);
+};
+
+template <typename... Ts>
+inline constexpr auto extract_length_dependencies_from_field_choices_v = extract_length_dependencies_from_field_choices<Ts...>::value;
+
+template <fixed_string id, typename type_deducer>
 struct extract_length_dependencies<
-  union_field<id, type_deducer, type, size, constraint_on_value, variant, field_choice_list<field_choices...>>
+  union_field<id, type_deducer>
 > 
 {
-  static constexpr dep_vec deps[64] = {dep_vec(extract_length_dependencies<field_choices>::value)...};
-  static constexpr auto value = flatten(deps);
+  using field = union_field<id, type_deducer>;
+  using field_choices = typename field::field_choices;
+  static constexpr auto value = extract_length_dependencies_from_field_choices_v<field_choices>;
 };
  
 
@@ -2455,34 +2481,22 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, type_switch_like type_switch, typename types, typename size,
-          auto constraint_on_value, typename variant, typename... field_choices>
+template <fixed_string id, fixed_string matched_id, type_switch_like type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch>,
-    types,
-    size,
-    constraint_on_value,
-    variant,
-    field_choice_list<field_choices...>
+    type<match_field<matched_id>, type_switch>
   >
 > 
 {
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch, typename types, typename size,
-          auto constraint_on_value, typename variant, typename... field_choices>
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>,
-    types,
-    size,
-    constraint_on_value,
-    variant,
-    field_choice_list<field_choices...>
+    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
   >
 > 
 {
@@ -2515,17 +2529,11 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
   return res;
 }
 
-template <fixed_string id, typename... clauses, typename types, typename size,
-          auto constraint_on_value, typename variant, typename... field_choices>
+template <fixed_string id, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_ladder<clauses...>>,
-    types,
-    size,
-    constraint_on_value,
-    variant,
-    field_choice_list<field_choices...>
+    type<type_ladder<clauses...>>
   >
 > 
 {
@@ -2541,9 +2549,9 @@ template <typename... fields>
 struct field_list_metadata {
   template <std::size_t... Is>
   static constexpr auto generate_field_table(std::index_sequence<Is...>) {
-    return static_map<sv, field_node, max_field_count>(
+    return static_map<sv, field_type_info, max_field_count>(
       {
-        {as_sv(fields::field_id), field_node(meta::type_id<fields>, Is)}...
+        {as_sv(fields::field_id), field_type_info(meta::type_id<fields>, Is)}...
       }
     );
   }
@@ -2580,7 +2588,7 @@ struct field_list_metadata {
 };
 
 template <typename list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_node> {
+constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
   auto field_table = list_metadata::field_table;
   return field_table[field_name];
 }
@@ -2610,21 +2618,6 @@ constexpr bool size_dependencies_resolved() {
   auto field_table = list_metadata::field_table;
   auto length_dependency_table = list_metadata::length_dependency_table;
   return is_dependencies_resolved(field_table, length_dependency_table);
-
-  // for(auto& entry: length_dependency_table) {
-  //   auto& [field_name, dependencies] = *entry; 
-  //   auto field_info = field_table[field_name];
-  //   auto field_idx = field_info->occurs_at_idx;
-  //   if(length_dependency_table.size() > 0) {
-  //     for(auto dep_field: dependencies) {
-  //       auto dep_field_info = field_table[dep_field];
-  //       auto dep_field_idx = dep_field_info->occurs_at_idx;
-  //       if(dep_field_idx > field_idx)
-  //         return false;
-  //     }
-  //   }
-  // }
-  // return true;
 }
 
 template <typename list_metadata>

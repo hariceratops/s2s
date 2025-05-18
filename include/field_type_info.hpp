@@ -5,7 +5,7 @@
 #include "mp.hpp"
 
 // todo better name
-struct field_node {
+struct field_type_info {
   meta::type_identifier id;
   std::size_t occurs_at_idx;
 };

@@ -106,20 +106,31 @@ public:
 };
 
 
-template <fixed_string id,
-          typename type_deducer,
-          typename type = typename type_deducer::variant,
-          typename size_type = typename type_deducer::sizes,
-          auto constraint_on_value = no_constraint<type>{},
-          typename variant = field<id, type, size_type, constraint_on_value>,
-          typename field_choices_t = typename to_field_choices<id, type, size_type>::choices
+template <fixed_string id, typename type_deducer>
+  requires are_unique_types_v<
+    typename to_field_choices<
+      id, 
+      typename type_deducer::variant, 
+      typename type_deducer::sizes
+    >::choices
   >
-  requires are_unique_types_v<field_choices_t>
-struct union_field: public variant {
+struct union_field: public 
+    field<
+      id, 
+      typename type_deducer::variant, 
+      typename type_deducer::sizes, 
+      no_constraint<typename type_deducer::variant>{}
+    > 
+{
   using type_deduction_guide = type_deducer;
-  using field_choices = field_choices_t;
-  static constexpr auto variant_size = std::variant_size_v<type>;
+  static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
+  using field_choices = to_field_choices<
+      id, 
+      typename type_deducer::variant, 
+      typename type_deducer::sizes
+    >::choices;
 };
+
 } /* namespace s2s */
 
 #endif // _FIELD_HPP_
