@@ -92,8 +92,9 @@ struct is_type_deduction<no_type_deduction> {
 
 template <typename eval_expression, typename tswitch>
 struct is_type_deduction<type<eval_expression, tswitch>> {
-  static constexpr bool res = is_compute_like_v<eval_expression> && 
-                              type_switch_like<tswitch>;
+  static constexpr bool res = 
+    is_compute_like_v<eval_expression> && 
+    type_switch_like<tswitch>;
 };
 
 template <fixed_string id, typename tswitch>
@@ -103,7 +104,7 @@ struct is_type_deduction<type<match_field<id>, tswitch>> {
 
 template <typename tladder>
 struct is_type_deduction<type<tladder>> {
-  static constexpr bool res = type_ladder_like<tladder>;
+  static constexpr bool res = type_if_else_like<tladder>;
 };
 
 template <typename T>

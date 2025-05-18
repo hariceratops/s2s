@@ -118,7 +118,7 @@ struct union_field: public
     field<
       id, 
       typename type_deducer::variant, 
-      typename type_deducer::sizes, 
+      size_dont_care, 
       no_constraint<typename type_deducer::variant>{}
     > 
 {

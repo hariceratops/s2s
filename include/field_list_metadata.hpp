@@ -166,7 +166,7 @@ struct extract_req_fields_from_clause;
 
 template <auto callable, fixed_string... req_fields, type_tag_like T>
 struct extract_req_fields_from_clause<
-  clause<
+  branch<
     compute<callable, bool, fixed_string_list<req_fields...>>,
     T
   >
@@ -187,11 +187,12 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
   return res;
 }
 
+// template<typename...>... typename clauses?
 template <fixed_string id, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_ladder<clauses...>>
+    type<type_if_else<clauses...>>
   >
 > 
 {

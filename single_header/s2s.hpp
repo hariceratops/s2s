@@ -1391,7 +1391,7 @@ struct union_field: public
     field<
       id, 
       typename type_deducer::variant, 
-      typename type_deducer::sizes, 
+      size_dont_care, 
       no_constraint<typename type_deducer::variant>{}
     > 
 {
@@ -1981,32 +1981,35 @@ concept match_case_like = is_match_case_v<T>;
  
  
 namespace s2s {
-template <typename eval, type_tag_like T>
-  requires is_eval_bool_from_fields_v<eval>
-struct clause {
+
+template <typename T>
+concept evaluates_to_bool = is_eval_bool_from_fields_v<T>;
+
+template <evaluates_to_bool eval, type_tag_like T>
+struct branch {
   static constexpr auto e = eval{};
   using type_tag = T;
 };
 
 
 template <typename T>
-struct is_clause;
+struct is_branch;
 
 template <typename T>
-struct is_clause {
+struct is_branch {
   static constexpr bool res = false;
 };
 
 template <typename eval, typename T>
-struct is_clause<clause<eval, T>> {
+struct is_branch<branch<eval, T>> {
   static constexpr bool res = true;
 };
 
 template <typename T>
-inline constexpr bool is_clause_v = is_clause<T>::res;
+inline constexpr bool is_branch_v = is_branch<T>::res;
 
 template <typename T>
-concept clause_like = is_clause_v<T>;
+concept branch_like = is_branch_v<T>;
 } /* namespace s2s */
 
 #endif // _TYPE_DEDUCTION_CLAUSE_HPP_
@@ -2020,7 +2023,7 @@ concept clause_like = is_clause_v<T>;
  
 namespace s2s {
 template <typename T>
-concept type_condition_like = match_case_like<T> || clause_like<T>;
+concept type_condition_like = match_case_like<T> || branch_like<T>;
 
 template <type_condition_like match_case>
 struct type_from_type_condition;
@@ -2075,14 +2078,14 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 namespace s2s {
 // todo return type tag constructed from clause
-template <typename... clauses>
-struct type_ladder;
+template <typename... branches>
+struct type_if_else;
 
-template <std::size_t idx, typename... clauses>
-struct type_ladder_impl;
+template <std::size_t idx, typename... branches>
+struct type_if_else_impl;
 
 template <std::size_t idx>
-struct type_ladder_impl<idx> {
+struct type_if_else_impl<idx> {
   constexpr auto operator()(const auto&) const -> 
     std::expected<std::size_t, error_reason> 
   {
@@ -2091,50 +2094,50 @@ struct type_ladder_impl<idx> {
 };
 
 // todo constrain clause head and clause_rest
-template <std::size_t idx, typename clause_head, typename... clause_rest>
-struct type_ladder_impl<idx, clause_head, clause_rest...> {
+template <std::size_t idx, typename branch_head, typename... branch_rest>
+struct type_if_else_impl<idx, branch_head, branch_rest...> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     std::expected<std::size_t, error_reason> 
   {
-    bool eval_result = clause_head::e(field_list);
+    bool eval_result = branch_head::e(field_list);
     if(eval_result) return idx;
-    else return type_ladder_impl<idx + 1, clause_rest...>{}(field_list);
+    else return type_if_else_impl<idx + 1, branch_rest...>{}(field_list);
   }
 };
 
-template <clause_like clause_head, clause_like... clause_rest>
-struct type_ladder<clause_head, clause_rest...> {
+template <branch_like branch_head, branch_like... branch_rest>
+struct type_if_else<branch_head, branch_rest...> {
   // ? is this ok
-  using variant = variant_from_type_conditions_v<clause_head, clause_rest...>;
-  using sizes = size_choices_from_type_conditions_v<clause_head, clause_rest...>;
+  using variant = variant_from_type_conditions_v<branch_head, branch_rest...>;
+  using sizes = size_choices_from_type_conditions_v<branch_head, branch_rest...>;
 
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     std::expected<std::size_t, error_reason> 
   {
-    return type_ladder_impl<0, clause_head, clause_rest...>{}(field_list);
+    return type_if_else_impl<0, branch_head, branch_rest...>{}(field_list);
   }
 };
 
 template <typename T>
-struct is_type_ladder;
+struct is_type_if_else;
 
 template <typename T>
-struct is_type_ladder {
+struct is_type_if_else {
   static constexpr bool res = false;
 };
 
-template <clause_like clause_head, clause_like... clause_tail>
-struct is_type_ladder<type_ladder<clause_head, clause_tail...>> {
+template <branch_like branch_head, branch_like... branch_tail>
+struct is_type_if_else<type_if_else<branch_head, branch_tail...>> {
   static constexpr bool res = true;
 };
 
 template <typename T>
-static constexpr bool is_type_ladder_v = is_type_ladder<T>::res;
+static constexpr bool is_type_if_else_v = is_type_if_else<T>::res;
 
 template <typename T>
-concept type_ladder_like = is_type_ladder_v<T>;
+concept type_if_else_like = is_type_if_else_v<T>;
 } /* namespace s2s */
 
 #endif // _TYPE_LADDER_HPP_
@@ -2310,8 +2313,9 @@ struct is_type_deduction<no_type_deduction> {
 
 template <typename eval_expression, typename tswitch>
 struct is_type_deduction<type<eval_expression, tswitch>> {
-  static constexpr bool res = is_compute_like_v<eval_expression> && 
-                              type_switch_like<tswitch>;
+  static constexpr bool res = 
+    is_compute_like_v<eval_expression> && 
+    type_switch_like<tswitch>;
 };
 
 template <fixed_string id, typename tswitch>
@@ -2321,7 +2325,7 @@ struct is_type_deduction<type<match_field<id>, tswitch>> {
 
 template <typename tladder>
 struct is_type_deduction<type<tladder>> {
-  static constexpr bool res = type_ladder_like<tladder>;
+  static constexpr bool res = type_if_else_like<tladder>;
 };
 
 template <typename T>
@@ -2508,7 +2512,7 @@ struct extract_req_fields_from_clause;
 
 template <auto callable, fixed_string... req_fields, type_tag_like T>
 struct extract_req_fields_from_clause<
-  clause<
+  branch<
     compute<callable, bool, fixed_string_list<req_fields...>>,
     T
   >
@@ -2529,11 +2533,12 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
   return res;
 }
 
+// template<typename...>... typename clauses?
 template <fixed_string id, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_ladder<clauses...>>
+    type<type_if_else<clauses...>>
   >
 > 
 {

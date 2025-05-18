@@ -442,12 +442,12 @@ TEST(S2STest, variant_field_parsing_with_boolean_clauses) {
       s2s::variance<
         "c", 
         s2s::type<
-          s2s::type_ladder<
-            s2s::clause<
+          s2s::type_if_else<
+            s2s::branch<
               s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
               s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
             >,
-            s2s::clause<
+            s2s::branch<
               s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
               s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
             >
@@ -488,16 +488,16 @@ TEST(S2STest, variant_field_with_boolean_clauses) {
       s2s::variance<
         "c", 
         s2s::type<
-          s2s::type_ladder<
-            s2s::clause<
+          s2s::type_if_else<
+            s2s::branch<
               s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
               s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
             >,
-            s2s::clause<
+            s2s::branch<
               s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
               s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
             >,
-            s2s::clause<
+            s2s::branch<
               s2s::predicate<bpred_3, s2s::with_fields<"a", "b">>, 
               s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
             >

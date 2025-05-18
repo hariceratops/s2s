@@ -8,7 +8,7 @@
 
 namespace s2s {
 template <typename T>
-concept type_condition_like = match_case_like<T> || clause_like<T>;
+concept type_condition_like = match_case_like<T> || branch_like<T>;
 
 template <type_condition_like match_case>
 struct type_from_type_condition;
