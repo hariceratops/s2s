@@ -38,8 +38,8 @@ TEST(S2STest, failed_parsing_variant_field) {
         s2s::type<
           s2s::match_field<"a">,
           s2s::type_switch<
-            s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
-            s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>
+            s2s::match_case<0xcafed00d, s2s::as_struct<inner_1>>,
+            s2s::match_case<0xdeadbeef, s2s::as_struct<inner_2>>
           >
         >
       >
@@ -76,15 +76,15 @@ TEST(S2STest, successful_variant_field_parsing) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -125,15 +125,15 @@ TEST(S2STest, variant_field_with_fixed_array) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::fixed_buffer_tag<u32, 3>
+              s2s::as_fixed_arr<u32, 3>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -184,15 +184,15 @@ TEST(S2STest, variant_field_with_variable_sized_array) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::variable_buffer_tag<u32, s2s::field_size<s2s::len_from_field<"len">>>
+              s2s::as_vec<u32, s2s::field_size<s2s::len_from_field<"len">>>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -240,14 +240,14 @@ TEST(S2STest, variant_field_with_fixed_string) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
-              0xdeadbeef, s2s::fixed_string_tag<10>
+              0xdeadbeef, s2s::as_fixed_string<10>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -291,15 +291,15 @@ TEST(S2STest, variant_field_with_variable_string) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::variable_string_tag<s2s::field_size<s2s::len_from_field<"len">>>
+              s2s::as_string<s2s::field_size<s2s::len_from_field<"len">>>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -341,15 +341,15 @@ TEST(S2STest, variant_field_parsing_with_complex_type_predicate) {
           s2s::type_switch<
             s2s::match_case<
               100, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               200, 
-              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::match_case<
               300, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -399,8 +399,8 @@ TEST(S2STest, variant_field_struct_fields) {
         s2s::type<
           s2s::match_field<"a">,
           s2s::type_switch<
-            s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
-            s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>
+            s2s::match_case<0xcafed00d, s2s::as_struct<inner_1>>,
+            s2s::match_case<0xdeadbeef, s2s::as_struct<inner_2>>
           >
         >
       >
@@ -445,11 +445,11 @@ TEST(S2STest, variant_field_parsing_with_boolean_clauses) {
           s2s::type_if_else<
             s2s::branch<
               s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::branch<
               s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
-              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
@@ -491,15 +491,15 @@ TEST(S2STest, variant_field_with_boolean_clauses) {
           s2s::type_if_else<
             s2s::branch<
               s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
-              s2s::trivial_tag<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::branch<
               s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
-              s2s::trivial_tag<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
             >,
             s2s::branch<
               s2s::predicate<bpred_3, s2s::with_fields<"a", "b">>, 
-              s2s::trivial_tag<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
             >
           >
         >
