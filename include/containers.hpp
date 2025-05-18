@@ -45,8 +45,12 @@ public:
     values[vec_size] = value; 
     vec_size++;
   }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return values[i]; }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return values[i]; }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return values[i]; 
+  }
   [[nodiscard]] constexpr auto begin() const { return &values[0]; }
   [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
   [[nodiscard]] constexpr auto size() const { return vec_size; }
@@ -78,8 +82,12 @@ public:
       set.push_back(value);
     }
   }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return set[i]; }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return set[i]; }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return set[i]; 
+  }
   [[nodiscard]] constexpr auto begin() const { return set.begin(); }
   [[nodiscard]] constexpr auto end() const { return set.end(); }
   [[nodiscard]] constexpr auto size() const { return set.size(); }

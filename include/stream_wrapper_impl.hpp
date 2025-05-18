@@ -76,6 +76,7 @@ inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 
+// todo generate this as configurable parameter
 constexpr std::size_t constexpr_buffer_size = 2048;
 
 template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>

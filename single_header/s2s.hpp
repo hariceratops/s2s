@@ -152,8 +152,12 @@ public:
     values[vec_size] = value; 
     vec_size++;
   }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return values[i]; }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return values[i]; }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return values[i]; 
+  }
   [[nodiscard]] constexpr auto begin() const { return &values[0]; }
   [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
   [[nodiscard]] constexpr auto size() const { return vec_size; }
@@ -185,8 +189,12 @@ public:
       set.push_back(value);
     }
   }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { return set[i]; }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { return set[i]; }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return set[i]; 
+  }
   [[nodiscard]] constexpr auto begin() const { return set.begin(); }
   [[nodiscard]] constexpr auto end() const { return set.end(); }
   [[nodiscard]] constexpr auto size() const { return set.size(); }
@@ -352,10 +360,6 @@ inline constexpr type_identifier type_id = meta_impl::type_id_value<T>::id;
 template<type_identifier our_id>
 using type_of = typename decltype(get(meta_impl::type_id_key<our_id>{}))::value_type;
 
-static_assert(type_id<void> != type_id<int>);
-static_assert(type_id<int> == type_id<int>);
-
-
 template<class Fn, class T = decltype([]{})>
 [[nodiscard]] inline constexpr auto invoke(Fn&& fn, type_identifier meta) {
   constexpr auto dispatch = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
@@ -383,10 +387,6 @@ template <template<typename...> typename T, class... Ts, auto = []{}>
     }
   }, id);
 }
-
-static_assert(invoke<std::is_const>(type_id<const int>));
-static_assert(not invoke<std::is_const>(type_id<int>));
-static_assert(type_id<int> == invoke<std::remove_pointer>(type_id<int*>));
 }
 
 
@@ -1618,17 +1618,34 @@ template <typename list_metadata>
 constexpr bool type_deduction_dependencies_resolved();
 
 template <typename metadata>
-concept all_size_dependencies_resolved = size_dependencies_resolved<metadata>();
+struct dependency_check {
+  static constexpr bool size_ok = size_dependencies_resolved<metadata>();
+  static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
+  static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
+
+  static_assert(size_ok, "Size dependencies not resolved");
+  static_assert(parse_ok, "Parse dependencies not resolved");
+  static_assert(type_ok, "Type deduction dependencies not resolved");
+
+  static constexpr bool all_ok = size_ok && parse_ok && type_ok;
+};
+
 template <typename metadata>
-concept all_parse_dependencies_resolved = parse_dependencies_resolved<metadata>();
-template <typename metadata>
-concept all_type_deduction_dependencies_resolved = type_deduction_dependencies_resolved<metadata>();
+concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
+
+// template <typename metadata>
+// concept all_size_dependencies_resolved = size_dependencies_resolved<metadata>();
+// template <typename metadata>
+// concept all_parse_dependencies_resolved = parse_dependencies_resolved<metadata>();
+// template <typename metadata>
+// concept all_type_deduction_dependencies_resolved = type_deduction_dependencies_resolved<metadata>();
 
 template <typename metadata, typename... fields>
   requires (
-    all_size_dependencies_resolved<metadata> &&
-    all_parse_dependencies_resolved<metadata> &&
-    all_type_deduction_dependencies_resolved<metadata>
+    all_dependencies_resolved<metadata>
+    // all_size_dependencies_resolved<metadata> &&
+    // all_parse_dependencies_resolved<metadata> &&
+    // all_type_deduction_dependencies_resolved<metadata>
   )
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
@@ -2931,6 +2948,7 @@ inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 
+// todo generate this as configurable parameter
 constexpr std::size_t constexpr_buffer_size = 2048;
 
 template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>

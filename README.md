@@ -5,7 +5,7 @@ interface.
 
 (The read in other direction is work-in-progress)
 
-Implemented as an embedded DSL which works extensively based on C++23 TMP.
+Implemented as an embedded DSL powered by C++23 TMP.
 
 Library is single header and the file "s2s.hpp" from the single_header
 folder can be used for direct inclusion into a project
@@ -105,7 +105,7 @@ Link to Godbolt: https://godbolt.org/z/G5GWTEEq3
   static_assert(fields["b"_f] == 0xcafed00d);
 
   auto main(void) -> int {
-    // Compile might emit assembly for [] operators
+    // Compiler might emit assembly for [] operators
     // We can further optimize to store [] operator results
     // in constexpr variable
     std::println("{} {}", fields["a"_f], fields["b"_f]);

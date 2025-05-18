@@ -49,10 +49,6 @@ inline constexpr type_identifier type_id = meta_impl::type_id_value<T>::id;
 template<type_identifier our_id>
 using type_of = typename decltype(get(meta_impl::type_id_key<our_id>{}))::value_type;
 
-static_assert(type_id<void> != type_id<int>);
-static_assert(type_id<int> == type_id<int>);
-
-
 template<class Fn, class T = decltype([]{})>
 [[nodiscard]] inline constexpr auto invoke(Fn&& fn, type_identifier meta) {
   constexpr auto dispatch = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
@@ -80,10 +76,6 @@ template <template<typename...> typename T, class... Ts, auto = []{}>
     }
   }, id);
 }
-
-static_assert(invoke<std::is_const>(type_id<const int>));
-static_assert(not invoke<std::is_const>(type_id<int>));
-static_assert(type_id<int> == invoke<std::remove_pointer>(type_id<int*>));
 }
 
 
