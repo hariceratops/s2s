@@ -16,43 +16,33 @@ namespace s2s {
 
 template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
-template <typename list_metadata>
-constexpr bool size_dependencies_resolved();
-template <typename list_metadata>
-constexpr bool parse_dependencies_resolved();
-template <typename list_metadata>
-constexpr bool type_deduction_dependencies_resolved();
-
-template <typename metadata>
-struct dependency_check {
-  static constexpr bool size_ok = size_dependencies_resolved<metadata>();
-  static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
-  static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
-
-  static_assert(size_ok, "Size dependencies not resolved");
-  static_assert(parse_ok, "Parse dependencies not resolved");
-  static_assert(type_ok, "Type deduction dependencies not resolved");
-
-  static constexpr bool all_ok = size_ok && parse_ok && type_ok;
-};
-
-template <typename metadata>
-concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
+// template <typename list_metadata>
+// constexpr bool size_dependencies_resolved();
+// template <typename list_metadata>
+// constexpr bool parse_dependencies_resolved();
+// template <typename list_metadata>
+// constexpr bool type_deduction_dependencies_resolved();
 
 // template <typename metadata>
-// concept all_size_dependencies_resolved = size_dependencies_resolved<metadata>();
+// struct dependency_check {
+//   static constexpr bool size_ok = size_dependencies_resolved<metadata>();
+//   static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
+//   static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
+//
+//   static_assert(size_ok, "Size dependencies not resolved");
+//   static_assert(parse_ok, "Parse dependencies not resolved");
+//   static_assert(type_ok, "Type deduction dependencies not resolved");
+//
+//   static constexpr bool all_ok = size_ok && parse_ok && type_ok;
+// };
+//
 // template <typename metadata>
-// concept all_parse_dependencies_resolved = parse_dependencies_resolved<metadata>();
-// template <typename metadata>
-// concept all_type_deduction_dependencies_resolved = type_deduction_dependencies_resolved<metadata>();
+// concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
 
 template <typename metadata, typename... fields>
-  requires (
-    all_dependencies_resolved<metadata>
-    // all_size_dependencies_resolved<metadata> &&
-    // all_parse_dependencies_resolved<metadata> &&
-    // all_type_deduction_dependencies_resolved<metadata>
-  )
+  // requires (
+  //   all_dependencies_resolved<metadata>
+  // )
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 

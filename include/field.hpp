@@ -106,7 +106,7 @@ public:
 };
 
 
-template <fixed_string id, typename type_deducer>
+template <fixed_string id, typename type_deducer, auto type_choices>
   requires are_unique_types_v<
     typename to_field_choices<
       id, 

@@ -56,6 +56,7 @@ concept writeable = std_write_trait<T> || write_trait<T>;
 template <typename T>
 concept readable = std_read_trait<T> || read_trait<T>;
 
+// todo improve this to be more typesafe
 template <typename T>
 concept input_stream_like = (identified_as_constexpr_stream<T> || readable<T>) && convertible_to_bool<T>;
 

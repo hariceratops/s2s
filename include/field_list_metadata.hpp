@@ -92,12 +92,12 @@ struct extract_length_dependencies_from_field_choices<field_choice_list<Ts...>>{
 template <typename... Ts>
 inline constexpr auto extract_length_dependencies_from_field_choices_v = extract_length_dependencies_from_field_choices<Ts...>::value;
 
-template <fixed_string id, typename type_deducer>
+template <fixed_string id, typename type_deducer, auto choices>
 struct extract_length_dependencies<
-  union_field<id, type_deducer>
+  union_field<id, type_deducer, choices>
 > 
 {
-  using field = union_field<id, type_deducer>;
+  using field = union_field<id, type_deducer, choices>;
   using field_choices = typename field::field_choices;
   static constexpr auto value = extract_length_dependencies_from_field_choices_v<field_choices>;
 };
@@ -139,22 +139,24 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, type_switch_like type_switch>
+template <fixed_string id, fixed_string matched_id, type_switch_like type_switch, auto field_choices>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch>
+    type<match_field<matched_id>, type_switch>,
+    field_choices
   >
 > 
 {
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch>
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch, auto field_choices>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
+    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>,
+    field_choices
   >
 > 
 {
@@ -188,11 +190,12 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
 }
 
 // template<typename...>... typename clauses?
-template <fixed_string id, typename... clauses>
+template <fixed_string id, auto field_choices, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_if_else<clauses...>>
+    type<type_if_else<clauses...>>,
+    field_choices
   >
 > 
 {

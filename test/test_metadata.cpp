@@ -202,7 +202,6 @@ static_assert(illegal_str_len_dep[0] == "len");
 constexpr bool res_illegal = s2s::size_dependencies_resolved<illegal_len_field_list>();
 static_assert(not res_illegal);
 
-
 auto main(void) -> int {
   bool res_legal = s2s::size_dependencies_resolved<legal_len_field_list>();
   bool res_illegal = s2s::size_dependencies_resolved<illegal_len_field_list>();
@@ -234,6 +233,7 @@ auto main(void) -> int {
 
   auto constexpr vec = meta::invoke<s2s::extract_type_deduction_dependencies>(meta::type_id<union_field>);
   std::cout << vec[0] << " " << vec[1] << '\n';
+
   return 0;
 }
 
