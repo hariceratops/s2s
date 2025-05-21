@@ -3,16 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 
 set(SINGLE_HEADER_GENERATOR "AMALGAM" CACHE STRING "Single header generator, choices: AMALGAM, QUOM")
 
-# Add GoogleTest
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG v1.17.0
-)
-FetchContent_MakeAvailable(googletest)
-
-
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
@@ -57,37 +47,7 @@ endif()
 # Custom target that depends on the generated header
 add_custom_target(generate_single_header ALL DEPENDS ${OUTPUT_HEADER})
 
-function(add_struct_cast_test name)
-  add_executable(${name} ${TEST_DIR}/${name}.cpp)
-  target_link_libraries(${name} PRIVATE gtest gtest_main)
-  add_test(NAME ${name} COMMAND ${name})
-endfunction()
-
-
-add_struct_cast_test(test_s2s_arr_of_recs_fields)
-add_struct_cast_test(test_s2s_computation_from_fields)
-add_struct_cast_test(test_s2s_field_validators)
-add_struct_cast_test(test_s2s_fixed_buffer_fields)
-add_struct_cast_test(test_s2s_magic_fields)
-add_struct_cast_test(test_s2s_optional_fields)
-add_struct_cast_test(test_s2s_trivial_fields)
-add_struct_cast_test(test_s2s_union_fields)
-add_struct_cast_test(test_s2s_variable_buffer_fields)
-add_struct_cast_test(test_s2s_vec_of_recs_fields)
-# temporary tests with out catch for easier debugging in gdb
-add_executable(hello_s2s ${TEST_DIR}/hello_s2s.cpp)
-target_include_directories(hello_s2s PRIVATE ${catch2_SOURCE_DIR}/single_include)
-
-
+include(CTest)
 enable_testing()
-add_test(NAME s2s_arr_of_recs_fields COMMAND test_s2s_arr_of_recs_fields)
-add_test(NAME s2s_computation_from_fields COMMAND test_s2s_computation_from_fields)
-add_test(NAME s2s_field_validators COMMAND test_s2s_field_validators)
-add_test(NAME s2s_fixed_buffer_fields COMMAND test_s2s_fixed_buffer_fields)
-add_test(NAME s2s_magic_fields COMMAND test_s2s_magic_fields)
-add_test(NAME s2s_optional_fields COMMAND test_s2s_optional_fields)
-add_test(NAME s2s_trivial_fields COMMAND test_s2s_trivial_fields)
-add_test(NAME s2s_union_fields COMMAND test_s2s_union_fields)
-add_test(NAME s2s_variable_buffer_fields COMMAND test_s2s_variable_buffer_fields)
-add_test(NAME s2s_vec_of_recs_fields COMMAND test_s2s_vec_of_recs_fields)
+add_subdirectory(${TEST_DIR})
 

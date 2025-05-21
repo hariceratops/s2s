@@ -1,57 +1,54 @@
 
-// Begin /home/hari/repos/s2s/include/fixed_string.hpp
-#ifndef _FIXED_STRING_HPP_
-#define _FIXED_STRING_HPP_
+// Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+#ifndef _STATIC_VECTOR_HPP_
+#define _STATIC_VECTOR_HPP_
 
-#include <array>
-#include <cstddef>
-#include <algorithm>
-#include <string_view>
+
+#include <cstdint>
 
 
 namespace s2s {
-// todo extend for other char types like wchar
-template <std::size_t N>
-struct fixed_string {
-  std::array<char, N + 1> value;
-  constexpr fixed_string(): value{} {};
-  constexpr fixed_string(const char (&str)[N + 1]) {
-    std::copy_n(str, N + 1, value.data());
+template <typename T, std::size_t N>
+class static_vector {
+public:
+  constexpr static_vector() = default;
+  template <typename... Args>
+  constexpr static_vector(Args&&... entries) {
+    (push_back(entries), ...);
   }
-  constexpr const char* data() const { return value.data(); }
-  constexpr char* data() { return value.data(); }
-  constexpr std::size_t size() const { return N; }
-  constexpr auto to_sv() -> std::string_view const {
-    return std::string_view{data()};
+  constexpr auto push_back(const T& value) { 
+    values[vec_size] = value; 
+    vec_size++;
   }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
+  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
+  [[nodiscard]] constexpr auto size() const { return vec_size; }
+  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  T values[N]{};
+  std::size_t vec_size{0};
 };
-
-template <std::size_t N>
-fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
-
-template <std::size_t N1, std::size_t N2>
-constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
-  if constexpr(N1 != N2) return false;
-  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
 }
 
-template <std::size_t N1, std::size_t N2>
-constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
-  return !(lhs == rhs);
-}
-} /* namespace s2s */
+#endif /* _STATIC_VECTOR_HPP_ */
 
-#endif // _FIXED_STRING_HPP_
+// End /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 
-// End /home/hari/repos/s2s/include/fixed_string.hpp
-
-// Begin /home/hari/repos/s2s/include/algorithms.hpp
+// Begin /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
 #ifndef _ALGORITHMS_HPP_
 #define _ALGORITHMS_HPP_
 
 
 #include <ranges>
- 
+
 // todo namespace algorithms
 constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
   for(auto i = 0u; i < ts.size(); ++i) {
@@ -104,133 +101,20 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
 
 #endif /* _ALGORITHMS_HPP_ */
 
-// End /home/hari/repos/s2s/include/algorithms.hpp
+// End /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
 
-// Begin /home/hari/repos/s2s/include/containers.hpp
-#ifndef _CONTAINERS_HPP_
-#define _CONTAINERS_HPP_
+// Begin /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+#ifndef _STATIC_MAP_HPP_
+#define _STATIC_MAP_HPP_
 
 
 #include <cstdint>
 #include <utility>
+#include <optional>
+#include <functional>
  
-template <typename T>
-struct static_optional {
-  T value{};
-  bool has_value{false};
-
-  // Constructors
-  constexpr static_optional() = default;
-  constexpr static_optional(const T& val)
-    : value(val), has_value(true) {}
-  constexpr static_optional(T&& val)
-    : value(std::move(val)), has_value(true) {}
-
-  [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
-  [[nodiscard]] constexpr const T& get() const { return value; }
-  [[nodiscard]] constexpr explicit operator bool() const noexcept { return has_value; }
-  [[nodiscard]] constexpr const T& operator*() const { return value; }
-  [[nodiscard]] constexpr T& operator*() { return value; }
-  [[nodiscard]] constexpr const T* operator->() const { return &value; }
-  [[nodiscard]] constexpr T* operator->() { return &value; }
-  [[nodiscard]] constexpr auto operator<=>(const static_optional&) const = default;
-};
-
-using static_nullopt_t = static_optional<void>;
-inline constexpr static_nullopt_t static_nullopt();
-
-
-template <typename T, std::size_t N>
-class static_array {
-public:
-  // to facilitate usage as non-type template parameter
-  T values[N]{};
-
-  template <typename... Args>
-  constexpr static_array(Args&&... entries) {
-    static_assert(sizeof...(Args) == N, "Initializers shall be exactly as the container size");
-    std::size_t vec_size{0};
-    ([&] {
-      values[vec_size] = entries; 
-      vec_size++;
-    }(), ...);
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
-  [[nodiscard]] constexpr auto end() const { return &values[0] + N; }
-  [[nodiscard]] constexpr auto size() const { return N; }
-  [[nodiscard]] constexpr auto empty() const { return not N; }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-};
-
-template <typename T, std::size_t N>
-class static_vector {
-public:
-  constexpr static_vector() = default;
-  template <typename... Args>
-  constexpr static_vector(Args&&... entries) {
-    (push_back(entries), ...);
-  }
-  constexpr auto push_back(const T& value) { 
-    values[vec_size] = value; 
-    vec_size++;
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
-  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
-  [[nodiscard]] constexpr auto size() const { return vec_size; }
-  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  T values[N]{};
-  std::size_t vec_size{0};
-};
-
-
-template <typename T, std::size_t N>
-class static_set {
-public:
-  constexpr static_set() = default;
-  template <typename... Args>
-  constexpr static_set(Args&&... entries) {
-    (insert(entries), ...);
-  }
-  constexpr static_set(const static_vector<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr static_set(const std::array<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr auto insert(const T& value) { 
-    if(find_index(*this, value) == set.size()) {
-      set.push_back(value);
-    }
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return set[i]; 
-  }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
-    return set[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
-  [[nodiscard]] constexpr auto end() const { return set.end(); }
-  [[nodiscard]] constexpr auto size() const { return set.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<T, N> set{};
-};
-
-
+ 
+namespace s2s {
 template <typename Key, typename Value>
 class Node {
 public:
@@ -296,19 +180,69 @@ private:
     return m;
   }
 };
+}
 
-#endif /* _CONTAINERS_HPP_ */
+#endif /* _STATIC_MAP_HPP_ */
 
-// End /home/hari/repos/s2s/include/containers.hpp
+// End /home/hari/repos/s2s/include/lib/containers/static_map.hpp
 
-// Begin /home/hari/repos/s2s/include/cast_error.hpp
+// Begin /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+#ifndef _STATIC_SET_HPP_
+#define _STATIC_SET_HPP_
+
+
+#include <cstdint>
+#include <array>
+ 
+ 
+namespace s2s {
+template <typename T, std::size_t N>
+class static_set {
+public:
+  constexpr static_set() = default;
+  template <typename... Args>
+  constexpr static_set(Args&&... entries) {
+    (insert(entries), ...);
+  }
+  constexpr static_set(const static_vector<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr static_set(const std::array<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr auto insert(const T& value) { 
+    if(find_index(*this, value) == set.size()) {
+      set.push_back(value);
+    }
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
+  [[nodiscard]] constexpr auto end() const { return set.end(); }
+  [[nodiscard]] constexpr auto size() const { return set.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<T, N> set{};
+};
+}
+
+#endif /* _STATIC_SET_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+
+// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
 
 
 #include <expected>
-#include <string>
-
+#include <string_view>
 
 namespace s2s {
 enum error_reason {
@@ -331,9 +265,9 @@ using cast_result = std::expected<void, cast_error>;
 
 #endif // _CAST_ERROR_HPP_
 
-// End /home/hari/repos/s2s/include/cast_error.hpp
+// End /home/hari/repos/s2s/include/error/cast_error.hpp
 
-// Begin /home/hari/repos/s2s/include/mp.hpp
+// Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
 #define _MP_HPP_
 
@@ -417,9 +351,9 @@ template <template<typename...> typename T, class... Ts, auto = []{}>
 
 #endif /* _MP_HPP_ */
 
-// End /home/hari/repos/s2s/include/mp.hpp
+// End /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
 
-// Begin /home/hari/repos/s2s/include/field_type_info.hpp
+// Begin /home/hari/repos/s2s/include/field/field_type_info.hpp
 #ifndef _FIELD_NODE_HPP_
 #define _FIELD_NODE_HPP_
 
@@ -433,9 +367,55 @@ struct field_type_info {
 
 #endif /* _FIELD_NODE_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_type_info.hpp
+// End /home/hari/repos/s2s/include/field/field_type_info.hpp
 
-// Begin /home/hari/repos/s2s/include/field_accessor.hpp
+// Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
+#ifndef _FIXED_STRING_HPP_
+#define _FIXED_STRING_HPP_
+
+#include <array>
+#include <cstddef>
+#include <algorithm>
+#include <string_view>
+
+
+namespace s2s {
+// todo extend for other char types like wchar
+template <std::size_t N>
+struct fixed_string {
+  std::array<char, N + 1> value;
+  constexpr fixed_string(): value{} {};
+  constexpr fixed_string(const char (&str)[N + 1]) {
+    std::copy_n(str, N + 1, value.data());
+  }
+  constexpr const char* data() const { return value.data(); }
+  constexpr char* data() { return value.data(); }
+  constexpr std::size_t size() const { return N; }
+  constexpr auto to_sv() -> std::string_view const {
+    return std::string_view{data()};
+  }
+};
+
+template <std::size_t N>
+fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator==(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  if constexpr(N1 != N2) return false;
+  return std::string_view{lhs.data()} == std::string_view{rhs.data()};
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
+  return !(lhs == rhs);
+}
+} /* namespace s2s */
+
+#endif // _FIXED_STRING_HPP_
+
+// End /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
+
+// Begin /home/hari/repos/s2s/include/field/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
@@ -455,11 +435,13 @@ constexpr auto operator""_f() {
 
 #endif // _FIELD_ACCESSOR_HPP_
 
-// End /home/hari/repos/s2s/include/field_accessor.hpp
+// End /home/hari/repos/s2s/include/field/field_accessor.hpp
 
-// Begin /home/hari/repos/s2s/include/fixed_string_list.hpp
+// Begin /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
 #define _FIXED_STRING_LIST_HPP_
+
+
 // status: might be deprecated due to value MP
  
 namespace s2s {
@@ -562,9 +544,9 @@ concept field_name_list = is_field_name_list_v<T>;
 
 #endif // _FIXED_STRING_LIST_HPP_
 
-// End /home/hari/repos/s2s/include/fixed_string_list.hpp
+// End /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
 
-// Begin /home/hari/repos/s2s/include/typelist.hpp
+// Begin /home/hari/repos/s2s/include/lib/metaprog/typelist.hpp
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -653,9 +635,9 @@ using front_t = typename front<L>::front_t;
 
 #endif // _TYPELIST_HPP_
 
-// End /home/hari/repos/s2s/include/typelist.hpp
+// End /home/hari/repos/s2s/include/lib/metaprog/typelist.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size.hpp
+// Begin /home/hari/repos/s2s/include/field_size/field_size.hpp
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
  
@@ -802,9 +784,9 @@ concept size_dont_care_like = is_size_dont_care_v<T>;
 
 #endif // _FIELD_SIZE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size.hpp
+// End /home/hari/repos/s2s/include/field_size/field_size.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list_base.hpp
+// Begin /home/hari/repos/s2s/include/field_list/field_list_base.hpp
 #ifndef _FIELD_LIST_BASE_HPP_
 #define _FIELD_LIST_BASE_HPP_
 
@@ -819,9 +801,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 
 #endif // _FIELD_LIST_BASE_HPP_
 
-// End /home/hari/repos/s2s/include/field_list_base.hpp
+// End /home/hari/repos/s2s/include/field_list/field_list_base.hpp
 
-// Begin /home/hari/repos/s2s/include/s2s_type_traits.hpp
+// Begin /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
 
@@ -1092,9 +1074,9 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 
 #endif // _S2S_TYPE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/s2s_type_traits.hpp
+// End /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_value_constraints.hpp
+// Begin /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
 #ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
 #define _FIELD_VALUE_CONSTRAINTS_HPP_ 
 
@@ -1295,9 +1277,9 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // _FIELD_VALUE_CONSTRAINTS_HPP_
 
-// End /home/hari/repos/s2s/include/field_value_constraints.hpp
+// End /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
 
-// Begin /home/hari/repos/s2s/include/field.hpp
+// Begin /home/hari/repos/s2s/include/field/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
 
@@ -1433,9 +1415,9 @@ struct union_field: public
 
 #endif // _FIELD_HPP_
 
-// End /home/hari/repos/s2s/include/field.hpp
+// End /home/hari/repos/s2s/include/field/field.hpp
 
-// Begin /home/hari/repos/s2s/include/field_traits.hpp
+// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
 #ifndef _FIELD_TRAITS_HPP_
 #define _FIELD_TRAITS_HPP_
  
@@ -1608,9 +1590,9 @@ concept field_like = fixed_sized_field_like<T> ||
 
 #endif /*_FIELD_TRAITS_HPP_*/
 
-// End /home/hari/repos/s2s/include/field_traits.hpp
+// End /home/hari/repos/s2s/include/field/field_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list_metafunctions.hpp
+// Begin /home/hari/repos/s2s/include/field_list/field_list_metafunctions.hpp
 #ifndef _FIELD_LIST_METAFUNCTIONS_HPP_
 #define _FIELD_LIST_METAFUNCTIONS_HPP_
 
@@ -1618,11 +1600,13 @@ concept field_like = fixed_sized_field_like<T> ||
 
 #endif // _FIELD_LIST_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/s2s/include/field_list_metafunctions.hpp
+// End /home/hari/repos/s2s/include/field_list/field_list_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list.hpp
+// Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
+
+// status: rename to impl
  
  
  
@@ -1635,33 +1619,8 @@ namespace s2s {
 
 template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
-// template <typename list_metadata>
-// constexpr bool size_dependencies_resolved();
-// template <typename list_metadata>
-// constexpr bool parse_dependencies_resolved();
-// template <typename list_metadata>
-// constexpr bool type_deduction_dependencies_resolved();
-
-// template <typename metadata>
-// struct dependency_check {
-//   static constexpr bool size_ok = size_dependencies_resolved<metadata>();
-//   static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
-//   static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
-//
-//   static_assert(size_ok, "Size dependencies not resolved");
-//   static_assert(parse_ok, "Parse dependencies not resolved");
-//   static_assert(type_ok, "Type deduction dependencies not resolved");
-//
-//   static constexpr bool all_ok = size_ok && parse_ok && type_ok;
-// };
-//
-// template <typename metadata>
-// concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
 
 template <typename metadata, typename... fields>
-  // requires (
-  //   all_dependencies_resolved<metadata>
-  // )
 struct struct_field_list_impl : struct_field_list_base, fields... {
   using list_metadata = metadata;
 
@@ -1689,9 +1648,9 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 
 #endif // _FIELD_LIST_HPP_
 
-// End /home/hari/repos/s2s/include/field_list.hpp
+// End /home/hari/repos/s2s/include/field_list/field_list.hpp
 
-// Begin /home/hari/repos/s2s/include/computation_from_fields.hpp
+// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
 #define _COMPUTATION_FROM_FIELDS_HPP_
 
@@ -1816,9 +1775,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTATION_FROM_FIELDS_HPP_
 
-// End /home/hari/repos/s2s/include/computation_from_fields.hpp
+// End /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size_deduce.hpp
+// Begin /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
 #ifndef _FIELD_SIZE_DEDUCE_HPP_
 #define _FIELD_SIZE_DEDUCE_HPP_
  
@@ -1861,9 +1820,9 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
 
 #endif // _FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size_deduce.hpp
+// End /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction_tags.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_tags.hpp
 #ifndef _TYPE_DEDUCTION_TAGS_
 #define _TYPE_DEDUCTION_TAGS_
  
@@ -1969,9 +1928,9 @@ concept type_tag_like = is_type_tag_v<T>;
 
 #endif // _TYPE_DEDUCTION_TAGS_
 
-// End /home/hari/repos/s2s/include/type_deduction_tags.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_tags.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction_match_case.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case.hpp
 #ifndef _TYPE_DEDUCTION_MATCH_CASE_HPP_
 #define _TYPE_DEDUCTION_MATCH_CASE_HPP_
  
@@ -2005,9 +1964,9 @@ concept match_case_like = is_match_case_v<T>;
 
 #endif // _TYPE_DEDUCTION_MATCH_CASE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction_match_case.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction_clause.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
 #ifndef _TYPE_DEDUCTION_CLAUSE_HPP_
 #define _TYPE_DEDUCTION_CLAUSE_HPP_
  
@@ -2046,9 +2005,9 @@ concept branch_like = is_branch_v<T>;
 
 #endif // _TYPE_DEDUCTION_CLAUSE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction_clause.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction_helper.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_helper.hpp
 #ifndef _TYPE_DEDUCTION_HELPER_HPP_
 #define _TYPE_DEDUCTION_HELPER_HPP_
  
@@ -2098,9 +2057,9 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction_helper.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_helper.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction_ladder.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
 #ifndef _TYPE_DEDUCTION_LADDER_HPP_
 #define _TYPE_DEDUCTION_LADDER_HPP_
  
@@ -2174,9 +2133,9 @@ concept type_if_else_like = is_type_if_else_v<T>;
 
 #endif // _TYPE_LADDER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction_ladder.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction_switch.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
 #ifndef _TYPE_DEDUCTION_SWITCH_HPP_
 #define _TYPE_DEDUCTION_SWITCH_HPP_
 
@@ -2250,15 +2209,15 @@ concept type_switch_like = is_type_switch_v<T>;
 
 #endif // _TYPE_SWITCH_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction_switch.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
 
 #include <expected>
  
- 
+// #include "../typelist.hpp"
  
  
  
@@ -2375,11 +2334,13 @@ concept type_deduction_like = is_type_deduction_v<T>;
 
 #endif // _TYPE_DEDUCTION_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list_metadata.hpp
+// Begin /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
 #ifndef _FIELD_LIST_METADATA_HPP_
 #define _FIELD_LIST_METADATA_HPP_
+ 
+ 
  
  
  
@@ -2678,9 +2639,47 @@ constexpr bool type_deduction_dependencies_resolved() {
 
 #endif /* _FIELD_LIST_METADATA_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_list_metadata.hpp
+// End /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
 
-// Begin /home/hari/repos/s2s/include/field_descriptors.hpp
+// Begin /home/hari/repos/s2s/include/lib/containers/static_array.hpp
+#ifndef _STATIC_ARRAY_HPP_
+#define _STATIC_ARRAY_HPP_
+
+
+#include <cstdint>
+
+namespace s2s {
+template <typename T, std::size_t N>
+class static_array {
+public:
+  // to facilitate usage as non-type template parameter
+  T values[N]{};
+
+  template <typename... Args>
+  constexpr static_array(Args&&... entries) {
+    static_assert(sizeof...(Args) == N, "Initializers shall be exactly as the container size");
+    std::size_t vec_size{0};
+    ([&] {
+      values[vec_size] = entries; 
+      vec_size++;
+    }(), ...);
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
+  [[nodiscard]] constexpr auto end() const { return &values[0] + N; }
+  [[nodiscard]] constexpr auto size() const { return N; }
+  [[nodiscard]] constexpr auto empty() const { return not N; }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+};
+}
+
+#endif /* _STATIC_ARRAY_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/containers/static_array.hpp
+
+// Begin /home/hari/repos/s2s/include/api/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
 #define _FIELD_DESCRIPTORS_HPP_
  
@@ -2868,9 +2867,9 @@ using struct_field_list = create_struct_field_list<fields...>::value;
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_descriptors.hpp
+// End /home/hari/repos/s2s/include/api/field_descriptors.hpp
 
-// Begin /home/hari/repos/s2s/include/field_metafunctions.hpp
+// Begin /home/hari/repos/s2s/include/field/field_metafunctions.hpp
 #ifndef _FIELD_METAFUNCTIONS_HPP_
 #define _FIELD_METAFUNCTIONS_HPP_
  
@@ -2898,9 +2897,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 #endif // _FIELD_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/s2s/include/field_metafunctions.hpp
+// End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/stream_traits.hpp
+// Begin /home/hari/repos/s2s/include/stream/stream_traits.hpp
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
 
@@ -2969,9 +2968,9 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
 #endif /* _STREAM_TRAITS_HPP_ */
 
-// End /home/hari/repos/s2s/include/stream_traits.hpp
+// End /home/hari/repos/s2s/include/stream/stream_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/stream_wrapper_impl.hpp
+// Begin /home/hari/repos/s2s/include/field_read/stream_wrapper_impl.hpp
 #ifndef _STREAM_WRAPPER_IMPL_HPP_
 #define _STREAM_WRAPPER_IMPL_HPP_
 
@@ -3149,9 +3148,9 @@ public:
 
 #endif /* _STREAM_WRAPPER_IMPL_HPP_ */
 
-// End /home/hari/repos/s2s/include/stream_wrapper_impl.hpp
+// End /home/hari/repos/s2s/include/field_read/stream_wrapper_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/field_reader.hpp
+// Begin /home/hari/repos/s2s/include/field_read/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
 
@@ -3463,9 +3462,9 @@ struct read_field<T, F> {
 
 #endif // _FIELD_READER_HPP_
 
-// End /home/hari/repos/s2s/include/field_reader.hpp
+// End /home/hari/repos/s2s/include/field_read/field_reader.hpp
 
-// Begin /home/hari/repos/s2s/include/field_value_constraints_traits.hpp
+// Begin /home/hari/repos/s2s/include/field_validation/field_value_constraints_traits.hpp
 #ifndef _FIELD_VALE_CONSTRAINT_TRAITS_HPP_
 #define _FIELD_VALE_CONSTRAINT_TRAITS_HPP_
  
@@ -3490,12 +3489,13 @@ inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
 
 #endif /* _FIELD_VALE_CONSTRAINT_TRAITS_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_value_constraints_traits.hpp
+// End /home/hari/repos/s2s/include/field_validation/field_value_constraints_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/cast_impl.hpp
+// Begin /home/hari/repos/s2s/include/api/cast_impl.hpp
 #ifndef _CAST_IMPL_HPP_
 #define _CAST_IMPL_HPP_
 
+// status: split to cast and cast impl
 
 #include <expected>
  
@@ -3570,7 +3570,7 @@ template <field_list_like T, input_stream_like stream>
 
 #endif // _CAST_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/cast_impl.hpp
+// End /home/hari/repos/s2s/include/api/cast_impl.hpp
 
 // Begin /home/hari/repos/s2s/include/s2s.hpp
 #ifndef STRUCT_CAST_HPP
