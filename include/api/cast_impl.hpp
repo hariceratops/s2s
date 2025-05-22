@@ -45,17 +45,13 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
           auto validation_err = cast_error{err, field_name};
           return std::unexpected(validation_err);
         }
-        // Try validating with the constraint
-        // todo enable check only if constraint is present, to avoid runtime costs?
-        // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
-          bool field_validation_res = fields::constraint_checker(field.value);
-          if(!field_validation_res) {
-            auto field_name = std::string_view{fields::field_id.data()};
-            auto err = error_reason::validation_failure;
-            auto validation_err = cast_error{err, field_name};
-            return std::unexpected(validation_err);
-          }
-        // }
+        bool field_validation_res = fields::constraint_checker(field.value);
+        if(!field_validation_res) {
+          auto field_name = std::string_view{fields::field_id.data()};
+          auto err = error_reason::validation_failure;
+          auto validation_err = cast_error{err, field_name};
+          return std::unexpected(validation_err);
+        }
         // Both reading and validating went well
         return {};
       }

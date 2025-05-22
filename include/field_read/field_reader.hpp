@@ -13,7 +13,6 @@
 
 
 namespace s2s {
-// todo inheritance for ctor boilerplate removal: read<t,f>?
 template <typename F, typename L>
 struct read_field;
 
@@ -34,7 +33,6 @@ struct read_field<T, F> {
 };
 
 
-// todo what if vector elements are not aligned by 2
 template <variable_sized_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -107,7 +105,6 @@ struct read_buffer_of_records {
       auto res = reader.template read<endianness, stream>(s);
       if(!res) 
         return std::unexpected(res.error());
-      // todo is move guaranteed
       field.value[count] = std::move(elem.value);
     }
     return {};
@@ -178,7 +175,6 @@ struct read_field<T, F> {
       auto err = res.error();
       return std::unexpected(err.failure_reason);
     }
-    // todo move?
     field.value = *res;
     return {};
   }
@@ -206,7 +202,6 @@ struct read_field<T, F> {
     auto res = reader.template read<endianness>(s);
     if(!res) 
       return std::unexpected(res.error());
-    // todo is move guaranteed
     field.value = base_field.value;
     return {};
   }

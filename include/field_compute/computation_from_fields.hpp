@@ -41,11 +41,6 @@ concept can_eval_R_from_fields =
     req_fields
   >::res;
 
-// todo: expression evaluation requested by user shall not be empty but default to empty by library
-// todo bring invocable compatibility at type level for strong type guarantee
-// todo simplified concept or requires clause
-// todo should cv qualification be removed
-// todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
 
 template <auto callable, typename R, field_name_list Fs>
 struct compute;

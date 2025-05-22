@@ -145,7 +145,7 @@ struct iseq_front<std::integer_sequence<std::size_t, head, tail...>> {
 };
 
 template <>
-struct iseq_front<std::integer_sequence<std::size_t>> {}; //todo: uh?
+struct iseq_front<std::integer_sequence<std::size_t>> {};
 
 template <typename T>
 inline constexpr std::size_t iseq_front_v = iseq_front<T>::size;

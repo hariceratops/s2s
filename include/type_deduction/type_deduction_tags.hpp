@@ -8,7 +8,6 @@
 
 
 namespace s2s {
-// todo is this required
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
 struct as_trivial {

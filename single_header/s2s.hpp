@@ -1,23 +1,23 @@
-#include <cstring>
+#include <optional>
 #include <variant>
-#include <string_view>
+#include <algorithm>
+#include <bit>
 #include <concepts>
+#include <array>
+#include <type_traits>
+#include <cstdio>
+#include <cassert>
+#include <cstdint>
+#include <string_view>
+#include <ranges>
+#include <iostream>
+#include <expected>
+#include <cstring>
+#include <utility>
 #include <string>
 #include <vector>
-#include <iostream>
-#include <utility>
-#include <optional>
-#include <ranges>
-#include <cstddef>
-#include <algorithm>
-#include <expected>
-#include <type_traits>
 #include <functional>
-#include <cstdio>
-#include <array>
-#include <cstdint>
-#include <bit>
-#include <cassert>
+#include <cstddef>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -1665,11 +1665,6 @@ concept can_eval_R_from_fields =
     req_fields
   >::res;
 
-// todo: expression evaluation requested by user shall not be empty but default to empty by library
-// todo bring invocable compatibility at type level for strong type guarantee
-// todo simplified concept or requires clause
-// todo should cv qualification be removed
-// todo role of with_fields and variadic arguments must be reversed, can typelist + idx be used?
 
 template <auto callable, typename R, field_name_list Fs>
 struct compute;
@@ -1803,7 +1798,6 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
  
  
 namespace s2s {
-// todo is this required
 template <trivial T, fixed_size_like S>
   requires (deduce_field_size<S>{}() <= sizeof(T))
 struct as_trivial {
@@ -2037,7 +2031,6 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #define _TYPE_DEDUCTION_LADDER_HPP_
  
 namespace s2s {
-// todo return type tag constructed from clause
 template <typename... branches>
 struct type_if_else;
 
@@ -2053,7 +2046,6 @@ struct type_if_else_impl<idx> {
   }
 };
 
-// todo constrain clause head and clause_rest
 template <std::size_t idx, typename branch_head, typename... branch_rest>
 struct type_if_else_impl<idx, branch_head, branch_rest...> {
   template <typename... fields>
@@ -2132,11 +2124,6 @@ struct type_switch_impl<idx, match_case_head, match_case_rest...> {
   }
 };
 
-// atleast one type has to match? but anyways if nothing is matches we get 
-// std::unexpected
-// todo constrain eval to compute type, cases to match cases
-// todo constrain eval return type matches all match case values
-// todo return tag constructed with match
 template <match_case_like case_head, match_case_like... case_rest>
 struct type_switch {
   using variant = variant_from_type_conditions_v<case_head, case_rest...>;
@@ -2179,10 +2166,6 @@ concept type_switch_like = is_type_switch_v<T>;
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
- 
-// #include "../typelist.hpp"
- 
- 
  
 namespace s2s {
 template <typename... Args>
@@ -2664,7 +2647,6 @@ struct always_true {
 
 using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 
-// todo better naming for this concept
 template <typename size, typename field_type>
 concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
 
@@ -2696,7 +2678,6 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<e
 template <fixed_string id, integral T, fixed_size_like size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
 
-// todo get vector length in bytes instead of size to read additional overload
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
@@ -3109,7 +3090,6 @@ public:
  
  
 namespace s2s {
-// todo inheritance for ctor boilerplate removal: read<t,f>?
 template <typename F, typename L>
 struct read_field;
 
@@ -3130,7 +3110,6 @@ struct read_field<T, F> {
 };
 
 
-// todo what if vector elements are not aligned by 2
 template <variable_sized_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
@@ -3203,7 +3182,6 @@ struct read_buffer_of_records {
       auto res = reader.template read<endianness, stream>(s);
       if(!res) 
         return std::unexpected(res.error());
-      // todo is move guaranteed
       field.value[count] = std::move(elem.value);
     }
     return {};
@@ -3274,7 +3252,6 @@ struct read_field<T, F> {
       auto err = res.error();
       return std::unexpected(err.failure_reason);
     }
-    // todo move?
     field.value = *res;
     return {};
   }
@@ -3302,7 +3279,6 @@ struct read_field<T, F> {
     auto res = reader.template read<endianness>(s);
     if(!res) 
       return std::unexpected(res.error());
-    // todo is move guaranteed
     field.value = base_field.value;
     return {};
   }
@@ -3475,17 +3451,13 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
           auto validation_err = cast_error{err, field_name};
           return std::unexpected(validation_err);
         }
-        // Try validating with the constraint
-        // todo enable check only if constraint is present, to avoid runtime costs?
-        // if constexpr(is_no_constraint_v<decltype(fields::constraint_checker)>) {
-          bool field_validation_res = fields::constraint_checker(field.value);
-          if(!field_validation_res) {
-            auto field_name = std::string_view{fields::field_id.data()};
-            auto err = error_reason::validation_failure;
-            auto validation_err = cast_error{err, field_name};
-            return std::unexpected(validation_err);
-          }
-        // }
+        bool field_validation_res = fields::constraint_checker(field.value);
+        if(!field_validation_res) {
+          auto field_name = std::string_view{fields::field_id.data()};
+          auto err = error_reason::validation_failure;
+          auto validation_err = cast_error{err, field_name};
+          return std::unexpected(validation_err);
+        }
         // Both reading and validating went well
         return {};
       }

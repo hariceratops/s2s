@@ -26,7 +26,6 @@ struct always_true {
 
 using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 
-// todo better naming for this concept
 template <typename size, typename field_type>
 concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
 
@@ -58,7 +57,6 @@ using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<e
 template <fixed_string id, integral T, fixed_size_like size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
 
-// todo get vector length in bytes instead of size to read additional overload
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;

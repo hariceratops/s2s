@@ -7,7 +7,6 @@
 
 
 namespace s2s {
-// todo return type tag constructed from clause
 template <typename... branches>
 struct type_if_else;
 
@@ -23,7 +22,6 @@ struct type_if_else_impl<idx> {
   }
 };
 
-// todo constrain clause head and clause_rest
 template <std::size_t idx, typename branch_head, typename... branch_rest>
 struct type_if_else_impl<idx, branch_head, branch_rest...> {
   template <typename... fields>

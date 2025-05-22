@@ -31,11 +31,6 @@ struct type_switch_impl<idx, match_case_head, match_case_rest...> {
   }
 };
 
-// atleast one type has to match? but anyways if nothing is matches we get 
-// std::unexpected
-// todo constrain eval to compute type, cases to match cases
-// todo constrain eval return type matches all match case values
-// todo return tag constructed with match
 template <match_case_like case_head, match_case_like... case_rest>
 struct type_switch {
   using variant = variant_from_type_conditions_v<case_head, case_rest...>;
