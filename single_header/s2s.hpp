@@ -1,12 +1,28 @@
+#include <cstring>
+#include <variant>
+#include <string_view>
+#include <concepts>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <utility>
+#include <optional>
+#include <ranges>
+#include <cstddef>
+#include <algorithm>
+#include <expected>
+#include <type_traits>
+#include <functional>
+#include <cstdio>
+#include <array>
+#include <cstdint>
+#include <bit>
+#include <cassert>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
 #define _STATIC_VECTOR_HPP_
-
-
-#include <cstdint>
-
-
+ 
 namespace s2s {
 template <typename T, std::size_t N>
 class static_vector {
@@ -45,10 +61,7 @@ private:
 // Begin /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
 #ifndef _ALGORITHMS_HPP_
 #define _ALGORITHMS_HPP_
-
-
-#include <ranges>
-
+ 
 // todo namespace algorithms
 constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
   for(auto i = 0u; i < ts.size(); ++i) {
@@ -106,12 +119,8 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
 // Begin /home/hari/repos/s2s/include/lib/containers/static_map.hpp
 #ifndef _STATIC_MAP_HPP_
 #define _STATIC_MAP_HPP_
-
-
-#include <cstdint>
-#include <utility>
-#include <optional>
-#include <functional>
+ 
+ 
  
  
 namespace s2s {
@@ -189,10 +198,6 @@ private:
 // Begin /home/hari/repos/s2s/include/lib/containers/static_set.hpp
 #ifndef _STATIC_SET_HPP_
 #define _STATIC_SET_HPP_
-
-
-#include <cstdint>
-#include <array>
  
  
 namespace s2s {
@@ -239,11 +244,8 @@ private:
 // Begin /home/hari/repos/s2s/include/error/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
-
-
-#include <expected>
-#include <string_view>
-
+ 
+ 
 namespace s2s {
 enum error_reason {
   buffer_exhaustion,
@@ -270,12 +272,9 @@ using cast_result = std::expected<void, cast_error>;
 // Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
 #define _MP_HPP_
-
-#include <cstdint>
-#include <array>
-#include <utility>
-
-
+ 
+ 
+ 
 namespace meta {
 using type_identifier = std::size_t;
 
@@ -356,8 +355,6 @@ template <template<typename...> typename T, class... Ts, auto = []{}>
 // Begin /home/hari/repos/s2s/include/field/field_type_info.hpp
 #ifndef _FIELD_NODE_HPP_
 #define _FIELD_NODE_HPP_
-
-#include <cstdint>
  
 // todo better name
 struct field_type_info {
@@ -372,13 +369,10 @@ struct field_type_info {
 // Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
-
-#include <array>
-#include <cstddef>
-#include <algorithm>
-#include <string_view>
-
-
+ 
+ 
+ 
+ 
 namespace s2s {
 // todo extend for other char types like wchar
 template <std::size_t N>
@@ -552,11 +546,8 @@ concept field_name_list = is_field_name_list_v<T>;
 
 
 // status: might be deprecated due to value MP
-
-#include <string>
-#include <type_traits>
-
-
+ 
+ 
 namespace s2s {
 namespace typelist {
 struct null {};
@@ -789,9 +780,7 @@ concept size_dont_care_like = is_size_dont_care_v<T>;
 // Begin /home/hari/repos/s2s/include/field_list/field_list_base.hpp
 #ifndef _FIELD_LIST_BASE_HPP_
 #define _FIELD_LIST_BASE_HPP_
-
-#include <type_traits>
-
+ 
 namespace s2s {
 struct struct_field_list_base {};
 
@@ -806,12 +795,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 // Begin /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
-
-#include <array>
-#include <string>
-#include <vector>
-#include <variant>
-#include <optional>
+ 
+ 
+ 
  
  
 namespace s2s {
@@ -1079,13 +1065,9 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 // Begin /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
 #ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
 #define _FIELD_VALUE_CONSTRAINTS_HPP_ 
-
-#include <algorithm>
-#include <array>
-#include <concepts>
-#include <cassert>
-#include <cstdio>
-#include <type_traits>
+ 
+ 
+ 
  
  
  
@@ -1282,11 +1264,6 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 // Begin /home/hari/repos/s2s/include/field/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
-
-
-#include <type_traits>
-#include <variant>
-#include <optional>
  
  
  
@@ -1653,10 +1630,6 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 // Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
 #define _COMPUTATION_FROM_FIELDS_HPP_
-
-#include <type_traits>
- 
- 
  
 using namespace s2s_literals;
 
@@ -2063,10 +2036,6 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #ifndef _TYPE_DEDUCTION_LADDER_HPP_
 #define _TYPE_DEDUCTION_LADDER_HPP_
  
- 
-#include <expected>
-
-
 namespace s2s {
 // todo return type tag constructed from clause
 template <typename... branches>
@@ -2138,10 +2107,6 @@ concept type_if_else_like = is_type_if_else_v<T>;
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
 #ifndef _TYPE_DEDUCTION_SWITCH_HPP_
 #define _TYPE_DEDUCTION_SWITCH_HPP_
-
-#include <expected>
- 
- 
  
 namespace s2s {
 template <std::size_t idx, typename... cases>
@@ -2214,8 +2179,6 @@ concept type_switch_like = is_type_switch_v<T>;
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
 #ifndef _TYPE_DEDUCTION_HPP_
 #define _TYPE_DEDUCTION_HPP_
-
-#include <expected>
  
 // #include "../typelist.hpp"
  
@@ -2644,10 +2607,7 @@ constexpr bool type_deduction_dependencies_resolved() {
 // Begin /home/hari/repos/s2s/include/lib/containers/static_array.hpp
 #ifndef _STATIC_ARRAY_HPP_
 #define _STATIC_ARRAY_HPP_
-
-
-#include <cstdint>
-
+ 
 namespace s2s {
 template <typename T, std::size_t N>
 class static_array {
@@ -2902,12 +2862,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 // Begin /home/hari/repos/s2s/include/stream/stream_traits.hpp
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
-
-#include <array>
-#include <concepts>
-#include <iostream>
-
-
+ 
+ 
+ 
 namespace s2s {
 
 template <typename T>
@@ -2973,11 +2930,6 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 // Begin /home/hari/repos/s2s/include/field_read/stream_wrapper_impl.hpp
 #ifndef _STREAM_WRAPPER_IMPL_HPP_
 #define _STREAM_WRAPPER_IMPL_HPP_
-
-
-#include <concepts>
-#include <expected>
-#include <bit>
  
  
  
@@ -3153,13 +3105,6 @@ public:
 // Begin /home/hari/repos/s2s/include/field_read/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
-
-#include <cstring>
-#include <expected>
-#include <utility>
- 
- 
- 
  
  
  
@@ -3496,13 +3441,6 @@ inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
 #define _CAST_IMPL_HPP_
 
 // status: split to cast and cast impl
-
-#include <expected>
- 
- 
- 
- 
- 
  
 namespace s2s {
 

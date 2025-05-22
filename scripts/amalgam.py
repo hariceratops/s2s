@@ -1,34 +1,43 @@
+from io import StringIO
 import os
 import re
 import sys
 
 # Regex to match non-system #include directives (i.e., with quotes, not angle brackets)
 include_pattern = r'^\s*#include\s*"([^"]+)"\s*$'
+std_include_pattern = r'^\s*#include\s*\<(\w+)\>\s*$'
 include_regex = re.compile(include_pattern)
+std_include_regex = re.compile(std_include_pattern)
 
 def process_file(file_path):
     """Extracts include dependencies from a single file."""
     includes = []
+    std_includes = []
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
                 match = include_regex.match(line)
+                std_include_match = std_include_regex.match(line)
                 if match:
                     includes.append(match.group(1))
+                if std_include_match:
+                    std_includes.append(std_include_match.group(1))
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
     print(f"{file_path} = {includes}")
-    return includes
+    return includes, std_includes
 
 def process_directory(directory):
     """Recursively processes a directory to find and parse C/C++ files."""
     graph = {}
+    std_includes_consolidated = set()
 
     for root, _, files in os.walk(directory):
         for filename in files:
             if filename.endswith(('.h', '.hpp', '.c', '.cpp')):
                 file_path = os.path.join(root, filename)
-                includes = process_file(file_path)
+                includes, std_includes = process_file(file_path)
+                std_includes_consolidated.update(std_includes)
 
                 # Convert include filenames to absolute paths
                 include_paths = []
@@ -41,7 +50,7 @@ def process_directory(directory):
 
                 graph[os.path.abspath(file_path)] = include_paths
 
-    return graph
+    return graph, std_includes_consolidated
 
 def get_all_transitive_dependencies(file, graph, visited=None):
     """Recursively gets all dependencies a file brings in."""
@@ -89,21 +98,31 @@ def topological_sort(graph, start_file):
     # return stack[::-1]  # Reverse to get the correct include order
     return stack
 
-def concatenate_files(file_order, output_path):
+def concatenate_files(file_order, std_includes, output_path):
     """Concatenates file contents into a single output file."""
     seen_files = set()
 
     try:
+        std_include_output = StringIO()
+        for include in std_includes:
+            std_include_output.write(f"#include <{include}>\n")
+        
+        single_header_output = StringIO()
+        for file_path in file_order:
+            if file_path not in seen_files:
+                seen_files.add(file_path)
+                with open(file_path, 'r', encoding='utf-8') as input_file:
+                    input_file_contents = input_file.read()
+                    input_file_contents = re.sub(include_pattern, ' ', input_file_contents, flags=re.MULTILINE)
+                    input_file_contents = re.sub(std_include_pattern, ' ', input_file_contents, flags=re.MULTILINE)
+                    single_header_output.write(f"\n// Begin {file_path}\n")
+                    single_header_output.write(input_file_contents)
+                    single_header_output.write(f"\n// End {file_path}\n")
+ 
         with open(output_path, 'w', encoding='utf-8') as output_file:
-            for file_path in file_order:
-                if file_path not in seen_files:
-                    seen_files.add(file_path)
-                    with open(file_path, 'r', encoding='utf-8') as input_file:
-                        input_file_contents = input_file.read()
-                        input_file_contents = re.sub(include_pattern, ' ', input_file_contents, flags=re.MULTILINE)
-                        output_file.write(f"\n// Begin {file_path}\n")
-                        output_file.write(input_file_contents)
-                        output_file.write(f"\n// End {file_path}\n")
+            output_file.write(std_include_output.getvalue())
+            output_file.write(single_header_output.getvalue())
+                         
         print(f"\nSuccessfully wrote concatenated output to: {output_path}")
     except Exception as e:
         print(f"Error writing to output file {output_path}: {e}")
@@ -122,7 +141,7 @@ def main():
         print(f"Invalid directory or entry file.")
         sys.exit(1)
 
-    include_graph = process_directory(directory)
+    include_graph, std_includes = process_directory(directory)
 
     if entry_file not in include_graph:
         print(f"Entry file {entry_file} not found in project.")
@@ -146,7 +165,7 @@ def main():
         print(file)
 
     # Concatenate and write to output file
-    concatenate_files(file_order, output_file)
+    concatenate_files(file_order, std_includes, output_file)
 
 if __name__ == '__main__':
     main()
