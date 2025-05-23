@@ -18,7 +18,7 @@ template <std::size_t idx, typename branch>
 struct type_if_else_impl {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    type_deduction_res
+    type_deduction_idx
   {
     if(branch::e(field_list)) return idx;
     return std::nullopt;
@@ -31,9 +31,9 @@ struct type_if_else_helper {
   constexpr auto operator()(
     const struct_field_list_impl<fields...>& field_list, 
     const std::index_sequence<idx...>&) const 
-  -> type_deduction_res 
+  -> type_deduction_idx
   {
-    type_deduction_res pipeline_seed = std::nullopt;
+    type_deduction_idx pipeline_seed = std::nullopt;
     return (
       pipeline_seed |
       ... |
@@ -51,7 +51,7 @@ struct type_if_else {
 
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    std::expected<std::size_t, error_reason> 
+    type_deduction_res
   {
     auto res = type_if_else_helper<branches...>{}(
       field_list,

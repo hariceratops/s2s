@@ -7,9 +7,10 @@
 
 
 namespace s2s {
-using type_deduction_res = std::optional<std::size_t>;
+using type_deduction_idx = std::optional<std::size_t>;
+using type_deduction_res = std::expected<std::size_t, error_reason>;
 
-constexpr auto operator|(const type_deduction_res& res, auto&& callable) -> type_deduction_res {
+constexpr auto operator|(const type_deduction_idx& res, auto&& callable) -> type_deduction_idx {
   return res ? res : callable();
 }
 

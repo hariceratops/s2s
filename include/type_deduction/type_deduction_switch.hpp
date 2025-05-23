@@ -13,7 +13,7 @@ namespace s2s {
 template <std::size_t idx, typename match_case>
 struct type_switch_impl {
   constexpr auto operator()(const auto& v) const -> 
-    std::optional<std::size_t> 
+    type_deduction_idx
   {
     if(v == match_case::value) return idx;
     else return std::nullopt;
@@ -26,9 +26,9 @@ struct type_switch_helper {
   constexpr auto operator()(
     const auto& v, 
     const std::index_sequence<idx...>&) const 
-  -> std::optional<std::size_t> 
+  -> type_deduction_idx 
   {
-    type_deduction_res pipeline_seed = std::nullopt;
+    type_deduction_idx pipeline_seed = std::nullopt;
     return (
       pipeline_seed |
       ... |
@@ -45,7 +45,7 @@ struct type_switch {
 
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, error_reason> 
+    type_deduction_res
   {
     auto res =
       type_switch_helper<cases...>{}(

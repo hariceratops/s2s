@@ -1,23 +1,23 @@
-#include <expected>
-#include <vector>
-#include <cstdint>
-#include <optional>
-#include <utility>
-#include <type_traits>
-#include <cstring>
-#include <algorithm>
-#include <functional>
-#include <concepts>
-#include <cassert>
-#include <variant>
-#include <string_view>
 #include <array>
-#include <bit>
-#include <cstdio>
-#include <iostream>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <vector>
+#include <utility>
+#include <algorithm>
+#include <cstring>
+#include <variant>
+#include <optional>
 #include <ranges>
-#include <string>
 #include <cstddef>
+#include <iostream>
+#include <bit>
+#include <cassert>
+#include <string_view>
+#include <cstdio>
+#include <expected>
+#include <string>
+#include <functional>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -1980,9 +1980,10 @@ concept branch_like = is_branch_v<T>;
  
  
 namespace s2s {
-using type_deduction_res = std::optional<std::size_t>;
+using type_deduction_idx = std::optional<std::size_t>;
+using type_deduction_res = std::expected<std::size_t, error_reason>;
 
-constexpr auto operator|(const type_deduction_res& res, auto&& callable) -> type_deduction_res {
+constexpr auto operator|(const type_deduction_idx& res, auto&& callable) -> type_deduction_idx {
   return res ? res : callable();
 }
 
@@ -2048,7 +2049,7 @@ template <std::size_t idx, typename branch>
 struct type_if_else_impl {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    type_deduction_res
+    type_deduction_idx
   {
     if(branch::e(field_list)) return idx;
     return std::nullopt;
@@ -2061,9 +2062,9 @@ struct type_if_else_helper {
   constexpr auto operator()(
     const struct_field_list_impl<fields...>& field_list, 
     const std::index_sequence<idx...>&) const 
-  -> type_deduction_res 
+  -> type_deduction_idx
   {
-    type_deduction_res pipeline_seed = std::nullopt;
+    type_deduction_idx pipeline_seed = std::nullopt;
     return (
       pipeline_seed |
       ... |
@@ -2081,7 +2082,7 @@ struct type_if_else {
 
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    std::expected<std::size_t, error_reason> 
+    type_deduction_res
   {
     auto res = type_if_else_helper<branches...>{}(
       field_list,
@@ -2127,7 +2128,7 @@ namespace s2s {
 template <std::size_t idx, typename match_case>
 struct type_switch_impl {
   constexpr auto operator()(const auto& v) const -> 
-    std::optional<std::size_t> 
+    type_deduction_idx
   {
     if(v == match_case::value) return idx;
     else return std::nullopt;
@@ -2140,9 +2141,9 @@ struct type_switch_helper {
   constexpr auto operator()(
     const auto& v, 
     const std::index_sequence<idx...>&) const 
-  -> std::optional<std::size_t> 
+  -> type_deduction_idx 
   {
-    type_deduction_res pipeline_seed = std::nullopt;
+    type_deduction_idx pipeline_seed = std::nullopt;
     return (
       pipeline_seed |
       ... |
@@ -2159,7 +2160,7 @@ struct type_switch {
 
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, error_reason> 
+    type_deduction_res
   {
     auto res =
       type_switch_helper<cases...>{}(
