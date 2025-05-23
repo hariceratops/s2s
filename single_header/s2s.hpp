@@ -1,23 +1,23 @@
 #include <optional>
-#include <variant>
-#include <algorithm>
-#include <bit>
-#include <concepts>
-#include <array>
-#include <type_traits>
-#include <cstdio>
 #include <cassert>
-#include <cstdint>
-#include <string_view>
-#include <ranges>
-#include <iostream>
-#include <expected>
-#include <cstring>
-#include <utility>
+#include <type_traits>
 #include <string>
-#include <vector>
-#include <functional>
+#include <utility>
 #include <cstddef>
+#include <concepts>
+#include <cstring>
+#include <array>
+#include <variant>
+#include <cstdint>
+#include <ranges>
+#include <functional>
+#include <bit>
+#include <algorithm>
+#include <expected>
+#include <string_view>
+#include <vector>
+#include <cstdio>
+#include <iostream>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -2031,44 +2031,61 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #define _TYPE_DEDUCTION_LADDER_HPP_
  
 namespace s2s {
-template <typename... branches>
+using type_deduction_res = std::optional<std::size_t>;
+
+constexpr auto operator|(const type_deduction_res& res, auto&& callable) -> type_deduction_res {
+  return res ? res : callable();
+}
+
+template <branch_like... branches>
+  requires (sizeof...(branches) > 0)
 struct type_if_else;
 
-template <std::size_t idx, typename... branches>
+template <std::size_t idx, typename branch>
 struct type_if_else_impl;
 
-template <std::size_t idx>
-struct type_if_else_impl<idx> {
-  constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, error_reason> 
+template <std::size_t idx, typename branch>
+struct type_if_else_impl {
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+    std::optional<std::size_t> 
   {
-    return std::unexpected(error_reason::type_deduction_failure);
+    if(branch::e(field_list)) return idx;
+    return std::nullopt;
   }
 };
 
-template <std::size_t idx, typename branch_head, typename... branch_rest>
-struct type_if_else_impl<idx, branch_head, branch_rest...> {
+template <typename... branches>
+struct type_if_else_helper {
+  template <typename... fields, std::size_t... idx>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list, const std::index_sequence<idx...>&) const -> type_deduction_res {
+    type_deduction_res pipeline_seed = std::nullopt;
+    return (
+      pipeline_seed |
+      ... |
+      [&]() { return type_if_else_impl<idx, branches>{}(field_list); }
+    );
+  }
+};
+
+
+template <branch_like... branches>
+  requires (sizeof...(branches) > 0)
+struct type_if_else {
+  using variant = variant_from_type_conditions_v<branches...>;
+  using sizes = size_choices_from_type_conditions_v<branches...>;
+
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     std::expected<std::size_t, error_reason> 
   {
-    bool eval_result = branch_head::e(field_list);
-    if(eval_result) return idx;
-    else return type_if_else_impl<idx + 1, branch_rest...>{}(field_list);
-  }
-};
-
-template <branch_like branch_head, branch_like... branch_rest>
-struct type_if_else<branch_head, branch_rest...> {
-  // ? is this ok
-  using variant = variant_from_type_conditions_v<branch_head, branch_rest...>;
-  using sizes = size_choices_from_type_conditions_v<branch_head, branch_rest...>;
-
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    std::expected<std::size_t, error_reason> 
-  {
-    return type_if_else_impl<0, branch_head, branch_rest...>{}(field_list);
+    auto res = type_if_else_helper<branches...>{}(
+      field_list,
+      std::make_index_sequence<sizeof...(branches)>{}
+    );
+    if(!res)
+      return std::unexpected(error_reason::type_deduction_failure);
+    return std::expected<std::size_t, error_reason>(*res);
   }
 };
 
