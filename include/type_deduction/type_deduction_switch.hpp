@@ -8,39 +8,52 @@
 
 
 namespace s2s {
-template <std::size_t idx, typename... cases>
-struct type_switch_impl;
-
-template <std::size_t idx>
-struct type_switch_impl<idx> {
-  constexpr auto operator()(const auto&) const -> 
-    std::expected<std::size_t, error_reason> 
-  {
-    return std::unexpected(error_reason::type_deduction_failure);
-  }
-};
 
 // todo check if case and eval result match in terms of types
-template <std::size_t idx, match_case_like match_case_head, match_case_like... match_case_rest>
-struct type_switch_impl<idx, match_case_head, match_case_rest...> {
+template <std::size_t idx, typename match_case>
+struct type_switch_impl {
   constexpr auto operator()(const auto& v) const -> 
-    std::expected<std::size_t, error_reason> 
+    std::optional<std::size_t> 
   {
-    if(v == match_case_head::value) return idx;
-    else return type_switch_impl<idx + 1, match_case_rest...>{}(v);
+    if(v == match_case::value) return idx;
+    else return std::nullopt;
   }
 };
 
-template <match_case_like case_head, match_case_like... case_rest>
+template <typename... branches>
+struct type_switch_helper {
+  template <std::size_t... idx>
+  constexpr auto operator()(
+    const auto& v, 
+    const std::index_sequence<idx...>&) const 
+  -> std::optional<std::size_t> 
+  {
+    type_deduction_res pipeline_seed = std::nullopt;
+    return (
+      pipeline_seed |
+      ... |
+      [&]() { return type_switch_impl<idx, branches>{}(v); }
+    );
+  }
+};
+
+template <match_case_like... cases>
+  requires (sizeof...(cases) > 0)
 struct type_switch {
-  using variant = variant_from_type_conditions_v<case_head, case_rest...>;
-  using sizes = size_choices_from_type_conditions_v<case_head, case_rest...>;
+  using variant = variant_from_type_conditions_v<cases...>;
+  using sizes = size_choices_from_type_conditions_v<cases...>;
 
   template <typename... fields>
   constexpr auto operator()(const auto& v) const -> 
     std::expected<std::size_t, error_reason> 
   {
-    return type_switch_impl<0, case_head, case_rest...>{}(v);
+    auto res =
+      type_switch_helper<cases...>{}(
+        v, std::make_index_sequence<sizeof...(cases)>{}
+      );
+    if(!res)
+      return std::unexpected(error_reason::type_deduction_failure);
+    return std::expected<std::size_t, error_reason>(*res);
   } 
 };
 

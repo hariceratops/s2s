@@ -7,6 +7,12 @@
 
 
 namespace s2s {
+using type_deduction_res = std::optional<std::size_t>;
+
+constexpr auto operator|(const type_deduction_res& res, auto&& callable) -> type_deduction_res {
+  return res ? res : callable();
+}
+
 template <typename T>
 concept type_condition_like = match_case_like<T> || branch_like<T>;
 

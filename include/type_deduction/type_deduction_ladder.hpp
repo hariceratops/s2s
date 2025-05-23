@@ -7,12 +7,6 @@
 
 
 namespace s2s {
-using type_deduction_res = std::optional<std::size_t>;
-
-constexpr auto operator|(const type_deduction_res& res, auto&& callable) -> type_deduction_res {
-  return res ? res : callable();
-}
-
 template <branch_like... branches>
   requires (sizeof...(branches) > 0)
 struct type_if_else;
@@ -24,7 +18,7 @@ template <std::size_t idx, typename branch>
 struct type_if_else_impl {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    std::optional<std::size_t> 
+    type_deduction_res
   {
     if(branch::e(field_list)) return idx;
     return std::nullopt;
@@ -34,7 +28,11 @@ struct type_if_else_impl {
 template <typename... branches>
 struct type_if_else_helper {
   template <typename... fields, std::size_t... idx>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list, const std::index_sequence<idx...>&) const -> type_deduction_res {
+  constexpr auto operator()(
+    const struct_field_list_impl<fields...>& field_list, 
+    const std::index_sequence<idx...>&) const 
+  -> type_deduction_res 
+  {
     type_deduction_res pipeline_seed = std::nullopt;
     return (
       pipeline_seed |

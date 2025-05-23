@@ -1,7 +1,14 @@
-- [ ] Size dependency resolution checks
-- [ ] Parse dependency resolution checks
+- [x] Size dependency resolution checks
+- [x] Parse dependency resolution checks
 - [ ] Static test cases for all type traits and concepts
 - [ ] Remove dead code
 - [ ] Refactor type and non-type list
-- [ ] Value based TMP
-- [ ] Support all major compilers = msvc, indirectly supports more compilers = gcc 12.1
+- [x] Value based TMP
+- [x] Support all major compilers = msvc, indirectly supports more compilers = gcc 12.1
+- [ ] Fix compiler errors in all major compilers
+- [ ] Simplify union field implementation
+- [ ] Remove outdated todos
+- [ ] Refactor type deduction with fold expressions
+- [ ] Rename stream_wrapper_impl
+- [ ] Refactor and remove cyclic inclusions
+- [ ] Split cast_impl into cast_api and cast_impl

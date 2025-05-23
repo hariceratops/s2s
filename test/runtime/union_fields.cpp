@@ -433,8 +433,6 @@ TEST(S2STest, variant_field_parsing_with_boolean_clauses) {
   auto bpred_1 = [](auto a, auto b){ return a + b >= 20000 && a + b < 40000; };
   auto bpred_2 = [](auto a, auto b){ return a + b <= 40000 && a + b < 60000; };
   
-  // todo type tag entries shall be unique with respect to type
-  // todo possible convinent short hand for eval_bool_from_fields
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 

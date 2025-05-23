@@ -30,7 +30,7 @@ folder can be used for direct inclusion into a project
 * Pluggable interfaces working with custom streams
 
 ## Requirements
-struct_cast currently has a constraint on minimum version of the std to be C++23
+s2s currently has a constraint on minimum version of the std to be C++23
 
 The compiler version requirements are 
 * gcc 13.1 : x86-64, arm, arm64 gcc 13.1
@@ -69,7 +69,7 @@ Link to Godbolt: https://godbolt.org/z/eGTvdoejP
   }
 ```
 
-Or let's go constexpr everything, as long we do not have fields which we would
+Or let's go constexpr everything, as long as we do not have fields which we would
 allocate, say vector or string. 
 Link to Godbolt: https://godbolt.org/z/G5GWTEEq3
 ```cpp
@@ -194,5 +194,5 @@ provided input stream is exhausted or when type deduction failed while reading i
 - [ ] Support for seeking
 - [ ] Compile time functions for struct_field_list - 
     - [ ] Query fields
-    - [ ] Extend wit another list
+    - [ ] Extend with another list
     - [ ] Alignment and Padding Control
