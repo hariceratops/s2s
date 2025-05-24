@@ -1,23 +1,23 @@
-#include <functional>
-#include <cstddef>
-#include <iostream>
-#include <cstring>
-#include <concepts>
-#include <ranges>
-#include <vector>
-#include <algorithm>
-#include <utility>
-#include <array>
-#include <expected>
-#include <bit>
-#include <cassert>
-#include <string>
-#include <type_traits>
-#include <cstdint>
-#include <optional>
-#include <variant>
-#include <string_view>
 #include <cstdio>
+#include <ranges>
+#include <variant>
+#include <type_traits>
+#include <expected>
+#include <cstdint>
+#include <utility>
+#include <vector>
+#include <optional>
+#include <cstddef>
+#include <concepts>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <iostream>
+#include <algorithm>
+#include <bit>
+#include <cstring>
+#include <array>
+#include <cassert>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -1381,7 +1381,7 @@ struct union_field: public
 {
   using type_deduction_guide = type_deducer;
   static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
-  using field_choices = to_field_choices<
+  using field_choices = typename to_field_choices<
       id, 
       typename type_deducer::variant, 
       typename type_deducer::sizes
@@ -2502,8 +2502,7 @@ inline constexpr auto extract_req_fields_from_clause_v = extract_req_fields_from
 
 // todo better implementation
 constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
-  constexpr auto set_size = vec.capacity();
-  static_set<sv, set_size> set(vec);
+  static_set<sv, max_dep_count_per_struct> set(vec);
   dep_vec res;
   for(auto item: set)
     res.push_back(item);
