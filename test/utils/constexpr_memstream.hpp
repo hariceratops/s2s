@@ -2,7 +2,7 @@
 #define _CONSTEXPR_MEMSTREAM_HPP_
 
 #include <array>
-#include "../include/s2s.hpp"
+#include "../../single_header/s2s.hpp"
 
 using u8 = unsigned char;
 

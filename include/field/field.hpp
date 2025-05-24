@@ -125,7 +125,7 @@ struct union_field: public
 {
   using type_deduction_guide = type_deducer;
   static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
-  using field_choices = to_field_choices<
+  using field_choices = typename to_field_choices<
       id, 
       typename type_deducer::variant, 
       typename type_deducer::sizes
