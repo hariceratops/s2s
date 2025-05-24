@@ -8,6 +8,6 @@
 #include "error/cast_error.hpp"
 #include "api/field_descriptors.hpp"
 #include "type_deduction/type_deduction.hpp"
-#include "api/cast_impl.hpp"
+#include "api/struct_cast.hpp"
 
 #endif // STRUCT_CAST_HPP

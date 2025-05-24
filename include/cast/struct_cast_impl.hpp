@@ -1,5 +1,5 @@
-#ifndef _CAST_IMPL_HPP_
-#define _CAST_IMPL_HPP_
+#ifndef _STRUCT_CAST_IMPL_HPP_
+#define _STRUCT_CAST_IMPL_HPP_
 
 // status: split to cast and cast impl
 
@@ -7,7 +7,6 @@
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
 #include "../field_list/field_list.hpp"
-#include "../field_read/stream_wrapper_impl.hpp"
 #include "../field_read/field_reader.hpp"
 #include "../field_validation/field_value_constraints_traits.hpp"
 
@@ -60,16 +59,6 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
   }
 };
 
-
-template <field_list_like T, input_stream_like stream>
-[[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::little>{}(s);
-}
-
-template <field_list_like T, input_stream_like stream>
-[[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::big>{}(s);
-}
 } /* namespace s2s */
 
-#endif // _CAST_IMPL_HPP_
+#endif // _STRUCT_CAST_IMPL_HPP_

@@ -1,23 +1,23 @@
-#include <array>
-#include <concepts>
 #include <cstdint>
-#include <type_traits>
-#include <vector>
-#include <utility>
-#include <algorithm>
 #include <cstring>
-#include <variant>
-#include <optional>
-#include <ranges>
-#include <cstddef>
-#include <iostream>
-#include <bit>
-#include <cassert>
-#include <string_view>
-#include <cstdio>
+#include <concepts>
 #include <expected>
-#include <string>
+#include <cassert>
+#include <type_traits>
+#include <iostream>
+#include <cstdio>
+#include <optional>
+#include <algorithm>
 #include <functional>
+#include <utility>
+#include <string>
+#include <cstddef>
+#include <ranges>
+#include <array>
+#include <vector>
+#include <string_view>
+#include <bit>
+#include <variant>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -2875,6 +2875,47 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 // End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
 
+// Begin /home/hari/repos/s2s/include/lib/memory/bit.hpp
+#ifndef _BIT_HPP_
+#define _BIT_HPP_
+
+// todo check if this handrolled implementation is required
+// template <std::integral T>
+// constexpr auto byteswap(T value) -> T {
+//   constexpr auto object_size = sizeof(T);
+//   auto value_rep = std::bit_cast<std::array<std::byte, object_size>>(value);
+//   for(std::size_t fwd_idx = 0, rev_idx = object_size - 1; 
+//       fwd_idx <= rev_idx; 
+//       ++fwd_idx, --rev_idx) 
+//   {
+//     auto tmp = value_rep[fwd_idx];
+//     value_rep[fwd_idx] = value_rep[rev_idx];
+//     value_rep[rev_idx] = tmp;
+//   }
+//   return std::bit_cast<T>(value_rep);
+// }
+//
+//
+// constexpr auto is_little() -> bool {
+//   constexpr uint32_t bait = 0xdeadbeef;
+//   constexpr auto bait_size = sizeof(bait);
+//   auto value_rep = std::bit_cast<std::array<std::byte, bait_size>>(bait);
+//   return value_rep[0] == std::byte{0xef};
+// }
+//
+// static_assert(byteswap(0xdeadbeef) == 0xefbeadde);
+//
+//
+// enum endian: uint32_t {
+//   little = 0xdeadbeef,
+//   big = 0xefbeadde,
+//   native = is_little() ? little : big
+// };
+
+#endif // _BIT_HPP_
+
+// End /home/hari/repos/s2s/include/lib/memory/bit.hpp
+
 // Begin /home/hari/repos/s2s/include/stream/stream_traits.hpp
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
@@ -2943,52 +2984,12 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
 // End /home/hari/repos/s2s/include/stream/stream_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_read/stream_wrapper_impl.hpp
-#ifndef _STREAM_WRAPPER_IMPL_HPP_
-#define _STREAM_WRAPPER_IMPL_HPP_
- 
+// Begin /home/hari/repos/s2s/include/lib/memory/address_manip.hpp
+#ifndef _ADDRESS_MANIP_HPP_
+#define _ADDRESS_MANIP_HPP_
  
  
 namespace s2s {
-enum cast_endianness {
-  host = 0,
-  foreign = 1
-};
-
-// todo check if this handrolled implementation is required
-// template <std::integral T>
-// constexpr auto byteswap(T value) -> T {
-//   constexpr auto object_size = sizeof(T);
-//   auto value_rep = std::bit_cast<std::array<std::byte, object_size>>(value);
-//   for(std::size_t fwd_idx = 0, rev_idx = object_size - 1; 
-//       fwd_idx <= rev_idx; 
-//       ++fwd_idx, --rev_idx) 
-//   {
-//     auto tmp = value_rep[fwd_idx];
-//     value_rep[fwd_idx] = value_rep[rev_idx];
-//     value_rep[rev_idx] = tmp;
-//   }
-//   return std::bit_cast<T>(value_rep);
-// }
-//
-//
-// constexpr auto is_little() -> bool {
-//   constexpr uint32_t bait = 0xdeadbeef;
-//   constexpr auto bait_size = sizeof(bait);
-//   auto value_rep = std::bit_cast<std::array<std::byte, bait_size>>(bait);
-//   return value_rep[0] == std::byte{0xef};
-// }
-//
-// static_assert(byteswap(0xdeadbeef) == 0xefbeadde);
-//
-//
-// enum endian: uint32_t {
-//   little = 0xdeadbeef,
-//   big = 0xefbeadde,
-//   native = is_little() ? little : big
-// };
-
-
 template <input_stream_like stream, typename T>
 char* byte_addressof(T& obj) {
   return reinterpret_cast<char*>(&obj);
@@ -3021,6 +3022,24 @@ template <identified_as_constexpr_stream stream, typename T, std::size_t size = 
 constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
   return std::bit_cast<std::array<char, size>>(obj);
 }
+}
+
+#endif // _ADDRESS_MANIP_HPP_
+
+// End /home/hari/repos/s2s/include/lib/memory/address_manip.hpp
+
+// Begin /home/hari/repos/s2s/include/field_read/read_impl.hpp
+#ifndef _READ_IMPL_HPP_
+#define _READ_IMPL_HPP_
+ 
+ 
+ 
+namespace s2s {
+enum cast_endianness {
+  host = 0,
+  foreign = 1
+};
+
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
@@ -3114,9 +3133,9 @@ public:
 };
 } /* namespace s2s */
 
-#endif /* _STREAM_WRAPPER_IMPL_HPP_ */
+#endif /* _READ_IMPL_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_read/stream_wrapper_impl.hpp
+// End /home/hari/repos/s2s/include/field_read/read_impl.hpp
 
 // Begin /home/hari/repos/s2s/include/field_read/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
@@ -3447,9 +3466,9 @@ inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
 
 // End /home/hari/repos/s2s/include/field_validation/field_value_constraints_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/api/cast_impl.hpp
-#ifndef _CAST_IMPL_HPP_
-#define _CAST_IMPL_HPP_
+// Begin /home/hari/repos/s2s/include/cast/struct_cast_impl.hpp
+#ifndef _STRUCT_CAST_IMPL_HPP_
+#define _STRUCT_CAST_IMPL_HPP_
 
 // status: split to cast and cast impl
  
@@ -3501,7 +3520,20 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
   }
 };
 
+} /* namespace s2s */
 
+#endif // _STRUCT_CAST_IMPL_HPP_
+
+// End /home/hari/repos/s2s/include/cast/struct_cast_impl.hpp
+
+// Begin /home/hari/repos/s2s/include/api/struct_cast.hpp
+#ifndef _STRUCT_CAST_HPP_
+#define _STRUCT_CAST_HPP_
+
+// status: split to cast and cast impl
+ 
+ 
+namespace s2s {
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   return struct_cast_impl<T, stream, std::endian::little>{}(s);
@@ -3513,9 +3545,9 @@ template <field_list_like T, input_stream_like stream>
 }
 } /* namespace s2s */
 
-#endif // _CAST_IMPL_HPP_
+#endif // _STRUCT_CAST_HPP_
 
-// End /home/hari/repos/s2s/include/api/cast_impl.hpp
+// End /home/hari/repos/s2s/include/api/struct_cast.hpp
 
 // Begin /home/hari/repos/s2s/include/s2s.hpp
 #ifndef STRUCT_CAST_HPP

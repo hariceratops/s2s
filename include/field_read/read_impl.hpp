@@ -1,5 +1,5 @@
-#ifndef _STREAM_WRAPPER_IMPL_HPP_
-#define _STREAM_WRAPPER_IMPL_HPP_
+#ifndef _READ_IMPL_HPP_
+#define _READ_IMPL_HPP_
 
 
 #include <concepts>
@@ -8,7 +8,8 @@
 
 #include "../error/cast_error.hpp"
 #include "../lib/s2s_traits/type_traits.hpp"
-#include "../stream/stream_traits.hpp"
+#include "../lib/memory/bit.hpp"
+#include "../lib/memory/address_manip.hpp"
 
 
 namespace s2s {
@@ -17,72 +18,6 @@ enum cast_endianness {
   foreign = 1
 };
 
-// todo check if this handrolled implementation is required
-// template <std::integral T>
-// constexpr auto byteswap(T value) -> T {
-//   constexpr auto object_size = sizeof(T);
-//   auto value_rep = std::bit_cast<std::array<std::byte, object_size>>(value);
-//   for(std::size_t fwd_idx = 0, rev_idx = object_size - 1; 
-//       fwd_idx <= rev_idx; 
-//       ++fwd_idx, --rev_idx) 
-//   {
-//     auto tmp = value_rep[fwd_idx];
-//     value_rep[fwd_idx] = value_rep[rev_idx];
-//     value_rep[rev_idx] = tmp;
-//   }
-//   return std::bit_cast<T>(value_rep);
-// }
-//
-//
-// constexpr auto is_little() -> bool {
-//   constexpr uint32_t bait = 0xdeadbeef;
-//   constexpr auto bait_size = sizeof(bait);
-//   auto value_rep = std::bit_cast<std::array<std::byte, bait_size>>(bait);
-//   return value_rep[0] == std::byte{0xef};
-// }
-//
-// static_assert(byteswap(0xdeadbeef) == 0xefbeadde);
-//
-//
-// enum endian: uint32_t {
-//   little = 0xdeadbeef,
-//   big = 0xefbeadde,
-//   native = is_little() ? little : big
-// };
-
-
-template <input_stream_like stream, typename T>
-char* byte_addressof(T& obj) {
-  return reinterpret_cast<char*>(&obj);
-}
-
-template <input_stream_like stream, typename T, std::size_t N>
-char* byte_addressof(std::array<T, N>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <input_stream_like stream, std::size_t N>
-char* byte_addressof(fixed_string<N>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <input_stream_like stream, typename T>
-char* byte_addressof(std::vector<T>& obj) {
-  return reinterpret_cast<char*>(obj.data());
-}
-
-template <input_stream_like stream>
-inline char* byte_addressof(std::string& obj) {
-  return reinterpret_cast<char*>(&obj[0]);
-}
-
-// todo generate this as configurable parameter
-constexpr std::size_t constexpr_buffer_size = 2048;
-
-template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>
-constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
-  return std::bit_cast<std::array<char, size>>(obj);
-}
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
@@ -176,4 +111,4 @@ public:
 };
 } /* namespace s2s */
 
-#endif /* _STREAM_WRAPPER_IMPL_HPP_ */
+#endif /* _READ_IMPL_HPP_ */
