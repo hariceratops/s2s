@@ -3,7 +3,7 @@
 #include <expected>
 #include <array>
 #include "../include/s2s.hpp"
-#include "constexpr_memstream.hpp"
+#include "../utils/constexpr_memstream.hpp"
 
 
 constexpr auto comptime_memcpy(char* dest, char* src, std::size_t size_to_copy) {
