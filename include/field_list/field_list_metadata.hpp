@@ -184,7 +184,8 @@ inline constexpr auto extract_req_fields_from_clause_v = extract_req_fields_from
 
 // todo better implementation
 constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
-  static_set<sv, vec.capacity()> set(vec);
+  constexpr auto set_size = vec.capacity();
+  static_set<sv, set_size> set(vec);
   dep_vec res;
   for(auto item: set)
     res.push_back(item);

@@ -1,23 +1,23 @@
-#include <cstdint>
+#include <functional>
+#include <cstddef>
+#include <iostream>
 #include <cstring>
 #include <concepts>
-#include <expected>
-#include <cassert>
-#include <type_traits>
-#include <iostream>
-#include <cstdio>
-#include <optional>
-#include <algorithm>
-#include <functional>
-#include <utility>
-#include <string>
-#include <cstddef>
 #include <ranges>
-#include <array>
 #include <vector>
-#include <string_view>
+#include <algorithm>
+#include <utility>
+#include <array>
+#include <expected>
 #include <bit>
+#include <cassert>
+#include <string>
+#include <type_traits>
+#include <cstdint>
+#include <optional>
 #include <variant>
+#include <string_view>
+#include <cstdio>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -2502,7 +2502,8 @@ inline constexpr auto extract_req_fields_from_clause_v = extract_req_fields_from
 
 // todo better implementation
 constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
-  static_set<sv, vec.capacity()> set(vec);
+  constexpr auto set_size = vec.capacity();
+  static_set<sv, set_size> set(vec);
   dep_vec res;
   for(auto item: set)
     res.push_back(item);
