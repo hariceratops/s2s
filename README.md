@@ -39,7 +39,7 @@ The compiler version requirements are
 
 
 ## Taste of the API
-Link to Godbolt: https://godbolt.org/z/eGTvdoejP
+Link to Godbolt: https://godbolt.org/z/fxEPoG4Kv
 ```cpp
   #include "s2s.hpp"
   #include <print>
@@ -71,7 +71,7 @@ Link to Godbolt: https://godbolt.org/z/eGTvdoejP
 
 Or let's go constexpr everything, as long as we do not have fields which we would
 allocate, say vector or string. 
-Link to Godbolt: https://godbolt.org/z/G5GWTEEq3
+Link to Godbolt: https://godbolt.org/z/YcTqq58z4
 ```cpp
   #include "s2s.hpp"
   #include "test/constexpr_memstream.hpp"
