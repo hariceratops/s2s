@@ -78,53 +78,8 @@ using maybe = maybe_field<base_field, present_only_if>;
 
 
 template <fixed_string id, type_deduction_like type_deducer>
-  requires (are_type_ids_unique(extract_field_choices<type_deducer>::value))
+  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value))
 using variance = union_field<id, type_deducer>;
-
-template <typename... fields>
-concept all_field_like = (field_like<fields> && ...);
-
-template <std::size_t N>
-constexpr bool are_field_ids_unique(const std::array<std::string_view, N>& field_id_list) {
-  static_set<std::string_view, N> field_id_set(field_id_list);
-  return equal_ranges(field_id_list, field_id_set);
-}
-
-template <std::size_t N>
-constexpr auto as_sv(const fixed_string<N>& str) {
-  return std::string_view{str.data()};
-}
-
-template <typename... fields>
-concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::field_id)...});
-
-template <typename metadata>
-struct dependency_check {
-  static constexpr bool size_ok = size_dependencies_resolved<metadata>();
-  static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
-  static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
-
-  static_assert(size_ok, "Size dependencies not resolved");
-  static_assert(parse_ok, "Parse dependencies not resolved");
-  static_assert(type_ok, "Type deduction dependencies not resolved");
-
-  static constexpr bool all_ok = size_ok && parse_ok && type_ok;
-};
-
-template <typename metadata>
-concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
-
-template <typename... fields>
-  requires (all_dependencies_resolved<field_list_metadata<fields...>>)
-struct create_struct_field_list {
-  using metadata = field_list_metadata<fields...>;
-  using value = struct_field_list_impl<metadata, fields...>;
-};
-
-template <typename... fields>
-  requires all_field_like<fields...> &&
-           has_unique_field_ids<fields...>
-using struct_field_list = create_struct_field_list<fields...>::value;
 
 } /* namespace s2s */
 

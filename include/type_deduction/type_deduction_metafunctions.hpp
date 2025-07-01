@@ -67,7 +67,7 @@ struct extract_field_choices<
 };
 
 template <std::size_t N>
-constexpr bool are_type_ids_unique(const s2s::static_vector<meta::type_identifier, N>& type_id_list) {
+constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_identifier, N>& type_id_list) {
   static_set<meta::type_identifier, N> type_id_set(type_id_list);
   return equal_ranges(type_id_list, type_id_set);
 }
