@@ -15,6 +15,7 @@
 #include "../lib/algorithms/algorithms.hpp"
 #include "../lib/containers/static_array.hpp"
 #include "../lib/containers/static_set.hpp"
+#include "../type_deduction/type_deduction_metafunctions.hpp"
 
 
 namespace s2s {
@@ -76,66 +77,9 @@ template <no_variance_field_like base_field, typename present_only_if>
 using maybe = maybe_field<base_field, present_only_if>;
 
 
-template <typename... type_tags>
-struct extract_type_from_tags {
-  static constexpr auto type_tag_count = sizeof...(type_tags);
-  using type_id_vec = static_array<meta::type_identifier, type_tag_count>;
-  static constexpr auto value = type_id_vec(meta::type_id<typename type_tags::type>...);
-};
-
-template <typename T>
-struct extract_field_choices;
-
-template <
-  fixed_string matched_id, 
-  template<typename...> typename type_switch,
-  auto... match_values, typename... type_tags
->
-struct extract_field_choices<
-  type<
-    match_field<matched_id>, 
-    type_switch<
-      match_case<match_values, type_tags>...
-    >
-  >
->
-{
-  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
-};
-
-template <
-  auto callable, typename R, typename field_name_list,
-  template<typename...> typename type_switch,
-  auto... match_values, typename... type_tags
->
-struct extract_field_choices<
-  type<
-    compute<callable, R, field_name_list>, 
-    type_switch<
-      match_case<match_values, type_tags>...
-    >
-  >
->
-{
-  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
-};
-
-template <
-  auto... callables, typename... field_name_lists, typename... type_tags
->
-struct extract_field_choices<
-  type<
-    type_if_else<
-      branch<compute<callables, bool, field_name_lists>, type_tags>...
-    >
-  >
->
-{
-  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
-};
-
 template <fixed_string id, type_deduction_like type_deducer>
-using variance = union_field<id, type_deducer, extract_field_choices<type_deducer>::value>;
+  requires (are_type_ids_unique(extract_field_choices<type_deducer>::value))
+using variance = union_field<id, type_deducer>;
 
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
@@ -180,7 +124,6 @@ struct create_struct_field_list {
 template <typename... fields>
   requires all_field_like<fields...> &&
            has_unique_field_ids<fields...>
-// using struct_field_list = struct_field_list_impl<field_list_metadata<fields...>, fields...>;
 using struct_field_list = create_struct_field_list<fields...>::value;
 
 } /* namespace s2s */

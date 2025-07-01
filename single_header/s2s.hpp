@@ -1,23 +1,23 @@
-#include <cstdio>
-#include <ranges>
-#include <variant>
-#include <type_traits>
-#include <expected>
-#include <cstdint>
-#include <utility>
-#include <vector>
-#include <optional>
-#include <cstddef>
-#include <concepts>
-#include <functional>
-#include <string>
-#include <string_view>
-#include <iostream>
-#include <algorithm>
-#include <bit>
 #include <cstring>
+#include <utility>
+#include <cstddef>
+#include <type_traits>
 #include <array>
+#include <cstdint>
+#include <algorithm>
 #include <cassert>
+#include <cstdio>
+#include <variant>
+#include <optional>
+#include <vector>
+#include <iostream>
+#include <functional>
+#include <ranges>
+#include <string>
+#include <expected>
+#include <concepts>
+#include <bit>
+#include <string_view>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -1313,6 +1313,20 @@ inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
 template <typename T>
 concept no_variance_field_like = no_variance_field_v<T>;
 
+
+
+
+template <typename base_field,
+          typename present_only_if,
+          typename optional = to_optional_field_v<base_field>>
+class maybe_field : public optional
+{
+public:
+  using field_base_type = base_field;
+  using field_presence_checker = present_only_if;
+};
+
+
 template <typename... choices>
 struct field_choice_list {};
 
@@ -1332,45 +1346,7 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
-
-template <typename arg>
-struct are_unique_types;
-
-template <typename head>
-struct are_unique_types<field_choice_list<head>> {
-  static constexpr bool res = true;
-};
-
-template <typename head, typename neck, typename... tail>
-struct are_unique_types<field_choice_list<head, neck, tail...>> {
-  constexpr static bool res =
-    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
-    are_unique_types<field_choice_list<neck, tail...>>::res;
-};
-
-
-template <typename choice_list>
-inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
-
-template <no_variance_field_like base_field,
-          typename present_only_if,
-          typename optional = to_optional_field_v<base_field>>
-class maybe_field : public optional
-{
-public:
-  using field_base_type = base_field;
-  using field_presence_checker = present_only_if;
-};
-
-
-template <fixed_string id, typename type_deducer, auto type_choices>
-  requires are_unique_types_v<
-    typename to_field_choices<
-      id, 
-      typename type_deducer::variant, 
-      typename type_deducer::sizes
-    >::choices
-  >
+template <fixed_string id, typename type_deducer>
 struct union_field: public 
     field<
       id, 
@@ -1536,9 +1512,9 @@ concept optional_field_like = is_optional_field_v<T>;
 template <typename T>
 struct is_union_field;
 
-template <fixed_string id, typename type_deducer, auto field_choices>
+template <fixed_string id, typename type_deducer>
 struct is_union_field<
-    union_field<id, type_deducer, field_choices>
+    union_field<id, type_deducer>
   > 
 {
   static constexpr bool res = true;
@@ -2412,12 +2388,12 @@ struct extract_length_dependencies_from_field_choices<field_choice_list<Ts...>>{
 template <typename... Ts>
 inline constexpr auto extract_length_dependencies_from_field_choices_v = extract_length_dependencies_from_field_choices<Ts...>::value;
 
-template <fixed_string id, typename type_deducer, auto choices>
+template <fixed_string id, typename type_deducer>
 struct extract_length_dependencies<
-  union_field<id, type_deducer, choices>
+  union_field<id, type_deducer>
 > 
 {
-  using field = union_field<id, type_deducer, choices>;
+  using field = union_field<id, type_deducer>;
   using field_choices = typename field::field_choices;
   static constexpr auto value = extract_length_dependencies_from_field_choices_v<field_choices>;
 };
@@ -2459,24 +2435,22 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, type_switch_like type_switch, auto field_choices>
+template <fixed_string id, fixed_string matched_id, type_switch_like type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch>,
-    field_choices
+    type<match_field<matched_id>, type_switch>
   >
 > 
 {
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch, auto field_choices>
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>,
-    field_choices
+    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
   >
 > 
 {
@@ -2510,12 +2484,11 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
 }
 
 // template<typename...>... typename clauses?
-template <fixed_string id, auto field_choices, typename... clauses>
+template <fixed_string id, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_if_else<clauses...>>,
-    field_choices
+    type<type_if_else<clauses...>>
   >
 > 
 {
@@ -2657,9 +2630,86 @@ public:
 
 // End /home/hari/repos/s2s/include/lib/containers/static_array.hpp
 
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_metafunctions.hpp
+#ifndef _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
+#define _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
+ 
+ 
+ 
+namespace s2s {
+template <typename... type_tags>
+struct extract_type_from_tags {
+  static constexpr auto type_tag_count = sizeof...(type_tags);
+  using type_id_vec = static_vector<meta::type_identifier, type_tag_count>;
+  static constexpr auto value = type_id_vec(meta::type_id<typename type_tags::type>...);
+};
+
+template <typename T>
+struct extract_field_choices;
+
+template <
+  fixed_string matched_id, 
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct extract_field_choices<
+  type<
+    match_field<matched_id>, 
+    type_switch<
+      match_case<match_values, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
+};
+
+template <
+  auto callable, typename R, typename field_name_list,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct extract_field_choices<
+  type<
+    compute<callable, R, field_name_list>, 
+    type_switch<
+      match_case<match_values, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
+};
+
+template <
+  auto... callables, typename... field_name_lists, typename... type_tags
+>
+struct extract_field_choices<
+  type<
+    type_if_else<
+      branch<compute<callables, bool, field_name_lists>, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
+};
+
+template <std::size_t N>
+constexpr bool are_type_ids_unique(const s2s::static_vector<meta::type_identifier, N>& type_id_list) {
+  static_set<meta::type_identifier, N> type_id_set(type_id_list);
+  return equal_ranges(type_id_list, type_id_set);
+}
+}
+
+#endif /* _TYPE_DEDUCTION_METAFUNCTIONS_HPP_ */
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_metafunctions.hpp
+
 // Begin /home/hari/repos/s2s/include/api/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
 #define _FIELD_DESCRIPTORS_HPP_
+ 
  
  
  
@@ -2732,66 +2782,9 @@ template <no_variance_field_like base_field, typename present_only_if>
 using maybe = maybe_field<base_field, present_only_if>;
 
 
-template <typename... type_tags>
-struct extract_type_from_tags {
-  static constexpr auto type_tag_count = sizeof...(type_tags);
-  using type_id_vec = static_array<meta::type_identifier, type_tag_count>;
-  static constexpr auto value = type_id_vec(meta::type_id<typename type_tags::type>...);
-};
-
-template <typename T>
-struct extract_field_choices;
-
-template <
-  fixed_string matched_id, 
-  template<typename...> typename type_switch,
-  auto... match_values, typename... type_tags
->
-struct extract_field_choices<
-  type<
-    match_field<matched_id>, 
-    type_switch<
-      match_case<match_values, type_tags>...
-    >
-  >
->
-{
-  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
-};
-
-template <
-  auto callable, typename R, typename field_name_list,
-  template<typename...> typename type_switch,
-  auto... match_values, typename... type_tags
->
-struct extract_field_choices<
-  type<
-    compute<callable, R, field_name_list>, 
-    type_switch<
-      match_case<match_values, type_tags>...
-    >
-  >
->
-{
-  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
-};
-
-template <
-  auto... callables, typename... field_name_lists, typename... type_tags
->
-struct extract_field_choices<
-  type<
-    type_if_else<
-      branch<compute<callables, bool, field_name_lists>, type_tags>...
-    >
-  >
->
-{
-  static constexpr auto value = extract_type_from_tags<type_tags...>::value;
-};
-
 template <fixed_string id, type_deduction_like type_deducer>
-using variance = union_field<id, type_deducer, extract_field_choices<type_deducer>::value>;
+  requires (are_type_ids_unique(extract_field_choices<type_deducer>::value))
+using variance = union_field<id, type_deducer>;
 
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
@@ -2836,7 +2829,6 @@ struct create_struct_field_list {
 template <typename... fields>
   requires all_field_like<fields...> &&
            has_unique_field_ids<fields...>
-// using struct_field_list = struct_field_list_impl<field_list_metadata<fields...>, fields...>;
 using struct_field_list = create_struct_field_list<fields...>::value;
 
 } /* namespace s2s */
