@@ -1,23 +1,23 @@
-#include <cstring>
-#include <utility>
-#include <cstddef>
-#include <type_traits>
-#include <array>
-#include <cstdint>
-#include <algorithm>
-#include <cassert>
-#include <cstdio>
-#include <variant>
-#include <optional>
+#include <ranges>
+#include <bit>
 #include <vector>
 #include <iostream>
+#include <cassert>
 #include <functional>
-#include <ranges>
-#include <string>
 #include <expected>
+#include <array>
+#include <cstring>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <concepts>
-#include <bit>
+#include <optional>
 #include <string_view>
+#include <algorithm>
+#include <variant>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -2696,7 +2696,7 @@ struct extract_field_choices<
 };
 
 template <std::size_t N>
-constexpr bool are_type_ids_unique(const s2s::static_vector<meta::type_identifier, N>& type_id_list) {
+constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_identifier, N>& type_id_list) {
   static_set<meta::type_identifier, N> type_id_set(type_id_list);
   return equal_ranges(type_id_list, type_id_set);
 }
@@ -2783,9 +2783,20 @@ using maybe = maybe_field<base_field, present_only_if>;
 
 
 template <fixed_string id, type_deduction_like type_deducer>
-  requires (are_type_ids_unique(extract_field_choices<type_deducer>::value))
+  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value))
 using variance = union_field<id, type_deducer>;
 
+} /* namespace s2s */
+
+#endif /* _FIELD_DESCRIPTORS_HPP_ */
+
+// End /home/hari/repos/s2s/include/api/field_descriptors.hpp
+
+// Begin /home/hari/repos/s2s/include/api/struct_field_list.hpp
+#ifndef _STRUCT_FIELD_LIST_HPP_
+#define _STRUCT_FIELD_LIST_HPP_
+ 
+namespace s2s {
 template <typename... fields>
 concept all_field_like = (field_like<fields> && ...);
 
@@ -2830,12 +2841,12 @@ template <typename... fields>
   requires all_field_like<fields...> &&
            has_unique_field_ids<fields...>
 using struct_field_list = create_struct_field_list<fields...>::value;
+}
 
-} /* namespace s2s */
+#endif /* _STRUCT_FIELD_LIST_HPP_ */
 
-#endif /* _FIELD_DESCRIPTORS_HPP_ */
 
-// End /home/hari/repos/s2s/include/api/field_descriptors.hpp
+// End /home/hari/repos/s2s/include/api/struct_field_list.hpp
 
 // Begin /home/hari/repos/s2s/include/field/field_metafunctions.hpp
 #ifndef _FIELD_METAFUNCTIONS_HPP_
@@ -3544,6 +3555,7 @@ template <field_list_like T, input_stream_like stream>
 // Begin /home/hari/repos/s2s/include/s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
+ 
  
  
  

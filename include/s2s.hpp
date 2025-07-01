@@ -7,6 +7,7 @@
 #include "field_compute/computation_from_fields.hpp"
 #include "error/cast_error.hpp"
 #include "api/field_descriptors.hpp"
+#include "api/struct_field_list.hpp"
 #include "type_deduction/type_deduction.hpp"
 #include "api/struct_cast.hpp"
 
