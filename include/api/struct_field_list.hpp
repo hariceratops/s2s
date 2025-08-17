@@ -3,11 +3,11 @@
 
 
 #include <array>
-#include "../field_list/field_list_metadata.hpp"
-#include "../lib/s2s_traits/type_traits.hpp"
-#include "../field_list/field_list.hpp"
 #include "../lib/algorithms/algorithms.hpp"
 #include "../lib/containers/static_set.hpp"
+#include "../lib/s2s_traits/type_traits.hpp"
+#include "../field_list/field_list_metadata.hpp"
+#include "../field_list/field_list.hpp"
 
 
 namespace s2s {

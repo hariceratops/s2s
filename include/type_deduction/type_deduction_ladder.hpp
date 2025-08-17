@@ -2,6 +2,8 @@
 #define _TYPE_DEDUCTION_LADDER_HPP_
 
 #include "../error/cast_error.hpp"
+#include "type_deduction_clause.hpp"
+#include "type_deduction_clause_traits.hpp"
 #include "type_deduction_helper.hpp"
 #include <expected>
 
@@ -62,25 +64,6 @@ struct type_if_else {
     return std::expected<std::size_t, error_reason>(*res);
   }
 };
-
-template <typename T>
-struct is_type_if_else;
-
-template <typename T>
-struct is_type_if_else {
-  static constexpr bool res = false;
-};
-
-template <branch_like branch_head, branch_like... branch_tail>
-struct is_type_if_else<type_if_else<branch_head, branch_tail...>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-static constexpr bool is_type_if_else_v = is_type_if_else<T>::res;
-
-template <typename T>
-concept type_if_else_like = is_type_if_else_v<T>;
 } /* namespace s2s */
 
 #endif // _TYPE_LADDER_HPP_

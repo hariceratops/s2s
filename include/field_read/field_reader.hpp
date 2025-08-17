@@ -9,6 +9,7 @@
 #include "../field_size/field_size_deduce.hpp"
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
+#include "../type_deduction/type_deduction_impl.hpp"
 #include "read_impl.hpp"
 
 
@@ -282,7 +283,7 @@ struct read_field<T, F> {
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
 
-    auto type_index_deducer = type_deduction_guide();
+    auto type_index_deducer = deduce_type<type_deduction_guide>();
     auto type_index_result = type_index_deducer(field_list); 
     if(!type_index_result)
       return std::unexpected(type_index_result.error());

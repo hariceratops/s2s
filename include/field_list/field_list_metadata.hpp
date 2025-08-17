@@ -11,6 +11,9 @@
 #include "../field/field_type_info.hpp"
 #include "../type_deduction/type_deduction.hpp"
 #include "../type_deduction/type_deduction_clause.hpp"
+#include "../type_deduction/type_deduction_switch_traits.hpp"
+#include "../type_deduction/type_deduction_ladder_traits.hpp"
+
 
 namespace s2s {
 // todo fix these numbers and possibly generate them
@@ -248,11 +251,11 @@ struct field_list_metadata {
  
 };
 
-template <typename list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-  auto field_table = list_metadata::field_table;
-  return field_table[field_name];
-}
+// template <typename list_metadata>
+// constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+//   auto field_table = list_metadata::field_table;
+//   return field_table[field_name];
+// }
 
 
 constexpr bool is_dependencies_resolved(const field_table_t& field_table, const dependency_table_t& dependency_table) {

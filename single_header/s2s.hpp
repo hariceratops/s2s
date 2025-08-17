@@ -1,23 +1,23 @@
-#include <ranges>
-#include <bit>
-#include <vector>
-#include <iostream>
-#include <cassert>
-#include <functional>
-#include <expected>
-#include <array>
-#include <cstring>
-#include <string>
-#include <type_traits>
-#include <utility>
 #include <cstddef>
+#include <array>
+#include <expected>
 #include <cstdint>
-#include <cstdio>
-#include <concepts>
 #include <optional>
+#include <type_traits>
+#include <variant>
 #include <string_view>
 #include <algorithm>
-#include <variant>
+#include <cstring>
+#include <vector>
+#include <functional>
+#include <bit>
+#include <ranges>
+#include <iostream>
+#include <cstdio>
+#include <concepts>
+#include <utility>
+#include <cassert>
+#include <string>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -241,131 +241,6 @@ private:
 
 // End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
 
-// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
-#ifndef _CAST_ERROR_HPP_
-#define _CAST_ERROR_HPP_
- 
- 
-namespace s2s {
-enum error_reason {
-  buffer_exhaustion,
-  validation_failure,
-  type_deduction_failure
-};
-
-
-struct cast_error {
-  error_reason failure_reason;
-  std::string_view failed_at;
-};
-
-
-using rw_result = std::expected<void, error_reason>;
-using cast_result = std::expected<void, cast_error>;
-
-} /* namespace s2s */
-
-#endif // _CAST_ERROR_HPP_
-
-// End /home/hari/repos/s2s/include/error/cast_error.hpp
-
-// Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
-#ifndef _MP_HPP_
-#define _MP_HPP_
- 
- 
- 
-namespace meta {
-using type_identifier = std::size_t;
-
-namespace meta_impl {
-// todo: fix warning due to friend injection
-template <type_identifier>
-struct type_id_key {
-  constexpr auto friend get(type_id_key);
-};
-
-template <typename T>
-struct type_id_value {
-  using value_type = T;
-
-  template <std::size_t left = 0u, std::size_t right = 1024u - 1u>
-  static constexpr auto gen() -> std::size_t {
-    if constexpr (left >= right) {
-      constexpr bool exists = requires { get(type_id_key<type_identifier{left}>{}); };
-      return (exists ? left + 1 : left);
-    } else if constexpr (
-      constexpr std::size_t mid = left + (right - left) / 2u; 
-      requires { get(type_id_key<type_identifier{mid}>{}); }) 
-    {
-      return gen<mid + 1u, right>();
-    } else {
-      return gen<left, mid - 1u>();
-    }
-  }
-
-  static constexpr auto id = type_identifier{gen()};
-
-  constexpr auto friend get(type_id_key<id>) { 
-    return type_id_value{}; 
-  }
-};
-}
-
-template<class T>
-inline constexpr type_identifier type_id = meta_impl::type_id_value<T>::id;
-
-template<type_identifier our_id>
-using type_of = typename decltype(get(meta_impl::type_id_key<our_id>{}))::value_type;
-
-template<class Fn, class T = decltype([]{})>
-[[nodiscard]] inline constexpr auto invoke(Fn&& fn, type_identifier meta) {
-  constexpr auto dispatch = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
-    return std::array{
-      []<type_identifier N> {
-        return +[](Fn fn) {
-          if constexpr (requires { fn.template operator()<N>(); }) {
-            return fn.template operator()<N>();
-          }
-        };
-      }.template operator()<type_identifier{Ns}>()...
-    };
-  }(std::make_index_sequence<std::size_t{type_id<T>}>{});
-  return dispatch[std::size_t{meta}](fn);
-}
-
-template <template<typename...> typename T, class... Ts, auto = []{}>
-[[nodiscard]] inline constexpr auto invoke(type_identifier id) {
-  return invoke([]<type_identifier id> {
-    using type = type_of<id>;
-    if constexpr(requires { T<Ts..., type>::value; }) {
-      return T<Ts..., type>::value;
-    } else {
-      return type_id<typename T<Ts..., type>::type>;
-    }
-  }, id);
-}
-}
-
-
-#endif /* _MP_HPP_ */
-
-// End /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
-
-// Begin /home/hari/repos/s2s/include/field/field_type_info.hpp
-#ifndef _FIELD_NODE_HPP_
-#define _FIELD_NODE_HPP_
- 
-// todo better name
-struct field_type_info {
-  meta::type_identifier id;
-  std::size_t occurs_at_idx;
-};
-
-#endif /* _FIELD_NODE_HPP_ */
-
-// End /home/hari/repos/s2s/include/field/field_type_info.hpp
-
 // Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
@@ -430,6 +305,76 @@ constexpr auto operator""_f() {
 #endif // _FIELD_ACCESSOR_HPP_
 
 // End /home/hari/repos/s2s/include/field/field_accessor.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
+#ifndef _TYPE_DEDUCTION_HPP_
+#define _TYPE_DEDUCTION_HPP_
+ 
+namespace s2s {
+template <typename... Args>
+struct type;
+
+
+template <fixed_string id>
+using match_field = field_accessor<id>;
+
+// todo constraints compute like
+template <typename eval_expression, typename _switch>
+struct type<eval_expression, _switch> {
+  using expression = eval_expression;
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using sizes = _switch::sizes;
+};
+
+template <fixed_string id, typename _switch>
+struct type<match_field<id>, _switch> {
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using sizes = _switch::sizes;
+};
+
+// todo constraints
+template <typename ladder>
+struct type<ladder> {
+  using type_ladder = ladder;
+  using variant = ladder::variant;
+  using sizes = ladder::sizes;
+};
+} /* namespace s2s */
+
+
+#endif // _TYPE_DEDUCTION_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
+
+// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
+#ifndef _CAST_ERROR_HPP_
+#define _CAST_ERROR_HPP_
+ 
+ 
+namespace s2s {
+enum error_reason {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure
+};
+
+
+struct cast_error {
+  error_reason failure_reason;
+  std::string_view failed_at;
+};
+
+
+using rw_result = std::expected<void, error_reason>;
+using cast_result = std::expected<void, cast_error>;
+
+} /* namespace s2s */
+
+#endif // _CAST_ERROR_HPP_
+
+// End /home/hari/repos/s2s/include/error/cast_error.hpp
 
 // Begin /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
@@ -1545,15 +1490,121 @@ concept field_like = fixed_sized_field_like<T> ||
 
 // End /home/hari/repos/s2s/include/field/field_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_metafunctions.hpp
-#ifndef _FIELD_LIST_METAFUNCTIONS_HPP_
-#define _FIELD_LIST_METAFUNCTIONS_HPP_
+// Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
+#ifndef _MP_HPP_
+#define _MP_HPP_
+ 
+ 
+ 
+namespace meta {
+using type_identifier = std::size_t;
 
-// status: might be deprecated, use the file for reorganising components
+namespace meta_impl {
+// todo: fix warning due to friend injection
+template <type_identifier>
+struct type_id_key {
+  constexpr auto friend get(type_id_key);
+};
 
-#endif // _FIELD_LIST_METAFUNCTIONS_HPP_
+template <typename T>
+struct type_id_value {
+  using value_type = T;
 
-// End /home/hari/repos/s2s/include/field_list/field_list_metafunctions.hpp
+  template <std::size_t left = 0u, std::size_t right = 1024u - 1u>
+  static constexpr auto gen() -> std::size_t {
+    if constexpr (left >= right) {
+      constexpr bool exists = requires { get(type_id_key<type_identifier{left}>{}); };
+      return (exists ? left + 1 : left);
+    } else if constexpr (
+      constexpr std::size_t mid = left + (right - left) / 2u; 
+      requires { get(type_id_key<type_identifier{mid}>{}); }) 
+    {
+      return gen<mid + 1u, right>();
+    } else {
+      return gen<left, mid - 1u>();
+    }
+  }
+
+  static constexpr auto id = type_identifier{gen()};
+
+  constexpr auto friend get(type_id_key<id>) { 
+    return type_id_value{}; 
+  }
+};
+}
+
+template<class T>
+inline constexpr type_identifier type_id = meta_impl::type_id_value<T>::id;
+
+template<type_identifier our_id>
+using type_of = typename decltype(get(meta_impl::type_id_key<our_id>{}))::value_type;
+
+template<class Fn, class T = decltype([]{})>
+[[nodiscard]] inline constexpr auto invoke(Fn&& fn, type_identifier meta) {
+  constexpr auto dispatch = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
+    return std::array{
+      []<type_identifier N> {
+        return +[](Fn fn) {
+          if constexpr (requires { fn.template operator()<N>(); }) {
+            return fn.template operator()<N>();
+          }
+        };
+      }.template operator()<type_identifier{Ns}>()...
+    };
+  }(std::make_index_sequence<std::size_t{type_id<T>}>{});
+  return dispatch[std::size_t{meta}](fn);
+}
+
+template <template<typename...> typename T, class... Ts, auto = []{}>
+[[nodiscard]] inline constexpr auto invoke(type_identifier id) {
+  return invoke([]<type_identifier id> {
+    using type = type_of<id>;
+    if constexpr(requires { T<Ts..., type>::value; }) {
+      return T<Ts..., type>::value;
+    } else {
+      return type_id<typename T<Ts..., type>::type>;
+    }
+  }, id);
+}
+}
+
+
+#endif /* _MP_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
+
+// Begin /home/hari/repos/s2s/include/field/field_type_info.hpp
+#ifndef _FIELD_NODE_HPP_
+#define _FIELD_NODE_HPP_
+ 
+// todo better name
+struct field_type_info {
+  meta::type_identifier id;
+  std::size_t occurs_at_idx;
+};
+
+#endif /* _FIELD_NODE_HPP_ */
+
+// End /home/hari/repos/s2s/include/field/field_type_info.hpp
+
+// Begin /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
+#ifndef _FIELD_LIST_LOOKUP_HPP_
+#define _FIELD_LIST_LOOKUP_HPP_
+ 
+ 
+namespace s2s {
+using sv = std::string_view;
+
+template <typename list_metadata>
+constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+  auto field_table = list_metadata::field_table;
+  return field_table[field_name];
+}
+}
+
+#endif /* _FIELD_LIST_LOOKUP_HPP_ */
+
+// End /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
 
 // Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
@@ -1884,7 +1935,17 @@ struct match_case {
   static constexpr auto value = v;
   using type_tag = T;
 };
+} /* namespace s2s */
 
+#endif // _TYPE_DEDUCTION_MATCH_CASE_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case_traits.hpp
+#ifndef _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
+#define _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
+ 
+namespace s2s {
 template <typename T>
 struct is_match_case;
 
@@ -1905,9 +1966,9 @@ template <typename T>
 concept match_case_like = is_match_case_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_MATCH_CASE_HPP_
+#endif // _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
 #ifndef _TYPE_DEDUCTION_CLAUSE_HPP_
@@ -1924,8 +1985,17 @@ struct branch {
   static constexpr auto e = eval{};
   using type_tag = T;
 };
+} /* namespace s2s */
 
+#endif // _TYPE_DEDUCTION_CLAUSE_HPP_
 
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_clause_traits.hpp
+#ifndef _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
+#define _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
+ 
+namespace s2s {
 template <typename T>
 struct is_branch;
 
@@ -1946,9 +2016,9 @@ template <typename T>
 concept branch_like = is_branch_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_CLAUSE_HPP_
+#endif // _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_clause_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_helper.hpp
 #ifndef _TYPE_DEDUCTION_HELPER_HPP_
@@ -2008,6 +2078,97 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
 // End /home/hari/repos/s2s/include/type_deduction/type_deduction_helper.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
+#ifndef _TYPE_DEDUCTION_SWITCH_HPP_
+#define _TYPE_DEDUCTION_SWITCH_HPP_
+ 
+namespace s2s {
+
+// todo check if case and eval result match in terms of types
+template <std::size_t idx, typename match_case>
+struct type_switch_impl {
+  constexpr auto operator()(const auto& v) const -> 
+    type_deduction_idx
+  {
+    if(v == match_case::value) return idx;
+    else return std::nullopt;
+  }
+};
+
+template <typename... branches>
+struct type_switch_helper {
+  template <std::size_t... idx>
+  constexpr auto operator()(
+    const auto& v, 
+    const std::index_sequence<idx...>&) const 
+  -> type_deduction_idx 
+  {
+    type_deduction_idx pipeline_seed = std::nullopt;
+    return (
+      pipeline_seed |
+      ... |
+      [&]() { return type_switch_impl<idx, branches>{}(v); }
+    );
+  }
+};
+
+template <match_case_like... cases>
+  requires (sizeof...(cases) > 0)
+struct type_switch {
+  using variant = variant_from_type_conditions_v<cases...>;
+  using sizes = size_choices_from_type_conditions_v<cases...>;
+
+  constexpr auto operator()(const auto& v) const -> 
+    type_deduction_res
+  {
+    auto res =
+      type_switch_helper<cases...>{}(
+        v, std::make_index_sequence<sizeof...(cases)>{}
+      );
+    if(!res)
+      return std::unexpected(error_reason::type_deduction_failure);
+    return std::expected<std::size_t, error_reason>(*res);
+  } 
+};
+} /* namespace s2s */
+
+
+#endif // _TYPE_SWITCH_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_traits.hpp
+#ifndef _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+#define _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+ 
+ 
+namespace s2s {
+template <typename T>
+struct is_type_switch;
+
+template <typename T>
+struct is_type_switch {
+  static constexpr bool res = false;
+};
+
+template <match_case_like case_head, match_case_like... case_tail>
+struct is_type_switch<type_switch<case_head, case_tail...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+static constexpr bool is_type_switch_v = is_type_switch<T>::res;
+
+template <typename T>
+concept type_switch_like = is_type_switch_v<T>;
+
+} /* namespace s2s */
+
+
+#endif // _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
 #ifndef _TYPE_DEDUCTION_LADDER_HPP_
@@ -2069,7 +2230,17 @@ struct type_if_else {
     return std::expected<std::size_t, error_reason>(*res);
   }
 };
+} /* namespace s2s */
 
+#endif // _TYPE_LADDER_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_traits.hpp
+#ifndef _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
+#define _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
+ 
+namespace s2s {
 template <typename T>
 struct is_type_if_else;
 
@@ -2090,212 +2261,15 @@ template <typename T>
 concept type_if_else_like = is_type_if_else_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_LADDER_HPP_
+#endif // _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
-
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
-#ifndef _TYPE_DEDUCTION_SWITCH_HPP_
-#define _TYPE_DEDUCTION_SWITCH_HPP_
- 
-namespace s2s {
-
-// todo check if case and eval result match in terms of types
-template <std::size_t idx, typename match_case>
-struct type_switch_impl {
-  constexpr auto operator()(const auto& v) const -> 
-    type_deduction_idx
-  {
-    if(v == match_case::value) return idx;
-    else return std::nullopt;
-  }
-};
-
-template <typename... branches>
-struct type_switch_helper {
-  template <std::size_t... idx>
-  constexpr auto operator()(
-    const auto& v, 
-    const std::index_sequence<idx...>&) const 
-  -> type_deduction_idx 
-  {
-    type_deduction_idx pipeline_seed = std::nullopt;
-    return (
-      pipeline_seed |
-      ... |
-      [&]() { return type_switch_impl<idx, branches>{}(v); }
-    );
-  }
-};
-
-template <match_case_like... cases>
-  requires (sizeof...(cases) > 0)
-struct type_switch {
-  using variant = variant_from_type_conditions_v<cases...>;
-  using sizes = size_choices_from_type_conditions_v<cases...>;
-
-  template <typename... fields>
-  constexpr auto operator()(const auto& v) const -> 
-    type_deduction_res
-  {
-    auto res =
-      type_switch_helper<cases...>{}(
-        v, std::make_index_sequence<sizeof...(cases)>{}
-      );
-    if(!res)
-      return std::unexpected(error_reason::type_deduction_failure);
-    return std::expected<std::size_t, error_reason>(*res);
-  } 
-};
-
-template <typename T>
-struct is_type_switch;
-
-template <typename T>
-struct is_type_switch {
-  static constexpr bool res = false;
-};
-
-template <match_case_like case_head, match_case_like... case_tail>
-struct is_type_switch<type_switch<case_head, case_tail...>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-static constexpr bool is_type_switch_v = is_type_switch<T>::res;
-
-template <typename T>
-concept type_switch_like = is_type_switch_v<T>;
-
-} /* namespace s2s */
-
-
-#endif // _TYPE_SWITCH_HPP_
-
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
-
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
-#ifndef _TYPE_DEDUCTION_HPP_
-#define _TYPE_DEDUCTION_HPP_
- 
-namespace s2s {
-template <typename... Args>
-struct type;
-
-
-template <fixed_string id>
-using match_field = field_accessor<id>;
-
-// todo constraints compute like
-template <typename eval_expression, typename tswitch>
-struct type<eval_expression, tswitch> {
-  using expression = eval_expression;
-  using type_switch = tswitch;
-  using variant = tswitch::variant;
-  using sizes = tswitch::sizes;
-
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
-    -> std::expected<std::size_t, error_reason> const {
-    return type_switch{}(eval_expression{}(sfl)); 
-  }
-};
-
-template <fixed_string id, typename tswitch>
-struct type<match_field<id>, tswitch> {
-  using type_switch = tswitch;
-  using variant = tswitch::variant;
-  using sizes = tswitch::sizes;
-
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
-    -> std::expected<std::size_t, error_reason> const {
-    return type_switch{}(sfl[field_accessor<id>{}]); 
-  }
-};
-
-// todo constraints
-template <typename tladder>
-struct type<tladder> {
-  using type_ladder = tladder;
-  using variant = tladder::variant;
-  using sizes = tladder::sizes;
-
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
-    -> std::expected<std::size_t, error_reason> const {
-    return type_ladder{}(sfl);
-  }
-};
-
-
-struct no_type_deduction {};
-
-template <typename T>
-struct is_no_type_deduction;
-
-template <typename T>
-struct is_no_type_deduction {
-  static constexpr bool res = false;
-};
-
-template <>
-struct is_no_type_deduction<no_type_deduction> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-inline constexpr bool is_no_type_deduction_v = is_no_type_deduction<T>::res;
-
-template <typename T>
-concept no_type_deduction_like = is_no_type_deduction_v<T>;
-
-
-template <typename T>
-struct is_type_deduction;
-
-template <>
-struct is_type_deduction<no_type_deduction> {
-  static constexpr bool res = true;
-};
-
-template <typename eval_expression, typename tswitch>
-struct is_type_deduction<type<eval_expression, tswitch>> {
-  static constexpr bool res = 
-    is_compute_like_v<eval_expression> && 
-    type_switch_like<tswitch>;
-};
-
-template <fixed_string id, typename tswitch>
-struct is_type_deduction<type<match_field<id>, tswitch>> {
-  static constexpr bool res = type_switch_like<tswitch>;
-};
-
-template <typename tladder>
-struct is_type_deduction<type<tladder>> {
-  static constexpr bool res = type_if_else_like<tladder>;
-};
-
-template <typename T>
-struct is_type_deduction {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-static constexpr bool is_type_deduction_v = is_type_deduction<T>::res;
-
-template <typename T>
-concept type_deduction_like = is_type_deduction_v<T>;
-} /* namespace s2s */
-
-
-#endif // _TYPE_DEDUCTION_HPP_
-
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
 #ifndef _FIELD_LIST_METADATA_HPP_
 #define _FIELD_LIST_METADATA_HPP_
+ 
+ 
  
  
  
@@ -2542,11 +2516,11 @@ struct field_list_metadata {
  
 };
 
-template <typename list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-  auto field_table = list_metadata::field_table;
-  return field_table[field_name];
-}
+// template <typename list_metadata>
+// constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+//   auto field_table = list_metadata::field_table;
+//   return field_table[field_name];
+// }
 
 
 constexpr bool is_dependencies_resolved(const field_table_t& field_table, const dependency_table_t& dependency_table) {
@@ -2595,6 +2569,79 @@ constexpr bool type_deduction_dependencies_resolved() {
 
 // End /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
 
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_traits.hpp
+#ifndef _TYPE_DEDUCTION_TRAITS_HPP_
+#define _TYPE_DEDUCTION_TRAITS_HPP_
+ 
+ 
+ 
+ 
+namespace s2s {
+
+struct no_type_deduction {};
+
+template <typename T>
+struct is_no_type_deduction;
+
+template <typename T>
+struct is_no_type_deduction {
+  static constexpr bool res = false;
+};
+
+template <>
+struct is_no_type_deduction<no_type_deduction> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_no_type_deduction_v = is_no_type_deduction<T>::res;
+
+template <typename T>
+concept no_type_deduction_like = is_no_type_deduction_v<T>;
+
+
+template <typename T>
+struct is_type_deduction;
+
+template <>
+struct is_type_deduction<no_type_deduction> {
+  static constexpr bool res = true;
+};
+
+template <typename eval_expression, typename _switch>
+struct is_type_deduction<type<eval_expression, _switch>> {
+  static constexpr bool res = 
+    is_compute_like_v<eval_expression> && 
+    type_switch_like<_switch>;
+};
+
+template <fixed_string id, typename _switch>
+struct is_type_deduction<type<match_field<id>, _switch>> {
+  static constexpr bool res = type_switch_like<_switch>;
+};
+
+template <typename ladder>
+struct is_type_deduction<type<ladder>> {
+  static constexpr bool res = type_if_else_like<ladder>;
+};
+
+template <typename T>
+struct is_type_deduction {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+static constexpr bool is_type_deduction_v = is_type_deduction<T>::res;
+
+template <typename T>
+concept type_deduction_like = is_type_deduction_v<T>;
+} /* namespace s2s */
+
+
+#endif // _TYPE_DEDUCTION_TRAITS_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_traits.hpp
+
 // Begin /home/hari/repos/s2s/include/lib/containers/static_array.hpp
 #ifndef _STATIC_ARRAY_HPP_
 #define _STATIC_ARRAY_HPP_
@@ -2633,6 +2680,10 @@ public:
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_metafunctions.hpp
 #ifndef _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
 #define _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
+ 
+ 
+ 
+ 
  
  
  
@@ -2709,8 +2760,6 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
 // Begin /home/hari/repos/s2s/include/api/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
 #define _FIELD_DESCRIPTORS_HPP_
- 
- 
  
  
  
@@ -2877,6 +2926,66 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 #endif // _FIELD_METAFUNCTIONS_HPP_
 
 // End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_impl.hpp
+#ifndef _TYPE_DEDUCTION_IMPL_HPP_
+#define _TYPE_DEDUCTION_IMPL_HPP_
+ 
+namespace s2s {
+template <typename... Args>
+struct deduce_type;
+
+
+template <fixed_string id>
+using match_field = field_accessor<id>;
+
+// todo constraints compute like
+template <typename eval_expression, typename _switch>
+struct deduce_type<type<eval_expression, _switch>> {
+  using expression = eval_expression;
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using sizes = _switch::sizes;
+
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+    -> std::expected<std::size_t, error_reason> const {
+    return type_switch{}(eval_expression{}(sfl)); 
+  }
+};
+
+template <fixed_string id, typename _switch>
+struct deduce_type<type<match_field<id>, _switch>> {
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using sizes = _switch::sizes;
+
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+    -> std::expected<std::size_t, error_reason> const {
+    return type_switch{}(sfl[field_accessor<id>{}]); 
+  }
+};
+
+// todo constraints
+template <typename ladder>
+struct deduce_type<type<ladder>> {
+  using type_ladder = ladder;
+  using variant = ladder::variant;
+  using sizes = ladder::sizes;
+
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+    -> std::expected<std::size_t, error_reason> const {
+    return type_ladder{}(sfl);
+  }
+};
+} /* namespace s2s */
+
+
+#endif // _TYPE_DEDUCTION_IMPL_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_impl.hpp
 
 // Begin /home/hari/repos/s2s/include/lib/memory/bit.hpp
 #ifndef _BIT_HPP_
@@ -3416,7 +3525,7 @@ struct read_field<T, F> {
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
 
-    auto type_index_deducer = type_deduction_guide();
+    auto type_index_deducer = deduce_type<type_deduction_guide>();
     auto type_index_result = type_index_deducer(field_list); 
     if(!type_index_result)
       return std::unexpected(type_index_result.error());

@@ -9,7 +9,7 @@
 #include "../lib/containers/fixed_string.hpp"
 #include "field_list_base.hpp"
 #include "../field/field_traits.hpp"
-#include "field_list_metafunctions.hpp"
+#include "field_list_lookup.hpp"
 #include "../lib/metaprog/mp.hpp"
 
 

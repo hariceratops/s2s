@@ -3,7 +3,11 @@
 
 
 #include "../lib/metaprog/mp.hpp"
-#include "../lib/containers/static_array.hpp"
+#include "../lib/containers/static_vector.hpp"
+#include "../lib/containers/static_set.hpp"
+#include "../field_compute/computation_from_fields.hpp"
+#include "type_deduction_switch.hpp"
+#include "type_deduction_ladder.hpp"
 #include "type_deduction.hpp"
 
 
