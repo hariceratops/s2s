@@ -1,23 +1,23 @@
-#include <cstddef>
+#include <string>
 #include <array>
-#include <expected>
-#include <cstdint>
-#include <optional>
-#include <type_traits>
-#include <variant>
-#include <string_view>
-#include <algorithm>
-#include <cstring>
-#include <vector>
-#include <functional>
-#include <bit>
-#include <ranges>
+#include <cstddef>
 #include <iostream>
 #include <cstdio>
+#include <ranges>
+#include <cassert>
+#include <cstdint>
+#include <vector>
+#include <functional>
+#include <expected>
+#include <variant>
 #include <concepts>
 #include <utility>
-#include <cassert>
-#include <string>
+#include <optional>
+#include <string_view>
+#include <algorithm>
+#include <bit>
+#include <cstring>
+#include <type_traits>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -1617,6 +1617,7 @@ constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
  
  
  
+// #include "field_list_metadata.hpp"
  
  
 namespace s2s {
@@ -2084,52 +2085,11 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #define _TYPE_DEDUCTION_SWITCH_HPP_
  
 namespace s2s {
-
-// todo check if case and eval result match in terms of types
-template <std::size_t idx, typename match_case>
-struct type_switch_impl {
-  constexpr auto operator()(const auto& v) const -> 
-    type_deduction_idx
-  {
-    if(v == match_case::value) return idx;
-    else return std::nullopt;
-  }
-};
-
-template <typename... branches>
-struct type_switch_helper {
-  template <std::size_t... idx>
-  constexpr auto operator()(
-    const auto& v, 
-    const std::index_sequence<idx...>&) const 
-  -> type_deduction_idx 
-  {
-    type_deduction_idx pipeline_seed = std::nullopt;
-    return (
-      pipeline_seed |
-      ... |
-      [&]() { return type_switch_impl<idx, branches>{}(v); }
-    );
-  }
-};
-
 template <match_case_like... cases>
   requires (sizeof...(cases) > 0)
 struct type_switch {
   using variant = variant_from_type_conditions_v<cases...>;
   using sizes = size_choices_from_type_conditions_v<cases...>;
-
-  constexpr auto operator()(const auto& v) const -> 
-    type_deduction_res
-  {
-    auto res =
-      type_switch_helper<cases...>{}(
-        v, std::make_index_sequence<sizeof...(cases)>{}
-      );
-    if(!res)
-      return std::unexpected(error_reason::type_deduction_failure);
-    return std::expected<std::size_t, error_reason>(*res);
-  } 
 };
 } /* namespace s2s */
 
@@ -2177,58 +2137,9 @@ concept type_switch_like = is_type_switch_v<T>;
 namespace s2s {
 template <branch_like... branches>
   requires (sizeof...(branches) > 0)
-struct type_if_else;
-
-template <std::size_t idx, typename branch>
-struct type_if_else_impl;
-
-template <std::size_t idx, typename branch>
-struct type_if_else_impl {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    type_deduction_idx
-  {
-    if(branch::e(field_list)) return idx;
-    return std::nullopt;
-  }
-};
-
-template <typename... branches>
-struct type_if_else_helper {
-  template <typename... fields, std::size_t... idx>
-  constexpr auto operator()(
-    const struct_field_list_impl<fields...>& field_list, 
-    const std::index_sequence<idx...>&) const 
-  -> type_deduction_idx
-  {
-    type_deduction_idx pipeline_seed = std::nullopt;
-    return (
-      pipeline_seed |
-      ... |
-      [&]() { return type_if_else_impl<idx, branches>{}(field_list); }
-    );
-  }
-};
-
-
-template <branch_like... branches>
-  requires (sizeof...(branches) > 0)
 struct type_if_else {
   using variant = variant_from_type_conditions_v<branches...>;
   using sizes = size_choices_from_type_conditions_v<branches...>;
-
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
-    type_deduction_res
-  {
-    auto res = type_if_else_helper<branches...>{}(
-      field_list,
-      std::make_index_sequence<sizeof...(branches)>{}
-    );
-    if(!res)
-      return std::unexpected(error_reason::type_deduction_failure);
-    return std::expected<std::size_t, error_reason>(*res);
-  }
 };
 } /* namespace s2s */
 
@@ -2927,6 +2838,125 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 // End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
 
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_impl.hpp
+#ifndef _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+#define _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+ 
+namespace s2s {
+template <typename ladder>
+struct evaluate_ladder;
+
+template <std::size_t idx, typename branch>
+struct evalaute_ladder_impl;
+
+template <std::size_t idx, typename branch>
+struct evalaute_ladder_impl {
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+    type_deduction_idx
+  {
+    if(branch::e(field_list)) return idx;
+    return std::nullopt;
+  }
+};
+
+template <typename... branches>
+struct evaluate_ladder_helper {
+  template <typename... fields, std::size_t... idx>
+  constexpr auto operator()(
+    const struct_field_list_impl<fields...>& field_list, 
+    const std::index_sequence<idx...>&) const 
+  -> type_deduction_idx
+  {
+    type_deduction_idx pipeline_seed = std::nullopt;
+    return (
+      pipeline_seed |
+      ... |
+      [&]() { return evalaute_ladder_impl<idx, branches>{}(field_list); }
+    );
+  }
+};
+
+
+template <typename... branches>
+struct evaluate_ladder<type_if_else<branches...>> {
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+    type_deduction_res
+  {
+    auto res = evaluate_ladder_helper<branches...>{}(
+      field_list,
+      std::make_index_sequence<sizeof...(branches)>{}
+    );
+    if(!res)
+      return std::unexpected(error_reason::type_deduction_failure);
+    return std::expected<std::size_t, error_reason>(*res);
+  }
+};
+} /* namespace s2s */
+
+#endif // _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_impl.hpp
+
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_impl.hpp
+#ifndef _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+#define _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+ 
+namespace s2s {
+
+// todo check if case and eval result match in terms of types
+template <std::size_t idx, typename match_case>
+struct type_switch_impl {
+  constexpr auto operator()(const auto& v) const -> 
+    type_deduction_idx
+  {
+    if(v == match_case::value) return idx;
+    else return std::nullopt;
+  }
+};
+
+template <typename... match_cases>
+struct type_switch_helper {
+  template <std::size_t... idx>
+  constexpr auto operator()(
+    const auto& v, 
+    const std::index_sequence<idx...>&) const 
+  -> type_deduction_idx 
+  {
+    type_deduction_idx pipeline_seed = std::nullopt;
+    return (
+      pipeline_seed |
+      ... |
+      [&]() { return type_switch_impl<idx, match_cases>{}(v); }
+    );
+  }
+};
+
+template <typename _switch>
+struct evaluate_type_switch;
+
+template <typename... cases>
+struct evaluate_type_switch<type_switch<cases...>> {
+  constexpr auto operator()(const auto& v) const -> 
+    type_deduction_res
+  {
+    auto res =
+      type_switch_helper<cases...>{}(
+        v, std::make_index_sequence<sizeof...(cases)>{}
+      );
+    if(!res)
+      return std::unexpected(error_reason::type_deduction_failure);
+    return std::expected<std::size_t, error_reason>(*res);
+  } 
+};
+} /* namespace s2s */
+
+
+#endif // _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_impl.hpp
+
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_impl.hpp
 #ifndef _TYPE_DEDUCTION_IMPL_HPP_
 #define _TYPE_DEDUCTION_IMPL_HPP_
@@ -2936,48 +2966,32 @@ template <typename... Args>
 struct deduce_type;
 
 
-template <fixed_string id>
-using match_field = field_accessor<id>;
-
 // todo constraints compute like
 template <typename eval_expression, typename _switch>
 struct deduce_type<type<eval_expression, _switch>> {
-  using expression = eval_expression;
-  using type_switch = _switch;
-  using variant = _switch::variant;
-  using sizes = _switch::sizes;
-
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return type_switch{}(eval_expression{}(sfl)); 
+    return evaluate_type_switch<_switch>{}(eval_expression{}(sfl)); 
   }
 };
 
 template <fixed_string id, typename _switch>
 struct deduce_type<type<match_field<id>, _switch>> {
-  using type_switch = _switch;
-  using variant = _switch::variant;
-  using sizes = _switch::sizes;
-
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return type_switch{}(sfl[field_accessor<id>{}]); 
+    return evaluate_type_switch<_switch>{}(sfl[field_accessor<id>{}]); 
   }
 };
 
 // todo constraints
 template <typename ladder>
 struct deduce_type<type<ladder>> {
-  using type_ladder = ladder;
-  using variant = ladder::variant;
-  using sizes = ladder::sizes;
-
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return type_ladder{}(sfl);
+    return evaluate_ladder<ladder>{}(sfl);
   }
 };
 } /* namespace s2s */
