@@ -22,7 +22,7 @@ constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 
-template <typename metadata, typename... fields, typename stream, auto endianness>
+template <auto metadata, typename... fields, typename stream, auto endianness>
 struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
   using S = struct_field_list_impl<metadata, fields...>;
   using R = std::expected<S, cast_error>;

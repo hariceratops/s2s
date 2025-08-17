@@ -18,8 +18,8 @@ struct evalaute_ladder_impl;
 
 template <std::size_t idx, typename branch>
 struct evalaute_ladder_impl {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& field_list) const -> 
     type_deduction_idx
   {
     if(compute_impl<typename branch::expression>{}(field_list)) 
@@ -30,9 +30,9 @@ struct evalaute_ladder_impl {
 
 template <typename... branches>
 struct evaluate_ladder_helper {
-  template <typename... fields, std::size_t... idx>
+  template <auto metadata, typename... fields, std::size_t... idx>
   constexpr auto operator()(
-    const struct_field_list_impl<fields...>& field_list, 
+    const struct_field_list_impl<metadata, fields...>& field_list, 
     const std::index_sequence<idx...>&) const 
   -> type_deduction_idx
   {
@@ -48,8 +48,8 @@ struct evaluate_ladder_helper {
 
 template <typename... branches>
 struct evaluate_ladder<type_if_else<branches...>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& field_list) const -> 
     type_deduction_res
   {
     auto res = evaluate_ladder_helper<branches...>{}(

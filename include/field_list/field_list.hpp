@@ -10,7 +10,6 @@
 #include "field_list_base.hpp"
 #include "../field/field_traits.hpp"
 // #include "field_list_metadata.hpp"
-#include "field_list_lookup.hpp"
 #include "../lib/metaprog/mp.hpp"
 
 
@@ -19,9 +18,9 @@ namespace s2s {
 template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
 
-template <typename metadata, typename... fields>
+template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
-  using list_metadata = metadata;
+  // using list_metadata = metadata;
 
   struct_field_list_impl() = default;
 

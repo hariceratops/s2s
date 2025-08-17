@@ -19,8 +19,8 @@ struct deduce_type;
 // todo constraints compute like
 template <typename eval_expression, typename _switch>
 struct deduce_type<type<eval_expression, _switch>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return evaluate_switch<_switch>{}(compute_impl<eval_expression>{}(sfl)); 
   }
@@ -28,8 +28,8 @@ struct deduce_type<type<eval_expression, _switch>> {
 
 template <fixed_string id, typename _switch>
 struct deduce_type<type<match_field<id>, _switch>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return evaluate_switch<_switch>{}(sfl[field_accessor<id>{}]); 
   }
@@ -38,8 +38,8 @@ struct deduce_type<type<match_field<id>, _switch>> {
 // todo constraints
 template <typename ladder>
 struct deduce_type<type<ladder>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return evaluate_ladder<ladder>{}(sfl);
   }

@@ -251,11 +251,11 @@ struct field_list_metadata {
  
 };
 
-// template <typename list_metadata>
-// constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-//   auto field_table = list_metadata::field_table;
-//   return field_table[field_name];
-// }
+template <auto list_metadata>
+constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+  auto field_table = meta::type_of<list_metadata>::field_table;
+  return field_table[field_name];
+}
 
 
 constexpr bool is_dependencies_resolved(const field_table_t& field_table, const dependency_table_t& dependency_table) {

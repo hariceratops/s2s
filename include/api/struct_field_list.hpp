@@ -51,7 +51,8 @@ template <typename... fields>
   requires (all_dependencies_resolved<field_list_metadata<fields...>>)
 struct create_struct_field_list {
   using metadata = field_list_metadata<fields...>;
-  using value = struct_field_list_impl<metadata, fields...>;
+  static constexpr auto metadata_v = meta::type_id<metadata>;
+  using value = struct_field_list_impl<metadata_v, fields...>;
 };
 
 template <typename... fields>

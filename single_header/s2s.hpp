@@ -1,23 +1,23 @@
-#include <ranges>
-#include <functional>
-#include <cstring>
-#include <cstddef>
-#include <vector>
+#include <type_traits>
 #include <cstdio>
 #include <array>
+#include <cassert>
+#include <algorithm>
+#include <expected>
+#include <string>
+#include <vector>
+#include <cstring>
+#include <functional>
+#include <ranges>
+#include <variant>
 #include <optional>
+#include <iostream>
+#include <bit>
+#include <cstddef>
+#include <string_view>
+#include <cstdint>
 #include <concepts>
 #include <utility>
-#include <variant>
-#include <bit>
-#include <algorithm>
-#include <cassert>
-#include <expected>
-#include <cstdint>
-#include <string_view>
-#include <string>
-#include <iostream>
-#include <type_traits>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -2140,11 +2140,11 @@ struct field_list_metadata {
  
 };
 
-// template <typename list_metadata>
-// constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-//   auto field_table = list_metadata::field_table;
-//   return field_table[field_name];
-// }
+template <auto list_metadata>
+constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+  auto field_table = meta::type_of<list_metadata>::field_table;
+  return field_table[field_name];
+}
 
 
 constexpr bool is_dependencies_resolved(const field_table_t& field_table, const dependency_table_t& dependency_table) {
@@ -2368,25 +2368,6 @@ concept field_like = fixed_sized_field_like<T> ||
 
 // End /home/hari/repos/s2s/include/field/field_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
-#ifndef _FIELD_LIST_LOOKUP_HPP_
-#define _FIELD_LIST_LOOKUP_HPP_
- 
- 
-namespace s2s {
-using sv = std::string_view;
-
-template <typename list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-  auto field_table = list_metadata::field_table;
-  return field_table[field_name];
-}
-}
-
-#endif /* _FIELD_LIST_LOOKUP_HPP_ */
-
-// End /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
-
 // Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
@@ -2400,15 +2381,14 @@ constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
  
 // #include "field_list_metadata.hpp"
  
- 
 namespace s2s {
 
 template <typename list_metadata>
 constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
 
-template <typename metadata, typename... fields>
+template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
-  using list_metadata = metadata;
+  // using list_metadata = metadata;
 
   struct_field_list_impl() = default;
 
@@ -2443,10 +2423,6 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 using namespace s2s_literals;
 
 namespace s2s {
-
-template <typename metadata, typename... fields>
-struct struct_field_list_impl;
-
 
 template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
 struct is_invocable;
@@ -2487,13 +2463,13 @@ struct compute_impl;
 // todo: static_vector over fixed_string list?
 template <auto callable, typename R, fixed_string... req_fields>
 struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
-  template <typename... fields>
+  template <auto metadata, typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
                 R,
-                struct_field_list_impl<fields...>,
+                struct_field_list_impl<metadata, fields...>,
                 fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list_impl<fields...>& flist) const -> R {
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& flist) const -> R {
     return callable(flist[field_accessor<req_fields>{}]...);
   }
 };
@@ -2519,8 +2495,8 @@ template <fixed_string id>
 struct deduce_field_size<field_size<field_accessor<id>>> {
   using field_size_type = field_accessor<id>;
   
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) -> std::size_t {
     return struct_fields[field_size_type{}];
   }
 };
@@ -2528,8 +2504,8 @@ struct deduce_field_size<field_size<field_accessor<id>>> {
 template <auto callable, field_name_list req_fields>
 struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
   using field_size_type = compute<callable, std::size_t, req_fields>;
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) -> std::size_t {
     return compute_impl<field_size_type>{}(struct_fields);
   }
 };
@@ -2857,7 +2833,8 @@ template <typename... fields>
   requires (all_dependencies_resolved<field_list_metadata<fields...>>)
 struct create_struct_field_list {
   using metadata = field_list_metadata<fields...>;
-  using value = struct_field_list_impl<metadata, fields...>;
+  static constexpr auto metadata_v = meta::type_id<metadata>;
+  using value = struct_field_list_impl<metadata_v, fields...>;
 };
 
 template <typename... fields>
@@ -2914,8 +2891,8 @@ struct evalaute_ladder_impl;
 
 template <std::size_t idx, typename branch>
 struct evalaute_ladder_impl {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& field_list) const -> 
     type_deduction_idx
   {
     if(compute_impl<typename branch::expression>{}(field_list)) 
@@ -2926,9 +2903,9 @@ struct evalaute_ladder_impl {
 
 template <typename... branches>
 struct evaluate_ladder_helper {
-  template <typename... fields, std::size_t... idx>
+  template <auto metadata, typename... fields, std::size_t... idx>
   constexpr auto operator()(
-    const struct_field_list_impl<fields...>& field_list, 
+    const struct_field_list_impl<metadata, fields...>& field_list, 
     const std::index_sequence<idx...>&) const 
   -> type_deduction_idx
   {
@@ -2944,8 +2921,8 @@ struct evaluate_ladder_helper {
 
 template <typename... branches>
 struct evaluate_ladder<type_if_else<branches...>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& field_list) const -> 
     type_deduction_res
   {
     auto res = evaluate_ladder_helper<branches...>{}(
@@ -3029,8 +3006,8 @@ struct deduce_type;
 // todo constraints compute like
 template <typename eval_expression, typename _switch>
 struct deduce_type<type<eval_expression, _switch>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return evaluate_switch<_switch>{}(compute_impl<eval_expression>{}(sfl)); 
   }
@@ -3038,8 +3015,8 @@ struct deduce_type<type<eval_expression, _switch>> {
 
 template <fixed_string id, typename _switch>
 struct deduce_type<type<match_field<id>, _switch>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return evaluate_switch<_switch>{}(sfl[field_accessor<id>{}]); 
   }
@@ -3048,8 +3025,8 @@ struct deduce_type<type<match_field<id>, _switch>> {
 // todo constraints
 template <typename ladder>
 struct deduce_type<type<ladder>> {
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
     return evaluate_ladder<ladder>{}(sfl);
   }
@@ -3669,7 +3646,7 @@ constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 
-template <typename metadata, typename... fields, typename stream, auto endianness>
+template <auto metadata, typename... fields, typename stream, auto endianness>
 struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
   using S = struct_field_list_impl<metadata, fields...>;
   using R = std::expected<S, cast_error>;
