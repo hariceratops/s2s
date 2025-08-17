@@ -9,7 +9,7 @@
 #include "../field_size/field_size.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
-#include "../field_compute/computation_from_fields.hpp"
+// #include "../field_compute/computation_from_fields.hpp"
 #include "../type_deduction/type_deduction_traits.hpp"
 #include "../lib/containers/static_array.hpp"
 #include "../lib/containers/static_set.hpp"

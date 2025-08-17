@@ -4,7 +4,7 @@
 #include "../lib/s2s_traits/type_traits.hpp"
 #include "../field_list/field_list_base.hpp"
 #include "../field_size/field_size.hpp"
-#include "../field_size/field_size_deduce.hpp"
+#include "../field_size/comptime_field_size_deduce.hpp"
 
 
 namespace s2s {

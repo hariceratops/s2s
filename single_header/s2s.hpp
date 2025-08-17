@@ -1,22 +1,22 @@
-#include <string>
-#include <array>
-#include <cstddef>
-#include <iostream>
-#include <cstdio>
 #include <ranges>
-#include <cassert>
-#include <cstdint>
-#include <vector>
 #include <functional>
-#include <expected>
-#include <variant>
+#include <cstring>
+#include <cstddef>
+#include <vector>
+#include <cstdio>
+#include <array>
+#include <optional>
 #include <concepts>
 #include <utility>
-#include <optional>
-#include <string_view>
-#include <algorithm>
+#include <variant>
 #include <bit>
-#include <cstring>
+#include <algorithm>
+#include <cassert>
+#include <expected>
+#include <cstdint>
+#include <string_view>
+#include <string>
+#include <iostream>
 #include <type_traits>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
@@ -305,76 +305,6 @@ constexpr auto operator""_f() {
 #endif // _FIELD_ACCESSOR_HPP_
 
 // End /home/hari/repos/s2s/include/field/field_accessor.hpp
-
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
-#ifndef _TYPE_DEDUCTION_HPP_
-#define _TYPE_DEDUCTION_HPP_
- 
-namespace s2s {
-template <typename... Args>
-struct type;
-
-
-template <fixed_string id>
-using match_field = field_accessor<id>;
-
-// todo constraints compute like
-template <typename eval_expression, typename _switch>
-struct type<eval_expression, _switch> {
-  using expression = eval_expression;
-  using type_switch = _switch;
-  using variant = _switch::variant;
-  using sizes = _switch::sizes;
-};
-
-template <fixed_string id, typename _switch>
-struct type<match_field<id>, _switch> {
-  using type_switch = _switch;
-  using variant = _switch::variant;
-  using sizes = _switch::sizes;
-};
-
-// todo constraints
-template <typename ladder>
-struct type<ladder> {
-  using type_ladder = ladder;
-  using variant = ladder::variant;
-  using sizes = ladder::sizes;
-};
-} /* namespace s2s */
-
-
-#endif // _TYPE_DEDUCTION_HPP_
-
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
-
-// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
-#ifndef _CAST_ERROR_HPP_
-#define _CAST_ERROR_HPP_
- 
- 
-namespace s2s {
-enum error_reason {
-  buffer_exhaustion,
-  validation_failure,
-  type_deduction_failure
-};
-
-
-struct cast_error {
-  error_reason failure_reason;
-  std::string_view failed_at;
-};
-
-
-using rw_result = std::expected<void, error_reason>;
-using cast_result = std::expected<void, cast_error>;
-
-} /* namespace s2s */
-
-#endif // _CAST_ERROR_HPP_
-
-// End /home/hari/repos/s2s/include/error/cast_error.hpp
 
 // Begin /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
@@ -1315,181 +1245,6 @@ struct union_field: public
 
 // End /home/hari/repos/s2s/include/field/field.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
-#ifndef _FIELD_TRAITS_HPP_
-#define _FIELD_TRAITS_HPP_
- 
- 
- 
-namespace s2s {
-template <typename T>
-struct is_fixed_sized_field;
-
-// Specialization for field with fixed_size_like size
-template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
-struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_fixed_sized_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
-
-template <typename T>
-concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
-
-template <typename T>
-struct is_array_of_record_field;
-
-template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
-struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_array_of_record_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
-
-template <typename T>
-concept array_of_record_field_like = is_array_of_record_field_v<T>;
-
-
-template <typename T>
-struct is_variable_sized_field;
-
-// Specialization for field with variable_size_like size
-template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
-struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_variable_sized_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
-
-// Concept for variable_sized_field_like
-template <typename T>
-concept variable_sized_field_like = is_variable_sized_field_v<T>;
-
-template <typename T>
-struct is_vector_of_record_field;
-
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
-struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_vector_of_record_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
-
-template <typename T>
-concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
-
-template <typename T>
-struct is_struct_field;
-
-// Specialization for field with variable_size_like size
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
-struct is_struct_field<field<id, T, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_struct_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
-
-// Concept for variable_sized_field_like
-template <typename T>
-concept struct_field_like = is_struct_field_v<T>;
-
-
-template <typename T>
-struct is_optional_field;
-
-// Specialization for maybe_field with a field
-template <fixed_string id, 
-          typename T, 
-          typename size, 
-          auto constraint, 
-          typename present_only_if, 
-          typename optional>
-struct is_optional_field<
-    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
-  >
-{
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_optional_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
-
-// Concept for optional_field_like
-template <typename T>
-concept optional_field_like = is_optional_field_v<T>;
-
-
-template <typename T>
-struct is_union_field;
-
-template <fixed_string id, typename type_deducer>
-struct is_union_field<
-    union_field<id, type_deducer>
-  > 
-{
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_union_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_union_field_v = is_union_field<T>::res;
-
-template <typename T>
-concept union_field_like = is_union_field_v<T>;
-
-template <typename T>
-concept field_like = fixed_sized_field_like<T> || 
-                     variable_sized_field_like<T> ||
-                     array_of_record_field_like<T> ||
-                     vector_of_record_field_like<T> ||
-                     struct_field_like<T> || 
-                     optional_field_like<T> || 
-                     union_field_like<T>;
-} /* namespace s2s */
-
-#endif /*_FIELD_TRAITS_HPP_*/
-
-// End /home/hari/repos/s2s/include/field/field_traits.hpp
-
 // Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
 #define _MP_HPP_
@@ -1587,198 +1342,79 @@ struct field_type_info {
 
 // End /home/hari/repos/s2s/include/field/field_type_info.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
-#ifndef _FIELD_LIST_LOOKUP_HPP_
-#define _FIELD_LIST_LOOKUP_HPP_
- 
- 
-namespace s2s {
-using sv = std::string_view;
-
-template <typename list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-  auto field_table = list_metadata::field_table;
-  return field_table[field_name];
-}
-}
-
-#endif /* _FIELD_LIST_LOOKUP_HPP_ */
-
-// End /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
-
-// Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
-#ifndef _FIELD_LIST_HPP_
-#define _FIELD_LIST_HPP_
-
-// status: rename to impl
- 
- 
- 
- 
- 
- 
-// #include "field_list_metadata.hpp"
- 
+// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
+#ifndef _TYPE_DEDUCTION_HPP_
+#define _TYPE_DEDUCTION_HPP_
  
 namespace s2s {
+template <typename... Args>
+struct type;
 
-template <typename list_metadata>
-constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
 
-template <typename metadata, typename... fields>
-struct struct_field_list_impl : struct_field_list_base, fields... {
-  using list_metadata = metadata;
+template <fixed_string id>
+using match_field = field_accessor<id>;
 
-  struct_field_list_impl() = default;
+// todo constraints compute like
+template <typename eval_expression, typename _switch>
+struct type<eval_expression, _switch> {
+  using expression = eval_expression;
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using sizes = _switch::sizes;
+};
 
-  template <typename field_accessor>
-    // todo custom optional to use as nttp for cleaner template
-    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
-  constexpr auto& operator[](field_accessor)  {
-    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
-    using field_type_ref = meta::type_of<res->id>&;
-    return static_cast<field_type_ref>(*this).value;
-  }
+template <fixed_string id, typename _switch>
+struct type<match_field<id>, _switch> {
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using sizes = _switch::sizes;
+};
 
-  template <typename field_accessor>
-    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
-  constexpr const auto& operator[](field_accessor) const {
-    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
-    using field_type_cref = const meta::type_of<res->id>&;
-    return static_cast<field_type_cref>(*this).value;
-  }
+// todo constraints
+template <typename ladder>
+struct type<ladder> {
+  using type_ladder = ladder;
+  using variant = ladder::variant;
+  using sizes = ladder::sizes;
 };
 } /* namespace s2s */
 
 
-#endif // _FIELD_LIST_HPP_
+#endif // _TYPE_DEDUCTION_HPP_
 
-// End /home/hari/repos/s2s/include/field_list/field_list.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
-#ifndef _COMPUTATION_FROM_FIELDS_HPP_
-#define _COMPUTATION_FROM_FIELDS_HPP_
+// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
+#ifndef _CAST_ERROR_HPP_
+#define _CAST_ERROR_HPP_
  
-using namespace s2s_literals;
-
+ 
 namespace s2s {
-template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
-struct is_invocable;
-
-template <auto callable, 
-          typename return_type, 
-          typename struct_field_list_t, 
-          fixed_string... req_fields>
-struct is_invocable<callable, 
-                    return_type, 
-                    struct_field_list_t, 
-                    fixed_string_list<req_fields...>> {
-  static constexpr bool res = 
-      std::is_invocable_r_v<
-        return_type, 
-        decltype(callable),
-        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
-      >;
+enum error_reason {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure
 };
 
-template <auto Func, 
-          typename R, 
-          typename struct_fields, 
-          typename req_fields>
-concept can_eval_R_from_fields = 
-  is_invocable<
-    Func, 
-    R, 
-    struct_fields, 
-    req_fields
-  >::res;
 
-
-template <auto callable, typename R, field_name_list Fs>
-struct compute;
-
-// todo: static_vector over fixed_string list?
-template <auto callable, typename R, fixed_string... req_fields>
-struct compute<callable, R, fixed_string_list<req_fields...>>{
-  template <typename... fields>
-    requires (can_eval_R_from_fields<
-                callable, 
-                R,
-                struct_field_list_impl<fields...>,
-                fixed_string_list<req_fields...>>)
-  constexpr auto operator()(const struct_field_list_impl<fields...>& flist) const -> R {
-    return callable(flist[field_accessor<req_fields>{}]...);
-  }
+struct cast_error {
+  error_reason failure_reason;
+  std::string_view failed_at;
 };
 
-template <auto callable, field_name_list req_fields>
-using eval_bool_from_fields = compute<callable, bool, req_fields>;
-template <auto callable, field_name_list req_fields>
-using predicate = compute<callable, bool, req_fields>;
-template <auto callable, field_name_list req_fields>
-using eval_size_from_fields = compute<callable, std::size_t, req_fields>;
-template <auto callable, field_name_list req_fields>
-using parse_if = eval_bool_from_fields<callable, req_fields>;
 
-template <typename T>
-struct is_compute_like;
+using rw_result = std::expected<void, error_reason>;
+using cast_result = std::expected<void, cast_error>;
 
-template <auto callable, typename R, fixed_string... req_fields>
-struct is_compute_like<compute<callable, R, with_fields<req_fields...>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_compute_like {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_compute_like_v = is_compute_like<T>::res;
-
-template <typename T>
-struct is_eval_bool_from_fields;
-
-template <auto callable, fixed_string... req_fields>
-struct is_eval_bool_from_fields<compute<callable, bool, with_fields<req_fields...>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_eval_bool_from_fields {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_eval_bool_from_fields_v = is_eval_bool_from_fields<T>::res;
-
-template <typename T>
-struct is_eval_size_from_fields;
-
-template <auto callable, fixed_string... req_fields>
-struct is_eval_size_from_fields<compute<callable, std::size_t, with_fields<req_fields...>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_eval_size_from_fields {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::res;
 } /* namespace s2s */
 
-#endif // _COMPUTATION_FROM_FIELDS_HPP_
+#endif // _CAST_ERROR_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+// End /home/hari/repos/s2s/include/error/cast_error.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
-#ifndef _FIELD_SIZE_DEDUCE_HPP_
-#define _FIELD_SIZE_DEDUCE_HPP_
- 
- 
- 
+// Begin /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
+#ifndef _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
+#define _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
  
 namespace s2s {
 template <typename T>
@@ -1792,31 +1428,12 @@ struct deduce_field_size<field_size<fixed<N>>> {
     return field_size_type::size_type_t::count;
   }
 };
-
-template <fixed_string id>
-struct deduce_field_size<field_size<field_accessor<id>>> {
-  using field_size_type = field_accessor<id>;
-  
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
-    return struct_fields[field_size_type{}];
-  }
-};
-
-template <auto callable, field_name_list req_fields>
-struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
-  using field_size_type = compute<callable, std::size_t, req_fields>;
-  template <typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
-    return field_size_type{}(struct_fields);
-  }
-};
 } /* namespace s2s */
 
 
-#endif // _FIELD_SIZE_DEDUCE_HPP_
+#endif // _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
+// End /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
 
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_tags.hpp
 #ifndef _TYPE_DEDUCTION_TAGS_
@@ -1971,6 +1588,102 @@ concept match_case_like = is_match_case_v<T>;
 
 // End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case_traits.hpp
 
+// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+#ifndef _COMPUTATION_FROM_FIELDS_HPP_
+#define _COMPUTATION_FROM_FIELDS_HPP_
+ 
+using namespace s2s_literals;
+
+namespace s2s {
+template <auto callable, typename R, field_name_list Fs>
+struct compute;
+
+// todo: static_vector over fixed_string list?
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute<callable, R, fixed_string_list<req_fields...>>{
+  static constexpr auto C = callable;
+  using return_type = R;
+  using in_arg_types = fixed_string_list<req_fields...>;
+};
+
+template <auto callable, field_name_list req_fields>
+using eval_bool_from_fields = compute<callable, bool, req_fields>;
+
+template <auto callable, field_name_list req_fields>
+using predicate = compute<callable, bool, req_fields>;
+
+template <auto callable, field_name_list req_fields>
+using eval_size_from_fields = compute<callable, std::size_t, req_fields>;
+
+template <auto callable, field_name_list req_fields>
+using parse_if = eval_bool_from_fields<callable, req_fields>;
+} /* namespace s2s */
+
+#endif // _COMPUTATION_FROM_FIELDS_HPP_
+
+// End /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+
+// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
+#ifndef _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
+#define _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
+ 
+ 
+using namespace s2s_literals;
+
+namespace s2s {
+template <typename T>
+struct is_compute_like;
+
+template <auto callable, typename R, fixed_string... req_fields>
+struct is_compute_like<compute<callable, R, with_fields<req_fields...>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_compute_like {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_compute_like_v = is_compute_like<T>::res;
+
+template <typename T>
+struct is_eval_bool_from_fields;
+
+template <auto callable, fixed_string... req_fields>
+struct is_eval_bool_from_fields<compute<callable, bool, with_fields<req_fields...>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_eval_bool_from_fields {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_eval_bool_from_fields_v = is_eval_bool_from_fields<T>::res;
+
+template <typename T>
+struct is_eval_size_from_fields;
+
+template <auto callable, fixed_string... req_fields>
+struct is_eval_size_from_fields<compute<callable, std::size_t, with_fields<req_fields...>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_eval_size_from_fields {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::res;
+} /* namespace s2s */
+
+#endif // _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
+
+// End /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
+
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
 #ifndef _TYPE_DEDUCTION_CLAUSE_HPP_
 #define _TYPE_DEDUCTION_CLAUSE_HPP_
@@ -1983,7 +1696,7 @@ concept evaluates_to_bool = is_eval_bool_from_fields_v<T>;
 
 template <evaluates_to_bool eval, type_tag_like T>
 struct branch {
-  static constexpr auto e = eval{};
+  using expression = eval;
   using type_tag = T;
 };
 } /* namespace s2s */
@@ -2320,7 +2033,7 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, type_switch_like type_switch>
+template <fixed_string id, fixed_string matched_id, typename type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
@@ -2331,7 +2044,7 @@ struct extract_type_deduction_dependencies<
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch>
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, typename type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
@@ -2479,6 +2192,353 @@ constexpr bool type_deduction_dependencies_resolved() {
 #endif /* _FIELD_LIST_METADATA_HPP_ */
 
 // End /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
+
+// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
+#ifndef _FIELD_TRAITS_HPP_
+#define _FIELD_TRAITS_HPP_
+ 
+ 
+ 
+namespace s2s {
+template <typename T>
+struct is_fixed_sized_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
+struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_fixed_sized_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
+
+template <typename T>
+concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
+
+
+template <typename T>
+struct is_variable_sized_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
+struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_variable_sized_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
+
+template <typename T>
+struct is_struct_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_struct_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_struct_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept struct_field_like = is_struct_field_v<T>;
+
+
+template <typename T>
+struct is_optional_field;
+
+// Specialization for maybe_field with a field
+template <fixed_string id, 
+          typename T, 
+          typename size, 
+          auto constraint, 
+          typename present_only_if, 
+          typename optional>
+struct is_optional_field<
+    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+  >
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_optional_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
+
+// Concept for optional_field_like
+template <typename T>
+concept optional_field_like = is_optional_field_v<T>;
+
+
+template <typename T>
+struct is_union_field;
+
+template <fixed_string id, typename type_deducer>
+struct is_union_field<
+    union_field<id, type_deducer>
+  > 
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_union_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_union_field_v = is_union_field<T>::res;
+
+template <typename T>
+concept union_field_like = is_union_field_v<T>;
+
+template <typename T>
+concept field_like = fixed_sized_field_like<T> || 
+                     variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
+                     struct_field_like<T> || 
+                     optional_field_like<T> || 
+                     union_field_like<T>;
+} /* namespace s2s */
+
+#endif /*_FIELD_TRAITS_HPP_*/
+
+// End /home/hari/repos/s2s/include/field/field_traits.hpp
+
+// Begin /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
+#ifndef _FIELD_LIST_LOOKUP_HPP_
+#define _FIELD_LIST_LOOKUP_HPP_
+ 
+ 
+namespace s2s {
+using sv = std::string_view;
+
+template <typename list_metadata>
+constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+  auto field_table = list_metadata::field_table;
+  return field_table[field_name];
+}
+}
+
+#endif /* _FIELD_LIST_LOOKUP_HPP_ */
+
+// End /home/hari/repos/s2s/include/field_list/field_list_lookup.hpp
+
+// Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
+#ifndef _FIELD_LIST_HPP_
+#define _FIELD_LIST_HPP_
+
+// status: rename to impl
+ 
+ 
+ 
+ 
+ 
+ 
+// #include "field_list_metadata.hpp"
+ 
+ 
+namespace s2s {
+
+template <typename list_metadata>
+constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
+
+template <typename metadata, typename... fields>
+struct struct_field_list_impl : struct_field_list_base, fields... {
+  using list_metadata = metadata;
+
+  struct_field_list_impl() = default;
+
+  template <typename field_accessor>
+    // todo custom optional to use as nttp for cleaner template
+    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
+  constexpr auto& operator[](field_accessor)  {
+    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+    using field_type_ref = meta::type_of<res->id>&;
+    return static_cast<field_type_ref>(*this).value;
+  }
+
+  template <typename field_accessor>
+    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
+  constexpr const auto& operator[](field_accessor) const {
+    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+    using field_type_cref = const meta::type_of<res->id>&;
+    return static_cast<field_type_cref>(*this).value;
+  }
+};
+} /* namespace s2s */
+
+
+#endif // _FIELD_LIST_HPP_
+
+// End /home/hari/repos/s2s/include/field_list/field_list.hpp
+
+// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields_impl.hpp
+#ifndef _COMPUTATION_FROM_FIELDS_IMPL_HPP_
+#define _COMPUTATION_FROM_FIELDS_IMPL_HPP_
+ 
+using namespace s2s_literals;
+
+namespace s2s {
+
+template <typename metadata, typename... fields>
+struct struct_field_list_impl;
+
+
+template <auto callable, typename return_type, typename struct_field_list_t, field_name_list field_list>
+struct is_invocable;
+
+template <auto callable, 
+          typename return_type, 
+          typename struct_field_list_t, 
+          fixed_string... req_fields>
+struct is_invocable<callable, 
+                    return_type, 
+                    struct_field_list_t, 
+                    fixed_string_list<req_fields...>> {
+  static constexpr bool res = 
+      std::is_invocable_r_v<
+        return_type, 
+        decltype(callable),
+        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
+      >;
+};
+
+template <auto Func, 
+          typename R, 
+          typename struct_fields, 
+          typename req_fields>
+concept can_eval_R_from_fields = 
+  is_invocable<
+    Func, 
+    R, 
+    struct_fields, 
+    req_fields
+  >::res;
+
+
+// template <auto callable, typename R, field_name_list Fs>
+template <typename T>
+struct compute_impl;
+
+// todo: static_vector over fixed_string list?
+template <auto callable, typename R, fixed_string... req_fields>
+struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
+  template <typename... fields>
+    requires (can_eval_R_from_fields<
+                callable, 
+                R,
+                struct_field_list_impl<fields...>,
+                fixed_string_list<req_fields...>>)
+  constexpr auto operator()(const struct_field_list_impl<fields...>& flist) const -> R {
+    return callable(flist[field_accessor<req_fields>{}]...);
+  }
+};
+} /* namespace s2s */
+
+#endif // _COMPUTATION_FROM_FIELDS_IMPL_HPP_
+
+// End /home/hari/repos/s2s/include/field_compute/computation_from_fields_impl.hpp
+
+// Begin /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
+#ifndef _FIELD_SIZE_DEDUCE_HPP_
+#define _FIELD_SIZE_DEDUCE_HPP_
+ 
+ 
+ 
+ 
+ 
+namespace s2s {
+template <typename T>
+struct deduce_field_size;
+
+template <fixed_string id>
+struct deduce_field_size<field_size<field_accessor<id>>> {
+  using field_size_type = field_accessor<id>;
+  
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
+    return struct_fields[field_size_type{}];
+  }
+};
+
+template <auto callable, field_name_list req_fields>
+struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
+  using field_size_type = compute<callable, std::size_t, req_fields>;
+  template <typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<fields...>& struct_fields) -> std::size_t {
+    return compute_impl<field_size_type>{}(struct_fields);
+  }
+};
+} /* namespace s2s */
+
+
+#endif // _FIELD_SIZE_DEDUCE_HPP_
+
+// End /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
 
 // Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_traits.hpp
 #ifndef _TYPE_DEDUCTION_TRAITS_HPP_
@@ -2678,7 +2738,7 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
  
  
  
- 
+// #include "../field_compute/computation_from_fields.hpp"
  
  
  
@@ -2776,19 +2836,22 @@ concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::fie
 
 template <typename metadata>
 struct dependency_check {
-  static constexpr bool size_ok = size_dependencies_resolved<metadata>();
-  static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
-  static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
+  static constexpr bool size_dependencies_ok = size_dependencies_resolved<metadata>();
+  static constexpr bool parse_dependencies_ok = parse_dependencies_resolved<metadata>();
+  static constexpr bool type_dependencies_ok = type_deduction_dependencies_resolved<metadata>();
 
-  static_assert(size_ok, "Size dependencies not resolved");
-  static_assert(parse_ok, "Parse dependencies not resolved");
-  static_assert(type_ok, "Type deduction dependencies not resolved");
+  static_assert(size_dependencies_ok, "Size dependencies not resolved");
+  static_assert(parse_dependencies_ok, "Parse dependencies not resolved");
+  static_assert(type_dependencies_ok, "Type deduction dependencies not resolved");
 
-  static constexpr bool all_ok = size_ok && parse_ok && type_ok;
+  static constexpr bool all_dependencies_ok = 
+    size_dependencies_ok && 
+    parse_dependencies_ok && 
+    type_dependencies_ok;
 };
 
 template <typename metadata>
-concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
+concept all_dependencies_resolved = dependency_check<metadata>::all_dependencies_ok;
 
 template <typename... fields>
   requires (all_dependencies_resolved<field_list_metadata<fields...>>)
@@ -2855,7 +2918,8 @@ struct evalaute_ladder_impl {
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     type_deduction_idx
   {
-    if(branch::e(field_list)) return idx;
+    if(compute_impl<typename branch::expression>{}(field_list)) 
+      return idx;
     return std::nullopt;
   }
 };
@@ -2907,9 +2971,8 @@ namespace s2s {
 
 // todo check if case and eval result match in terms of types
 template <std::size_t idx, typename match_case>
-struct type_switch_impl {
-  constexpr auto operator()(const auto& v) const -> 
-    type_deduction_idx
+struct evaluate_switch_impl {
+  constexpr auto operator()(const auto& v) const -> type_deduction_idx
   {
     if(v == match_case::value) return idx;
     else return std::nullopt;
@@ -2917,32 +2980,29 @@ struct type_switch_impl {
 };
 
 template <typename... match_cases>
-struct type_switch_helper {
+struct evaluate_switch_helper {
   template <std::size_t... idx>
-  constexpr auto operator()(
-    const auto& v, 
-    const std::index_sequence<idx...>&) const 
+  constexpr auto operator()(const auto& v, const std::index_sequence<idx...>&) const 
   -> type_deduction_idx 
   {
     type_deduction_idx pipeline_seed = std::nullopt;
     return (
       pipeline_seed |
       ... |
-      [&]() { return type_switch_impl<idx, match_cases>{}(v); }
+      [&]() { return evaluate_switch_impl<idx, match_cases>{}(v); }
     );
   }
 };
 
 template <typename _switch>
-struct evaluate_type_switch;
+struct evaluate_switch;
 
 template <typename... cases>
-struct evaluate_type_switch<type_switch<cases...>> {
-  constexpr auto operator()(const auto& v) const -> 
-    type_deduction_res
+struct evaluate_switch<type_switch<cases...>> {
+  constexpr auto operator()(const auto& v) const -> type_deduction_res
   {
     auto res =
-      type_switch_helper<cases...>{}(
+      evaluate_switch_helper<cases...>{}(
         v, std::make_index_sequence<sizeof...(cases)>{}
       );
     if(!res)
@@ -2972,7 +3032,7 @@ struct deduce_type<type<eval_expression, _switch>> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return evaluate_type_switch<_switch>{}(eval_expression{}(sfl)); 
+    return evaluate_switch<_switch>{}(compute_impl<eval_expression>{}(sfl)); 
   }
 };
 
@@ -2981,7 +3041,7 @@ struct deduce_type<type<match_field<id>, _switch>> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return evaluate_type_switch<_switch>{}(sfl[field_accessor<id>{}]); 
+    return evaluate_switch<_switch>{}(sfl[field_accessor<id>{}]); 
   }
 };
 
@@ -3449,7 +3509,7 @@ struct read_field<T, F> {
   
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) -> rw_result {
-    if(!typename T::field_presence_checker{}(field_list)) {
+    if(!compute_impl<typename T::field_presence_checker>{}(field_list)) {
       field.value = std::nullopt;
       return {};
     }

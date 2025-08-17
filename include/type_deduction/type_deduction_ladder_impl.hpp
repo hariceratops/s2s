@@ -1,10 +1,12 @@
 #ifndef _TYPE_DEDUCTION_LADDER_IMPL_HPP_
 #define _TYPE_DEDUCTION_LADDER_IMPL_HPP_
 
+#include <expected>
 #include "../error/cast_error.hpp"
 #include "type_deduction_ladder.hpp"
 #include "type_deduction_helper.hpp"
-#include <expected>
+#include "../field_list/field_list.hpp"
+#include "../field_compute/computation_from_fields_impl.hpp"
 
 
 namespace s2s {
@@ -20,7 +22,8 @@ struct evalaute_ladder_impl {
   constexpr auto operator()(const struct_field_list_impl<fields...>& field_list) const -> 
     type_deduction_idx
   {
-    if(branch::e(field_list)) return idx;
+    if(compute_impl<typename branch::expression>{}(field_list)) 
+      return idx;
     return std::nullopt;
   }
 };

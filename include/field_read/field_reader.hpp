@@ -6,6 +6,7 @@
 #include <utility>
 #include "../field/field_traits.hpp"
 #include "../field/field_metafunctions.hpp"
+#include "../field_size/comptime_field_size_deduce.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
@@ -193,7 +194,7 @@ struct read_field<T, F> {
   
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) -> rw_result {
-    if(!typename T::field_presence_checker{}(field_list)) {
+    if(!compute_impl<typename T::field_presence_checker>{}(field_list)) {
       field.value = std::nullopt;
       return {};
     }

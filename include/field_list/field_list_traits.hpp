@@ -4,6 +4,7 @@
 #include <type_traits>
 #include "field_list.hpp"
 
+// status: liekly deprecated
 
 namespace s2s {
 // Metafunction to check if a type is a struct_field_list

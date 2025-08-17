@@ -5,6 +5,7 @@
 #include "../field/field_accessor.hpp"
 #include "../error/cast_error.hpp"
 #include "../field_list/field_list.hpp"
+#include "../field_compute/computation_from_fields_impl.hpp"
 #include "type_deduction.hpp"
 #include "type_deduction_ladder_impl.hpp"
 #include "type_deduction_switch_impl.hpp"
@@ -21,7 +22,7 @@ struct deduce_type<type<eval_expression, _switch>> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return evaluate_type_switch<_switch>{}(eval_expression{}(sfl)); 
+    return evaluate_switch<_switch>{}(compute_impl<eval_expression>{}(sfl)); 
   }
 };
 
@@ -30,7 +31,7 @@ struct deduce_type<type<match_field<id>, _switch>> {
   template <typename... fields>
   constexpr auto operator()(const struct_field_list_impl<fields...>& sfl)
     -> std::expected<std::size_t, error_reason> const {
-    return evaluate_type_switch<_switch>{}(sfl[field_accessor<id>{}]); 
+    return evaluate_switch<_switch>{}(sfl[field_accessor<id>{}]); 
   }
 };
 

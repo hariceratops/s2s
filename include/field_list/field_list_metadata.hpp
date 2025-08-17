@@ -144,7 +144,7 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, type_switch_like type_switch>
+template <fixed_string id, fixed_string matched_id, typename type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
@@ -155,7 +155,7 @@ struct extract_type_deduction_dependencies<
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch>
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, typename type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,

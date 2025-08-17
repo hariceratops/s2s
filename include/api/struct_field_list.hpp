@@ -30,19 +30,22 @@ concept has_unique_field_ids = are_field_ids_unique(std::array{as_sv(fields::fie
 
 template <typename metadata>
 struct dependency_check {
-  static constexpr bool size_ok = size_dependencies_resolved<metadata>();
-  static constexpr bool parse_ok = parse_dependencies_resolved<metadata>();
-  static constexpr bool type_ok = type_deduction_dependencies_resolved<metadata>();
+  static constexpr bool size_dependencies_ok = size_dependencies_resolved<metadata>();
+  static constexpr bool parse_dependencies_ok = parse_dependencies_resolved<metadata>();
+  static constexpr bool type_dependencies_ok = type_deduction_dependencies_resolved<metadata>();
 
-  static_assert(size_ok, "Size dependencies not resolved");
-  static_assert(parse_ok, "Parse dependencies not resolved");
-  static_assert(type_ok, "Type deduction dependencies not resolved");
+  static_assert(size_dependencies_ok, "Size dependencies not resolved");
+  static_assert(parse_dependencies_ok, "Parse dependencies not resolved");
+  static_assert(type_dependencies_ok, "Type deduction dependencies not resolved");
 
-  static constexpr bool all_ok = size_ok && parse_ok && type_ok;
+  static constexpr bool all_dependencies_ok = 
+    size_dependencies_ok && 
+    parse_dependencies_ok && 
+    type_dependencies_ok;
 };
 
 template <typename metadata>
-concept all_dependencies_resolved = dependency_check<metadata>::all_ok;
+concept all_dependencies_resolved = dependency_check<metadata>::all_dependencies_ok;
 
 template <typename... fields>
   requires (all_dependencies_resolved<field_list_metadata<fields...>>)
