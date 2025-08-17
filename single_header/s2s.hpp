@@ -1,245 +1,23 @@
-#include <type_traits>
-#include <cstdio>
 #include <array>
-#include <cassert>
-#include <algorithm>
-#include <expected>
-#include <string>
-#include <vector>
-#include <cstring>
+#include <cstdint>
+#include <bit>
 #include <functional>
-#include <ranges>
+#include <utility>
+#include <cstdio>
+#include <cstring>
+#include <cassert>
 #include <variant>
+#include <type_traits>
+#include <string>
 #include <optional>
 #include <iostream>
-#include <bit>
-#include <cstddef>
-#include <string_view>
-#include <cstdint>
+#include <algorithm>
+#include <vector>
 #include <concepts>
-#include <utility>
-
-// Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
-#ifndef _STATIC_VECTOR_HPP_
-#define _STATIC_VECTOR_HPP_
- 
-namespace s2s {
-template <typename T, std::size_t N>
-class static_vector {
-public:
-  constexpr static_vector() = default;
-  template <typename... Args>
-  constexpr static_vector(Args&&... entries) {
-    (push_back(entries), ...);
-  }
-  constexpr auto push_back(const T& value) { 
-    values[vec_size] = value; 
-    vec_size++;
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
-  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
-  [[nodiscard]] constexpr auto size() const { return vec_size; }
-  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  T values[N]{};
-  std::size_t vec_size{0};
-};
-}
-
-#endif /* _STATIC_VECTOR_HPP_ */
-
-// End /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
-
-// Begin /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
-#ifndef _ALGORITHMS_HPP_
-#define _ALGORITHMS_HPP_
- 
-// todo namespace algorithms
-constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    if(ts[i] == t) {
-      return i;
-    }
-  }
-
-  return ts.size();
-}
-
-constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    if(predicate(ts[i])) {
-      return i;
-    }
-  }
-
-  return ts.size();
-}
-
-constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
-  if(xs.size() != ys.size()) return false;
-
-  for(auto i = 0u; i < xs.size(); ++i) {
-    if(xs[i] != ys[i])
-      return false;
-  }
-
-  return true;
-}
-
-template <typename T>
-constexpr void swap_objects(T& a, T& b) {
-  T temp = a;
-  a = b;
-  b = temp;
-}
-
-constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    for(auto j = 0u; j < ts.size() - 1; ++j) {
-      if(predicate(ts[j + 1], ts[j])) {
-        swap_objects(ts[j], ts[j + 1]);
-      }
-    }
-  }
-}
-
-
-#endif /* _ALGORITHMS_HPP_ */
-
-// End /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
-
-// Begin /home/hari/repos/s2s/include/lib/containers/static_map.hpp
-#ifndef _STATIC_MAP_HPP_
-#define _STATIC_MAP_HPP_
- 
- 
- 
- 
-namespace s2s {
-template <typename Key, typename Value>
-class Node {
-public:
-  std::pair<Key, Value> element;
-
-  constexpr Node() = default;
-  constexpr Node(Key&& key, Value&& value): element(key, value) {}
-  constexpr Node(const Key& key, const Value& value): element(key, value) {}
-  constexpr Node(const Node& other): element(other.element) {}
-  constexpr Node& operator=(const Node& other) {
-    element.first = other.element.first;
-    element.second = other.element.second;
-    return *this;
-  }
-
-  constexpr bool operator<(const Node& rhs) const noexcept {
-    return element.first < rhs.element.first;
-  }
-
-  constexpr const auto& operator*() const noexcept {
-    return element;
-  }
-
-  constexpr const auto* operator->() const noexcept {
-    return &element;
-  }
-};
-
-
-template <typename Key, typename Value, std::size_t N /*, compare? */>
-class static_map {
-public:
-  constexpr static_map() = default;
-  constexpr static_map(const std::pair<Key, Value> (&entries)[N]): 
-    map(generate_map<N>(entries, std::make_index_sequence<N>{})) {}
-  constexpr auto operator[](const Key& key) const  -> std::optional<Value> {
-    auto key_index = find_index_if(map, [&key](auto t){ return t.element.first == key; });
-    if(key_index != map.size())
-      return map[key_index].element.second;
-    return std::nullopt;
-  }
-  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
-  [[nodiscard]] constexpr auto end() const { return map.end(); }
-  [[nodiscard]] constexpr auto size() const { return map.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<Node<Key, Value>, N> map{};
-  template <std::size_t C, std::size_t... Is>
-  constexpr auto generate_map(const std::pair<Key, Value> (&entries)[C], std::index_sequence<Is...>) {
-    static_vector<Node<Key, Value>, N> m{};
-    ([&]() {
-      auto key = entries[Is].first;
-      auto key_index = find_index_if(m, [&key](auto t){ return t.element.first == key; });
-      if(key_index == m.size()) {
-        m.push_back(Node(entries[Is].first, entries[Is].second));
-        return;
-      }
-      m[key_index].element.second = entries[Is].second;
-    }(), ...);
-    sort_ranges(m, std::less<>{});
-    return m;
-  }
-};
-}
-
-#endif /* _STATIC_MAP_HPP_ */
-
-// End /home/hari/repos/s2s/include/lib/containers/static_map.hpp
-
-// Begin /home/hari/repos/s2s/include/lib/containers/static_set.hpp
-#ifndef _STATIC_SET_HPP_
-#define _STATIC_SET_HPP_
- 
- 
-namespace s2s {
-template <typename T, std::size_t N>
-class static_set {
-public:
-  constexpr static_set() = default;
-  template <typename... Args>
-  constexpr static_set(Args&&... entries) {
-    (insert(entries), ...);
-  }
-  constexpr static_set(const static_vector<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr static_set(const std::array<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr auto insert(const T& value) { 
-    if(find_index(*this, value) == set.size()) {
-      set.push_back(value);
-    }
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return set[i]; 
-  }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
-    return set[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
-  [[nodiscard]] constexpr auto end() const { return set.end(); }
-  [[nodiscard]] constexpr auto size() const { return set.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<T, N> set{};
-};
-}
-
-#endif /* _STATIC_SET_HPP_ */
-
-// End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+#include <string_view>
+#include <ranges>
+#include <expected>
+#include <cstddef>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
@@ -1245,6 +1023,403 @@ struct union_field: public
 
 // End /home/hari/repos/s2s/include/field/field.hpp
 
+// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
+#ifndef _FIELD_TRAITS_HPP_
+#define _FIELD_TRAITS_HPP_
+ 
+ 
+ 
+namespace s2s {
+template <typename T>
+struct is_fixed_sized_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
+struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_fixed_sized_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
+
+template <typename T>
+concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+template <typename T>
+struct is_array_of_record_field;
+
+template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
+
+
+template <typename T>
+struct is_variable_sized_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
+struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_variable_sized_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
+
+template <typename T>
+struct is_struct_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+struct is_struct_field<field<id, T, size, constraint_on_value>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_struct_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept struct_field_like = is_struct_field_v<T>;
+
+
+template <typename T>
+struct is_optional_field;
+
+// Specialization for maybe_field with a field
+template <fixed_string id, 
+          typename T, 
+          typename size, 
+          auto constraint, 
+          typename present_only_if, 
+          typename optional>
+struct is_optional_field<
+    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+  >
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_optional_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
+
+// Concept for optional_field_like
+template <typename T>
+concept optional_field_like = is_optional_field_v<T>;
+
+
+template <typename T>
+struct is_union_field;
+
+template <fixed_string id, typename type_deducer>
+struct is_union_field<
+    union_field<id, type_deducer>
+  > 
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_union_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_union_field_v = is_union_field<T>::res;
+
+template <typename T>
+concept union_field_like = is_union_field_v<T>;
+
+template <typename T>
+concept field_like = fixed_sized_field_like<T> || 
+                     variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
+                     struct_field_like<T> || 
+                     optional_field_like<T> || 
+                     union_field_like<T>;
+} /* namespace s2s */
+
+#endif /*_FIELD_TRAITS_HPP_*/
+
+// End /home/hari/repos/s2s/include/field/field_traits.hpp
+
+// Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+#ifndef _STATIC_VECTOR_HPP_
+#define _STATIC_VECTOR_HPP_
+ 
+namespace s2s {
+template <typename T, std::size_t N>
+class static_vector {
+public:
+  constexpr static_vector() = default;
+  template <typename... Args>
+  constexpr static_vector(Args&&... entries) {
+    (push_back(entries), ...);
+  }
+  constexpr auto push_back(const T& value) { 
+    values[vec_size] = value; 
+    vec_size++;
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
+  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
+  [[nodiscard]] constexpr auto size() const { return vec_size; }
+  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  T values[N]{};
+  std::size_t vec_size{0};
+};
+}
+
+#endif /* _STATIC_VECTOR_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+
+// Begin /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
+#ifndef _ALGORITHMS_HPP_
+#define _ALGORITHMS_HPP_
+ 
+// todo namespace algorithms
+constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(ts[i] == t) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(predicate(ts[i])) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
+  if(xs.size() != ys.size()) return false;
+
+  for(auto i = 0u; i < xs.size(); ++i) {
+    if(xs[i] != ys[i])
+      return false;
+  }
+
+  return true;
+}
+
+template <typename T>
+constexpr void swap_objects(T& a, T& b) {
+  T temp = a;
+  a = b;
+  b = temp;
+}
+
+constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    for(auto j = 0u; j < ts.size() - 1; ++j) {
+      if(predicate(ts[j + 1], ts[j])) {
+        swap_objects(ts[j], ts[j + 1]);
+      }
+    }
+  }
+}
+
+
+#endif /* _ALGORITHMS_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
+
+// Begin /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+#ifndef _STATIC_MAP_HPP_
+#define _STATIC_MAP_HPP_
+ 
+ 
+ 
+ 
+namespace s2s {
+template <typename Key, typename Value>
+class Node {
+public:
+  std::pair<Key, Value> element;
+
+  constexpr Node() = default;
+  constexpr Node(Key&& key, Value&& value): element(key, value) {}
+  constexpr Node(const Key& key, const Value& value): element(key, value) {}
+  constexpr Node(const Node& other): element(other.element) {}
+  constexpr Node& operator=(const Node& other) {
+    element.first = other.element.first;
+    element.second = other.element.second;
+    return *this;
+  }
+
+  constexpr bool operator<(const Node& rhs) const noexcept {
+    return element.first < rhs.element.first;
+  }
+
+  constexpr const auto& operator*() const noexcept {
+    return element;
+  }
+
+  constexpr const auto* operator->() const noexcept {
+    return &element;
+  }
+};
+
+
+template <typename Key, typename Value, std::size_t N /*, compare? */>
+class static_map {
+public:
+  constexpr static_map() = default;
+  constexpr static_map(const std::pair<Key, Value> (&entries)[N]): 
+    map(generate_map<N>(entries, std::make_index_sequence<N>{})) {}
+  constexpr auto operator[](const Key& key) const  -> std::optional<Value> {
+    auto key_index = find_index_if(map, [&key](auto t){ return t.element.first == key; });
+    if(key_index != map.size())
+      return map[key_index].element.second;
+    return std::nullopt;
+  }
+  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
+  [[nodiscard]] constexpr auto end() const { return map.end(); }
+  [[nodiscard]] constexpr auto size() const { return map.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<Node<Key, Value>, N> map{};
+  template <std::size_t C, std::size_t... Is>
+  constexpr auto generate_map(const std::pair<Key, Value> (&entries)[C], std::index_sequence<Is...>) {
+    static_vector<Node<Key, Value>, N> m{};
+    ([&]() {
+      auto key = entries[Is].first;
+      auto key_index = find_index_if(m, [&key](auto t){ return t.element.first == key; });
+      if(key_index == m.size()) {
+        m.push_back(Node(entries[Is].first, entries[Is].second));
+        return;
+      }
+      m[key_index].element.second = entries[Is].second;
+    }(), ...);
+    sort_ranges(m, std::less<>{});
+    return m;
+  }
+};
+}
+
+#endif /* _STATIC_MAP_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+
+// Begin /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+#ifndef _STATIC_SET_HPP_
+#define _STATIC_SET_HPP_
+ 
+ 
+namespace s2s {
+template <typename T, std::size_t N>
+class static_set {
+public:
+  constexpr static_set() = default;
+  template <typename... Args>
+  constexpr static_set(Args&&... entries) {
+    (insert(entries), ...);
+  }
+  constexpr static_set(const static_vector<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr static_set(const std::array<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr auto insert(const T& value) { 
+    if(find_index(*this, value) == set.size()) {
+      set.push_back(value);
+    }
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
+  [[nodiscard]] constexpr auto end() const { return set.end(); }
+  [[nodiscard]] constexpr auto size() const { return set.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<T, N> set{};
+};
+}
+
+#endif /* _STATIC_SET_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+
 // Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
 #define _MP_HPP_
@@ -2193,181 +2368,6 @@ constexpr bool type_deduction_dependencies_resolved() {
 
 // End /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
-#ifndef _FIELD_TRAITS_HPP_
-#define _FIELD_TRAITS_HPP_
- 
- 
- 
-namespace s2s {
-template <typename T>
-struct is_fixed_sized_field;
-
-// Specialization for field with fixed_size_like size
-template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
-struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_fixed_sized_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
-
-template <typename T>
-concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
-
-template <typename T>
-struct is_array_of_record_field;
-
-template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
-struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_array_of_record_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
-
-template <typename T>
-concept array_of_record_field_like = is_array_of_record_field_v<T>;
-
-
-template <typename T>
-struct is_variable_sized_field;
-
-// Specialization for field with variable_size_like size
-template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
-struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_variable_sized_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
-
-// Concept for variable_sized_field_like
-template <typename T>
-concept variable_sized_field_like = is_variable_sized_field_v<T>;
-
-template <typename T>
-struct is_vector_of_record_field;
-
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
-struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_vector_of_record_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
-
-template <typename T>
-concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
-
-template <typename T>
-struct is_struct_field;
-
-// Specialization for field with variable_size_like size
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
-struct is_struct_field<field<id, T, size, constraint_on_value>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_struct_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
-
-// Concept for variable_sized_field_like
-template <typename T>
-concept struct_field_like = is_struct_field_v<T>;
-
-
-template <typename T>
-struct is_optional_field;
-
-// Specialization for maybe_field with a field
-template <fixed_string id, 
-          typename T, 
-          typename size, 
-          auto constraint, 
-          typename present_only_if, 
-          typename optional>
-struct is_optional_field<
-    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
-  >
-{
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_optional_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
-
-// Concept for optional_field_like
-template <typename T>
-concept optional_field_like = is_optional_field_v<T>;
-
-
-template <typename T>
-struct is_union_field;
-
-template <fixed_string id, typename type_deducer>
-struct is_union_field<
-    union_field<id, type_deducer>
-  > 
-{
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_union_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_union_field_v = is_union_field<T>::res;
-
-template <typename T>
-concept union_field_like = is_union_field_v<T>;
-
-template <typename T>
-concept field_like = fixed_sized_field_like<T> || 
-                     variable_sized_field_like<T> ||
-                     array_of_record_field_like<T> ||
-                     vector_of_record_field_like<T> ||
-                     struct_field_like<T> || 
-                     optional_field_like<T> || 
-                     union_field_like<T>;
-} /* namespace s2s */
-
-#endif /*_FIELD_TRAITS_HPP_*/
-
-// End /home/hari/repos/s2s/include/field/field_traits.hpp
-
 // Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
@@ -2379,7 +2379,7 @@ concept field_like = fixed_sized_field_like<T> ||
  
  
  
-// #include "field_list_metadata.hpp"
+ 
  
 namespace s2s {
 
@@ -2388,7 +2388,6 @@ constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_
 
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
-  // using list_metadata = metadata;
 
   struct_field_list_impl() = default;
 
