@@ -1,12 +1,12 @@
-#ifndef _TYPE_DEDUCTION_LADDER_IMPL_HPP_
-#define _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+#ifndef _LADDER_IMPL_HPP_
+#define _LADDER_IMPL_HPP_
 
 #include <expected>
-#include "../error/cast_error.hpp"
-#include "type_deduction_ladder.hpp"
-#include "type_deduction_helper.hpp"
-#include "../field_list/field_list.hpp"
-#include "../field_compute/computation_from_fields_impl.hpp"
+#include "../../error/cast_error.hpp"
+#include "../../field_list/field_list.hpp"
+#include "../../field_compute/computation_from_fields_impl.hpp"
+#include "ladder.hpp"
+#include "../utils/helper.hpp"
 
 
 namespace s2s {
@@ -63,4 +63,4 @@ struct evaluate_ladder<type_if_else<branches...>> {
 };
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+#endif // _LADDER_IMPL_HPP_

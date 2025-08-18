@@ -2,13 +2,13 @@
 #define _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
 
 
-#include "../lib/metaprog/mp.hpp"
-#include "../lib/containers/static_vector.hpp"
-#include "../lib/containers/static_set.hpp"
-#include "../field_compute/computation_from_fields.hpp"
-#include "type_deduction_switch.hpp"
-#include "type_deduction_ladder.hpp"
-#include "type_deduction.hpp"
+#include "../../lib/metaprog/mp.hpp"
+#include "../../lib/containers/static_vector.hpp"
+#include "../../lib/containers/static_set.hpp"
+#include "../../field_compute/computation_from_fields.hpp"
+#include "../switch/switch.hpp"
+#include "../if_else_ladder/ladder.hpp"
+#include "type.hpp"
 
 
 namespace s2s {

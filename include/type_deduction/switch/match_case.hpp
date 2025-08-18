@@ -1,7 +1,7 @@
-#ifndef _TYPE_DEDUCTION_MATCH_CASE_HPP_
-#define _TYPE_DEDUCTION_MATCH_CASE_HPP_
+#ifndef _MATCH_CASE_HPP_
+#define _MATCH_CASE_HPP_
 
-#include "type_deduction_tags.hpp"
+#include "../utils/type_tags.hpp"
 
 
 namespace s2s {
@@ -13,4 +13,4 @@ struct match_case {
 };
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_MATCH_CASE_HPP_
+#endif // _MATCH_CASE_HPP_

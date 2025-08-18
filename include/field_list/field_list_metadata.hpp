@@ -9,10 +9,10 @@
 #include "../field/field.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field/field_type_info.hpp"
-#include "../type_deduction/type_deduction.hpp"
-#include "../type_deduction/type_deduction_clause.hpp"
-#include "../type_deduction/type_deduction_switch_traits.hpp"
-#include "../type_deduction/type_deduction_ladder_traits.hpp"
+#include "../type_deduction/type/type.hpp"
+#include "../type_deduction/if_else_ladder/clause.hpp"
+#include "../type_deduction/switch/switch_traits.hpp"
+#include "../type_deduction/if_else_ladder/ladder_traits.hpp"
 
 
 namespace s2s {

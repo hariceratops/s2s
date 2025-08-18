@@ -1,23 +1,23 @@
-#include <array>
-#include <cstdint>
-#include <bit>
-#include <functional>
-#include <utility>
-#include <cstdio>
-#include <cstring>
-#include <cassert>
-#include <variant>
-#include <type_traits>
-#include <string>
-#include <optional>
-#include <iostream>
-#include <algorithm>
-#include <vector>
 #include <concepts>
-#include <string_view>
-#include <ranges>
 #include <expected>
+#include <bit>
+#include <string_view>
+#include <functional>
+#include <algorithm>
+#include <ranges>
+#include <cstdint>
 #include <cstddef>
+#include <array>
+#include <optional>
+#include <variant>
+#include <cstring>
+#include <cstdio>
+#include <cassert>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <utility>
+#include <type_traits>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
@@ -1517,9 +1517,9 @@ struct field_type_info {
 
 // End /home/hari/repos/s2s/include/field/field_type_info.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
-#ifndef _TYPE_DEDUCTION_HPP_
-#define _TYPE_DEDUCTION_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/type/type.hpp
+#ifndef _TYPE_HPP_
+#define _TYPE_HPP_
  
 namespace s2s {
 template <typename... Args>
@@ -1555,9 +1555,9 @@ struct type<ladder> {
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_HPP_
+#endif // _TYPE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type/type.hpp
 
 // Begin /home/hari/repos/s2s/include/error/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
@@ -1610,9 +1610,9 @@ struct deduce_field_size<field_size<fixed<N>>> {
 
 // End /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_tags.hpp
-#ifndef _TYPE_DEDUCTION_TAGS_
-#define _TYPE_DEDUCTION_TAGS_
+// Begin /home/hari/repos/s2s/include/type_deduction/utils/type_tags.hpp
+#ifndef _TYPE_TAGS_
+#define _TYPE_TAGS_
  
  
  
@@ -1713,13 +1713,13 @@ template <typename T>
 concept type_tag_like = is_type_tag_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_TAGS_
+#endif // _TYPE_TAGS_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_tags.hpp
+// End /home/hari/repos/s2s/include/type_deduction/utils/type_tags.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case.hpp
-#ifndef _TYPE_DEDUCTION_MATCH_CASE_HPP_
-#define _TYPE_DEDUCTION_MATCH_CASE_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/switch/match_case.hpp
+#ifndef _MATCH_CASE_HPP_
+#define _MATCH_CASE_HPP_
  
 namespace s2s {
 // todo constrain to data types possible for fields
@@ -1730,13 +1730,13 @@ struct match_case {
 };
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_MATCH_CASE_HPP_
+#endif // _MATCH_CASE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case.hpp
+// End /home/hari/repos/s2s/include/type_deduction/switch/match_case.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case_traits.hpp
-#ifndef _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
-#define _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/switch/match_case_traits.hpp
+#ifndef _MATCH_CASE_TRAITS_HPP_
+#define _MATCH_CASE_TRAITS_HPP_
  
 namespace s2s {
 template <typename T>
@@ -1759,9 +1759,9 @@ template <typename T>
 concept match_case_like = is_match_case_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
+#endif // _MATCH_CASE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_match_case_traits.hpp
+// End /home/hari/repos/s2s/include/type_deduction/switch/match_case_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
@@ -1859,9 +1859,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 // End /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
-#ifndef _TYPE_DEDUCTION_CLAUSE_HPP_
-#define _TYPE_DEDUCTION_CLAUSE_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause.hpp
+#ifndef _CLAUSE_HPP_
+#define _CLAUSE_HPP_
  
  
 namespace s2s {
@@ -1876,13 +1876,13 @@ struct branch {
 };
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_CLAUSE_HPP_
+#endif // _CLAUSE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_clause.hpp
+// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_clause_traits.hpp
-#ifndef _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
-#define _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause_traits.hpp
+#ifndef _CLAUSE_TRAITS_HPP_
+#define _CLAUSE_TRAITS_HPP_
  
 namespace s2s {
 template <typename T>
@@ -1905,13 +1905,13 @@ template <typename T>
 concept branch_like = is_branch_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
+#endif // _CLAUSE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_clause_traits.hpp
+// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_helper.hpp
-#ifndef _TYPE_DEDUCTION_HELPER_HPP_
-#define _TYPE_DEDUCTION_HELPER_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/utils/helper.hpp
+#ifndef _HELPER_HPP_
+#define _HELPER_HPP_
  
  
 namespace s2s {
@@ -1966,11 +1966,11 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_helper.hpp
+// End /home/hari/repos/s2s/include/type_deduction/utils/helper.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
-#ifndef _TYPE_DEDUCTION_SWITCH_HPP_
-#define _TYPE_DEDUCTION_SWITCH_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch.hpp
+#ifndef _SWITCH_HPP_
+#define _SWITCH_HPP_
  
 namespace s2s {
 template <match_case_like... cases>
@@ -1982,13 +1982,13 @@ struct type_switch {
 } /* namespace s2s */
 
 
-#endif // _TYPE_SWITCH_HPP_
+#endif // _SWITCH_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch.hpp
+// End /home/hari/repos/s2s/include/type_deduction/switch/switch.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_traits.hpp
-#ifndef _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
-#define _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch_traits.hpp
+#ifndef _SWITCH_TRAITS_HPP_
+#define _SWITCH_TRAITS_HPP_
  
  
 namespace s2s {
@@ -2014,13 +2014,13 @@ concept type_switch_like = is_type_switch_v<T>;
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+#endif // _SWITCH_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_traits.hpp
+// End /home/hari/repos/s2s/include/type_deduction/switch/switch_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
-#ifndef _TYPE_DEDUCTION_LADDER_HPP_
-#define _TYPE_DEDUCTION_LADDER_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder.hpp
+#ifndef _LADDER_HPP_
+#define _LADDER_HPP_
  
 namespace s2s {
 template <branch_like... branches>
@@ -2031,13 +2031,13 @@ struct type_if_else {
 };
 } /* namespace s2s */
 
-#endif // _TYPE_LADDER_HPP_
+#endif // _LADDER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder.hpp
+// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_traits.hpp
-#ifndef _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
-#define _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_traits.hpp
+#ifndef _LADDER_TRAITS_HPP_
+#define _LADDER_TRAITS_HPP_
  
 namespace s2s {
 template <typename T>
@@ -2060,9 +2060,9 @@ template <typename T>
 concept type_if_else_like = is_type_if_else_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
+#endif // _LADDER_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_traits.hpp
+// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
 #ifndef _FIELD_LIST_METADATA_HPP_
@@ -2515,7 +2515,7 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
 
 // End /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_traits.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type/type_deduction_traits.hpp
 #ifndef _TYPE_DEDUCTION_TRAITS_HPP_
 #define _TYPE_DEDUCTION_TRAITS_HPP_
  
@@ -2586,7 +2586,7 @@ concept type_deduction_like = is_type_deduction_v<T>;
 
 #endif // _TYPE_DEDUCTION_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_traits.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type/type_deduction_traits.hpp
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_array.hpp
 #ifndef _STATIC_ARRAY_HPP_
@@ -2623,7 +2623,7 @@ public:
 
 // End /home/hari/repos/s2s/include/lib/containers/static_array.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_metafunctions.hpp
+// Begin /home/hari/repos/s2s/include/type_deduction/type/type_deduction_metafunctions.hpp
 #ifndef _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
 #define _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
  
@@ -2701,7 +2701,7 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
 
 #endif /* _TYPE_DEDUCTION_METAFUNCTIONS_HPP_ */
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_metafunctions.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type/type_deduction_metafunctions.hpp
 
 // Begin /home/hari/repos/s2s/include/api/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
@@ -2877,9 +2877,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 // End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_impl.hpp
-#ifndef _TYPE_DEDUCTION_LADDER_IMPL_HPP_
-#define _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_impl.hpp
+#ifndef _LADDER_IMPL_HPP_
+#define _LADDER_IMPL_HPP_
  
 namespace s2s {
 template <typename ladder>
@@ -2935,13 +2935,13 @@ struct evaluate_ladder<type_if_else<branches...>> {
 };
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_LADDER_IMPL_HPP_
+#endif // _LADDER_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_ladder_impl.hpp
+// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_impl.hpp
-#ifndef _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
-#define _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch_impl.hpp
+#ifndef _SWITCH_IMPL_HPP_
+#define _SWITCH_IMPL_HPP_
  
 namespace s2s {
 
@@ -2989,13 +2989,13 @@ struct evaluate_switch<type_switch<cases...>> {
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+#endif // _SWITCH_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_switch_impl.hpp
+// End /home/hari/repos/s2s/include/type_deduction/switch/switch_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type_deduction_impl.hpp
-#ifndef _TYPE_DEDUCTION_IMPL_HPP_
-#define _TYPE_DEDUCTION_IMPL_HPP_
+// Begin /home/hari/repos/s2s/include/type_deduction/type/type_impl.hpp
+#ifndef _TYPE_IMPL_HPP_
+#define _TYPE_IMPL_HPP_
  
 namespace s2s {
 template <typename... Args>
@@ -3033,9 +3033,9 @@ struct deduce_type<type<ladder>> {
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_IMPL_HPP_
+#endif // _TYPE_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type_deduction_impl.hpp
+// End /home/hari/repos/s2s/include/type_deduction/type/type_impl.hpp
 
 // Begin /home/hari/repos/s2s/include/lib/memory/bit.hpp
 #ifndef _BIT_HPP_

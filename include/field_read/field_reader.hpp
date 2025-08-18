@@ -10,7 +10,7 @@
 #include "../field_size/field_size_deduce.hpp"
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
-#include "../type_deduction/type_deduction_impl.hpp"
+#include "../type_deduction/type/type_impl.hpp"
 #include "read_impl.hpp"
 
 

@@ -1,8 +1,8 @@
-#ifndef _TYPE_DEDUCTION_HPP_
-#define _TYPE_DEDUCTION_HPP_
+#ifndef _TYPE_HPP_
+#define _TYPE_HPP_
 
 
-#include "../field/field_accessor.hpp"
+#include "../../field/field_accessor.hpp"
 
 
 namespace s2s {
@@ -39,4 +39,4 @@ struct type<ladder> {
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_HPP_
+#endif // _TYPE_HPP_

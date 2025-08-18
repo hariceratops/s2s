@@ -1,8 +1,8 @@
-#ifndef _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
-#define _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
+#ifndef _LADDER_TRAITS_HPP_
+#define _LADDER_TRAITS_HPP_
 
 
-#include "type_deduction_ladder.hpp"
+#include "ladder.hpp"
 
 
 namespace s2s {
@@ -26,4 +26,4 @@ template <typename T>
 concept type_if_else_like = is_type_if_else_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_LADDER_TRAITS_HPP_
+#endif // _LADDER_TRAITS_HPP_

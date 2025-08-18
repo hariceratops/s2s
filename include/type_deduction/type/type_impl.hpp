@@ -1,14 +1,14 @@
-#ifndef _TYPE_DEDUCTION_IMPL_HPP_
-#define _TYPE_DEDUCTION_IMPL_HPP_
+#ifndef _TYPE_IMPL_HPP_
+#define _TYPE_IMPL_HPP_
 
 #include <expected>
-#include "../field/field_accessor.hpp"
-#include "../error/cast_error.hpp"
-#include "../field_list/field_list.hpp"
-#include "../field_compute/computation_from_fields_impl.hpp"
-#include "type_deduction.hpp"
-#include "type_deduction_ladder_impl.hpp"
-#include "type_deduction_switch_impl.hpp"
+#include "../../field/field_accessor.hpp"
+#include "../../error/cast_error.hpp"
+#include "../../field_list/field_list.hpp"
+#include "../../field_compute/computation_from_fields_impl.hpp"
+#include "type.hpp"
+#include "../if_else_ladder/ladder_impl.hpp"
+#include "../switch/switch_impl.hpp"
 
 
 namespace s2s {
@@ -47,4 +47,4 @@ struct deduce_type<type<ladder>> {
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_IMPL_HPP_
+#endif // _TYPE_IMPL_HPP_

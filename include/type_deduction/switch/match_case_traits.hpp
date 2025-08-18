@@ -1,7 +1,7 @@
-#ifndef _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
-#define _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
+#ifndef _MATCH_CASE_TRAITS_HPP_
+#define _MATCH_CASE_TRAITS_HPP_
 
-#include "type_deduction_match_case.hpp"
+#include "match_case.hpp"
 
 
 namespace s2s {
@@ -25,4 +25,4 @@ template <typename T>
 concept match_case_like = is_match_case_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_MATCH_CASE_TRAITS_HPP_
+#endif // _MATCH_CASE_TRAITS_HPP_

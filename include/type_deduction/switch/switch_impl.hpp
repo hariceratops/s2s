@@ -1,12 +1,12 @@
-#ifndef _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
-#define _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+#ifndef _SWITCH_IMPL_HPP_
+#define _SWITCH_IMPL_HPP_
 
 #include <expected>
-#include "../error/cast_error.hpp"
-#include "type_deduction_match_case.hpp"
-#include "type_deduction_match_case_traits.hpp"
-#include "type_deduction_switch.hpp"
-#include "type_deduction_helper.hpp"
+#include "../../error/cast_error.hpp"
+#include "match_case.hpp"
+#include "match_case_traits.hpp"
+#include "switch.hpp"
+#include "../utils/helper.hpp"
 
 
 namespace s2s {
@@ -55,4 +55,4 @@ struct evaluate_switch<type_switch<cases...>> {
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_SWITCH_IMPL_HPP_
+#endif // _SWITCH_IMPL_HPP_

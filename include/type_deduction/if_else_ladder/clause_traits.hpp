@@ -1,7 +1,7 @@
-#ifndef _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
-#define _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
+#ifndef _CLAUSE_TRAITS_HPP_
+#define _CLAUSE_TRAITS_HPP_
 
-#include "type_deduction_clause.hpp"
+#include "clause.hpp"
 
 namespace s2s {
 template <typename T>
@@ -24,4 +24,4 @@ template <typename T>
 concept branch_like = is_branch_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_CLAUSE_TRAITS_HPP_
+#endif // _CLAUSE_TRAITS_HPP_

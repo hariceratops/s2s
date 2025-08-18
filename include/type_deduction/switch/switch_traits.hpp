@@ -1,8 +1,8 @@
-#ifndef _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
-#define _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+#ifndef _SWITCH_TRAITS_HPP_
+#define _SWITCH_TRAITS_HPP_
 
-#include "type_deduction_match_case_traits.hpp"
-#include "type_deduction_switch.hpp"
+#include "match_case_traits.hpp"
+#include "switch.hpp"
 
 
 namespace s2s {
@@ -28,4 +28,4 @@ concept type_switch_like = is_type_switch_v<T>;
 } /* namespace s2s */
 
 
-#endif // _TYPE_DEDUCTION_SWITCH_TRAITS_HPP_
+#endif // _SWITCH_TRAITS_HPP_
