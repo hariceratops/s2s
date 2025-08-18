@@ -5,7 +5,7 @@
 #include <array>
 #include "../lib/algorithms/algorithms.hpp"
 #include "../lib/containers/static_set.hpp"
-#include "../lib/s2s_traits/type_traits.hpp"
+#include "../field/field_traits.hpp"
 #include "../field_list/field_list_metadata.hpp"
 #include "../field_list/field_list.hpp"
 

@@ -2,17 +2,13 @@
 #define _FIELD_DESCRIPTORS_HPP_
 
 
-#include "../field_list/field_list_metadata.hpp"
 #include "../lib/s2s_traits/type_traits.hpp"
 #include "../field/field.hpp"
 #include "../field_list/field_list_base.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
-// #include "../field_compute/computation_from_fields.hpp"
 #include "../type_deduction/type/type_deduction_traits.hpp"
-#include "../lib/containers/static_array.hpp"
-#include "../lib/containers/static_set.hpp"
 #include "../type_deduction/type/type_deduction_metafunctions.hpp"
 
 

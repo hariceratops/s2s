@@ -6,7 +6,6 @@
 #include "../../lib/containers/static_vector.hpp"
 #include "../../lib/containers/static_set.hpp"
 #include "../../field_compute/computation_from_fields.hpp"
-#include "../switch/switch.hpp"
 #include "../if_else_ladder/ladder.hpp"
 #include "type.hpp"
 

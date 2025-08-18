@@ -1,9 +1,11 @@
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
 
+
 #include "../field/field_accessor.hpp"
 #include "../lib/metaprog/fixed_string_list.hpp"
 #include "../lib/metaprog/typelist.hpp"
+
 
 namespace s2s {
 template <typename size_type>

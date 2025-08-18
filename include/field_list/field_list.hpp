@@ -1,14 +1,9 @@
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
 
-// status: rename to impl
 
-#include "../field/field.hpp"
 #include "../field/field_type_info.hpp"
-#include "../lib/metaprog/typelist.hpp"
-#include "../lib/containers/fixed_string.hpp"
 #include "field_list_base.hpp"
-#include "../field/field_traits.hpp"
 #include "field_list_metadata.hpp"
 #include "../lib/metaprog/mp.hpp"
 
@@ -25,6 +20,7 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 
   template <typename field_accessor>
     // todo custom optional to use as nttp for cleaner template
+    // todo move as_sv to common place
     requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
   constexpr auto& operator[](field_accessor)  {
     constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));

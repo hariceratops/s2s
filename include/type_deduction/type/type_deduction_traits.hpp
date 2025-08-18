@@ -1,7 +1,6 @@
 #ifndef _TYPE_DEDUCTION_TRAITS_HPP_
 #define _TYPE_DEDUCTION_TRAITS_HPP_
 
-#include "../../field_compute/computation_from_fields.hpp"
 #include "../switch/switch_traits.hpp"
 #include "../if_else_ladder/ladder_traits.hpp"
 #include "type.hpp"

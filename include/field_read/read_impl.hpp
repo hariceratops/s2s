@@ -2,13 +2,11 @@
 #define _READ_IMPL_HPP_
 
 
-#include <concepts>
 #include <expected>
 #include <bit>
 
 #include "../error/cast_error.hpp"
 #include "../lib/s2s_traits/type_traits.hpp"
-#include "../lib/memory/bit.hpp"
 #include "../lib/memory/address_manip.hpp"
 
 

@@ -1,6 +1,7 @@
 #ifndef _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
 #define _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
 
+#include "../field/field_accessor.hpp"
 #include "../lib/containers/fixed_string.hpp"
 #include "computation_from_fields.hpp"
 

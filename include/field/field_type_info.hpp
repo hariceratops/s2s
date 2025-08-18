@@ -1,7 +1,6 @@
 #ifndef _FIELD_NODE_HPP_
 #define _FIELD_NODE_HPP_
 
-#include <cstdint>
 #include "../lib/metaprog/mp.hpp"
 
 // todo better name

@@ -1,14 +1,11 @@
 #ifndef _STRUCT_CAST_IMPL_HPP_
 #define _STRUCT_CAST_IMPL_HPP_
 
-// status: split to cast and cast impl
 
 #include <expected>
 #include "../error/cast_error.hpp"
-#include "../field/field.hpp"
 #include "../field_list/field_list.hpp"
 #include "../field_read/field_reader.hpp"
-#include "../field_validation/field_value_constraints_traits.hpp"
 
 
 namespace s2s {
