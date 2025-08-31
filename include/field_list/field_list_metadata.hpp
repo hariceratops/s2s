@@ -5,6 +5,7 @@
 #include "../lib/containers/static_vector.hpp"
 #include "../lib/containers/static_map.hpp"
 #include "../lib/containers/static_set.hpp"
+#include "../lib/containers/static_optional.hpp"
 #include "../lib/containers/fixed_string.hpp"
 #include "../field/field.hpp"
 #include "../field_size/field_size.hpp"
@@ -250,7 +251,7 @@ struct field_list_metadata {
 };
 
 template <auto list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   auto field_table = meta::type_of<list_metadata>::field_table;
   return field_table[field_name];
 }

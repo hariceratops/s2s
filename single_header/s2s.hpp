@@ -1,23 +1,23 @@
-#include <algorithm>
+#include <ranges>
+#include <cassert>
 #include <utility>
+#include <string>
+#include <vector>
+#include <bit>
+#include <algorithm>
+#include <type_traits>
+#include <cstddef>
+#include <functional>
+#include <variant>
+#include <cstring>
+#include <cstdint>
+#include <string_view>
 #include <cstdio>
 #include <array>
-#include <type_traits>
-#include <expected>
-#include <cstring>
-#include <ranges>
-#include <functional>
-#include <bit>
-#include <optional>
-#include <cstddef>
-#include <string>
-#include <cassert>
-#include <cstdint>
 #include <iostream>
+#include <expected>
 #include <concepts>
-#include <string_view>
-#include <vector>
-#include <variant>
+#include <optional>
 
 // Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
@@ -240,6 +240,55 @@ private:
 #endif /* _STATIC_SET_HPP_ */
 
 // End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+
+// Begin /home/hari/repos/s2s/include/lib/containers/static_optional.hpp
+#ifndef _STATIC_OPTIONAL_HPP_
+#define _STATIC_OPTIONAL_HPP_
+ 
+namespace s2s {
+
+struct static_nullopt_t {};
+inline constexpr static_nullopt_t nullopt;
+
+template <typename T>
+struct static_optional {
+  T value{};
+  bool has_value{false};
+
+  // Constructors
+  constexpr static_optional() = default;
+  constexpr static_optional(static_nullopt_t): has_value{false} {};
+  constexpr static_optional(const static_nullopt_t&): has_value{false} {};
+  constexpr static_optional(const T& val)
+    : value(val), has_value(true) {}
+  constexpr static_optional(const std::optional<T>& std_opt) {
+    if(std_opt) {
+      has_value = true;
+      value = *std_opt;
+    }
+  }
+  // constexpr static_optional(T&& val)
+  //   : value(std::move(val)), has_value(true) {}
+
+  [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& get() const { return value; }
+  [[nodiscard]] constexpr operator bool() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& operator*() const { return value; }
+  [[nodiscard]] constexpr T& operator*() { return value; }
+  [[nodiscard]] constexpr const T* operator->() const { return &value; }
+  [[nodiscard]] constexpr T* operator->() { return &value; }
+  [[nodiscard]] constexpr auto operator<=>(const static_optional&) const = default;
+  [[nodiscard]] constexpr bool operator==(static_nullopt_t&&) const { 
+    if(has_value) 
+      return true;
+    return false; 
+  };
+};
+}
+
+#endif /* _STATIC_OPTIONAL_HPP_ */
+
+// End /home/hari/repos/s2s/include/lib/containers/static_optional.hpp
 
 // Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
@@ -1819,6 +1868,7 @@ struct type_if_else {
  
  
  
+ 
 namespace s2s {
 // todo fix these numbers and possibly generate them
 static inline constexpr std::size_t max_dep_count_per_field = 8;
@@ -2056,7 +2106,7 @@ struct field_list_metadata {
 };
 
 template <auto list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
+constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   auto field_table = meta::type_of<list_metadata>::field_table;
   return field_table[field_name];
 }
@@ -2117,29 +2167,29 @@ constexpr bool type_deduction_dependencies_resolved() {
  
 namespace s2s {
 
-template <typename list_metadata>
-constexpr auto lookup_field(std::string_view field_name) -> std::optional<field_type_info>;
-
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
   struct_field_list_impl() = default;
 
-  template <typename field_accessor>
-    // todo custom optional to use as nttp for cleaner template
-    // todo move as_sv to common place
-    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
+  // todo move as_sv to common place
+  template <
+    typename field_accessor, 
+    auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
+  >
+    requires (field_lookup_res.has_value)
   constexpr auto& operator[](field_accessor)  {
-    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
-    using field_type_ref = meta::type_of<res->id>&;
+    using field_type_ref = meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_ref>(*this).value;
   }
 
-  template <typename field_accessor>
-    requires (lookup_field<list_metadata>(as_sv(field_accessor::field_id)) != std::nullopt)
+  template <
+    typename field_accessor,
+    auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
+  >
+    requires (field_lookup_res.has_value)
   constexpr const auto& operator[](field_accessor) const {
-    constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
-    using field_type_cref = const meta::type_of<res->id>&;
+    using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 };
