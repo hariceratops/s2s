@@ -2,7 +2,6 @@
 #define _FIELD_HPP_
 
 
-#include <type_traits>
 #include <variant>
 #include <optional>
 
@@ -57,6 +56,20 @@ inline constexpr bool no_variance_field_v = no_variance_field<T>::res;
 template <typename T>
 concept no_variance_field_like = no_variance_field_v<T>;
 
+
+
+
+template <typename base_field,
+          typename present_only_if,
+          typename optional = to_optional_field_v<base_field>>
+class maybe_field : public optional
+{
+public:
+  using field_base_type = base_field;
+  using field_presence_checker = present_only_if;
+};
+
+
 template <typename... choices>
 struct field_choice_list {};
 
@@ -76,45 +89,7 @@ struct to_field_choices<id, std::variant<types...>, field_size<size_choices<size
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
-
-template <typename arg>
-struct are_unique_types;
-
-template <typename head>
-struct are_unique_types<field_choice_list<head>> {
-  static constexpr bool res = true;
-};
-
-template <typename head, typename neck, typename... tail>
-struct are_unique_types<field_choice_list<head, neck, tail...>> {
-  constexpr static bool res =
-    (!std::is_same_v<head, neck> && ... && (!std::is_same_v<head, tail>)) &&
-    are_unique_types<field_choice_list<neck, tail...>>::res;
-};
-
-
-template <typename choice_list>
-inline constexpr bool are_unique_types_v = are_unique_types<choice_list>::res;
-
-template <no_variance_field_like base_field,
-          typename present_only_if,
-          typename optional = to_optional_field_v<base_field>>
-class maybe_field : public optional
-{
-public:
-  using field_base_type = base_field;
-  using field_presence_checker = present_only_if;
-};
-
-
-template <fixed_string id, typename type_deducer, auto type_choices>
-  requires are_unique_types_v<
-    typename to_field_choices<
-      id, 
-      typename type_deducer::variant, 
-      typename type_deducer::sizes
-    >::choices
-  >
+template <fixed_string id, typename type_deducer>
 struct union_field: public 
     field<
       id, 

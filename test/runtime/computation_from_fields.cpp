@@ -30,7 +30,7 @@ TEST(RuntimeComputationTest, VerifyComputationFromFields) {
   EXPECT_EQ(fields["b"_f], 5);
 
   auto callable = [](const u32& a, const u32& b) -> u32 { return a * b; };
-  auto comp_res = s2s::compute<callable, u32, s2s::with_fields<"a", "b">>{}(fields);
+  auto comp_res = s2s::compute_impl<s2s::compute<callable, u32, s2s::with_fields<"a", "b">>>{}(fields);
   EXPECT_EQ(comp_res, 20);
 }
 

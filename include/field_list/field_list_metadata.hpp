@@ -5,12 +5,14 @@
 #include "../lib/containers/static_vector.hpp"
 #include "../lib/containers/static_map.hpp"
 #include "../lib/containers/static_set.hpp"
+#include "../lib/containers/static_optional.hpp"
 #include "../lib/containers/fixed_string.hpp"
 #include "../field/field.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field/field_type_info.hpp"
-#include "../type_deduction/type_deduction.hpp"
-#include "../type_deduction/type_deduction_clause.hpp"
+#include "../type_deduction/type/type.hpp"
+#include "../type_deduction/if_else_ladder/ladder.hpp"
+
 
 namespace s2s {
 // todo fix these numbers and possibly generate them
@@ -94,12 +96,12 @@ struct extract_length_dependencies_from_field_choices<field_choice_list<Ts...>>{
 template <typename... Ts>
 inline constexpr auto extract_length_dependencies_from_field_choices_v = extract_length_dependencies_from_field_choices<Ts...>::value;
 
-template <fixed_string id, typename type_deducer, auto choices>
+template <fixed_string id, typename type_deducer>
 struct extract_length_dependencies<
-  union_field<id, type_deducer, choices>
+  union_field<id, type_deducer>
 > 
 {
-  using field = union_field<id, type_deducer, choices>;
+  using field = union_field<id, type_deducer>;
   using field_choices = typename field::field_choices;
   static constexpr auto value = extract_length_dependencies_from_field_choices_v<field_choices>;
 };
@@ -141,24 +143,22 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, type_switch_like type_switch, auto field_choices>
+template <fixed_string id, fixed_string matched_id, typename type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch>,
-    field_choices
+    type<match_field<matched_id>, type_switch>
   >
 > 
 {
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, type_switch_like type_switch, auto field_choices>
+template <fixed_string id, auto callable, typename R, fixed_string... req_fields, typename type_switch>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>,
-    field_choices
+    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
   >
 > 
 {
@@ -192,12 +192,11 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
 }
 
 // template<typename...>... typename clauses?
-template <fixed_string id, auto field_choices, typename... clauses>
+template <fixed_string id, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_if_else<clauses...>>,
-    field_choices
+    type<type_if_else<clauses...>>
   >
 > 
 {
@@ -251,9 +250,9 @@ struct field_list_metadata {
  
 };
 
-template <typename list_metadata>
-constexpr auto lookup_field(sv field_name) -> std::optional<field_type_info> {
-  auto field_table = list_metadata::field_table;
+template <auto list_metadata>
+constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
+  auto field_table = meta::type_of<list_metadata>::field_table;
   return field_table[field_name];
 }
 

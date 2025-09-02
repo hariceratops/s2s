@@ -1,14 +1,11 @@
 #ifndef _STRUCT_CAST_IMPL_HPP_
 #define _STRUCT_CAST_IMPL_HPP_
 
-// status: split to cast and cast impl
 
 #include <expected>
 #include "../error/cast_error.hpp"
-#include "../field/field.hpp"
 #include "../field_list/field_list.hpp"
 #include "../field_read/field_reader.hpp"
-#include "../field_validation/field_value_constraints_traits.hpp"
 
 
 namespace s2s {
@@ -22,7 +19,7 @@ constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 
-template <typename metadata, typename... fields, typename stream, auto endianness>
+template <auto metadata, typename... fields, typename stream, auto endianness>
 struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
   using S = struct_field_list_impl<metadata, fields...>;
   using R = std::expected<S, cast_error>;

@@ -1,10 +1,10 @@
-#ifndef _TYPE_DEDUCTION_TAGS_
-#define _TYPE_DEDUCTION_TAGS_
+#ifndef _TYPE_TAGS_
+#define _TYPE_TAGS_
 
-#include "../lib/s2s_traits/type_traits.hpp"
-#include "../field_list/field_list_base.hpp"
-#include "../field_size/field_size.hpp"
-#include "../field_size/field_size_deduce.hpp"
+#include "../../lib/s2s_traits/type_traits.hpp"
+#include "../../field_list/field_list_base.hpp"
+#include "../../field_size/field_size.hpp"
+#include "../../field_size/comptime_field_size_deduce.hpp"
 
 
 namespace s2s {
@@ -103,4 +103,4 @@ template <typename T>
 concept type_tag_like = is_type_tag_v<T>;
 } /* namespace s2s */
 
-#endif // _TYPE_DEDUCTION_TAGS_
+#endif // _TYPE_TAGS_

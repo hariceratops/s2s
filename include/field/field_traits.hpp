@@ -143,9 +143,9 @@ concept optional_field_like = is_optional_field_v<T>;
 template <typename T>
 struct is_union_field;
 
-template <fixed_string id, typename type_deducer, auto field_choices>
+template <fixed_string id, typename type_deducer>
 struct is_union_field<
-    union_field<id, type_deducer, field_choices>
+    union_field<id, type_deducer>
   > 
 {
   static constexpr bool res = true;
