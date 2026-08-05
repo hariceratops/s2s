@@ -1,4 +1,4 @@
-#include "../single_header/s2s.hpp"
+#include "../../single_header/s2s.hpp"
 
 using u32 = unsigned int;
 

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <expected>
 #include <array>
-#include "../include/s2s.hpp"
+#include "../../include/s2s.hpp"
 #include "../utils/constexpr_memstream.hpp"
 
 
@@ -213,8 +213,8 @@ using unionish =
       s2s::type<
         s2s::match_field<"a">,
         s2s::type_switch<
-          s2s::match_case<0xcafed00d, s2s::struct_tag<inner_1>>,
-          s2s::match_case<0xdeadbeef, s2s::struct_tag<inner_2>>
+          s2s::match_case<0xcafed00d, s2s::as_struct<inner_1>>,
+          s2s::match_case<0xdeadbeef, s2s::as_struct<inner_2>>
         >
       >
     >
