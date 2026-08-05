@@ -1,0 +1,58 @@
+#ifndef _WRITE_IMPL_HPP_
+#define _WRITE_IMPL_HPP_
+
+
+#include <expected>
+#include <bit>
+
+#include "../error/cast_error.hpp"
+#include "../lib/s2s_traits/type_traits.hpp"
+#include "../lib/memory/address_manip.hpp"
+#include "../stream/byte_order.hpp"
+
+
+namespace s2s {
+template <typename T, identified_as_constexpr_stream stream>
+constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
+  if(!s.write(as_byte_buffer_rep, size_to_write)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <typename T, writeable stream>
+constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  if(!s.write(const_byte_addressof<stream>(obj), size_to_write)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <constant_sized_like T, output_stream_like stream>
+constexpr auto write_native(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  return write_native_impl(s, obj, size_to_write);
+}
+
+template <trivial T, output_stream_like stream>
+constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  // The source is const and belongs to the caller, so the swap lands in a
+  // stack temporary rather than mutating it in place as the read path does.
+  T swapped = std::byteswap(obj);
+  return write_native_impl(s, swapped, size_to_write);
+}
+
+template <std::endian endianness, typename T, output_stream_like stream>
+constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
+  auto constexpr byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return write_native(s, obj, N);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    if constexpr(trivial<T>) {
+      return write_foreign_scalar(s, obj, N);
+    }
+  }
+}
+} /* namespace s2s */
+
+#endif // _WRITE_IMPL_HPP_

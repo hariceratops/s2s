@@ -1454,6 +1454,20 @@ struct cast_error {
 using rw_result = std::expected<void, error_reason>;
 using cast_result = std::expected<void, cast_error>;
 
+
+// Both directions fold their per-field steps through these, so they live here
+// rather than in the read path's headers — the amalgamated header is a single
+// translation unit, where a second definition would be an error.
+constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
+constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
 } /* namespace s2s */
 
 #endif // _CAST_ERROR_HPP_
@@ -3098,7 +3112,7 @@ template <typename T>
 concept input_stream_like = (identified_as_constexpr_stream<T> || readable<T>) && convertible_to_bool<T>;
 
 template <typename T>
-concept output_stream_like = writeable<T> && convertible_to_bool<T>;
+concept output_stream_like = (identified_as_constexpr_stream<T> || writeable<T>) && convertible_to_bool<T>;
 }
 
 #endif /* _STREAM_TRAITS_HPP_ */
@@ -3136,11 +3150,36 @@ inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 
+template <output_stream_like stream, typename T>
+const char* const_byte_addressof(const T& obj) {
+  return reinterpret_cast<const char*>(&obj);
+}
+
+template <output_stream_like stream, typename T, std::size_t N>
+const char* const_byte_addressof(const std::array<T, N>& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
+template <output_stream_like stream, std::size_t N>
+const char* const_byte_addressof(const fixed_string<N>& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
+template <output_stream_like stream, typename T>
+const char* const_byte_addressof(const std::vector<T>& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
+template <output_stream_like stream>
+inline const char* const_byte_addressof(const std::string& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
 // todo generate this as configurable parameter
 constexpr std::size_t constexpr_buffer_size = 2048;
 
 template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>
-constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
+constexpr auto as_byte_buffer(const T& obj) -> std::array<char, size> {
   return std::bit_cast<std::array<char, size>>(obj);
 }
 }
@@ -3149,10 +3188,9 @@ constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
 
 // End lib/memory/address_manip.hpp
 
-// Begin field_read/read_impl.hpp
-#ifndef _READ_IMPL_HPP_
-#define _READ_IMPL_HPP_
- 
+// Begin stream/byte_order.hpp
+#ifndef _BYTE_ORDER_HPP_
+#define _BYTE_ORDER_HPP_
  
 namespace s2s {
 enum cast_endianness {
@@ -3163,12 +3201,23 @@ enum cast_endianness {
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) 
+  if constexpr(std::endian::native == endianness)
     return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) 
+  else if constexpr(std::endian::native != endianness)
     return cast_endianness::foreign;
 }
+} /* namespace s2s */
 
+#endif // _BYTE_ORDER_HPP_
+
+// End stream/byte_order.hpp
+
+// Begin field_read/read_impl.hpp
+#ifndef _READ_IMPL_HPP_
+#define _READ_IMPL_HPP_
+ 
+ 
+namespace s2s {
 template <typename T, identified_as_constexpr_stream stream>
 constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
@@ -3235,22 +3284,6 @@ constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
 }
 
 
-template <output_stream_like stream>
-class output_stream {
-private:
-  stream& s;
-
-public:
-  // delete copy constructor?
-  template <typename T>
-  constexpr auto write(const char* src_mem, std::size_t size_to_read) -> rw_result {
-    // eof = buffer_exhaustion
-    // bad | fail = io_error
-    if(!s.write(src_mem, size_to_read))
-      return std::unexpected(error_reason::buffer_exhaustion);
-    return {};
-  }
-};
 } /* namespace s2s */
 
 #endif /* _READ_IMPL_HPP_ */
@@ -3487,11 +3520,6 @@ struct read_variant_impl {
   }
 };
 
-constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
 
@@ -3565,12 +3593,6 @@ struct read_field<T, F> {
  
 namespace s2s {
 
-constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
-
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 
@@ -3640,9 +3662,156 @@ template <field_list_like T, input_stream_like stream>
 
 // End api/struct_cast.hpp
 
+// Begin field_write/write_impl.hpp
+#ifndef _WRITE_IMPL_HPP_
+#define _WRITE_IMPL_HPP_
+ 
+ 
+namespace s2s {
+template <typename T, identified_as_constexpr_stream stream>
+constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
+  if(!s.write(as_byte_buffer_rep, size_to_write)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <typename T, writeable stream>
+constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  if(!s.write(const_byte_addressof<stream>(obj), size_to_write)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <constant_sized_like T, output_stream_like stream>
+constexpr auto write_native(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  return write_native_impl(s, obj, size_to_write);
+}
+
+template <trivial T, output_stream_like stream>
+constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  // The source is const and belongs to the caller, so the swap lands in a
+  // stack temporary rather than mutating it in place as the read path does.
+  T swapped = std::byteswap(obj);
+  return write_native_impl(s, swapped, size_to_write);
+}
+
+template <std::endian endianness, typename T, output_stream_like stream>
+constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
+  auto constexpr byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return write_native(s, obj, N);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    if constexpr(trivial<T>) {
+      return write_foreign_scalar(s, obj, N);
+    }
+  }
+}
+} /* namespace s2s */
+
+#endif // _WRITE_IMPL_HPP_
+
+// End field_write/write_impl.hpp
+
+// Begin field_write/field_writer.hpp
+#ifndef _FIELD_WRITER_HPP_
+#define _FIELD_WRITER_HPP_
+ 
+namespace s2s {
+template <typename F, typename L>
+struct write_field;
+
+template <fixed_sized_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const T& field;
+  const F& field_list;
+
+  constexpr write_field(const T& field, const F& field_list)
+    : field(field), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using field_size = typename T::field_size;
+    constexpr auto size_to_write = deduce_field_size<field_size>{}();
+    return write_impl<endianness>(s, field.value, size_to_write);
+  }
+};
+} /* namespace s2s */
+
+#endif // _FIELD_WRITER_HPP_
+
+// End field_write/field_writer.hpp
+
+// Begin cast/struct_write_impl.hpp
+#ifndef _STRUCT_WRITE_IMPL_HPP_
+#define _STRUCT_WRITE_IMPL_HPP_
+ 
+namespace s2s {
+
+template <typename F, typename stream, auto endianness>
+struct struct_write_impl;
+
+template <auto metadata, typename... fields, typename stream, auto endianness>
+struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+  using S = struct_field_list_impl<metadata, fields...>;
+
+  constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
+    cast_result pipeline_seed{};
+    return (
+      pipeline_seed |
+      ... |
+      [&]() -> cast_result {
+        const auto& field = static_cast<const fields&>(field_list);
+        // Validated before writing, not after: a struct that fails its own
+        // constraint would otherwise emit bytes that cannot be read back.
+        if(!fields::constraint_checker(field.value)) {
+          auto field_name = std::string_view{fields::field_id.data()};
+          return std::unexpected(cast_error{error_reason::validation_failure, field_name});
+        }
+        auto writer = write_field<fields, S>(field, field_list);
+        auto write_res = writer.template write<endianness>(s);
+        if(!write_res) {
+          auto field_name = std::string_view{fields::field_id.data()};
+          return std::unexpected(cast_error{write_res.error(), field_name});
+        }
+        return {};
+      }
+    );
+  }
+};
+
+} /* namespace s2s */
+
+#endif // _STRUCT_WRITE_IMPL_HPP_
+
+// End cast/struct_write_impl.hpp
+
+// Begin api/struct_write.hpp
+#ifndef _STRUCT_WRITE_HPP_
+#define _STRUCT_WRITE_HPP_
+ 
+namespace s2s {
+template <field_list_like T, output_stream_like stream>
+[[nodiscard]] constexpr auto struct_write_le(stream& s, const T& obj) -> cast_result {
+  return struct_write_impl<T, stream, std::endian::little>{}(s, obj);
+}
+
+template <field_list_like T, output_stream_like stream>
+[[nodiscard]] constexpr auto struct_write_be(stream& s, const T& obj) -> cast_result {
+  return struct_write_impl<T, stream, std::endian::big>{}(s, obj);
+}
+} /* namespace s2s */
+
+#endif // _STRUCT_WRITE_HPP_
+
+// End api/struct_write.hpp
+
 // Begin s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
+ 
  
  
  

@@ -238,11 +238,6 @@ struct read_variant_impl {
   }
 };
 
-constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
 
