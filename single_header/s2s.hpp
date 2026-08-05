@@ -1,25 +1,25 @@
-#include <ranges>
-#include <cassert>
-#include <utility>
-#include <string>
-#include <vector>
-#include <bit>
 #include <algorithm>
-#include <type_traits>
-#include <cstddef>
-#include <functional>
-#include <variant>
-#include <cstring>
-#include <cstdint>
-#include <string_view>
-#include <cstdio>
 #include <array>
-#include <iostream>
-#include <expected>
+#include <bit>
+#include <cassert>
 #include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <expected>
+#include <functional>
+#include <iostream>
 #include <optional>
+#include <ranges>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <variant>
+#include <vector>
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+// Begin lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
 #define _STATIC_VECTOR_HPP_
  
@@ -56,9 +56,9 @@ private:
 
 #endif /* _STATIC_VECTOR_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+// End lib/containers/static_vector.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
+// Begin lib/algorithms/algorithms.hpp
 #ifndef _ALGORITHMS_HPP_
 #define _ALGORITHMS_HPP_
  
@@ -114,9 +114,9 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
 
 #endif /* _ALGORITHMS_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
+// End lib/algorithms/algorithms.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+// Begin lib/containers/static_map.hpp
 #ifndef _STATIC_MAP_HPP_
 #define _STATIC_MAP_HPP_
  
@@ -193,9 +193,9 @@ private:
 
 #endif /* _STATIC_MAP_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+// End lib/containers/static_map.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+// Begin lib/containers/static_set.hpp
 #ifndef _STATIC_SET_HPP_
 #define _STATIC_SET_HPP_
  
@@ -239,9 +239,9 @@ private:
 
 #endif /* _STATIC_SET_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+// End lib/containers/static_set.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_optional.hpp
+// Begin lib/containers/static_optional.hpp
 #ifndef _STATIC_OPTIONAL_HPP_
 #define _STATIC_OPTIONAL_HPP_
  
@@ -288,9 +288,9 @@ struct static_optional {
 
 #endif /* _STATIC_OPTIONAL_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_optional.hpp
+// End lib/containers/static_optional.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
+// Begin lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
  
@@ -331,9 +331,9 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
 
 #endif // _FIXED_STRING_HPP_
 
-// End /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
+// End lib/containers/fixed_string.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_accessor.hpp
+// Begin field/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
@@ -353,9 +353,9 @@ constexpr auto operator""_f() {
 
 #endif // _FIELD_ACCESSOR_HPP_
 
-// End /home/hari/repos/s2s/include/field/field_accessor.hpp
+// End field/field_accessor.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
+// Begin lib/metaprog/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
 #define _FIXED_STRING_LIST_HPP_
 
@@ -462,9 +462,9 @@ concept field_name_list = is_field_name_list_v<T>;
 
 #endif // _FIXED_STRING_LIST_HPP_
 
-// End /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
+// End lib/metaprog/fixed_string_list.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/metaprog/typelist.hpp
+// Begin lib/metaprog/typelist.hpp
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -550,9 +550,9 @@ using front_t = typename front<L>::front_t;
 
 #endif // _TYPELIST_HPP_
 
-// End /home/hari/repos/s2s/include/lib/metaprog/typelist.hpp
+// End lib/metaprog/typelist.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/field_size.hpp
+// Begin field_size/field_size.hpp
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
  
@@ -699,9 +699,9 @@ concept size_dont_care_like = is_size_dont_care_v<T>;
 
 #endif // _FIELD_SIZE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/field_size.hpp
+// End field_size/field_size.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_base.hpp
+// Begin field_list/field_list_base.hpp
 #ifndef _FIELD_LIST_BASE_HPP_
 #define _FIELD_LIST_BASE_HPP_
  
@@ -714,9 +714,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 
 #endif // _FIELD_LIST_BASE_HPP_
 
-// End /home/hari/repos/s2s/include/field_list/field_list_base.hpp
+// End field_list/field_list_base.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
+// Begin lib/s2s_traits/type_traits.hpp
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
  
@@ -984,9 +984,9 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 
 #endif // _S2S_TYPE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
+// End lib/s2s_traits/type_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
+// Begin field_validation/field_value_constraints.hpp
 #ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
 #define _FIELD_VALUE_CONSTRAINTS_HPP_ 
  
@@ -1183,9 +1183,9 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // _FIELD_VALUE_CONSTRAINTS_HPP_
 
-// End /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
+// End field_validation/field_value_constraints.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field.hpp
+// Begin field/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
  
@@ -1291,9 +1291,9 @@ struct union_field: public
 
 #endif // _FIELD_HPP_
 
-// End /home/hari/repos/s2s/include/field/field.hpp
+// End field/field.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
+// Begin lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
 #define _MP_HPP_
  
@@ -1374,9 +1374,9 @@ template <template<typename...> typename T, class... Ts, auto = []{}>
 
 #endif /* _MP_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
+// End lib/metaprog/mp.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_type_info.hpp
+// Begin field/field_type_info.hpp
 #ifndef _FIELD_NODE_HPP_
 #define _FIELD_NODE_HPP_
  
@@ -1388,9 +1388,9 @@ struct field_type_info {
 
 #endif /* _FIELD_NODE_HPP_ */
 
-// End /home/hari/repos/s2s/include/field/field_type_info.hpp
+// End field/field_type_info.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type.hpp
+// Begin type_deduction/type/type.hpp
 #ifndef _TYPE_HPP_
 #define _TYPE_HPP_
  
@@ -1430,9 +1430,9 @@ struct type<ladder> {
 
 #endif // _TYPE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type.hpp
+// End type_deduction/type/type.hpp
 
-// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
+// Begin error/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
  
@@ -1458,9 +1458,9 @@ using cast_result = std::expected<void, cast_error>;
 
 #endif // _CAST_ERROR_HPP_
 
-// End /home/hari/repos/s2s/include/error/cast_error.hpp
+// End error/cast_error.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
+// Begin field_size/comptime_field_size_deduce.hpp
 #ifndef _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
 #define _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
  
@@ -1481,9 +1481,9 @@ struct deduce_field_size<field_size<fixed<N>>> {
 
 #endif // _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
+// End field_size/comptime_field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/utils/type_tags.hpp
+// Begin type_deduction/utils/type_tags.hpp
 #ifndef _TYPE_TAGS_
 #define _TYPE_TAGS_
  
@@ -1588,9 +1588,9 @@ concept type_tag_like = is_type_tag_v<T>;
 
 #endif // _TYPE_TAGS_
 
-// End /home/hari/repos/s2s/include/type_deduction/utils/type_tags.hpp
+// End type_deduction/utils/type_tags.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/match_case.hpp
+// Begin type_deduction/switch/match_case.hpp
 #ifndef _MATCH_CASE_HPP_
 #define _MATCH_CASE_HPP_
  
@@ -1605,9 +1605,9 @@ struct match_case {
 
 #endif // _MATCH_CASE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/match_case.hpp
+// End type_deduction/switch/match_case.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/match_case_traits.hpp
+// Begin type_deduction/switch/match_case_traits.hpp
 #ifndef _MATCH_CASE_TRAITS_HPP_
 #define _MATCH_CASE_TRAITS_HPP_
  
@@ -1634,9 +1634,9 @@ concept match_case_like = is_match_case_v<T>;
 
 #endif // _MATCH_CASE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/match_case_traits.hpp
+// End type_deduction/switch/match_case_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+// Begin field_compute/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
 #define _COMPUTATION_FROM_FIELDS_HPP_
  
@@ -1663,9 +1663,9 @@ using parse_if = eval_bool_from_fields<callable, req_fields>;
 
 #endif // _COMPUTATION_FROM_FIELDS_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+// End field_compute/computation_from_fields.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
+// Begin field_compute/computation_from_fields_traits.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
 #define _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
  
@@ -1725,9 +1725,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
+// End field_compute/computation_from_fields_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause.hpp
+// Begin type_deduction/if_else_ladder/clause.hpp
 #ifndef _CLAUSE_HPP_
 #define _CLAUSE_HPP_
  
@@ -1746,9 +1746,9 @@ struct branch {
 
 #endif // _CLAUSE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause.hpp
+// End type_deduction/if_else_ladder/clause.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause_traits.hpp
+// Begin type_deduction/if_else_ladder/clause_traits.hpp
 #ifndef _CLAUSE_TRAITS_HPP_
 #define _CLAUSE_TRAITS_HPP_
  
@@ -1775,9 +1775,9 @@ concept branch_like = is_branch_v<T>;
 
 #endif // _CLAUSE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause_traits.hpp
+// End type_deduction/if_else_ladder/clause_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/utils/helper.hpp
+// Begin type_deduction/utils/helper.hpp
 #ifndef _HELPER_HPP_
 #define _HELPER_HPP_
  
@@ -1834,9 +1834,9 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/utils/helper.hpp
+// End type_deduction/utils/helper.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder.hpp
+// Begin type_deduction/if_else_ladder/ladder.hpp
 #ifndef _LADDER_HPP_
 #define _LADDER_HPP_
  
@@ -1853,9 +1853,9 @@ struct type_if_else {
 
 #endif // _LADDER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder.hpp
+// End type_deduction/if_else_ladder/ladder.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
+// Begin field_list/field_list_metadata.hpp
 #ifndef _FIELD_LIST_METADATA_HPP_
 #define _FIELD_LIST_METADATA_HPP_
  
@@ -2156,9 +2156,9 @@ constexpr bool type_deduction_dependencies_resolved() {
 
 #endif /* _FIELD_LIST_METADATA_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
+// End field_list/field_list_metadata.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
+// Begin field_list/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
  
@@ -2198,9 +2198,9 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 
 #endif // _FIELD_LIST_HPP_
 
-// End /home/hari/repos/s2s/include/field_list/field_list.hpp
+// End field_list/field_list.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields_impl.hpp
+// Begin field_compute/computation_from_fields_impl.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_IMPL_HPP_
 #define _COMPUTATION_FROM_FIELDS_IMPL_HPP_
  
@@ -2261,9 +2261,9 @@ struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
 
 #endif // _COMPUTATION_FROM_FIELDS_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields_impl.hpp
+// End field_compute/computation_from_fields_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
+// Begin field_size/field_size_deduce.hpp
 #ifndef _FIELD_SIZE_DEDUCE_HPP_
 #define _FIELD_SIZE_DEDUCE_HPP_
  
@@ -2298,9 +2298,9 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
 
 #endif // _FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
+// End field_size/field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch.hpp
+// Begin type_deduction/switch/switch.hpp
 #ifndef _SWITCH_HPP_
 #define _SWITCH_HPP_
  
@@ -2318,9 +2318,9 @@ struct type_switch {
 
 #endif // _SWITCH_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/switch.hpp
+// End type_deduction/switch/switch.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch_traits.hpp
+// Begin type_deduction/switch/switch_traits.hpp
 #ifndef _SWITCH_TRAITS_HPP_
 #define _SWITCH_TRAITS_HPP_
  
@@ -2350,9 +2350,9 @@ concept type_switch_like = is_type_switch_v<T>;
 
 #endif // _SWITCH_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/switch_traits.hpp
+// End type_deduction/switch/switch_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_traits.hpp
+// Begin type_deduction/if_else_ladder/ladder_traits.hpp
 #ifndef _LADDER_TRAITS_HPP_
 #define _LADDER_TRAITS_HPP_
  
@@ -2379,9 +2379,9 @@ concept type_if_else_like = is_type_if_else_v<T>;
 
 #endif // _LADDER_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_traits.hpp
+// End type_deduction/if_else_ladder/ladder_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type_deduction_traits.hpp
+// Begin type_deduction/type/type_deduction_traits.hpp
 #ifndef _TYPE_DEDUCTION_TRAITS_HPP_
 #define _TYPE_DEDUCTION_TRAITS_HPP_
  
@@ -2451,9 +2451,9 @@ concept type_deduction_like = is_type_deduction_v<T>;
 
 #endif // _TYPE_DEDUCTION_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type_deduction_traits.hpp
+// End type_deduction/type/type_deduction_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type_deduction_metafunctions.hpp
+// Begin type_deduction/type/type_deduction_metafunctions.hpp
 #ifndef _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
 #define _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
  
@@ -2530,9 +2530,9 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
 
 #endif /* _TYPE_DEDUCTION_METAFUNCTIONS_HPP_ */
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type_deduction_metafunctions.hpp
+// End type_deduction/type/type_deduction_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/api/field_descriptors.hpp
+// Begin api/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
 #define _FIELD_DESCRIPTORS_HPP_
  
@@ -2610,9 +2610,9 @@ using variance = union_field<id, type_deducer>;
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
 
-// End /home/hari/repos/s2s/include/api/field_descriptors.hpp
+// End api/field_descriptors.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
+// Begin field/field_traits.hpp
 #ifndef _FIELD_TRAITS_HPP_
 #define _FIELD_TRAITS_HPP_
  
@@ -2785,9 +2785,9 @@ concept field_like = fixed_sized_field_like<T> ||
 
 #endif /*_FIELD_TRAITS_HPP_*/
 
-// End /home/hari/repos/s2s/include/field/field_traits.hpp
+// End field/field_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/api/struct_field_list.hpp
+// Begin api/struct_field_list.hpp
 #ifndef _STRUCT_FIELD_LIST_HPP_
 #define _STRUCT_FIELD_LIST_HPP_
  
@@ -2845,9 +2845,9 @@ using struct_field_list = create_struct_field_list<fields...>::value;
 #endif /* _STRUCT_FIELD_LIST_HPP_ */
 
 
-// End /home/hari/repos/s2s/include/api/struct_field_list.hpp
+// End api/struct_field_list.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_metafunctions.hpp
+// Begin field/field_metafunctions.hpp
 #ifndef _FIELD_METAFUNCTIONS_HPP_
 #define _FIELD_METAFUNCTIONS_HPP_
  
@@ -2875,9 +2875,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 #endif // _FIELD_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
+// End field/field_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_impl.hpp
+// Begin type_deduction/if_else_ladder/ladder_impl.hpp
 #ifndef _LADDER_IMPL_HPP_
 #define _LADDER_IMPL_HPP_
  
@@ -2937,9 +2937,9 @@ struct evaluate_ladder<type_if_else<branches...>> {
 
 #endif // _LADDER_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_impl.hpp
+// End type_deduction/if_else_ladder/ladder_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch_impl.hpp
+// Begin type_deduction/switch/switch_impl.hpp
 #ifndef _SWITCH_IMPL_HPP_
 #define _SWITCH_IMPL_HPP_
  
@@ -2991,9 +2991,9 @@ struct evaluate_switch<type_switch<cases...>> {
 
 #endif // _SWITCH_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/switch_impl.hpp
+// End type_deduction/switch/switch_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type_impl.hpp
+// Begin type_deduction/type/type_impl.hpp
 #ifndef _TYPE_IMPL_HPP_
 #define _TYPE_IMPL_HPP_
  
@@ -3035,9 +3035,9 @@ struct deduce_type<type<ladder>> {
 
 #endif // _TYPE_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type_impl.hpp
+// End type_deduction/type/type_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/stream/stream_traits.hpp
+// Begin stream/stream_traits.hpp
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
  
@@ -3103,9 +3103,9 @@ concept output_stream_like = writeable<T> && convertible_to_bool<T>;
 
 #endif /* _STREAM_TRAITS_HPP_ */
 
-// End /home/hari/repos/s2s/include/stream/stream_traits.hpp
+// End stream/stream_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/memory/address_manip.hpp
+// Begin lib/memory/address_manip.hpp
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
  
@@ -3147,9 +3147,9 @@ constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
 
 #endif // _ADDRESS_MANIP_HPP_
 
-// End /home/hari/repos/s2s/include/lib/memory/address_manip.hpp
+// End lib/memory/address_manip.hpp
 
-// Begin /home/hari/repos/s2s/include/field_read/read_impl.hpp
+// Begin field_read/read_impl.hpp
 #ifndef _READ_IMPL_HPP_
 #define _READ_IMPL_HPP_
  
@@ -3255,9 +3255,9 @@ public:
 
 #endif /* _READ_IMPL_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_read/read_impl.hpp
+// End field_read/read_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/field_read/field_reader.hpp
+// Begin field_read/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
  
@@ -3557,9 +3557,9 @@ struct read_field<T, F> {
 
 #endif // _FIELD_READER_HPP_
 
-// End /home/hari/repos/s2s/include/field_read/field_reader.hpp
+// End field_read/field_reader.hpp
 
-// Begin /home/hari/repos/s2s/include/cast/struct_cast_impl.hpp
+// Begin cast/struct_cast_impl.hpp
 #ifndef _STRUCT_CAST_IMPL_HPP_
 #define _STRUCT_CAST_IMPL_HPP_
  
@@ -3615,9 +3615,9 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
 
 #endif // _STRUCT_CAST_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/cast/struct_cast_impl.hpp
+// End cast/struct_cast_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/api/struct_cast.hpp
+// Begin api/struct_cast.hpp
 #ifndef _STRUCT_CAST_HPP_
 #define _STRUCT_CAST_HPP_
 
@@ -3638,9 +3638,9 @@ template <field_list_like T, input_stream_like stream>
 
 #endif // _STRUCT_CAST_HPP_
 
-// End /home/hari/repos/s2s/include/api/struct_cast.hpp
+// End api/struct_cast.hpp
 
-// Begin /home/hari/repos/s2s/include/s2s.hpp
+// Begin s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
  
@@ -3652,6 +3652,9 @@ template <field_list_like T, input_stream_like stream>
  
  
  
+ 
+ 
+ 
 #endif // STRUCT_CAST_HPP
 
-// End /home/hari/repos/s2s/include/s2s.hpp
+// End s2s.hpp
