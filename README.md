@@ -33,7 +33,10 @@ folder can be used for direct inclusion into a project
 s2s currently has a constraint on minimum version of the std to be C++23
 
 The compiler version requirements are 
-* gcc 13.1 : x86-64, arm, arm64 gcc 13.1
+* gcc 13.1 : x86-64, arm, arm64 gcc 13.1 — runtime use only. Constexpr use of
+  `struct_field_list` needs gcc 14 or newer; gcc 13 rejects the `static
+  constexpr` metadata tables with "accessing value of 'key' through a glvalue
+  in a constant expression".
 * clang 19.1.0 : x86-64, armv8-a
 * msvc v19.39, VS 17.9 : x64, x86, arm64
 
