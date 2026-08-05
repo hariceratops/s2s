@@ -26,3 +26,13 @@ add_struct_cast_test(union_fields)
 add_struct_cast_test(variable_buffer_fields)
 add_struct_cast_test(vec_of_recs_fields)
 
+# Write path
+add_struct_cast_test(write_trivial_fields)
+add_struct_cast_test(write_fixed_buffer_fields)
+add_struct_cast_test(write_magic_fields)
+add_struct_cast_test(write_variable_buffer_fields)
+add_struct_cast_test(write_record_fields)
+add_struct_cast_test(write_computed_length_fields)
+add_struct_cast_test(write_optional_fields)
+add_struct_cast_test(write_union_fields)
+

@@ -13,11 +13,12 @@ private:
   std::array<u8, N>& buffer;
   std::size_t read_idx;
   std::size_t max_read_idx;
+  std::size_t write_idx;
   bool is_bad;
 
 public:
-  constexpr memstream(std::array<u8, N>& buffer): 
-    buffer(buffer), read_idx{0}, max_read_idx{buffer.size() - 1}, is_bad{false} {}
+  constexpr memstream(std::array<u8, N>& buffer):
+    buffer(buffer), read_idx{0}, max_read_idx{buffer.size() - 1}, write_idx{0}, is_bad{false} {}
 
   template <std::size_t dest_buffer_size>
   [[nodiscard]] constexpr auto read(std::array<char, dest_buffer_size>& dest, std::size_t size_to_read) -> memstream<N>& {
@@ -30,6 +31,28 @@ public:
       dest[idx++] = buffer[read_idx++];
     }
     return *this;
+  }
+
+  // TODO(issue 001): satisfy constexpr_write_trait — the concept requires
+  // `{ obj.write(const std::array<char, M>&, std::size_t) } -> std::same_as<T&>`.
+  // Mirrors read() above: bounds-check against the buffer, set is_bad on
+  // exhaustion so operator bool reports the failure.
+  template <std::size_t src_buffer_size>
+  [[nodiscard]] constexpr auto write(const std::array<char, src_buffer_size>& src, std::size_t size_to_write) -> memstream<N>& {
+    std::size_t idx{0};
+    while(idx < size_to_write) {
+      if(write_idx >= buffer.size()) {
+        is_bad = true;
+        return *this;
+      }
+      buffer[write_idx++] = static_cast<u8>(src[idx++]);
+    }
+    return *this;
+  }
+
+  // Round-trip helper: rewind so a just-written buffer can be read back.
+  constexpr auto rewind() -> void {
+    read_idx = 0;
   }
 
   [[nodiscard]]
