@@ -1,9 +1,7 @@
 
 # s2s
 A declarative binary parser aka serde to convert a stream into meta-struct which has a map like 
-interface.
-
-(The read in other direction is work-in-progress)
+interface, and back again.
 
 Implemented as an embedded DSL powered by C++23 TMP.
 
@@ -25,7 +23,10 @@ folder can be used for direct inclusion into a project
     * Unions
     * Magic strings
     * Magic numbers
-* Validation of fields in place while reading
+* Writing a struct back to a stream with the same schema, in either byte order
+* Lengths and union discriminants derived on write, and read-only at compile
+  time so they cannot drift from the data they describe
+* Validation of fields in place while reading and while writing
 * Compile time endianness handling 
 * Pluggable interfaces working with custom streams
 
@@ -177,6 +178,29 @@ Error codes are returned in case a read fails. The read can fail
 currently in one of the three scenarios: field value validation failure,
 provided input stream is exhausted or when type deduction failed while reading into union
 
+### Write API
+```cpp
+template <struct_field_list_like T, output_stream_like S>
+[[nodiscard]] auto struct_write_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
+
+template <struct_field_list_like T, output_stream_like S>
+[[nodiscard]] auto struct_write_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+```
+The APIs struct_write_xx serialize a struct_field_list to a stream, driven by the
+same schema as the read direction.
+
+Fields the schema can derive are not yours to set: the target of a
+`len_from_field` size comes from the container's `size()`, and a `type_switch`
+discriminant comes from the alternative the variant currently holds. Both are
+derived on write and are read-only at compile time — assigning to one does not
+compile. This is a breaking change to code that previously assigned to a length
+field on a parsed struct; see UserGuide.md for what to do instead.
+
+Writing adds a fourth error reason, `found_contradicting_length`, for the cases
+where two parts of the struct imply different lengths for the same data. A write
+is fail-fast and never rolled back: a failure at field `k` leaves fields `0..k-1`
+in the stream and nothing of `k`.
+
 
 ## Roadmap
 - [x] Trivials
@@ -191,7 +215,7 @@ provided input stream is exhausted or when type deduction failed while reading i
 - [x] Compile-time Endianness Handling
 - [ ] Run-time Endianness Handling
 - [ ] Modules
-- [ ] Write struct to stream
+- [x] Write struct to stream
 - [ ] struct_view - Zero copy views into buffers
 - [ ] Asynchronous Read-Write
 - [ ] Support for seeking

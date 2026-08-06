@@ -25,3 +25,17 @@ Depends on: 001–010.
   removed or updated, the feature list mentions write support, and the roadmap
   item is checked off.
 - Any code sample in the docs compiles as written.
+
+## Notes 2026-08-07
+- Every complete code sample was verified by compiling and running it, not by
+  inspection. Doing so caught a wrong claim in the first draft: the guide
+  implied that reading a derived field gives the derived value. It does not —
+  derivation happens during the write, against a `const` struct, and is never
+  written back, so the subscript returns the stored slot. Documented
+  explicitly, with the `obj["count"_f] == 0` case spelled out.
+- The worked example and the derived-field claims now live in
+  `test/single_header/doc_example.cpp`, compiled and run by ctest, so the docs
+  cannot drift from the library unnoticed.
+- `UserGuide.md`'s Errors section documented `enum cast_error { ... }`, which
+  never existed: the enum is `error_reason` and `cast_error` is the struct
+  pairing it with `failed_at`. Corrected while adding the fourth enumerator.

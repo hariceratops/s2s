@@ -17,6 +17,15 @@ target_compile_options(single_header_roundtrip PRIVATE
 
 add_test(NAME single_header_roundtrip COMMAND single_header_roundtrip)
 
+# UserGuide.md's worked example and its claims about derived fields, kept
+# compilable so the docs cannot drift from the library unnoticed.
+add_executable(doc_example doc_example.cpp)
+add_dependencies(doc_example generate_single_header)
+target_include_directories(doc_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(doc_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME doc_example COMMAND doc_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
