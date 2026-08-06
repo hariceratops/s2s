@@ -347,6 +347,73 @@ constexpr auto nested_bytes_are_in_declaration_order() -> bool {
     0x77, 0x77, 0x88, 0x88};
 }
 
+auto flag_is_set = [](auto flag) { return flag == 0xdeadbeef; };
+
+using optional_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::maybe<
+      s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+    >
+  >;
+
+constexpr auto make_optional(u32 flag, bool engaged) -> optional_struct {
+  optional_struct obj{};
+  obj["flag"_f] = flag;
+  if(engaged)
+    obj["payload"_f] = 0xcafed00d;
+  return obj;
+}
+
+template <bool big_endian>
+constexpr auto roundtrip_optional_present() -> bool {
+  std::array<u8, 8> buffer{};
+  memstream<8> stream(buffer);
+  const auto obj = make_optional(0xdeadbeef, true);
+  if constexpr(big_endian) {
+    if(!s2s::struct_write_be<optional_struct>(stream, obj))
+      return false;
+  } else {
+    if(!s2s::struct_write_le<optional_struct>(stream, obj))
+      return false;
+  }
+  stream.rewind();
+  auto res = [&] {
+    if constexpr(big_endian)
+      return s2s::struct_cast_be<optional_struct>(stream);
+    else
+      return s2s::struct_cast_le<optional_struct>(stream);
+  }();
+  return res && (*res)["payload"_f].has_value() && *(*res)["payload"_f] == 0xcafed00d;
+}
+
+// An absent optional contributes no bytes at all, so the flag is the whole
+// stream.
+constexpr auto roundtrip_optional_absent() -> bool {
+  std::array<u8, 8> buffer{};
+  memstream<8> stream(buffer);
+  if(!s2s::struct_write_be<optional_struct>(stream, make_optional(0x11223344, false)))
+    return false;
+  if(buffer != std::array<u8, 8>{0x11, 0x22, 0x33, 0x44, 0x00, 0x00, 0x00, 0x00})
+    return false;
+  stream.rewind();
+  auto res = s2s::struct_cast_be<optional_struct>(stream);
+  return res && !(*res)["payload"_f].has_value();
+}
+
+constexpr auto write_present_but_empty() -> s2s::cast_result {
+  std::array<u8, 8> buffer{};
+  memstream<8> stream(buffer);
+  return s2s::struct_write_le<optional_struct>(stream, make_optional(0xdeadbeef, false));
+}
+
+constexpr auto write_absent_but_engaged() -> s2s::cast_result {
+  std::array<u8, 8> buffer{};
+  memstream<8> stream(buffer);
+  return s2s::struct_write_le<optional_struct>(stream, make_optional(0x11223344, true));
+}
+
 static_assert(roundtrip_le(), "little-endian constexpr round-trip failed");
 static_assert(roundtrip_be(), "big-endian constexpr round-trip failed");
 static_assert(!write_into_undersized_buffer().has_value());
@@ -382,6 +449,13 @@ static_assert(write_contradicting_fanout().error().failed_at == "len");
 static_assert(roundtrip_records<false>(), "little-endian record round-trip failed");
 static_assert(roundtrip_records<true>(), "big-endian record round-trip failed");
 static_assert(nested_bytes_are_in_declaration_order());
+static_assert(roundtrip_optional_present<false>(), "little-endian optional round-trip failed");
+static_assert(roundtrip_optional_present<true>(), "big-endian optional round-trip failed");
+static_assert(roundtrip_optional_absent());
+static_assert(!write_present_but_empty().has_value());
+static_assert(write_present_but_empty().error().failed_at == "payload");
+static_assert(!write_absent_but_engaged().has_value());
+static_assert(write_absent_but_engaged().error().failed_at == "payload");
 static_assert(
   write_contradicting_fanout().error().failure_reason ==
     s2s::error_reason::found_contradicting_length);

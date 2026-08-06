@@ -2639,7 +2639,9 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
  
 namespace s2s {
 struct always_true {
-  constexpr auto operator()() -> bool {
+  // const: compute_impl invokes the callable as a const NTTP, so without this
+  // always_present fails to compile in either direction.
+  constexpr auto operator()() const -> bool {
     return true;
   }
 };
@@ -3982,11 +3984,11 @@ struct write_field;
 
 template <fixed_sized_field_like T, field_list_like F>
 struct write_field<T, F> {
-  const T& field;
+  const typename T::field_type& value;
   const F& field_list;
 
-  constexpr write_field(const T& field, const F& field_list)
-    : field(field), field_list(field_list) {}
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
@@ -4002,18 +4004,18 @@ struct write_field<T, F> {
         return std::unexpected(error_reason::validation_failure);
       return write_impl<endianness>(s, *derived, size_to_write);
     } else {
-      return write_impl<endianness>(s, field.value, size_to_write);
+      return write_impl<endianness>(s, value, size_to_write);
     }
   }
 };
 
 template <variable_sized_field_like T, field_list_like F>
 struct write_field<T, F> {
-  const T& field;
+  const typename T::field_type& value;
   const F& field_list;
 
-  constexpr write_field(const T& field, const F& field_list)
-    : field(field), field_list(field_list) {}
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
@@ -4022,12 +4024,12 @@ struct write_field<T, F> {
       // An arbitrary N-ary callable has no inverse, so its source fields stay
       // ordinary data and the size they imply can only be checked against the
       // container, never used to repair it.
-      if(deduce_field_size<field_size>{}(field_list) != field.value.size())
+      if(deduce_field_size<field_size>{}(field_list) != value.size())
         return std::unexpected(error_reason::found_contradicting_length);
     }
     // For a len_from_field size there is nothing to check: the length slot was
     // derived from this very container, so the container is the authority.
-    return write_impl<endianness>(s, field.value, field.value.size());
+    return write_impl<endianness>(s, value, value.size());
   }
 };
 
@@ -4049,26 +4051,26 @@ constexpr auto write_nested(stream& s, const L& nested) -> rw_result {
 
 template <struct_field_like T, field_list_like F>
 struct write_field<T, F> {
-  const T& field;
+  const typename T::field_type& value;
   const F& field_list;
 
-  constexpr write_field(const T& field, const F& field_list)
-    : field(field), field_list(field_list) {}
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    return write_nested<field_list_t, endianness>(s, field.value);
+    return write_nested<field_list_t, endianness>(s, value);
   }
 };
 
 template <array_of_record_field_like T, field_list_like F>
 struct write_field<T, F> {
-  const T& field;
+  const typename T::field_type& value;
   const F& field_list;
 
-  constexpr write_field(const T& field, const F& field_list)
-    : field(field), field_list(field_list) {}
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
@@ -4077,7 +4079,7 @@ struct write_field<T, F> {
     constexpr auto array_len = extract_size_from_array_v<array_type>;
 
     for(std::size_t count = 0; count < array_len; ++count) {
-      auto res = write_nested<element_t, endianness>(s, field.value[count]);
+      auto res = write_nested<element_t, endianness>(s, value[count]);
       if(!res)
         return res;
     }
@@ -4087,11 +4089,11 @@ struct write_field<T, F> {
 
 template <vector_of_record_field_like T, field_list_like F>
 struct write_field<T, F> {
-  const T& field;
+  const typename T::field_type& value;
   const F& field_list;
 
-  constexpr write_field(const T& field, const F& field_list)
-    : field(field), field_list(field_list) {}
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
@@ -4100,15 +4102,45 @@ struct write_field<T, F> {
     using field_size = typename T::field_size;
 
     if constexpr(is_computed_size_v<field_size>) {
-      if(deduce_field_size<field_size>{}(field_list) != field.value.size())
+      if(deduce_field_size<field_size>{}(field_list) != value.size())
         return std::unexpected(error_reason::found_contradicting_length);
     }
-    for(const auto& record: field.value) {
+    for(const auto& record: value) {
       auto res = write_nested<element_t, endianness>(s, record);
       if(!res)
         return res;
     }
     return {};
+  }
+};
+
+template <optional_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    // Presence is a predicate over siblings, not a stored flag, so there is
+    // nothing to derive here — only to check that the struct agrees with what
+    // the reader will conclude from the very same sibling bytes.
+    const auto should_be_present =
+      compute_impl<typename T::field_presence_checker>{}(field_list);
+    if(should_be_present != value.has_value())
+      return std::unexpected(error_reason::validation_failure);
+    if(!should_be_present)
+      return {};
+
+    using base_t = typename T::field_base_type;
+    // maybe_field rewrites the base field's constraint to no_constraint over
+    // the optional, so the fold cannot run it and this is the only place it
+    // reaches the engaged value.
+    if(!base_t::constraint_checker(*value))
+      return std::unexpected(error_reason::validation_failure);
+    return write_field<base_t, F>(*value, field_list).template write<endianness>(s);
   }
 };
 } /* namespace s2s */
@@ -4147,7 +4179,7 @@ struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, en
             return std::unexpected(cast_error{error_reason::validation_failure, field_name});
           }
         }
-        auto writer = write_field<fields, S>(field, field_list);
+        auto writer = write_field<fields, S>(field.value, field_list);
         auto write_res = writer.template write<endianness>(s);
         if(!write_res) {
           auto field_name = std::string_view{fields::field_id.data()};

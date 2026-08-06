@@ -34,7 +34,7 @@ struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, en
             return std::unexpected(cast_error{error_reason::validation_failure, field_name});
           }
         }
-        auto writer = write_field<fields, S>(field, field_list);
+        auto writer = write_field<fields, S>(field.value, field_list);
         auto write_res = writer.template write<endianness>(s);
         if(!write_res) {
           auto field_name = std::string_view{fields::field_id.data()};

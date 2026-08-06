@@ -24,3 +24,11 @@ Depends on: 001.
   read-only constraint must not capture them.
 - Round-trip and both mismatch cases verified in `test/runtime/`; round-trip
   also in `test/constexpr/`.
+
+## Notes 2026-08-07
+- `always_present` did not compile in either direction before this slice:
+  `always_true::operator()` was non-const and `compute_impl` invokes the
+  callable as a const NTTP. No test had ever used it. Fixed here.
+- `write_field` now binds the field's value rather than the field, so an
+  optional recurses into its base without copying the engaged value. A
+  `maybe<vec_field>` would otherwise have allocated on every write.

@@ -14,7 +14,9 @@
 
 namespace s2s {
 struct always_true {
-  constexpr auto operator()() -> bool {
+  // const: compute_impl invokes the callable as a const NTTP, so without this
+  // always_present fails to compile in either direction.
+  constexpr auto operator()() const -> bool {
     return true;
   }
 };
