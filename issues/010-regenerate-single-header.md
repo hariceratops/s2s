@@ -33,3 +33,19 @@ Depends on: 001–009.
 
   Fix both before the write path lands, or issue 010's own diff will be
   impossible to review.
+
+## Notes 2026-08-07
+- All criteria verified and now guarded rather than checked once by hand:
+  `test/single_header/` builds a round-trip program that includes **only**
+  `single_header/s2s.hpp` (not `include/`), with `-Wall -Wextra -Wpedantic
+  -Werror`, plus a determinism test that generates the header twice and
+  compares.
+- `-Wnon-template-friend` is suppressed in that target. It is pre-existing —
+  the same warning fires on the pre-feature header at b186465 — and comes
+  from the friend-injection trick for `type_id` in
+  `include/lib/metaprog/mp.hpp:16`. It is not new, but it does fire on every
+  consumer build with warnings on, so it is worth fixing separately.
+- The determinism work in this issue was pulled forward into commit f879133,
+  before issue 001, because every build target depends on
+  `generate_single_header` and would otherwise have dirtied the tree on each
+  slice commit.
