@@ -42,3 +42,17 @@ Depends on: 001, 005 (extends the read-only mechanism), 006.
 - Round-trip and mismatch cases verified in `test/runtime/`; round-trip also in
   `test/constexpr/`; the discriminant compile-fail case joins 005's
   compile-fail test.
+
+## Notes 2026-08-07
+- The spec's open question (does a `type_switch` discriminant still need its
+  own field slot at write time?) was already answered in design §4.5: **yes,
+  unconditionally**. The slot holds real bytes, and `match_field` resolves
+  against it on read (`type_impl.hpp`), so omitting it would leave a stream
+  `struct_cast` cannot read. Only the *source* of the value changes. That
+  section stands as written; nothing needed amending.
+- `has_unique_match_values` landed alongside `has_unique_field_choices` on
+  `variance`, and is covered by compile-fail case 4.
+- The union conditional-length shape deferred from issue 007 is implemented
+  here (`union_len_obligation`): a length obligated only by a union
+  alternative is verified while that alternative is held, and left untouched
+  otherwise.

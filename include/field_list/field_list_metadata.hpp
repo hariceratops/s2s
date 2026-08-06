@@ -230,6 +230,26 @@ struct extract_unconditional_len_sources<
 template <typename T>
 inline constexpr auto extract_unconditional_len_sources_v = extract_unconditional_len_sources<T>::value;
 
+
+// A type_switch discriminant is always derivable: variant index i corresponds
+// positionally to case i, so the held alternative determines the value. A
+// computed switch input or a ladder is not, since neither can be inverted.
+template <typename T>
+struct extract_switch_discriminants {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, fixed_string matched_id, typename type_switch>
+struct extract_switch_discriminants<
+  union_field<id, type<match_field<matched_id>, type_switch>>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(matched_id));
+};
+
+template <typename T>
+inline constexpr auto extract_switch_discriminants_v = extract_switch_discriminants<T>::value;
+
 template <typename... fields>
 struct field_list_metadata {
   template <std::size_t... Is>
@@ -266,7 +286,10 @@ struct field_list_metadata {
   }
 
   static constexpr auto generate_derived_field_ids() {
-    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_unconditional_len_sources_v<fields>)...};
+    dep_vec sources[sizeof...(fields) * 2] = {
+      dep_vec(extract_unconditional_len_sources_v<fields>)...,
+      dep_vec(extract_switch_discriminants_v<fields>)...
+    };
     return remove_duplicates(flatten(sources));
   }
 

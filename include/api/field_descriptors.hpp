@@ -74,7 +74,8 @@ using maybe = maybe_field<base_field, present_only_if>;
 
 
 template <fixed_string id, type_deduction_like type_deducer>
-  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value))
+  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value)) &&
+           (has_unique_match_values(extract_match_values<type_deducer>::value))
 using variance = union_field<id, type_deducer>;
 
 } /* namespace s2s */

@@ -2,8 +2,11 @@
 #define _FIELD_WRITER_HPP_
 
 #include <expected>
+#include <utility>
+#include <variant>
 
 #include "../field/field_traits.hpp"
+#include "../type_deduction/type/type_impl.hpp"
 #include "../field/field_metafunctions.hpp"
 #include "../field_size/comptime_field_size_deduce.hpp"
 #include "../field_size/field_size_deduce.hpp"
@@ -192,6 +195,76 @@ struct write_field<T, F> {
     if(!base_t::constraint_checker(*value))
       return std::unexpected(error_reason::validation_failure);
     return write_field<base_t, F>(*value, field_list).template write<endianness>(s);
+  }
+};
+
+
+template <std::size_t idx, typename E, typename F, typename V>
+struct write_variant_impl {
+  const V& variant;
+  const F& field_list;
+
+  constexpr write_variant_impl(const V& variant, const F& field_list)
+    : variant(variant), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    if(variant.index() != idx)
+      return {};
+    return write_field<E, F>(std::get<idx>(variant), field_list).template write<endianness>(s);
+  }
+};
+
+template <typename F, typename field_choices, typename idx_seq>
+struct write_variant_helper;
+
+template <typename F, typename... choices, std::size_t... idx>
+struct write_variant_helper<F, field_choice_list<choices...>, std::index_sequence<idx...>> {
+  template <auto endianness, typename stream, typename V>
+  static constexpr auto write(stream& s, const V& variant, const F& field_list) -> rw_result {
+    rw_result pipeline_seed{};
+    return (
+      pipeline_seed |
+      ... |
+      [&]() {
+        return write_variant_impl<idx, choices, F, V>(variant, field_list)
+                 .template write<endianness>(s);
+      }
+    );
+  }
+};
+
+template <union_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using guide = typename T::type_deduction_guide;
+
+    // Exactly the unions whose discriminant is derivable need no check here:
+    // the discriminant came from this alternative, so agreement is structural.
+    // A computed switch input or a ladder cannot be inverted, so the held
+    // alternative can only be checked against what the reader will conclude
+    // from the same sibling bytes.
+    if constexpr(!discriminant_obligation<T>::present) {
+      auto deduced = deduce_type<guide>{}(field_list);
+      if(!deduced)
+        return std::unexpected(deduced.error());
+      if(*deduced != value.index())
+        return std::unexpected(error_reason::validation_failure);
+    }
+
+    using helper = write_variant_helper<
+      F,
+      typename T::field_choices,
+      std::make_index_sequence<T::variant_size>
+    >;
+    return helper::template write<endianness>(s, value, field_list);
   }
 };
 } /* namespace s2s */

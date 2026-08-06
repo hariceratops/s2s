@@ -36,6 +36,44 @@ constexpr auto obligates() -> bool {
     return false;
 }
 
+// The other invertible dependency. variant_from_type_conditions_v builds the
+// variant in case order, so index i is case i positionally — the inverse is
+// total, with no search and no ambiguity, and has_unique_match_values keeps
+// it that way.
+template <typename T>
+struct discriminant_obligation {
+  static constexpr bool present = false;
+};
+
+template <
+  fixed_string id, fixed_string matched_id,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct discriminant_obligation<
+  union_field<
+    id,
+    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>
+  >
+>
+{
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(matched_id);
+
+  static constexpr auto value_at(std::size_t alternative_index) -> std::size_t {
+    constexpr std::size_t values[] = {static_cast<std::size_t>(match_values)...};
+    return values[alternative_index];
+  }
+};
+
+template <typename producer, typename target>
+constexpr auto discriminant_obligates() -> bool {
+  if constexpr(discriminant_obligation<producer>::present)
+    return discriminant_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
 // A producer sitting inside a maybe_field obligates its target only when the
 // optional is actually present. That is why such a target cannot be derived —
 // there may be nothing to derive from — but when the producer is present its
@@ -67,6 +105,48 @@ constexpr auto conditionally_obligates() -> bool {
     return false;
 }
 
+// The other conditional shape: a union alternative that is itself a
+// length-prefixed container obligates its length only while that alternative
+// is the one held.
+template <typename producer, typename target, typename idx_seq>
+struct union_len_obligation {
+  static constexpr bool present = false;
+};
+
+template <typename target, typename... choices, std::size_t... idx>
+struct union_len_obligation<field_choice_list<choices...>, target, std::index_sequence<idx...>> {
+  static constexpr bool present = (... || obligates<choices, target>());
+
+  template <typename V>
+  static constexpr auto agrees(const V& variant, std::size_t value_on_the_wire) -> bool {
+    bool ok{true};
+    (([&] {
+      if constexpr(obligates<choices, target>()) {
+        if(variant.index() == idx && std::get<idx>(variant).size() != value_on_the_wire)
+          ok = false;
+      }
+    }()), ...);
+    return ok;
+  }
+};
+
+template <typename producer, typename target>
+struct union_len_obligation_of {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename type_deducer, typename target>
+struct union_len_obligation_of<union_field<id, type_deducer>, target> {
+  using field = union_field<id, type_deducer>;
+  using resolved = union_len_obligation<
+    typename field::field_choices,
+    target,
+    std::make_index_sequence<field::variant_size>
+  >;
+  static constexpr bool present = resolved::present;
+};
+
+
 template <typename target, typename F>
 struct has_conditional_len_obligation {
   static constexpr bool value = false;
@@ -74,7 +154,9 @@ struct has_conditional_len_obligation {
 
 template <typename target, auto metadata, typename... fields>
 struct has_conditional_len_obligation<target, struct_field_list_impl<metadata, fields...>> {
-  static constexpr bool value = (... || conditionally_obligates<fields, target>());
+  static constexpr bool value =
+    (... || (conditionally_obligates<fields, target>() ||
+             union_len_obligation_of<fields, target>::present));
 };
 
 template <typename target, typename F>
@@ -99,12 +181,16 @@ struct verify_conditional_len<target, struct_field_list_impl<metadata, fields...
     bool agreed{true};
 
     (([&] {
+      const auto& producer = static_cast<const fields&>(field_list);
       if constexpr(conditionally_obligates<fields, target>()) {
-        const auto& producer = static_cast<const fields&>(field_list);
         const auto is_active =
           producer.value.has_value() &&
           compute_impl<typename fields::field_presence_checker>{}(field_list);
         if(is_active && producer.value->size() != value_on_the_wire)
+          agreed = false;
+      } else if constexpr(union_len_obligation_of<fields, target>::present) {
+        using resolved = typename union_len_obligation_of<fields, target>::resolved;
+        if(!resolved::agrees(producer.value, value_on_the_wire))
           agreed = false;
       }
     }()), ...);
@@ -156,14 +242,19 @@ struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
     bool seen{false};
     bool agreed{true};
 
+    auto record = [&](std::size_t implied) {
+      if(seen && implied != derived)
+        agreed = false;
+      derived = implied;
+      seen = true;
+    };
+
     (([&] {
-      if constexpr(obligates<fields, target>()) {
-        auto implied = static_cast<const fields&>(field_list).value.size();
-        if(seen && implied != derived)
-          agreed = false;
-        derived = implied;
-        seen = true;
-      }
+      const auto& producer = static_cast<const fields&>(field_list);
+      if constexpr(obligates<fields, target>())
+        record(producer.value.size());
+      else if constexpr(discriminant_obligates<fields, target>())
+        record(discriminant_obligation<fields>::value_at(producer.value.index()));
     }()), ...);
 
     // Two distinct failures: the dependents contradict one another, or they

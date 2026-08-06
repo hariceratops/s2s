@@ -2120,6 +2120,26 @@ struct extract_unconditional_len_sources<
 template <typename T>
 inline constexpr auto extract_unconditional_len_sources_v = extract_unconditional_len_sources<T>::value;
 
+
+// A type_switch discriminant is always derivable: variant index i corresponds
+// positionally to case i, so the held alternative determines the value. A
+// computed switch input or a ladder is not, since neither can be inverted.
+template <typename T>
+struct extract_switch_discriminants {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, fixed_string matched_id, typename type_switch>
+struct extract_switch_discriminants<
+  union_field<id, type<match_field<matched_id>, type_switch>>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(matched_id));
+};
+
+template <typename T>
+inline constexpr auto extract_switch_discriminants_v = extract_switch_discriminants<T>::value;
+
 template <typename... fields>
 struct field_list_metadata {
   template <std::size_t... Is>
@@ -2156,7 +2176,10 @@ struct field_list_metadata {
   }
 
   static constexpr auto generate_derived_field_ids() {
-    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_unconditional_len_sources_v<fields>)...};
+    dep_vec sources[sizeof...(fields) * 2] = {
+      dep_vec(extract_unconditional_len_sources_v<fields>)...,
+      dep_vec(extract_switch_discriminants_v<fields>)...
+    };
     return remove_duplicates(flatten(sources));
   }
 
@@ -2620,6 +2643,59 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
   static_set<meta::type_identifier, N> type_id_set(type_id_list);
   return equal_ranges(type_id_list, type_id_set);
 }
+
+
+// has_unique_field_choices enforces unique case *types*, which is what makes
+// alternative-to-index inversion well-defined. It says nothing about the case
+// *values*, and duplicates there break round-trip silently: writing the second
+// alternative emits value v, and reading v back selects the first case that
+// matches it. Only the switch forms carry values; a ladder has none.
+template <typename T>
+struct extract_match_values {
+  static constexpr auto value = static_vector<std::size_t, 1>();
+};
+
+template <
+  fixed_string matched_id,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct extract_match_values<
+  type<
+    match_field<matched_id>,
+    type_switch<
+      match_case<match_values, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value =
+    static_vector<std::size_t, sizeof...(match_values)>(static_cast<std::size_t>(match_values)...);
+};
+
+template <
+  auto callable, typename R, typename field_name_list,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct extract_match_values<
+  type<
+    compute<callable, R, field_name_list>,
+    type_switch<
+      match_case<match_values, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value =
+    static_vector<std::size_t, sizeof...(match_values)>(static_cast<std::size_t>(match_values)...);
+};
+
+template <std::size_t N>
+constexpr bool has_unique_match_values(const s2s::static_vector<std::size_t, N>& match_value_list) {
+  static_set<std::size_t, N> match_value_set(match_value_list);
+  return equal_ranges(match_value_list, match_value_set);
+}
 }
 
 #endif /* _TYPE_DEDUCTION_METAFUNCTIONS_HPP_ */
@@ -2699,7 +2775,8 @@ using maybe = maybe_field<base_field, present_only_if>;
 
 
 template <fixed_string id, type_deduction_like type_deducer>
-  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value))
+  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value)) &&
+           (has_unique_match_values(extract_match_values<type_deducer>::value))
 using variance = union_field<id, type_deducer>;
 
 } /* namespace s2s */
@@ -3798,6 +3875,44 @@ constexpr auto obligates() -> bool {
     return false;
 }
 
+// The other invertible dependency. variant_from_type_conditions_v builds the
+// variant in case order, so index i is case i positionally — the inverse is
+// total, with no search and no ambiguity, and has_unique_match_values keeps
+// it that way.
+template <typename T>
+struct discriminant_obligation {
+  static constexpr bool present = false;
+};
+
+template <
+  fixed_string id, fixed_string matched_id,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct discriminant_obligation<
+  union_field<
+    id,
+    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>
+  >
+>
+{
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(matched_id);
+
+  static constexpr auto value_at(std::size_t alternative_index) -> std::size_t {
+    constexpr std::size_t values[] = {static_cast<std::size_t>(match_values)...};
+    return values[alternative_index];
+  }
+};
+
+template <typename producer, typename target>
+constexpr auto discriminant_obligates() -> bool {
+  if constexpr(discriminant_obligation<producer>::present)
+    return discriminant_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
 // A producer sitting inside a maybe_field obligates its target only when the
 // optional is actually present. That is why such a target cannot be derived —
 // there may be nothing to derive from — but when the producer is present its
@@ -3829,6 +3944,48 @@ constexpr auto conditionally_obligates() -> bool {
     return false;
 }
 
+// The other conditional shape: a union alternative that is itself a
+// length-prefixed container obligates its length only while that alternative
+// is the one held.
+template <typename producer, typename target, typename idx_seq>
+struct union_len_obligation {
+  static constexpr bool present = false;
+};
+
+template <typename target, typename... choices, std::size_t... idx>
+struct union_len_obligation<field_choice_list<choices...>, target, std::index_sequence<idx...>> {
+  static constexpr bool present = (... || obligates<choices, target>());
+
+  template <typename V>
+  static constexpr auto agrees(const V& variant, std::size_t value_on_the_wire) -> bool {
+    bool ok{true};
+    (([&] {
+      if constexpr(obligates<choices, target>()) {
+        if(variant.index() == idx && std::get<idx>(variant).size() != value_on_the_wire)
+          ok = false;
+      }
+    }()), ...);
+    return ok;
+  }
+};
+
+template <typename producer, typename target>
+struct union_len_obligation_of {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename type_deducer, typename target>
+struct union_len_obligation_of<union_field<id, type_deducer>, target> {
+  using field = union_field<id, type_deducer>;
+  using resolved = union_len_obligation<
+    typename field::field_choices,
+    target,
+    std::make_index_sequence<field::variant_size>
+  >;
+  static constexpr bool present = resolved::present;
+};
+
+
 template <typename target, typename F>
 struct has_conditional_len_obligation {
   static constexpr bool value = false;
@@ -3836,7 +3993,9 @@ struct has_conditional_len_obligation {
 
 template <typename target, auto metadata, typename... fields>
 struct has_conditional_len_obligation<target, struct_field_list_impl<metadata, fields...>> {
-  static constexpr bool value = (... || conditionally_obligates<fields, target>());
+  static constexpr bool value =
+    (... || (conditionally_obligates<fields, target>() ||
+             union_len_obligation_of<fields, target>::present));
 };
 
 template <typename target, typename F>
@@ -3861,12 +4020,16 @@ struct verify_conditional_len<target, struct_field_list_impl<metadata, fields...
     bool agreed{true};
 
     (([&] {
+      const auto& producer = static_cast<const fields&>(field_list);
       if constexpr(conditionally_obligates<fields, target>()) {
-        const auto& producer = static_cast<const fields&>(field_list);
         const auto is_active =
           producer.value.has_value() &&
           compute_impl<typename fields::field_presence_checker>{}(field_list);
         if(is_active && producer.value->size() != value_on_the_wire)
+          agreed = false;
+      } else if constexpr(union_len_obligation_of<fields, target>::present) {
+        using resolved = typename union_len_obligation_of<fields, target>::resolved;
+        if(!resolved::agrees(producer.value, value_on_the_wire))
           agreed = false;
       }
     }()), ...);
@@ -3918,14 +4081,19 @@ struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
     bool seen{false};
     bool agreed{true};
 
+    auto record = [&](std::size_t implied) {
+      if(seen && implied != derived)
+        agreed = false;
+      derived = implied;
+      seen = true;
+    };
+
     (([&] {
-      if constexpr(obligates<fields, target>()) {
-        auto implied = static_cast<const fields&>(field_list).value.size();
-        if(seen && implied != derived)
-          agreed = false;
-        derived = implied;
-        seen = true;
-      }
+      const auto& producer = static_cast<const fields&>(field_list);
+      if constexpr(obligates<fields, target>())
+        record(producer.value.size());
+      else if constexpr(discriminant_obligates<fields, target>())
+        record(discriminant_obligation<fields>::value_at(producer.value.index()));
     }()), ...);
 
     // Two distinct failures: the dependents contradict one another, or they
@@ -4057,6 +4225,8 @@ constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
 // Begin field_write/field_writer.hpp
 #ifndef _FIELD_WRITER_HPP_
 #define _FIELD_WRITER_HPP_
+ 
+ 
  
 namespace s2s {
 template <typename F, typename L>
@@ -4237,6 +4407,76 @@ struct write_field<T, F> {
     if(!base_t::constraint_checker(*value))
       return std::unexpected(error_reason::validation_failure);
     return write_field<base_t, F>(*value, field_list).template write<endianness>(s);
+  }
+};
+
+
+template <std::size_t idx, typename E, typename F, typename V>
+struct write_variant_impl {
+  const V& variant;
+  const F& field_list;
+
+  constexpr write_variant_impl(const V& variant, const F& field_list)
+    : variant(variant), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    if(variant.index() != idx)
+      return {};
+    return write_field<E, F>(std::get<idx>(variant), field_list).template write<endianness>(s);
+  }
+};
+
+template <typename F, typename field_choices, typename idx_seq>
+struct write_variant_helper;
+
+template <typename F, typename... choices, std::size_t... idx>
+struct write_variant_helper<F, field_choice_list<choices...>, std::index_sequence<idx...>> {
+  template <auto endianness, typename stream, typename V>
+  static constexpr auto write(stream& s, const V& variant, const F& field_list) -> rw_result {
+    rw_result pipeline_seed{};
+    return (
+      pipeline_seed |
+      ... |
+      [&]() {
+        return write_variant_impl<idx, choices, F, V>(variant, field_list)
+                 .template write<endianness>(s);
+      }
+    );
+  }
+};
+
+template <union_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using guide = typename T::type_deduction_guide;
+
+    // Exactly the unions whose discriminant is derivable need no check here:
+    // the discriminant came from this alternative, so agreement is structural.
+    // A computed switch input or a ladder cannot be inverted, so the held
+    // alternative can only be checked against what the reader will conclude
+    // from the same sibling bytes.
+    if constexpr(!discriminant_obligation<T>::present) {
+      auto deduced = deduce_type<guide>{}(field_list);
+      if(!deduced)
+        return std::unexpected(deduced.error());
+      if(*deduced != value.index())
+        return std::unexpected(error_reason::validation_failure);
+    }
+
+    using helper = write_variant_helper<
+      F,
+      typename T::field_choices,
+      std::make_index_sequence<T::variant_size>
+    >;
+    return helper::template write<endianness>(s, value, field_list);
   }
 };
 } /* namespace s2s */

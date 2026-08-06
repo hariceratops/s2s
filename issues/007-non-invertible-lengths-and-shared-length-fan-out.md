@@ -50,6 +50,5 @@ Depends on: 004.
   `test/runtime/write_optional_fields.cpp`, including the mixed case where one
   target has both an unconditional producer (derives) and a conditional one
   (verified against the derived value).
-- Union alternatives are the other conditional producer shape. They are not
-  covered yet — `conditional_len_obligation` needs a specialization for
-  `union_field` choices. Deferred to issue 009.
+- Union alternatives, the other conditional producer shape, are **closed**
+  by issue 009 (`union_len_obligation`).
