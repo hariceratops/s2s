@@ -37,10 +37,26 @@ struct write_field<T, F> {
         return std::unexpected(derived.error());
       if(!T::constraint_checker(*derived))
         return std::unexpected(error_reason::validation_failure);
-      return write_impl<endianness>(s, *derived, size_to_write);
+      return verify_then_write<endianness>(s, *derived, size_to_write);
     } else {
-      return write_impl<endianness>(s, value, size_to_write);
+      return verify_then_write<endianness>(s, value, size_to_write);
     }
+  }
+
+private:
+  // Conditional producers cannot make this field derived, so whatever value
+  // reaches this point — derived or stored — still has to satisfy every
+  // obligation that is currently active.
+  template <auto endianness, typename stream>
+  constexpr auto verify_then_write(
+    stream& s, const typename T::field_type& v, std::size_t size_to_write) const -> rw_result
+  {
+    if constexpr(has_conditional_len_obligation_v<T, F>) {
+      auto res = verify_conditional_len<T, F>{}(field_list, static_cast<std::size_t>(v));
+      if(!res)
+        return res;
+    }
+    return write_impl<endianness>(s, v, size_to_write);
   }
 };
 

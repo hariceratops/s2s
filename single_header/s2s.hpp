@@ -3798,6 +3798,86 @@ constexpr auto obligates() -> bool {
     return false;
 }
 
+// A producer sitting inside a maybe_field obligates its target only when the
+// optional is actually present. That is why such a target cannot be derived —
+// there may be nothing to derive from — but when the producer is present its
+// container still has to match whatever goes on the wire.
+template <typename T>
+struct conditional_len_obligation {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint,
+          typename present_only_if, typename optional>
+struct conditional_len_obligation<
+  maybe_field<
+    field<id, T, field_size<len_from_field<len_source>>, constraint>,
+    present_only_if,
+    optional
+  >
+>
+{
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(len_source);
+};
+
+template <typename producer, typename target>
+constexpr auto conditionally_obligates() -> bool {
+  if constexpr(conditional_len_obligation<producer>::present)
+    return conditional_len_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
+template <typename target, typename F>
+struct has_conditional_len_obligation {
+  static constexpr bool value = false;
+};
+
+template <typename target, auto metadata, typename... fields>
+struct has_conditional_len_obligation<target, struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool value = (... || conditionally_obligates<fields, target>());
+};
+
+template <typename target, typename F>
+inline constexpr bool has_conditional_len_obligation_v =
+  has_conditional_len_obligation<target, F>::value;
+
+
+template <typename target, typename F>
+struct verify_conditional_len;
+
+template <typename target, auto metadata, typename... fields>
+struct verify_conditional_len<target, struct_field_list_impl<metadata, fields...>> {
+  using S = struct_field_list_impl<metadata, fields...>;
+
+  // An obligation counts only when its producer will actually be written.
+  // Presence is judged by the same predicate the reader will apply, so a
+  // predicate that disagrees with has_value() is left to fail at the optional
+  // itself rather than being reported here as a length contradiction.
+  constexpr auto operator()(const S& field_list, std::size_t value_on_the_wire) const
+    -> rw_result
+  {
+    bool agreed{true};
+
+    (([&] {
+      if constexpr(conditionally_obligates<fields, target>()) {
+        const auto& producer = static_cast<const fields&>(field_list);
+        const auto is_active =
+          producer.value.has_value() &&
+          compute_impl<typename fields::field_presence_checker>{}(field_list);
+        if(is_active && producer.value->size() != value_on_the_wire)
+          agreed = false;
+      }
+    }()), ...);
+
+    if(!agreed)
+      return std::unexpected(error_reason::found_contradicting_length);
+    return {};
+  }
+};
+
+
 template <typename target, typename F>
 struct is_derived_target {
   static constexpr bool value = false;
@@ -4002,10 +4082,26 @@ struct write_field<T, F> {
         return std::unexpected(derived.error());
       if(!T::constraint_checker(*derived))
         return std::unexpected(error_reason::validation_failure);
-      return write_impl<endianness>(s, *derived, size_to_write);
+      return verify_then_write<endianness>(s, *derived, size_to_write);
     } else {
-      return write_impl<endianness>(s, value, size_to_write);
+      return verify_then_write<endianness>(s, value, size_to_write);
     }
+  }
+
+private:
+  // Conditional producers cannot make this field derived, so whatever value
+  // reaches this point — derived or stored — still has to satisfy every
+  // obligation that is currently active.
+  template <auto endianness, typename stream>
+  constexpr auto verify_then_write(
+    stream& s, const typename T::field_type& v, std::size_t size_to_write) const -> rw_result
+  {
+    if constexpr(has_conditional_len_obligation_v<T, F>) {
+      auto res = verify_conditional_len<T, F>{}(field_list, static_cast<std::size_t>(v));
+      if(!res)
+        return res;
+    }
+    return write_impl<endianness>(s, v, size_to_write);
   }
 };
 

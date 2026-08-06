@@ -42,10 +42,14 @@ Depends on: 004.
   only for fan-out. A `len_from_fields` result is never serialized — the
   source fields occupy their own declared slots — so there is no width for it
   to overflow.
-- **Still open** (design §4.2 asked for this criterion to be added here, and
-  it was not): a `len_from_field` target whose only dependent lives inside a
-  `maybe` or a union alternative is a *conditional* source. It is neither
-  derived nor verified today — it stays writable and nothing checks it. Issue
-  008 covers such a schema in
-  `WriteOptionalFields.RoundTripsAnOptionalVariableSizedField`, which passes
-  only because the caller happens to set the length correctly.
+- **Closed 2026-08-07.** Design §4.2 asked for this criterion to be added
+  here and it was not. A `len_from_field` target whose dependent lives inside
+  a `maybe` is a *conditional* source: it stays writable, and its stored value
+  is now verified against the producer whenever the producer is actually
+  present (`verify_conditional_len`). Covered in
+  `test/runtime/write_optional_fields.cpp`, including the mixed case where one
+  target has both an unconditional producer (derives) and a conditional one
+  (verified against the derived value).
+- Union alternatives are the other conditional producer shape. They are not
+  covered yet — `conditional_len_obligation` needs a specialization for
+  `union_field` choices. Deferred to issue 009.

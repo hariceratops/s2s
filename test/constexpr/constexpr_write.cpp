@@ -414,6 +414,51 @@ constexpr auto write_absent_but_engaged() -> s2s::cast_result {
   return s2s::struct_write_le<optional_struct>(stream, make_optional(0x11223344, true));
 }
 
+using conditional_len_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::maybe<
+      s2s::vec_field<"data", u8, s2s::field_size<s2s::len_from_field<"len">>>,
+      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+    >
+  >;
+
+constexpr auto make_conditional(u32 stored_len, bool engaged) -> conditional_len_struct {
+  conditional_len_struct obj{};
+  obj["flag"_f] = engaged ? 0xdeadbeef : 0x11223344;
+  obj["len"_f] = stored_len;
+  if(engaged)
+    obj["data"_f] = std::vector<u8>{0xaa, 0xbb, 0xcc};
+  return obj;
+}
+
+// A conditional source is not derived, so the caller's length is used — and
+// checked against the container it claims to size.
+constexpr auto roundtrip_conditional_len() -> bool {
+  std::array<u8, 11> buffer{};
+  memstream<11> stream(buffer);
+  if(!s2s::struct_write_be<conditional_len_struct>(stream, make_conditional(3, true)))
+    return false;
+  stream.rewind();
+  auto res = s2s::struct_cast_be<conditional_len_struct>(stream);
+  return res && (*res)["len"_f] == 3 && (*res)["data"_f].has_value() &&
+         (*res)["data"_f]->size() == 3;
+}
+
+constexpr auto write_disagreeing_conditional_len() -> s2s::cast_result {
+  std::array<u8, 11> buffer{};
+  memstream<11> stream(buffer);
+  return s2s::struct_write_le<conditional_len_struct>(stream, make_conditional(7, true));
+}
+
+// Absent producer, no obligation: the stored length is written untouched.
+constexpr auto write_unverified_conditional_len() -> s2s::cast_result {
+  std::array<u8, 11> buffer{};
+  memstream<11> stream(buffer);
+  return s2s::struct_write_le<conditional_len_struct>(stream, make_conditional(7, false));
+}
+
 static_assert(roundtrip_le(), "little-endian constexpr round-trip failed");
 static_assert(roundtrip_be(), "big-endian constexpr round-trip failed");
 static_assert(!write_into_undersized_buffer().has_value());
@@ -456,6 +501,13 @@ static_assert(!write_present_but_empty().has_value());
 static_assert(write_present_but_empty().error().failed_at == "payload");
 static_assert(!write_absent_but_engaged().has_value());
 static_assert(write_absent_but_engaged().error().failed_at == "payload");
+static_assert(roundtrip_conditional_len(), "conditional-length round-trip failed");
+static_assert(!write_disagreeing_conditional_len().has_value());
+static_assert(
+  write_disagreeing_conditional_len().error().failure_reason ==
+    s2s::error_reason::found_contradicting_length);
+static_assert(write_disagreeing_conditional_len().error().failed_at == "len");
+static_assert(write_unverified_conditional_len().has_value());
 static_assert(
   write_contradicting_fanout().error().failure_reason ==
     s2s::error_reason::found_contradicting_length);
