@@ -98,6 +98,55 @@ constexpr auto foreign_bytes_are_element_swapped() -> bool {
     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 'a', 'b', 'c', 'd', '\0'};
 }
 
+using magic_struct =
+  s2s::struct_field_list<
+    s2s::magic_string<"magic_str", "GIF">,
+    s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
+    s2s::magic_byte_array<"magic_arr", 2, std::array<unsigned char, 2>{0xbe, 0xef}>
+  >;
+
+constexpr auto populated_magic() -> magic_struct {
+  magic_struct obj{};
+  obj["magic_str"_f] = s2s::fixed_string<3>("GIF");
+  obj["magic_num"_f] = 0xdeadbeef;
+  obj["magic_arr"_f] = std::array<unsigned char, 2>{0xbe, 0xef};
+  return obj;
+}
+
+template <bool big_endian>
+constexpr auto roundtrip_magic() -> bool {
+  std::array<u8, 10> buffer{};
+  memstream<10> stream(buffer);
+  if constexpr(big_endian) {
+    if(!s2s::struct_write_be<magic_struct>(stream, populated_magic()))
+      return false;
+  } else {
+    if(!s2s::struct_write_le<magic_struct>(stream, populated_magic()))
+      return false;
+  }
+  stream.rewind();
+  auto res = [&] {
+    if constexpr(big_endian)
+      return s2s::struct_cast_be<magic_struct>(stream);
+    else
+      return s2s::struct_cast_le<magic_struct>(stream);
+  }();
+  return res && (*res)["magic_str"_f] == s2s::fixed_string<3>("GIF") &&
+         (*res)["magic_num"_f] == 0xdeadbeef;
+}
+
+template <bool big_endian>
+constexpr auto write_wrong_magic() -> s2s::cast_result {
+  std::array<u8, 10> buffer{};
+  memstream<10> stream(buffer);
+  auto obj = populated_magic();
+  obj["magic_num"_f] = 0xbeefbeef;
+  if constexpr(big_endian)
+    return s2s::struct_write_be<magic_struct>(stream, obj);
+  else
+    return s2s::struct_write_le<magic_struct>(stream, obj);
+}
+
 static_assert(roundtrip_le(), "little-endian constexpr round-trip failed");
 static_assert(roundtrip_be(), "big-endian constexpr round-trip failed");
 static_assert(!write_into_undersized_buffer().has_value());
@@ -107,6 +156,13 @@ static_assert(write_into_undersized_buffer().error().failed_at == "b");
 static_assert(roundtrip_aggregate<false>(), "little-endian aggregate round-trip failed");
 static_assert(roundtrip_aggregate<true>(), "big-endian aggregate round-trip failed");
 static_assert(foreign_bytes_are_element_swapped());
+static_assert(roundtrip_magic<false>(), "little-endian magic round-trip failed");
+static_assert(roundtrip_magic<true>(), "big-endian magic round-trip failed");
+static_assert(!write_wrong_magic<false>().has_value());
+static_assert(!write_wrong_magic<true>().has_value());
+static_assert(
+  write_wrong_magic<false>().error().failure_reason == s2s::error_reason::validation_failure);
+static_assert(write_wrong_magic<true>().error().failed_at == "magic_num");
 
 auto main() -> int {
   return 0;
