@@ -3193,6 +3193,23 @@ constexpr auto as_byte_buffer(const T& obj) -> std::array<char, size> {
 #define _BYTE_ORDER_HPP_
  
 namespace s2s {
+// Single-byte elements have no byte order, and fixed_string exposes no
+// iterators, so both fall through untouched. Shared by the read and write
+// directions, which is why it lives here rather than beside either one.
+template <buffer_like T>
+constexpr auto byteswap_elements(T& obj) -> void {
+  if constexpr(!fixed_string_like<T>) {
+    for(auto& elem: obj) {
+      // Multi-dimensional aggregates nest, so descend until the scalars.
+      if constexpr(buffer_like<std::remove_reference_t<decltype(elem)>>)
+        byteswap_elements(elem);
+      else if constexpr(sizeof(elem) > 1)
+        elem = std::byteswap(elem);
+    }
+  }
+}
+
+
 enum cast_endianness {
   host = 0,
   foreign = 1
@@ -3262,8 +3279,7 @@ template <buffer_like T, input_stream_like stream>
 constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   auto res = read_native(s, obj, len_to_read);
   if(res) {
-    for(auto& elem: obj) 
-      obj = std::byteswap(obj);
+    byteswap_elements(obj);
     return {};
   }
   return res;
@@ -3698,6 +3714,32 @@ constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to
   return write_native_impl(s, swapped, size_to_write);
 }
 
+// The source buffer is const, so unlike the read direction there is nothing to
+// swap in place. Writing element by element keeps the swap in a scalar
+// temporary rather than staging a byteswapped copy of the whole buffer, which
+// for a vector would mean allocating.
+template <buffer_like T, output_stream_like stream>
+constexpr auto write_foreign_buffer(stream& s, const T& obj, std::size_t len_to_write) -> rw_result {
+  if constexpr(fixed_string_like<T>) {
+    return write_native(s, obj, len_to_write);
+  } else {
+    for(const auto& elem: obj) {
+      auto res = [&] {
+        // Multi-dimensional aggregates nest, so descend until the scalars.
+        if constexpr(buffer_like<std::remove_cvref_t<decltype(elem)>>)
+          return write_foreign_buffer(s, elem, sizeof(elem));
+        else if constexpr(sizeof(elem) > 1)
+          return write_foreign_scalar(s, elem, sizeof(elem));
+        else
+          return write_native_impl(s, elem, sizeof(elem));
+      }();
+      if(!res)
+        return res;
+    }
+    return {};
+  }
+}
+
 template <std::endian endianness, typename T, output_stream_like stream>
 constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
   auto constexpr byte_order = deduce_byte_order<endianness>();
@@ -3706,6 +3748,8 @@ constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
   } else if constexpr(byte_order == cast_endianness::foreign) {
     if constexpr(trivial<T>) {
       return write_foreign_scalar(s, obj, N);
+    } else if constexpr(buffer_like<T>) {
+      return write_foreign_buffer(s, obj, N);
     }
   }
 }

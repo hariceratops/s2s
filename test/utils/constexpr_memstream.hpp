@@ -33,10 +33,6 @@ public:
     return *this;
   }
 
-  // TODO(issue 001): satisfy constexpr_write_trait — the concept requires
-  // `{ obj.write(const std::array<char, M>&, std::size_t) } -> std::same_as<T&>`.
-  // Mirrors read() above: bounds-check against the buffer, set is_bad on
-  // exhaustion so operator bool reports the failure.
   template <std::size_t src_buffer_size>
   [[nodiscard]] constexpr auto write(const std::array<char, src_buffer_size>& src, std::size_t size_to_write) -> memstream<N>& {
     std::size_t idx{0};

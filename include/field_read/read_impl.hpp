@@ -56,8 +56,7 @@ template <buffer_like T, input_stream_like stream>
 constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   auto res = read_native(s, obj, len_to_read);
   if(res) {
-    for(auto& elem: obj) 
-      obj = std::byteswap(obj);
+    byteswap_elements(obj);
     return {};
   }
   return res;
