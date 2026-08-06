@@ -32,7 +32,9 @@ Depends on: 004.
   `found_contradicting_length` rather than `validation_failure`, so it is no
   longer ambiguous with a value failing its own constraint (owner's call
   2026-08-07, reversing design §5 in part; see design §5.1). Naming the
-  disagreeing dependent is still not possible as specified. `cast_error` carries
+  disagreeing dependent is still not possible as specified. **Deferred
+  2026-08-07** to the "Error ergonomics" backlog item in `doc/todos.md`, which
+  carries the design context and shares a root cause with issue 006. `cast_error` carries
   one `failed_at`; design §5 considered adding a second name and rejected it
   as out of scope because it changes the read path too. A fan-out
   contradiction is reported at the length field, which is where the write

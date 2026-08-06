@@ -28,4 +28,5 @@ Depends on: 001, 004 (vector-of-records needs derived lengths).
   violation names the outer record field. This matches read-side behaviour
   exactly (`field_reader.hpp` discards the inner `failed_at` the same way).
   Delivering the inner name means giving `cast_error` a path rather than a
-  name, which changes the read path too — separate work.
+  name, which changes the read path too. **Deferred 2026-08-07** to the "Error
+  ergonomics" backlog item in `doc/todos.md`, which carries the design context.
