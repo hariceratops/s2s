@@ -22,3 +22,14 @@ Depends on: 001.
 - Round-trip verified for both byte orders, in both `test/runtime/` and
   `test/constexpr/`; the overflow failure has its own runtime test.
 - No heap allocation introduced.
+
+## Review 2026-08-06
+- "No heap allocation introduced" was asserted from reading the code, never
+  verified. No test, allocator hook or static check exists anywhere in the
+  repo. Judged minor; recorded so the criterion is not silently treated as met.
+- `write_native`'s `identified_as_constexpr_stream` branch
+  (`include/field_write/write_impl.hpp`) ignores its `len_to_write` argument
+  and iterates the container instead. Equal by construction today, so latent.
+- Nothing enforces design §4.4's rule that a derived target must be
+  `fixed_sized_field_like`. Pointing `len_from_field` at a variable-sized
+  field fails with an incomplete-type error instead of a concept diagnostic.

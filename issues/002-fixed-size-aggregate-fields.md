@@ -24,3 +24,11 @@ Depends on: 001.
 - Round-trip verified for both byte orders, in both `test/runtime/` and
   `test/constexpr/`, with new test files registered in `CMakeLists.txt`.
 - No heap allocation introduced.
+
+## Review 2026-08-06
+- "No heap allocation introduced" was asserted from reading the code, never
+  verified. No test, allocator hook or static check exists anywhere in the
+  repo. Judged minor; recorded so the criterion is not silently treated as met.
+- Deviation from the approved scope: two read-only tests were added to
+  `test/runtime/fixed_buffer_fields.cpp`, which the issue said to leave
+  untouched. Disclosed in commit 8aa69b5.

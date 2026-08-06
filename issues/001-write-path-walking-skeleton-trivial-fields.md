@@ -36,3 +36,8 @@ field-list fold the read path uses, in declaration order.
 - Tests exist in both `test/runtime/` and `test/constexpr/` and are registered
   in the respective `CMakeLists.txt`. Existing read tests are untouched.
 - No heap allocation beyond what foreign-endian byteswapping already requires.
+
+## Review 2026-08-06
+- "No heap allocation introduced" was asserted from reading the code, never
+  verified. No test, allocator hook or static check exists anywhere in the
+  repo. Judged minor; recorded so the criterion is not silently treated as met.
