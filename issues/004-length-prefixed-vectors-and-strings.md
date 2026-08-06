@@ -33,3 +33,5 @@ Depends on: 001.
 - Nothing enforces design §4.4's rule that a derived target must be
   `fixed_sized_field_like`. Pointing `len_from_field` at a variable-sized
   field fails with an incomplete-type error instead of a concept diagnostic.
+- Both the `len_to_write` and the missing fixed-sized-target guard findings
+  are closed by issue 007.

@@ -25,3 +25,16 @@ Depends on: 004.
 - Overflow checking from 004 applies to the computed length as well.
 - Consistency and contradiction cases covered in `test/runtime/`; round-trip
   also covered in `test/constexpr/`.
+
+## Notes 2026-08-06
+- The criterion "identifying the length field **and** the disagreeing
+  dependent" is **not met**, and cannot be as specified. `cast_error` carries
+  one `failed_at`; design §5 considered adding a second name and rejected it
+  as out of scope because it changes the read path too. A fan-out
+  contradiction is reported at the length field, which is where the write
+  stops and therefore where the byte prefix ends. Closing this needs a
+  `cast_error` change, i.e. a spec amendment.
+- "Overflow checking from 004 applies to the computed length as well" is met
+  only for fan-out. A `len_from_fields` result is never serialized — the
+  source fields occupy their own declared slots — so there is no width for it
+  to overflow.

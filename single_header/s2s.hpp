@@ -641,6 +641,22 @@ struct is_variable_size<field_size<len_from_fields<callable, ids>>> {
 template <typename T>
 inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
 
+// A size produced by a user callable rather than read from a single field.
+// The distinction matters only on the write path: len_from_field can be
+// inverted and derived, this cannot, so it can only be verified.
+template <typename T>
+struct is_computed_size {
+  static constexpr bool res = false;
+};
+
+template <auto callable, field_name_list ids>
+struct is_computed_size<field_size<size_from_fields<callable, ids>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_computed_size_v = is_computed_size<T>::res;
+
 // Concepts for checking if a type is a size type
 template <typename T>
 concept fixed_size_like = is_fixed_size_v<T>;
@@ -3785,6 +3801,12 @@ struct is_derived_target {
 template <typename target, auto metadata, typename... fields>
 struct is_derived_target<target, struct_field_list_impl<metadata, fields...>> {
   static constexpr bool value = is_derived_field<metadata>(as_sv(target::field_id));
+
+  // A length slot is always a fixed-width field. Without this a schema
+  // pointing len_from_field at a variable-sized field fails deep inside
+  // deduce_field_size with an incomplete-type error instead.
+  static_assert(!value || fixed_sized_field_like<target>,
+                "a derived length field must be a fixed-sized field");
 };
 
 template <typename target, typename F>
@@ -3877,8 +3899,8 @@ constexpr auto write_native(stream& s, const T& obj, std::size_t len_to_write) -
   if constexpr(identified_as_constexpr_stream<stream>) {
     // A vector's bytes cannot be bit_cast out of it during constant
     // evaluation, so the constexpr stream takes one element at a time.
-    for(const auto& elem: obj) {
-      auto res = write_native_impl(s, elem, sizeof(elem));
+    for(std::size_t idx = 0; idx < len_to_write; ++idx) {
+      auto res = write_native_impl(s, obj[idx], sizeof(obj[idx]));
       if(!res)
         return res;
     }
@@ -3984,10 +4006,18 @@ struct write_field<T, F> {
   constexpr write_field(const T& field, const F& field_list)
     : field(field), field_list(field_list) {}
 
-  // The length is never consulted here: it was derived from this container
-  // when the length field was written, so the container is the authority.
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
+    using field_size = typename T::field_size;
+    if constexpr(is_computed_size_v<field_size>) {
+      // An arbitrary N-ary callable has no inverse, so its source fields stay
+      // ordinary data and the size they imply can only be checked against the
+      // container, never used to repair it.
+      if(deduce_field_size<field_size>{}(field_list) != field.value.size())
+        return std::unexpected(error_reason::validation_failure);
+    }
+    // For a len_from_field size there is nothing to check: the length slot was
+    // derived from this very container, so the container is the authority.
     return write_impl<endianness>(s, field.value, field.value.size());
   }
 };

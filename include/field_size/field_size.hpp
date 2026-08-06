@@ -90,6 +90,22 @@ struct is_variable_size<field_size<len_from_fields<callable, ids>>> {
 template <typename T>
 inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
 
+// A size produced by a user callable rather than read from a single field.
+// The distinction matters only on the write path: len_from_field can be
+// inverted and derived, this cannot, so it can only be verified.
+template <typename T>
+struct is_computed_size {
+  static constexpr bool res = false;
+};
+
+template <auto callable, field_name_list ids>
+struct is_computed_size<field_size<size_from_fields<callable, ids>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_computed_size_v = is_computed_size<T>::res;
+
 // Concepts for checking if a type is a size type
 template <typename T>
 concept fixed_size_like = is_fixed_size_v<T>;

@@ -39,8 +39,8 @@ constexpr auto write_native(stream& s, const T& obj, std::size_t len_to_write) -
   if constexpr(identified_as_constexpr_stream<stream>) {
     // A vector's bytes cannot be bit_cast out of it during constant
     // evaluation, so the constexpr stream takes one element at a time.
-    for(const auto& elem: obj) {
-      auto res = write_native_impl(s, elem, sizeof(elem));
+    for(std::size_t idx = 0; idx < len_to_write; ++idx) {
+      auto res = write_native_impl(s, obj[idx], sizeof(obj[idx]));
       if(!res)
         return res;
     }

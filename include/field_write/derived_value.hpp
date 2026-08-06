@@ -6,6 +6,7 @@
 
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
+#include "../field/field_traits.hpp"
 #include "../field_list/field_list.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field_size/comptime_field_size_deduce.hpp"
@@ -44,6 +45,12 @@ struct is_derived_target {
 template <typename target, auto metadata, typename... fields>
 struct is_derived_target<target, struct_field_list_impl<metadata, fields...>> {
   static constexpr bool value = is_derived_field<metadata>(as_sv(target::field_id));
+
+  // A length slot is always a fixed-width field. Without this a schema
+  // pointing len_from_field at a variable-sized field fails deep inside
+  // deduce_field_size with an incomplete-type error instead.
+  static_assert(!value || fixed_sized_field_like<target>,
+                "a derived length field must be a fixed-sized field");
 };
 
 template <typename target, typename F>
