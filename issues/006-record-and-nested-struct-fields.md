@@ -20,3 +20,12 @@ Depends on: 001, 004 (vector-of-records needs derived lengths).
   data, not the outer struct's.
 - Round-trip verified for both byte orders, in both `test/runtime/` and
   `test/constexpr/`.
+
+## Notes 2026-08-07
+- The criterion "`failed_at` identifying the nested field" is **not met**, as
+  design §5 (Error propagation) already predicted. `rw_result` carries no
+  name, and the outermost fold is the only place one is attached, so a nested
+  violation names the outer record field. This matches read-side behaviour
+  exactly (`field_reader.hpp` discards the inner `failed_at` the same way).
+  Delivering the inner name means giving `cast_error` a path rather than a
+  name, which changes the read path too — separate work.
