@@ -179,12 +179,12 @@ constexpr auto roundtrip_prefixed() -> bool {
   return res && (*res)["len"_f] == 3 && (*res)["vec"_f] == obj["vec"_f];
 }
 
-// The stored length is ignored; only the container's size reaches the stream.
+// The length slot is never populated by the caller — since issue 005 it
+// cannot be — so what reaches the stream comes from the container alone.
 constexpr auto derived_length_bytes() -> bool {
   std::array<u8, 10> buffer{};
   memstream<10> stream(buffer);
   prefixed_struct obj{};
-  obj["len"_f] = 99;
   obj["vec"_f] = std::vector<u16>{0x1122, 0x3344, 0x5566};
   if(!s2s::struct_write_be<prefixed_struct>(stream, obj))
     return false;

@@ -2077,6 +2077,28 @@ struct extract_type_deduction_dependencies<
 template <typename T>
 inline constexpr auto extract_type_deduction_dependencies_v = extract_type_deduction_dependencies<T>::value;
 
+
+// Which field ids this field's data implies the value of. Only a plain
+// top-level len_from_field is invertible: len_from_fields wraps an arbitrary
+// callable with no inverse, and a producer inside a maybe_field or a union
+// alternative only obligates its target conditionally, which is a verify
+// problem rather than a derive one.
+template <typename T>
+struct extract_unconditional_len_sources {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+struct extract_unconditional_len_sources<
+  field<id, T, field_size<len_from_field<len_source>>, constraint>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(len_source));
+};
+
+template <typename T>
+inline constexpr auto extract_unconditional_len_sources_v = extract_unconditional_len_sources<T>::value;
+
 template <typename... fields>
 struct field_list_metadata {
   template <std::size_t... Is>
@@ -2112,17 +2134,33 @@ struct field_list_metadata {
     );
   }
 
+  static constexpr auto generate_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_unconditional_len_sources_v<fields>)...};
+    return remove_duplicates(flatten(sources));
+  }
+
   static constexpr field_table_t field_table = generate_field_table(std::make_index_sequence<sizeof...(fields)>{});
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
- 
+  static constexpr dep_vec derived_field_ids = generate_derived_field_ids();
 };
 
 template <auto list_metadata>
 constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   auto field_table = meta::type_of<list_metadata>::field_table;
   return field_table[field_name];
+}
+
+// The single source of truth for "derived": both the write path and
+// operator[]'s constraint answer the question here, so the two cannot drift.
+template <auto list_metadata>
+constexpr auto is_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::derived_field_ids) {
+    if(id == field_name)
+      return true;
+  }
+  return false;
 }
 
 
@@ -2181,6 +2219,12 @@ constexpr bool type_deduction_dependencies_resolved() {
  
 namespace s2s {
 
+// A field whose value the write path derives from other fields. The name
+// carries the reason into the diagnostic when an assignment is rejected.
+template <typename field_accessor, auto list_metadata>
+concept field_is_derived_from_other_fields =
+  is_derived_field<list_metadata>(as_sv(field_accessor::field_id));
+
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
@@ -2188,13 +2232,28 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 
   // todo move as_sv to common place
   template <
-    typename field_accessor, 
+    typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
-    requires (field_lookup_res.has_value)
+    requires (field_lookup_res.has_value) &&
+             (!field_is_derived_from_other_fields<field_accessor, list_metadata>)
   constexpr auto& operator[](field_accessor)  {
     using field_type_ref = meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_ref>(*this).value;
+  }
+
+  // Derived fields stay readable on a non-const object but hand back a const
+  // reference, so an attempted assignment fails as assign-to-const rather than
+  // as a wall of unsatisfied-constraint output from no viable overload.
+  template <
+    typename field_accessor,
+    auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
+  >
+    requires (field_lookup_res.has_value) &&
+             field_is_derived_from_other_fields<field_accessor, list_metadata>
+  constexpr const auto& operator[](field_accessor) {
+    using field_type_cref = const meta::type_of<field_lookup_res->id>&;
+    return static_cast<field_type_cref>(*this).value;
   }
 
   template <
@@ -3721,9 +3780,11 @@ struct is_derived_target {
   static constexpr bool value = false;
 };
 
+// Deliberately not an independent scan: operator[] rejects assignment to
+// exactly the fields the writer overwrites, and two scans would drift.
 template <typename target, auto metadata, typename... fields>
 struct is_derived_target<target, struct_field_list_impl<metadata, fields...>> {
-  static constexpr bool value = (... || obligates<fields, target>());
+  static constexpr bool value = is_derived_field<metadata>(as_sv(target::field_id));
 };
 
 template <typename target, typename F>

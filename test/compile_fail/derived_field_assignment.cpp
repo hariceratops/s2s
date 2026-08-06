@@ -20,9 +20,9 @@ auto main() -> int {
   our_struct obj{};
 
 #if CASE == 1
-  // TODO(issue 005): must NOT compile — "len" is a len_from_field target,
-  // so the non-const operator[] is constrained away and the const overload
-  // is selected, yielding an assign-to-const error.
+  // Must NOT compile — "len" is a len_from_field target, so the writable
+  // operator[] is constrained away and the const-returning overload is
+  // selected, yielding an assign-to-const error.
   obj["len"_f] = 5;
 #elif CASE == 2
   // TODO(issue 009): must NOT compile — a type_switch discriminant is
@@ -30,10 +30,12 @@ auto main() -> int {
   // schema and assign to its discriminant field.
   obj["len"_f] = 5;
 #elif CASE == 3
-  // Must COMPILE — const read of a derived field stays available, and a
-  // non-derived field stays assignable.
-  const auto& len = std::as_const(obj)["len"_f];
-  (void)len;
+  // Must COMPILE — a derived field stays readable through both the const and
+  // the non-const subscript, and a non-derived field stays assignable.
+  const auto& const_len = std::as_const(obj)["len"_f];
+  const auto& mutable_len = obj["len"_f];
+  (void)const_len;
+  (void)mutable_len;
   obj["str"_f] = "hello";
 #endif
 

@@ -172,6 +172,19 @@ static_assert(type_deduction_dep_table["complex_v"]->size() == 2);
 static_assert(type_deduction_dep_table["laddered"]);
 static_assert(type_deduction_dep_table["laddered"]->size() == 2);
 
+// Only unconditional len_from_field targets are derived. "row" and "col" feed
+// a len_from_fields callable, which has no inverse, so they stay writable —
+// and "len" stays derived even though it also has conditional producers
+// inside a maybe and a union alternative.
+constexpr auto derived_ids = list_metadata::derived_field_ids;
+static_assert(derived_ids.size() == 1);
+static_assert(derived_ids[0] == "len");
+static_assert(s2s::is_derived_field<meta::type_id<list_metadata>>("len"));
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("row"));
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("col"));
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("str"));
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("a"));
+
 using legal_len_field_list = 
   s2s::field_list_metadata<
     s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,

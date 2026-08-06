@@ -28,9 +28,7 @@ function(add_compile_pass_case name source case_id)
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${name} --config $<CONFIG>)
 endfunction()
 
-# TODO(issue 005): enable once the operator[] constraint lands. Until then the
-# assignments compile, so the WILL_FAIL cases would themselves fail.
-# add_compile_fail_case(compile_fail_derived_len derived_field_assignment.cpp 1)
+add_compile_fail_case(compile_fail_derived_len derived_field_assignment.cpp 1)
+add_compile_pass_case(compile_pass_derived_const_read derived_field_assignment.cpp 3)
 # TODO(issue 009): discriminant case, once variance write support lands.
 # add_compile_fail_case(compile_fail_derived_discriminant derived_field_assignment.cpp 2)
-# add_compile_pass_case(compile_pass_derived_const_read derived_field_assignment.cpp 3)

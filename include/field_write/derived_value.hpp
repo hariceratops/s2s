@@ -39,9 +39,11 @@ struct is_derived_target {
   static constexpr bool value = false;
 };
 
+// Deliberately not an independent scan: operator[] rejects assignment to
+// exactly the fields the writer overwrites, and two scans would drift.
 template <typename target, auto metadata, typename... fields>
 struct is_derived_target<target, struct_field_list_impl<metadata, fields...>> {
-  static constexpr bool value = (... || obligates<fields, target>());
+  static constexpr bool value = is_derived_field<metadata>(as_sv(target::field_id));
 };
 
 template <typename target, typename F>
