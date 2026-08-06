@@ -303,11 +303,15 @@ static_assert(write_overlong_container().error().failed_at == "len");
 static_assert(roundtrip_computed(), "computed-length constexpr round-trip failed");
 static_assert(!write_disagreeing_computed().has_value());
 static_assert(
-  write_disagreeing_computed().error().failure_reason == s2s::error_reason::validation_failure);
+  write_disagreeing_computed().error().failure_reason ==
+    s2s::error_reason::found_contradicting_length);
 static_assert(write_disagreeing_computed().error().failed_at == "cells");
 static_assert(roundtrip_fanout(), "fan-out constexpr round-trip failed");
 static_assert(!write_contradicting_fanout().has_value());
 static_assert(write_contradicting_fanout().error().failed_at == "len");
+static_assert(
+  write_contradicting_fanout().error().failure_reason ==
+    s2s::error_reason::found_contradicting_length);
 
 auto main() -> int {
   return 0;

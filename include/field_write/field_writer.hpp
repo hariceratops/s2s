@@ -58,7 +58,7 @@ struct write_field<T, F> {
       // ordinary data and the size they imply can only be checked against the
       // container, never used to repair it.
       if(deduce_field_size<field_size>{}(field_list) != field.value.size())
-        return std::unexpected(error_reason::validation_failure);
+        return std::unexpected(error_reason::found_contradicting_length);
     }
     // For a len_from_field size there is nothing to check: the length slot was
     // derived from this very container, so the container is the authority.

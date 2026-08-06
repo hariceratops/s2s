@@ -74,7 +74,7 @@ TEST(WriteComputedLengthFields, RejectsSourcesThatDisagreeWithTheContainer) {
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
   auto written = s2s::struct_write_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
-  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
+  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "cells");
   // rows and cols are already out, but nothing of cells is.
   EXPECT_EQ(stream.str().size(), 8u);
@@ -128,7 +128,7 @@ TEST(WriteComputedLengthFields, RejectsFanOutContradiction) {
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
   auto written = s2s::struct_write_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
-  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
+  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "len");
   EXPECT_TRUE(stream.str().empty());
 }

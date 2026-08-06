@@ -9,7 +9,12 @@ namespace s2s {
 enum error_reason {
   buffer_exhaustion,
   validation_failure,
-  type_deduction_failure
+  type_deduction_failure,
+  // Two parts of the struct imply different lengths for the same data — a
+  // cross-field disagreement, not a value that is wrong on its own terms.
+  // Appended rather than inserted so the existing enumerators keep their
+  // values.
+  found_contradicting_length
 };
 
 

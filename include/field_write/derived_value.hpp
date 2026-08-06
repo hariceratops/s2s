@@ -85,7 +85,11 @@ struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
       }
     }()), ...);
 
-    if(!agreed || !fits_declared_width(derived))
+    // Two distinct failures: the dependents contradict one another, or they
+    // agree on a value the declared slot cannot hold.
+    if(!agreed)
+      return std::unexpected(error_reason::found_contradicting_length);
+    if(!fits_declared_width(derived))
       return std::unexpected(error_reason::validation_failure);
     return static_cast<field_type>(derived);
   }

@@ -522,6 +522,36 @@ What would change this decision: `cast_error` gaining a second field name,
 at which point splitting `validation_failure` into
 own-value-vs-cross-field becomes genuinely informative.
 
+### 5.1 Amendment 2026-08-07 — decision reversed in part
+
+Owner's call during issue 007: a fourth enumerator,
+**`found_contradicting_length`**, is added. The two rows below move to it:
+
+| Failure | Reason |
+|---|---|
+| `len_from_fields` callable disagrees with real size | `found_contradicting_length` |
+| fan-out obligations contradict | `found_contradicting_length` |
+
+Everything else in the table above stands. In particular
+`derived/verified length exceeds the declared width` stays
+`validation_failure` — the schema cannot represent the value, which is not
+the same as two fields disagreeing about it.
+
+The argument the original decision rested on is not withdrawn: a caller
+still cannot tell *which* dependent disagreed, because `cast_error` still
+carries one `failed_at`. What changed is the judgement that
+"a contradicting length" is worth distinguishing from "a value failed its
+own constraint" even without the second name, since the two call for
+completely different fixes. The name is deliberately narrow rather than
+`inconsistent_field_state`: it says what actually happened, and it does not
+pre-commit the presence-predicate and discriminant mismatches of issues 008
+and 009 to this enumerator. Those stay `validation_failure` until there is
+a reason to split them.
+
+Richer error types — a second field name, or a payload carrying both sides
+of the disagreement — remain future work and are out of this spec's scope.
+The enumerator is appended, not inserted, so existing values are unchanged.
+
 ---
 
 ## 6. Mandated decision categories
