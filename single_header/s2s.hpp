@@ -3261,7 +3261,18 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
 template <variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   obj.resize(len_to_read);
-  return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // Mirrors write_native: a vector cannot be bit_cast during constant
+    // evaluation, so fill it element by element.
+    for(auto& elem: obj) {
+      auto res = read_native_impl(s, elem, sizeof(elem));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  }
 }
 
 template <trivial T, input_stream_like stream>
@@ -3678,6 +3689,100 @@ template <field_list_like T, input_stream_like stream>
 
 // End api/struct_cast.hpp
 
+// Begin field_write/derived_value.hpp
+#ifndef _DERIVED_VALUE_HPP_
+#define _DERIVED_VALUE_HPP_
+ 
+namespace s2s {
+// An obligation: a field whose data implies what an earlier field's value has
+// to be. Only len_from_field is invertible — len_from_fields wraps an
+// arbitrary callable, so it obligates nothing and its sources stay writable.
+template <typename T>
+struct len_obligation {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+struct len_obligation<field<id, T, field_size<len_from_field<len_source>>, constraint>> {
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(len_source);
+};
+
+template <typename producer, typename target>
+constexpr auto obligates() -> bool {
+  if constexpr(len_obligation<producer>::present)
+    return len_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
+template <typename target, typename F>
+struct is_derived_target {
+  static constexpr bool value = false;
+};
+
+template <typename target, auto metadata, typename... fields>
+struct is_derived_target<target, struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool value = (... || obligates<fields, target>());
+};
+
+template <typename target, typename F>
+inline constexpr bool is_derived_target_v = is_derived_target<target, F>::value;
+
+
+template <typename target, typename F>
+struct derive_value;
+
+// The obligations for a target all live in fields that come after it, and
+// is_dependencies_resolved has already rejected any schema where that is not
+// so — hence the forward scan over the whole pack.
+template <typename target, auto metadata, typename... fields>
+struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
+  using S = struct_field_list_impl<metadata, fields...>;
+  using field_type = typename target::field_type;
+
+  constexpr auto operator()(const S& field_list) const
+    -> std::expected<field_type, error_reason>
+  {
+    std::size_t derived{0};
+    bool seen{false};
+    bool agreed{true};
+
+    (([&] {
+      if constexpr(obligates<fields, target>()) {
+        auto implied = static_cast<const fields&>(field_list).value.size();
+        if(seen && implied != derived)
+          agreed = false;
+        derived = implied;
+        seen = true;
+      }
+    }()), ...);
+
+    if(!agreed || !fits_declared_width(derived))
+      return std::unexpected(error_reason::validation_failure);
+    return static_cast<field_type>(derived);
+  }
+
+private:
+  // The declared width, not sizeof(field_type): a u32 slot declared
+  // field_size<fixed<2>> puts two bytes on the wire, and a length needing
+  // three must fail rather than reach the stream truncated.
+  static constexpr auto declared_width = deduce_field_size<typename target::field_size>{}();
+
+  static constexpr auto fits_declared_width(std::size_t v) -> bool {
+    if constexpr(declared_width < sizeof(std::size_t)) {
+      if((v >> (declared_width * 8)) != 0)
+        return false;
+    }
+    return static_cast<std::size_t>(static_cast<field_type>(v)) == v;
+  }
+};
+} /* namespace s2s */
+
+#endif // _DERIVED_VALUE_HPP_
+
+// End field_write/derived_value.hpp
+
 // Begin field_write/write_impl.hpp
 #ifndef _WRITE_IMPL_HPP_
 #define _WRITE_IMPL_HPP_
@@ -3704,6 +3809,22 @@ constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_wr
 template <constant_sized_like T, output_stream_like stream>
 constexpr auto write_native(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
   return write_native_impl(s, obj, size_to_write);
+}
+
+template <variable_sized_buffer_like T, output_stream_like stream>
+constexpr auto write_native(stream& s, const T& obj, std::size_t len_to_write) -> rw_result {
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // A vector's bytes cannot be bit_cast out of it during constant
+    // evaluation, so the constexpr stream takes one element at a time.
+    for(const auto& elem: obj) {
+      auto res = write_native_impl(s, elem, sizeof(elem));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return write_native_impl(s, obj, len_to_write * sizeof(T{}[0]));
+  }
 }
 
 template <trivial T, output_stream_like stream>
@@ -3779,7 +3900,34 @@ struct write_field<T, F> {
   constexpr auto write(stream& s) const -> rw_result {
     using field_size = typename T::field_size;
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
-    return write_impl<endianness>(s, field.value, size_to_write);
+    if constexpr(is_derived_target_v<T, F>) {
+      // The stored value is ignored, so the constraint has to be checked
+      // against the derived one — struct_write_impl skips this field.
+      auto derived = derive_value<T, F>{}(field_list);
+      if(!derived)
+        return std::unexpected(derived.error());
+      if(!T::constraint_checker(*derived))
+        return std::unexpected(error_reason::validation_failure);
+      return write_impl<endianness>(s, *derived, size_to_write);
+    } else {
+      return write_impl<endianness>(s, field.value, size_to_write);
+    }
+  }
+};
+
+template <variable_sized_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const T& field;
+  const F& field_list;
+
+  constexpr write_field(const T& field, const F& field_list)
+    : field(field), field_list(field_list) {}
+
+  // The length is never consulted here: it was derived from this container
+  // when the length field was written, so the container is the authority.
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    return write_impl<endianness>(s, field.value, field.value.size());
   }
 };
 } /* namespace s2s */
@@ -3810,9 +3958,13 @@ struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, en
         const auto& field = static_cast<const fields&>(field_list);
         // Validated before writing, not after: a struct that fails its own
         // constraint would otherwise emit bytes that cannot be read back.
-        if(!fields::constraint_checker(field.value)) {
-          auto field_name = std::string_view{fields::field_id.data()};
-          return std::unexpected(cast_error{error_reason::validation_failure, field_name});
+        // Derived fields are the exception — their stored value is ignored,
+        // so write_field checks the constraint against the derived one.
+        if constexpr(!is_derived_target_v<fields, S>) {
+          if(!fields::constraint_checker(field.value)) {
+            auto field_name = std::string_view{fields::field_id.data()};
+            return std::unexpected(cast_error{error_reason::validation_failure, field_name});
+          }
         }
         auto writer = write_field<fields, S>(field, field_list);
         auto write_res = writer.template write<endianness>(s);

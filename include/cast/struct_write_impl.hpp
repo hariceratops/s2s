@@ -26,9 +26,13 @@ struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, en
         const auto& field = static_cast<const fields&>(field_list);
         // Validated before writing, not after: a struct that fails its own
         // constraint would otherwise emit bytes that cannot be read back.
-        if(!fields::constraint_checker(field.value)) {
-          auto field_name = std::string_view{fields::field_id.data()};
-          return std::unexpected(cast_error{error_reason::validation_failure, field_name});
+        // Derived fields are the exception — their stored value is ignored,
+        // so write_field checks the constraint against the derived one.
+        if constexpr(!is_derived_target_v<fields, S>) {
+          if(!fields::constraint_checker(field.value)) {
+            auto field_name = std::string_view{fields::field_id.data()};
+            return std::unexpected(cast_error{error_reason::validation_failure, field_name});
+          }
         }
         auto writer = write_field<fields, S>(field, field_list);
         auto write_res = writer.template write<endianness>(s);

@@ -34,6 +34,22 @@ constexpr auto write_native(stream& s, const T& obj, std::size_t size_to_write) 
   return write_native_impl(s, obj, size_to_write);
 }
 
+template <variable_sized_buffer_like T, output_stream_like stream>
+constexpr auto write_native(stream& s, const T& obj, std::size_t len_to_write) -> rw_result {
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // A vector's bytes cannot be bit_cast out of it during constant
+    // evaluation, so the constexpr stream takes one element at a time.
+    for(const auto& elem: obj) {
+      auto res = write_native_impl(s, elem, sizeof(elem));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return write_native_impl(s, obj, len_to_write * sizeof(T{}[0]));
+  }
+}
+
 template <trivial T, output_stream_like stream>
 constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
   // The source is const and belongs to the caller, so the swap lands in a

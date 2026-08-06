@@ -38,7 +38,18 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
 template <variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   obj.resize(len_to_read);
-  return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // Mirrors write_native: a vector cannot be bit_cast during constant
+    // evaluation, so fill it element by element.
+    for(auto& elem: obj) {
+      auto res = read_native_impl(s, elem, sizeof(elem));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  }
 }
 
 template <trivial T, input_stream_like stream>
