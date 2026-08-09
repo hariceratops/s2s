@@ -1,5 +1,5 @@
-#ifndef _STRUCT_WRITE_IMPL_HPP_
-#define _STRUCT_WRITE_IMPL_HPP_
+#ifndef _STREAM_CAST_IMPL_HPP_
+#define _STREAM_CAST_IMPL_HPP_
 
 
 #include <expected>
@@ -11,10 +11,10 @@
 namespace s2s {
 
 template <typename F, typename stream, auto endianness>
-struct struct_write_impl;
+struct stream_cast_impl;
 
 template <auto metadata, typename... fields, typename stream, auto endianness>
-struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
   using S = struct_field_list_impl<metadata, fields...>;
 
   constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
@@ -48,4 +48,4 @@ struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, en
 
 } /* namespace s2s */
 
-#endif // _STRUCT_WRITE_IMPL_HPP_
+#endif // _STREAM_CAST_IMPL_HPP_

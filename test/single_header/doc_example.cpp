@@ -35,11 +35,11 @@ auto main() -> int {
     return 1;
 
   std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  if(!s2s::struct_write_le<our_struct>(le, obj))
+  if(!s2s::stream_cast_le<our_struct>(le, obj))
     return 1;
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  if(!s2s::struct_write_be<our_struct>(be, obj))
+  if(!s2s::stream_cast_be<our_struct>(be, obj))
     return 1;
 
   auto back = s2s::struct_cast_be<our_struct>(be);
@@ -50,7 +50,7 @@ auto main() -> int {
   auto parsed = *back;
   parsed["data"_f] = std::vector<u16>(5);
   std::stringstream again(std::ios::in | std::ios::out | std::ios::binary);
-  if(!s2s::struct_write_be<our_struct>(again, parsed))
+  if(!s2s::stream_cast_be<our_struct>(again, parsed))
     return 1;
   auto reread = s2s::struct_cast_be<our_struct>(again);
   if(!reread || (*reread)["count"_f] != 5) {

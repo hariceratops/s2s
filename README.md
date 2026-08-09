@@ -181,12 +181,12 @@ provided input stream is exhausted or when type deduction failed while reading i
 ### Write API
 ```cpp
 template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto struct_write_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
+[[nodiscard]] auto stream_cast_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
 
 template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto struct_write_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+[[nodiscard]] auto stream_cast_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
 ```
-The APIs struct_write_xx serialize a struct_field_list to a stream, driven by the
+The APIs stream_cast_xx serialize a struct_field_list to a stream, driven by the
 same schema as the read direction.
 
 Fields the schema can derive are not yours to set: the target of a

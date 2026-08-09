@@ -13,6 +13,6 @@
 #include "type_deduction/if_else_ladder/ladder.hpp"
 #include "type_deduction/utils/type_tags.hpp"
 #include "api/struct_cast.hpp"
-#include "api/struct_write.hpp"
+#include "api/stream_cast.hpp"
 
 #endif // STRUCT_CAST_HPP

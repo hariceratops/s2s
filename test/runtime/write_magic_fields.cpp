@@ -58,7 +58,7 @@ TEST(WriteMagicFields, RejectsWrongMagicString) {
   obj["magic_str"_f] = s2s::fixed_string<3>("NAH");
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "magic_str");
@@ -71,13 +71,13 @@ TEST(WriteMagicFields, RejectsWrongMagicNumberInBothByteOrders) {
   obj["magic_num"_f] = 0xbeefbeef;
 
   std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  auto le_written = s2s::struct_write_le<test_field_list>(le, obj);
+  auto le_written = s2s::stream_cast_le<test_field_list>(le, obj);
   ASSERT_FALSE(le_written.has_value());
   EXPECT_EQ(le_written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(le_written.error().failed_at, "magic_num");
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  auto be_written = s2s::struct_write_be<test_field_list>(be, obj);
+  auto be_written = s2s::stream_cast_be<test_field_list>(be, obj);
   ASSERT_FALSE(be_written.has_value());
   EXPECT_EQ(be_written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(be_written.error().failed_at, "magic_num");
@@ -90,7 +90,7 @@ TEST(WriteMagicFields, RejectsWrongMagicByteArray) {
   obj["magic_arr"_f] = std::array<unsigned char, 4>{0x00, 0x00, 0x00, 0x00};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failed_at, "magic_arr");
 }
@@ -126,6 +126,6 @@ TEST(WriteMagicFields, OffendingFieldContributesNoBytes) {
   obj["b"_f] = 0x55667788;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_FALSE(s2s::struct_write_le<test_field_list>(stream, obj).has_value());
+  ASSERT_FALSE(s2s::stream_cast_le<test_field_list>(stream, obj).has_value());
   EXPECT_EQ(stream.str(), std::string("\x44\x33\x22\x11", 4));
 }
