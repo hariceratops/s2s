@@ -10,12 +10,6 @@
 
 namespace s2s {
 
-constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
-
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
 

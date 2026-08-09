@@ -1,0 +1,91 @@
+// Compile-fail test: assigning to a derived field must not compile, while
+// reading it through the const accessor must.
+//
+// Built with -DCASE=<n>; each case is expected to fail compilation except
+// CASE_READS_OK, which must succeed. See CMakeLists.txt.
+
+#include "../../single_header/s2s.hpp"
+
+using namespace s2s_literals;
+
+using u32 = unsigned int;
+
+using our_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+  >;
+
+using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>>;
+using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>>;
+
+using union_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0xcafed00d, s2s::as_struct<alt_1>>,
+          s2s::match_case<0xdeadbeef, s2s::as_struct<alt_2>>
+        >
+      >
+    >
+  >;
+
+#if CASE == 4
+// Must NOT compile — two cases sharing a match value break round-trip
+// silently: writing alt_2 emits 0xcafed00d, and reading it back selects alt_1.
+using duplicate_value_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0xcafed00d, s2s::as_struct<alt_1>>,
+          s2s::match_case<0xcafed00d, s2s::as_struct<alt_2>>
+        >
+      >
+    >
+  >;
+#endif
+
+auto main() -> int {
+  our_struct obj{};
+
+#if CASE == 1
+  // Must NOT compile — "len" is a len_from_field target, so the writable
+  // operator[] is constrained away and the const-returning overload is
+  // selected, yielding an assign-to-const error.
+  obj["len"_f] = 5;
+#elif CASE == 2
+  // Must NOT compile — a type_switch discriminant is derived from the held
+  // alternative, so the schema owns its value, not the caller.
+  union_struct u{};
+  u["tag"_f] = 5;
+#elif CASE == 4
+  // The schema above is the failure; nothing to do here.
+  duplicate_value_struct dup{};
+  (void)dup;
+#elif CASE == 3
+  // Must COMPILE — a derived field stays readable through both the const and
+  // the non-const subscript, and a non-derived field stays assignable.
+  const auto& const_len = std::as_const(obj)["len"_f];
+  const auto& mutable_len = obj["len"_f];
+  (void)const_len;
+  (void)mutable_len;
+  obj["str"_f] = "hello";
+
+  // Same for a discriminant: readable through both subscripts, and the
+  // union's own slot stays assignable because it is not derived.
+  union_struct u{};
+  const auto& tag = std::as_const(u)["tag"_f];
+  (void)tag;
+  u["body"_f] = alt_1{};
+#endif
+
+  return 0;
+}

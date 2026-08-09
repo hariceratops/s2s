@@ -12,6 +12,11 @@ Reading from stream
     Unions
     Magic strings
     Magic numbers
+Writing to stream
+    A worked example
+    Derived fields are read-only
+    What is checked at write time
+    Write-once, fail-fast
 Using custom stream
 Validating field members
 Error Handling
@@ -115,14 +120,182 @@ The xx is either le or be denoting byteorder of all the struct members.
 The APIs return std::expected which either contains a struct_field_list or read_error
 
 
-## Errors
-Error codes are returned in case a read fails. The read can fail 
-currently in one of the three scenarios: field value validation failure,
-provided input stream is exhausted or when type deduction failed while reading into union
+## Writing to stream
 ```cpp
-enum cast_error {
+template <struct_field_list_like T, output_stream_like S>
+[[nodiscard]] auto struct_write_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
+
+template <struct_field_list_like T, output_stream_like S>
+[[nodiscard]] auto struct_write_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+```
+The APIs struct_write_xx serialize a struct_field_list to a stream. They mirror
+struct_cast_xx: the same schema drives both directions, the xx suffix picks the
+byte order of every member, and failures come back as the same cast_error.
+There is nothing to return on success, so the expected holds void.
+
+The struct is written strictly left to right, one field at a time, in
+declaration order and at every nesting level.
+
+### A worked example
+```cpp
+#include "s2s.hpp"
+#include <sstream>
+#include <vector>
+
+using namespace s2s_literals;
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+using our_struct =
+  s2s::struct_field_list<
+    s2s::magic_string<"magic", "S2S">,
+    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"count">>>
+  >;
+
+auto main() -> int {
+  our_struct obj{};
+  obj["magic"_f] = s2s::fixed_string<3>("S2S");
+  obj["data"_f] = std::vector<u16>{0x1122, 0x3344};
+  // Note: "count" is never assigned. It is derived from data.size().
+
+  std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
+  if(auto res = s2s::struct_write_le<our_struct>(le, obj); !res)
+    return 1;
+
+  std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
+  if(auto res = s2s::struct_write_be<our_struct>(be, obj); !res)
+    return 1;
+
+  // Read either one back with the matching byte order.
+  auto back = s2s::struct_cast_be<our_struct>(be);
+  return back && (*back)["count"_f] == 2 ? 0 : 1;
+}
+```
+
+### Derived fields are read-only
+Some fields are not data you supply — they are consequences of data you
+supply. Writing them from the struct would let the two disagree, producing a
+stream that does not read back as what you handed in. So the library derives
+them, ignores whatever the struct holds, and makes assigning to them a
+compile error.
+
+Two kinds of field are derived:
+
+| Field | Derived from |
+|---|---|
+| the target of a `len_from_field<"n">` size | the container's `size()` |
+| the `match_field` discriminant of a `type_switch` variance | the `match_case` value of the alternative currently held |
+
+Both are invertible, which is what makes deriving them possible at all.
+
+```cpp
+our_struct obj{};
+obj["data"_f] = std::vector<u16>{1, 2, 3};
+obj["count"_f] = 3;   // does not compile
+```
+
+The non-const `operator[]` returns a const reference for a derived field, so
+the diagnostic is a plain assignment-to-read-only error. Reading still works
+through either subscript:
+
+```cpp
+const auto n = obj["count"_f];                 // compiles
+const auto m = std::as_const(obj)["count"_f];  // compiles
+```
+
+Note what those reads give you: **the stored slot, not the derived value.**
+Derivation happens during the write, against the struct you pass as `const`,
+and the result is never written back. On a struct you built yourself the slot
+is whatever it was default-constructed to:
+
+```cpp
+our_struct obj{};
+obj["data"_f] = std::vector<u16>{1, 2, 3};
+assert(obj["count"_f] == 0);   // not 3 — nothing has been written yet
+```
+
+On a struct that came from `struct_cast` the slot holds what was parsed off
+the wire, which is the value you usually want. If you need the length before
+writing, ask the container: `obj["data"_f].size()`.
+
+**This is a breaking change to existing read-side code.** If you previously
+parsed a struct and then adjusted a length field in place:
+
+```cpp
+auto parsed = *s2s::struct_cast_le<our_struct>(stream);
+parsed["count"_f] = 5;   // used to compile, no longer does
+```
+
+replace it by assigning the container instead. The length follows:
+
+```cpp
+parsed["data"_f] = std::vector<u16>(5);   // "count" becomes 5 on the next write
+```
+
+Fields that are *not* derived stay assignable, including ones that look
+similar: the sources feeding a `len_from_fields<callable, ...>` callable, the
+siblings feeding a `parse_if` predicate, the fields feeding an
+`if_else_ladder` branch, and a length whose only container sits inside a
+`maybe` or a union alternative. None of those can be inverted, so they remain
+yours to set — and are verified rather than derived.
+
+### What is checked at write time
+Everything the library can check without a second pass is checked *before*
+the offending field's first byte is emitted.
+
+| Inconsistency | `failure_reason` | `failed_at` |
+|---|---|---|
+| `constraint_checker` rejects the value (e.g. a wrong magic value) | `validation_failure` | that field |
+| a `parse_if` predicate disagrees with the optional's `has_value()` | `validation_failure` | the optional field |
+| an `if_else_ladder` or computed-switch selects an alternative other than the one held | `validation_failure` | the union field |
+| no ladder branch and no `match_case` matches at all | `type_deduction_failure` | the union field |
+| a derived or verified length does not fit its declared width | `validation_failure` | the length field |
+| a `len_from_fields` callable disagrees with the container's real size | `found_contradicting_length` | the container field |
+| two containers sharing one length field imply different lengths | `found_contradicting_length` | the length field |
+| a length inside a `maybe` or union alternative disagrees while that producer is active | `found_contradicting_length` | the length field |
+| the underlying stream refuses the write | `buffer_exhaustion` | the field being written |
+
+For a violation inside a nested record, `failed_at` names the outermost record
+field rather than the inner one, matching how the read path reports nested
+failures.
+
+### Write-once, fail-fast
+There is no rollback and no size query. Bytes handed to your stream are gone,
+so the unit of atomicity is one field rather than the whole write:
+
+- every derivation, verification and constraint check for a field runs before
+  its first byte is emitted;
+- a failure attributed to field `k` therefore leaves fields `0..k-1` in the
+  stream and nothing of `k` — a well-defined prefix.
+
+The one exception is a stream that fails part way through a single field: how
+much it consumed is the stream's business, and the library reports
+`buffer_exhaustion`. Recovering from a partial write is the caller's
+responsibility — truncate, discard, or write to a staging buffer first if you
+need all-or-nothing.
+
+
+## Errors
+Both directions report failures the same way. `cast_error` carries the reason
+and the name of the field it happened at.
+```cpp
+enum error_reason {
   buffer_exhaustion,
   validation_failure,
-  type_deduction_failure
+  type_deduction_failure,
+  found_contradicting_length
+};
+
+struct cast_error {
+  error_reason failure_reason;
+  std::string_view failed_at;
 };
 ```
+A read can fail in three ways: field value validation failure, the input
+stream is exhausted, or type deduction failed while reading into a union.
+
+A write can fail in those same three ways plus `found_contradicting_length`,
+which means two parts of the struct imply different lengths for the same data
+— a cross-field disagreement rather than a value that is wrong on its own
+terms. See the table above for which check produces which reason.

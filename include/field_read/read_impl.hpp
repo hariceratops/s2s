@@ -8,23 +8,10 @@
 #include "../error/cast_error.hpp"
 #include "../lib/s2s_traits/type_traits.hpp"
 #include "../lib/memory/address_manip.hpp"
+#include "../stream/byte_order.hpp"
 
 
 namespace s2s {
-enum cast_endianness {
-  host = 0,
-  foreign = 1
-};
-
-
-template <std::endian endianness>
-constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) 
-    return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) 
-    return cast_endianness::foreign;
-}
-
 template <typename T, identified_as_constexpr_stream stream>
 constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
@@ -51,7 +38,18 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
 template <variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   obj.resize(len_to_read);
-  return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // Mirrors write_native: a vector cannot be bit_cast during constant
+    // evaluation, so fill it element by element.
+    for(auto& elem: obj) {
+      auto res = read_native_impl(s, elem, sizeof(elem));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  }
 }
 
 template <trivial T, input_stream_like stream>
@@ -69,8 +67,7 @@ template <buffer_like T, input_stream_like stream>
 constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   auto res = read_native(s, obj, len_to_read);
   if(res) {
-    for(auto& elem: obj) 
-      obj = std::byteswap(obj);
+    byteswap_elements(obj);
     return {};
   }
   return res;
@@ -91,22 +88,6 @@ constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
 }
 
 
-template <output_stream_like stream>
-class output_stream {
-private:
-  stream& s;
-
-public:
-  // delete copy constructor?
-  template <typename T>
-  constexpr auto write(const char* src_mem, std::size_t size_to_read) -> rw_result {
-    // eof = buffer_exhaustion
-    // bad | fail = io_error
-    if(!s.write(src_mem, size_to_read))
-      return std::unexpected(error_reason::buffer_exhaustion);
-    return {};
-  }
-};
 } /* namespace s2s */
 
 #endif /* _READ_IMPL_HPP_ */

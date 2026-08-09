@@ -1,5 +1,7 @@
 #include <iostream>
-#include "../include/s2s.hpp"
+#include "../../include/s2s.hpp"
+
+using namespace s2s;
 
 // template <typename Key, typename Value, std::size_t N, std::size_t C>
 // constexpr auto map(const std::pair<Key, Value> (&entries)[C]) -> static_map_impl<Key, Value, N> {

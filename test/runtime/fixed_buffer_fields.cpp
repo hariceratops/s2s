@@ -65,3 +65,62 @@ TEST(MetaStructReadTest, MultiDimensionalFixedBufferFieldFromBinaryFile) {
   });
 }
 
+// No read test exercised a foreign-endian buffer, which is what let
+// read_foreign_buffer byteswap the container instead of its elements.
+TEST(MetaStructReadTest, ForeignEndianFixedBufferIsSwappedPerElement) {
+  {
+    std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+    // fixed_string_field<N> is sized fixed<N + 1>, so the terminator is on the wire.
+    const u8 be_bytes[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 'a', 'b', 'c', 'd', '\0'};
+    file.write(reinterpret_cast<const char*>(be_bytes), sizeof(be_bytes));
+  }
+
+  FIELD_LIST_SCHEMA =
+    s2s::struct_field_list<
+      s2s::fixed_array_field<"arr", u16, 3>,
+      s2s::fixed_string_field<"name", 4>
+    >;
+
+  FIELD_LIST_BE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    ASSERT_EQ(fields["arr"_f], (std::array<u16, 3>{0x1122, 0x3344, 0x5566}));
+    // char has no byte order: the string must not come back reversed.
+    ASSERT_EQ(std::string_view(fields["name"_f].data()), std::string_view("abcd"));
+  });
+}
+
+// The nested case only ever ran host-endian, so the per-element swap never
+// had to descend into the inner array.
+TEST(MetaStructReadTest, ForeignEndianMultiDimensionalFixedBuffer) {
+  {
+    std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+    const u8 be_bytes[] = {
+      0x11, 0x22, 0x33, 0x44,
+      0x55, 0x66, 0x77, 0x88,
+      0x99, 0xaa, 0xbb, 0xcc,
+      0xdd, 0xee, 0xff, 0x00
+    };
+    file.write(reinterpret_cast<const char*>(be_bytes), sizeof(be_bytes));
+  }
+
+  FIELD_LIST_SCHEMA =
+    s2s::struct_field_list<
+      s2s::fixed_array_field<"arr", std::array<u16, 2>, 4>
+    >;
+
+  FIELD_LIST_BE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    ASSERT_EQ(
+      fields["arr"_f],
+      (std::array<std::array<u16, 2>, 4> {{
+        {0x1122, 0x3344},
+        {0x5566, 0x7788},
+        {0x99aa, 0xbbcc},
+        {0xddee, 0xff00}
+      }})
+    );
+  });
+}
+

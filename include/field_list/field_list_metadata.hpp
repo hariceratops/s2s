@@ -208,6 +208,48 @@ struct extract_type_deduction_dependencies<
 template <typename T>
 inline constexpr auto extract_type_deduction_dependencies_v = extract_type_deduction_dependencies<T>::value;
 
+
+// Which field ids this field's data implies the value of. Only a plain
+// top-level len_from_field is invertible: len_from_fields wraps an arbitrary
+// callable with no inverse, and a producer inside a maybe_field or a union
+// alternative only obligates its target conditionally, which is a verify
+// problem rather than a derive one.
+template <typename T>
+struct extract_unconditional_len_sources {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+struct extract_unconditional_len_sources<
+  field<id, T, field_size<len_from_field<len_source>>, constraint>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(len_source));
+};
+
+template <typename T>
+inline constexpr auto extract_unconditional_len_sources_v = extract_unconditional_len_sources<T>::value;
+
+
+// A type_switch discriminant is always derivable: variant index i corresponds
+// positionally to case i, so the held alternative determines the value. A
+// computed switch input or a ladder is not, since neither can be inverted.
+template <typename T>
+struct extract_switch_discriminants {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, fixed_string matched_id, typename type_switch>
+struct extract_switch_discriminants<
+  union_field<id, type<match_field<matched_id>, type_switch>>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(matched_id));
+};
+
+template <typename T>
+inline constexpr auto extract_switch_discriminants_v = extract_switch_discriminants<T>::value;
+
 template <typename... fields>
 struct field_list_metadata {
   template <std::size_t... Is>
@@ -243,17 +285,36 @@ struct field_list_metadata {
     );
   }
 
+  static constexpr auto generate_derived_field_ids() {
+    dep_vec sources[sizeof...(fields) * 2] = {
+      dep_vec(extract_unconditional_len_sources_v<fields>)...,
+      dep_vec(extract_switch_discriminants_v<fields>)...
+    };
+    return remove_duplicates(flatten(sources));
+  }
+
   static constexpr field_table_t field_table = generate_field_table(std::make_index_sequence<sizeof...(fields)>{});
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
- 
+  static constexpr dep_vec derived_field_ids = generate_derived_field_ids();
 };
 
 template <auto list_metadata>
 constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   auto field_table = meta::type_of<list_metadata>::field_table;
   return field_table[field_name];
+}
+
+// The single source of truth for "derived": both the write path and
+// operator[]'s constraint answer the question here, so the two cannot drift.
+template <auto list_metadata>
+constexpr auto is_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::derived_field_ids) {
+    if(id == field_name)
+      return true;
+  }
+  return false;
 }
 
 

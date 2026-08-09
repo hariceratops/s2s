@@ -1,4 +1,4 @@
-#include "../single_header/s2s.hpp"
+#include "../../single_header/s2s.hpp"
 
 using u32 = unsigned int;
 
@@ -171,6 +171,24 @@ static_assert(type_deduction_dep_table["complex_v"]);
 static_assert(type_deduction_dep_table["complex_v"]->size() == 2);
 static_assert(type_deduction_dep_table["laddered"]);
 static_assert(type_deduction_dep_table["laddered"]->size() == 2);
+
+// Derived = unconditional len_from_field targets, plus match_field switch
+// discriminants. "len" qualifies through the top-level str_field and stays
+// derived even though it also has conditional producers inside a maybe and a
+// union alternative. "a" qualifies as the discriminant of "v" and "vec_union",
+// which is the case design §4.2 calls out: derived from the union, while the
+// optional's length is verified against that derived value.
+constexpr auto derived_ids = list_metadata::derived_field_ids;
+static_assert(derived_ids.size() == 2);
+static_assert(s2s::is_derived_field<meta::type_id<list_metadata>>("len"));
+static_assert(s2s::is_derived_field<meta::type_id<list_metadata>>("a"));
+// "row" and "col" feed a len_from_fields callable, which has no inverse.
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("row"));
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("col"));
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("str"));
+// "complex_v" switches on a computed value and "laddered" on branch
+// predicates; neither can be inverted, so neither obligates anything.
+static_assert(not s2s::is_derived_field<meta::type_id<list_metadata>>("b"));
 
 using legal_len_field_list = 
   s2s::field_list_metadata<

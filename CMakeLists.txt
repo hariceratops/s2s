@@ -8,6 +8,17 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# The runtime path builds on gcc 13, but constexpr use of struct_field_list
+# does not: gcc 13 rejects the static constexpr table initializers in
+# field_list_metadata with "accessing value of 'key' through a glvalue in a
+# constant expression". gcc 14 compiles them cleanly.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 14)
+  message(FATAL_ERROR
+    "gcc ${CMAKE_CXX_COMPILER_VERSION} cannot compile the constexpr path; gcc 14 or newer is required. "
+    "Configure with -DCMAKE_CXX_COMPILER=g++-14.")
+endif()
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")

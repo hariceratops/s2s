@@ -1,9 +1,11 @@
-#include "../single_header/s2s.hpp"
+#include "../../single_header/s2s.hpp"
 
 namespace static_tests {
 
+using namespace s2s;
+
 using u32 = unsigned int;
-namespace tl = typelist;
+namespace tl = s2s::typelist;
 
 static_assert(is_no_constraint_v<no_constraint<int>>);
 static_assert(!is_no_constraint_v<int>);

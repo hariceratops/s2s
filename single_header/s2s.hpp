@@ -1,25 +1,25 @@
-#include <ranges>
-#include <cassert>
-#include <utility>
-#include <string>
-#include <vector>
-#include <bit>
 #include <algorithm>
-#include <type_traits>
-#include <cstddef>
-#include <functional>
-#include <variant>
-#include <cstring>
-#include <cstdint>
-#include <string_view>
-#include <cstdio>
 #include <array>
-#include <iostream>
-#include <expected>
+#include <bit>
+#include <cassert>
 #include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <expected>
+#include <functional>
+#include <iostream>
 #include <optional>
+#include <ranges>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <variant>
+#include <vector>
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+// Begin lib/containers/static_vector.hpp
 #ifndef _STATIC_VECTOR_HPP_
 #define _STATIC_VECTOR_HPP_
  
@@ -56,9 +56,9 @@ private:
 
 #endif /* _STATIC_VECTOR_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_vector.hpp
+// End lib/containers/static_vector.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
+// Begin lib/algorithms/algorithms.hpp
 #ifndef _ALGORITHMS_HPP_
 #define _ALGORITHMS_HPP_
  
@@ -114,9 +114,9 @@ constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
 
 #endif /* _ALGORITHMS_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/algorithms/algorithms.hpp
+// End lib/algorithms/algorithms.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+// Begin lib/containers/static_map.hpp
 #ifndef _STATIC_MAP_HPP_
 #define _STATIC_MAP_HPP_
  
@@ -193,9 +193,9 @@ private:
 
 #endif /* _STATIC_MAP_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_map.hpp
+// End lib/containers/static_map.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+// Begin lib/containers/static_set.hpp
 #ifndef _STATIC_SET_HPP_
 #define _STATIC_SET_HPP_
  
@@ -239,9 +239,9 @@ private:
 
 #endif /* _STATIC_SET_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_set.hpp
+// End lib/containers/static_set.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/static_optional.hpp
+// Begin lib/containers/static_optional.hpp
 #ifndef _STATIC_OPTIONAL_HPP_
 #define _STATIC_OPTIONAL_HPP_
  
@@ -288,9 +288,9 @@ struct static_optional {
 
 #endif /* _STATIC_OPTIONAL_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/containers/static_optional.hpp
+// End lib/containers/static_optional.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
+// Begin lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
  
@@ -331,9 +331,9 @@ constexpr bool operator!=(fixed_string<N1> lhs, fixed_string<N2> rhs) {
 
 #endif // _FIXED_STRING_HPP_
 
-// End /home/hari/repos/s2s/include/lib/containers/fixed_string.hpp
+// End lib/containers/fixed_string.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_accessor.hpp
+// Begin field/field_accessor.hpp
 #ifndef _FIELD_ACCESSOR_HPP_
 #define _FIELD_ACCESSOR_HPP_
  
@@ -353,9 +353,9 @@ constexpr auto operator""_f() {
 
 #endif // _FIELD_ACCESSOR_HPP_
 
-// End /home/hari/repos/s2s/include/field/field_accessor.hpp
+// End field/field_accessor.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
+// Begin lib/metaprog/fixed_string_list.hpp
 #ifndef _FIXED_STRING_LIST_HPP_
 #define _FIXED_STRING_LIST_HPP_
 
@@ -462,9 +462,9 @@ concept field_name_list = is_field_name_list_v<T>;
 
 #endif // _FIXED_STRING_LIST_HPP_
 
-// End /home/hari/repos/s2s/include/lib/metaprog/fixed_string_list.hpp
+// End lib/metaprog/fixed_string_list.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/metaprog/typelist.hpp
+// Begin lib/metaprog/typelist.hpp
 #ifndef _TYPELIST_HPP_
 #define _TYPELIST_HPP_
 
@@ -550,9 +550,9 @@ using front_t = typename front<L>::front_t;
 
 #endif // _TYPELIST_HPP_
 
-// End /home/hari/repos/s2s/include/lib/metaprog/typelist.hpp
+// End lib/metaprog/typelist.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/field_size.hpp
+// Begin field_size/field_size.hpp
 #ifndef _FIELD_SIZE_HPP_
 #define _FIELD_SIZE_HPP_
  
@@ -641,6 +641,22 @@ struct is_variable_size<field_size<len_from_fields<callable, ids>>> {
 template <typename T>
 inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
 
+// A size produced by a user callable rather than read from a single field.
+// The distinction matters only on the write path: len_from_field can be
+// inverted and derived, this cannot, so it can only be verified.
+template <typename T>
+struct is_computed_size {
+  static constexpr bool res = false;
+};
+
+template <auto callable, field_name_list ids>
+struct is_computed_size<field_size<size_from_fields<callable, ids>>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_computed_size_v = is_computed_size<T>::res;
+
 // Concepts for checking if a type is a size type
 template <typename T>
 concept fixed_size_like = is_fixed_size_v<T>;
@@ -699,9 +715,9 @@ concept size_dont_care_like = is_size_dont_care_v<T>;
 
 #endif // _FIELD_SIZE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/field_size.hpp
+// End field_size/field_size.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_base.hpp
+// Begin field_list/field_list_base.hpp
 #ifndef _FIELD_LIST_BASE_HPP_
 #define _FIELD_LIST_BASE_HPP_
  
@@ -714,9 +730,9 @@ concept field_list_like = std::is_base_of_v<struct_field_list_base, T>;
 
 #endif // _FIELD_LIST_BASE_HPP_
 
-// End /home/hari/repos/s2s/include/field_list/field_list_base.hpp
+// End field_list/field_list_base.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
+// Begin lib/s2s_traits/type_traits.hpp
 #ifndef _S2S_TYPE_TRAITS_HPP_
 #define _S2S_TYPE_TRAITS_HPP_
  
@@ -984,9 +1000,9 @@ concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
 
 #endif // _S2S_TYPE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/lib/s2s_traits/type_traits.hpp
+// End lib/s2s_traits/type_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
+// Begin field_validation/field_value_constraints.hpp
 #ifndef _FIELD_VALUE_CONSTRAINTS_HPP_
 #define _FIELD_VALUE_CONSTRAINTS_HPP_ 
  
@@ -1183,9 +1199,9 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 #endif // _FIELD_VALUE_CONSTRAINTS_HPP_
 
-// End /home/hari/repos/s2s/include/field_validation/field_value_constraints.hpp
+// End field_validation/field_value_constraints.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field.hpp
+// Begin field/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
  
@@ -1291,9 +1307,9 @@ struct union_field: public
 
 #endif // _FIELD_HPP_
 
-// End /home/hari/repos/s2s/include/field/field.hpp
+// End field/field.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
+// Begin lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
 #define _MP_HPP_
  
@@ -1374,9 +1390,9 @@ template <template<typename...> typename T, class... Ts, auto = []{}>
 
 #endif /* _MP_HPP_ */
 
-// End /home/hari/repos/s2s/include/lib/metaprog/mp.hpp
+// End lib/metaprog/mp.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_type_info.hpp
+// Begin field/field_type_info.hpp
 #ifndef _FIELD_NODE_HPP_
 #define _FIELD_NODE_HPP_
  
@@ -1388,9 +1404,9 @@ struct field_type_info {
 
 #endif /* _FIELD_NODE_HPP_ */
 
-// End /home/hari/repos/s2s/include/field/field_type_info.hpp
+// End field/field_type_info.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type.hpp
+// Begin type_deduction/type/type.hpp
 #ifndef _TYPE_HPP_
 #define _TYPE_HPP_
  
@@ -1430,9 +1446,9 @@ struct type<ladder> {
 
 #endif // _TYPE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type.hpp
+// End type_deduction/type/type.hpp
 
-// Begin /home/hari/repos/s2s/include/error/cast_error.hpp
+// Begin error/cast_error.hpp
 #ifndef _CAST_ERROR_HPP_
 #define _CAST_ERROR_HPP_
  
@@ -1441,7 +1457,12 @@ namespace s2s {
 enum error_reason {
   buffer_exhaustion,
   validation_failure,
-  type_deduction_failure
+  type_deduction_failure,
+  // Two parts of the struct imply different lengths for the same data — a
+  // cross-field disagreement, not a value that is wrong on its own terms.
+  // Appended rather than inserted so the existing enumerators keep their
+  // values.
+  found_contradicting_length
 };
 
 
@@ -1454,13 +1475,27 @@ struct cast_error {
 using rw_result = std::expected<void, error_reason>;
 using cast_result = std::expected<void, cast_error>;
 
+
+// Both directions fold their per-field steps through these, so they live here
+// rather than in the read path's headers — the amalgamated header is a single
+// translation unit, where a second definition would be an error.
+constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
+constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
 } /* namespace s2s */
 
 #endif // _CAST_ERROR_HPP_
 
-// End /home/hari/repos/s2s/include/error/cast_error.hpp
+// End error/cast_error.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
+// Begin field_size/comptime_field_size_deduce.hpp
 #ifndef _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
 #define _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
  
@@ -1481,9 +1516,9 @@ struct deduce_field_size<field_size<fixed<N>>> {
 
 #endif // _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/comptime_field_size_deduce.hpp
+// End field_size/comptime_field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/utils/type_tags.hpp
+// Begin type_deduction/utils/type_tags.hpp
 #ifndef _TYPE_TAGS_
 #define _TYPE_TAGS_
  
@@ -1588,9 +1623,9 @@ concept type_tag_like = is_type_tag_v<T>;
 
 #endif // _TYPE_TAGS_
 
-// End /home/hari/repos/s2s/include/type_deduction/utils/type_tags.hpp
+// End type_deduction/utils/type_tags.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/match_case.hpp
+// Begin type_deduction/switch/match_case.hpp
 #ifndef _MATCH_CASE_HPP_
 #define _MATCH_CASE_HPP_
  
@@ -1605,9 +1640,9 @@ struct match_case {
 
 #endif // _MATCH_CASE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/match_case.hpp
+// End type_deduction/switch/match_case.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/match_case_traits.hpp
+// Begin type_deduction/switch/match_case_traits.hpp
 #ifndef _MATCH_CASE_TRAITS_HPP_
 #define _MATCH_CASE_TRAITS_HPP_
  
@@ -1634,9 +1669,9 @@ concept match_case_like = is_match_case_v<T>;
 
 #endif // _MATCH_CASE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/match_case_traits.hpp
+// End type_deduction/switch/match_case_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+// Begin field_compute/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
 #define _COMPUTATION_FROM_FIELDS_HPP_
  
@@ -1663,9 +1698,9 @@ using parse_if = eval_bool_from_fields<callable, req_fields>;
 
 #endif // _COMPUTATION_FROM_FIELDS_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields.hpp
+// End field_compute/computation_from_fields.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
+// Begin field_compute/computation_from_fields_traits.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
 #define _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
  
@@ -1725,9 +1760,9 @@ inline constexpr bool is_eval_size_from_fields_v = is_eval_size_from_fields<T>::
 
 #endif // _COMPUTATION_FROM_FIELDS_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields_traits.hpp
+// End field_compute/computation_from_fields_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause.hpp
+// Begin type_deduction/if_else_ladder/clause.hpp
 #ifndef _CLAUSE_HPP_
 #define _CLAUSE_HPP_
  
@@ -1746,9 +1781,9 @@ struct branch {
 
 #endif // _CLAUSE_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause.hpp
+// End type_deduction/if_else_ladder/clause.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause_traits.hpp
+// Begin type_deduction/if_else_ladder/clause_traits.hpp
 #ifndef _CLAUSE_TRAITS_HPP_
 #define _CLAUSE_TRAITS_HPP_
  
@@ -1775,9 +1810,9 @@ concept branch_like = is_branch_v<T>;
 
 #endif // _CLAUSE_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/clause_traits.hpp
+// End type_deduction/if_else_ladder/clause_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/utils/helper.hpp
+// Begin type_deduction/utils/helper.hpp
 #ifndef _HELPER_HPP_
 #define _HELPER_HPP_
  
@@ -1834,9 +1869,9 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/utils/helper.hpp
+// End type_deduction/utils/helper.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder.hpp
+// Begin type_deduction/if_else_ladder/ladder.hpp
 #ifndef _LADDER_HPP_
 #define _LADDER_HPP_
  
@@ -1853,9 +1888,9 @@ struct type_if_else {
 
 #endif // _LADDER_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder.hpp
+// End type_deduction/if_else_ladder/ladder.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
+// Begin field_list/field_list_metadata.hpp
 #ifndef _FIELD_LIST_METADATA_HPP_
 #define _FIELD_LIST_METADATA_HPP_
  
@@ -2063,6 +2098,48 @@ struct extract_type_deduction_dependencies<
 template <typename T>
 inline constexpr auto extract_type_deduction_dependencies_v = extract_type_deduction_dependencies<T>::value;
 
+
+// Which field ids this field's data implies the value of. Only a plain
+// top-level len_from_field is invertible: len_from_fields wraps an arbitrary
+// callable with no inverse, and a producer inside a maybe_field or a union
+// alternative only obligates its target conditionally, which is a verify
+// problem rather than a derive one.
+template <typename T>
+struct extract_unconditional_len_sources {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+struct extract_unconditional_len_sources<
+  field<id, T, field_size<len_from_field<len_source>>, constraint>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(len_source));
+};
+
+template <typename T>
+inline constexpr auto extract_unconditional_len_sources_v = extract_unconditional_len_sources<T>::value;
+
+
+// A type_switch discriminant is always derivable: variant index i corresponds
+// positionally to case i, so the held alternative determines the value. A
+// computed switch input or a ladder is not, since neither can be inverted.
+template <typename T>
+struct extract_switch_discriminants {
+  static constexpr auto value = dep_vec();
+};
+
+template <fixed_string id, fixed_string matched_id, typename type_switch>
+struct extract_switch_discriminants<
+  union_field<id, type<match_field<matched_id>, type_switch>>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(matched_id));
+};
+
+template <typename T>
+inline constexpr auto extract_switch_discriminants_v = extract_switch_discriminants<T>::value;
+
 template <typename... fields>
 struct field_list_metadata {
   template <std::size_t... Is>
@@ -2098,17 +2175,36 @@ struct field_list_metadata {
     );
   }
 
+  static constexpr auto generate_derived_field_ids() {
+    dep_vec sources[sizeof...(fields) * 2] = {
+      dep_vec(extract_unconditional_len_sources_v<fields>)...,
+      dep_vec(extract_switch_discriminants_v<fields>)...
+    };
+    return remove_duplicates(flatten(sources));
+  }
+
   static constexpr field_table_t field_table = generate_field_table(std::make_index_sequence<sizeof...(fields)>{});
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
- 
+  static constexpr dep_vec derived_field_ids = generate_derived_field_ids();
 };
 
 template <auto list_metadata>
 constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   auto field_table = meta::type_of<list_metadata>::field_table;
   return field_table[field_name];
+}
+
+// The single source of truth for "derived": both the write path and
+// operator[]'s constraint answer the question here, so the two cannot drift.
+template <auto list_metadata>
+constexpr auto is_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::derived_field_ids) {
+    if(id == field_name)
+      return true;
+  }
+  return false;
 }
 
 
@@ -2156,9 +2252,9 @@ constexpr bool type_deduction_dependencies_resolved() {
 
 #endif /* _FIELD_LIST_METADATA_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_list/field_list_metadata.hpp
+// End field_list/field_list_metadata.hpp
 
-// Begin /home/hari/repos/s2s/include/field_list/field_list.hpp
+// Begin field_list/field_list.hpp
 #ifndef _FIELD_LIST_HPP_
 #define _FIELD_LIST_HPP_
  
@@ -2167,6 +2263,12 @@ constexpr bool type_deduction_dependencies_resolved() {
  
 namespace s2s {
 
+// A field whose value the write path derives from other fields. The name
+// carries the reason into the diagnostic when an assignment is rejected.
+template <typename field_accessor, auto list_metadata>
+concept field_is_derived_from_other_fields =
+  is_derived_field<list_metadata>(as_sv(field_accessor::field_id));
+
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
@@ -2174,13 +2276,28 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 
   // todo move as_sv to common place
   template <
-    typename field_accessor, 
+    typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
-    requires (field_lookup_res.has_value)
+    requires (field_lookup_res.has_value) &&
+             (!field_is_derived_from_other_fields<field_accessor, list_metadata>)
   constexpr auto& operator[](field_accessor)  {
     using field_type_ref = meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_ref>(*this).value;
+  }
+
+  // Derived fields stay readable on a non-const object but hand back a const
+  // reference, so an attempted assignment fails as assign-to-const rather than
+  // as a wall of unsatisfied-constraint output from no viable overload.
+  template <
+    typename field_accessor,
+    auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
+  >
+    requires (field_lookup_res.has_value) &&
+             field_is_derived_from_other_fields<field_accessor, list_metadata>
+  constexpr const auto& operator[](field_accessor) {
+    using field_type_cref = const meta::type_of<field_lookup_res->id>&;
+    return static_cast<field_type_cref>(*this).value;
   }
 
   template <
@@ -2198,9 +2315,9 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 
 #endif // _FIELD_LIST_HPP_
 
-// End /home/hari/repos/s2s/include/field_list/field_list.hpp
+// End field_list/field_list.hpp
 
-// Begin /home/hari/repos/s2s/include/field_compute/computation_from_fields_impl.hpp
+// Begin field_compute/computation_from_fields_impl.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_IMPL_HPP_
 #define _COMPUTATION_FROM_FIELDS_IMPL_HPP_
  
@@ -2261,9 +2378,9 @@ struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
 
 #endif // _COMPUTATION_FROM_FIELDS_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/field_compute/computation_from_fields_impl.hpp
+// End field_compute/computation_from_fields_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
+// Begin field_size/field_size_deduce.hpp
 #ifndef _FIELD_SIZE_DEDUCE_HPP_
 #define _FIELD_SIZE_DEDUCE_HPP_
  
@@ -2298,9 +2415,9 @@ struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
 
 #endif // _FIELD_SIZE_DEDUCE_HPP_
 
-// End /home/hari/repos/s2s/include/field_size/field_size_deduce.hpp
+// End field_size/field_size_deduce.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch.hpp
+// Begin type_deduction/switch/switch.hpp
 #ifndef _SWITCH_HPP_
 #define _SWITCH_HPP_
  
@@ -2318,9 +2435,9 @@ struct type_switch {
 
 #endif // _SWITCH_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/switch.hpp
+// End type_deduction/switch/switch.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch_traits.hpp
+// Begin type_deduction/switch/switch_traits.hpp
 #ifndef _SWITCH_TRAITS_HPP_
 #define _SWITCH_TRAITS_HPP_
  
@@ -2350,9 +2467,9 @@ concept type_switch_like = is_type_switch_v<T>;
 
 #endif // _SWITCH_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/switch_traits.hpp
+// End type_deduction/switch/switch_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_traits.hpp
+// Begin type_deduction/if_else_ladder/ladder_traits.hpp
 #ifndef _LADDER_TRAITS_HPP_
 #define _LADDER_TRAITS_HPP_
  
@@ -2379,9 +2496,9 @@ concept type_if_else_like = is_type_if_else_v<T>;
 
 #endif // _LADDER_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_traits.hpp
+// End type_deduction/if_else_ladder/ladder_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type_deduction_traits.hpp
+// Begin type_deduction/type/type_deduction_traits.hpp
 #ifndef _TYPE_DEDUCTION_TRAITS_HPP_
 #define _TYPE_DEDUCTION_TRAITS_HPP_
  
@@ -2451,9 +2568,9 @@ concept type_deduction_like = is_type_deduction_v<T>;
 
 #endif // _TYPE_DEDUCTION_TRAITS_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type_deduction_traits.hpp
+// End type_deduction/type/type_deduction_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type_deduction_metafunctions.hpp
+// Begin type_deduction/type/type_deduction_metafunctions.hpp
 #ifndef _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
 #define _TYPE_DEDUCTION_METAFUNCTIONS_HPP_
  
@@ -2526,13 +2643,66 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
   static_set<meta::type_identifier, N> type_id_set(type_id_list);
   return equal_ranges(type_id_list, type_id_set);
 }
+
+
+// has_unique_field_choices enforces unique case *types*, which is what makes
+// alternative-to-index inversion well-defined. It says nothing about the case
+// *values*, and duplicates there break round-trip silently: writing the second
+// alternative emits value v, and reading v back selects the first case that
+// matches it. Only the switch forms carry values; a ladder has none.
+template <typename T>
+struct extract_match_values {
+  static constexpr auto value = static_vector<std::size_t, 1>();
+};
+
+template <
+  fixed_string matched_id,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct extract_match_values<
+  type<
+    match_field<matched_id>,
+    type_switch<
+      match_case<match_values, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value =
+    static_vector<std::size_t, sizeof...(match_values)>(static_cast<std::size_t>(match_values)...);
+};
+
+template <
+  auto callable, typename R, typename field_name_list,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct extract_match_values<
+  type<
+    compute<callable, R, field_name_list>,
+    type_switch<
+      match_case<match_values, type_tags>...
+    >
+  >
+>
+{
+  static constexpr auto value =
+    static_vector<std::size_t, sizeof...(match_values)>(static_cast<std::size_t>(match_values)...);
+};
+
+template <std::size_t N>
+constexpr bool has_unique_match_values(const s2s::static_vector<std::size_t, N>& match_value_list) {
+  static_set<std::size_t, N> match_value_set(match_value_list);
+  return equal_ranges(match_value_list, match_value_set);
+}
 }
 
 #endif /* _TYPE_DEDUCTION_METAFUNCTIONS_HPP_ */
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type_deduction_metafunctions.hpp
+// End type_deduction/type/type_deduction_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/api/field_descriptors.hpp
+// Begin api/field_descriptors.hpp
 #ifndef _FIELD_DESCRIPTORS_HPP_
 #define _FIELD_DESCRIPTORS_HPP_
  
@@ -2545,7 +2715,9 @@ constexpr bool has_unique_field_choices(const s2s::static_vector<meta::type_iden
  
 namespace s2s {
 struct always_true {
-  constexpr auto operator()() -> bool {
+  // const: compute_impl invokes the callable as a const NTTP, so without this
+  // always_present fails to compile in either direction.
+  constexpr auto operator()() const -> bool {
     return true;
   }
 };
@@ -2603,16 +2775,17 @@ using maybe = maybe_field<base_field, present_only_if>;
 
 
 template <fixed_string id, type_deduction_like type_deducer>
-  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value))
+  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value)) &&
+           (has_unique_match_values(extract_match_values<type_deducer>::value))
 using variance = union_field<id, type_deducer>;
 
 } /* namespace s2s */
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
 
-// End /home/hari/repos/s2s/include/api/field_descriptors.hpp
+// End api/field_descriptors.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_traits.hpp
+// Begin field/field_traits.hpp
 #ifndef _FIELD_TRAITS_HPP_
 #define _FIELD_TRAITS_HPP_
  
@@ -2785,9 +2958,9 @@ concept field_like = fixed_sized_field_like<T> ||
 
 #endif /*_FIELD_TRAITS_HPP_*/
 
-// End /home/hari/repos/s2s/include/field/field_traits.hpp
+// End field/field_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/api/struct_field_list.hpp
+// Begin api/struct_field_list.hpp
 #ifndef _STRUCT_FIELD_LIST_HPP_
 #define _STRUCT_FIELD_LIST_HPP_
  
@@ -2845,9 +3018,9 @@ using struct_field_list = create_struct_field_list<fields...>::value;
 #endif /* _STRUCT_FIELD_LIST_HPP_ */
 
 
-// End /home/hari/repos/s2s/include/api/struct_field_list.hpp
+// End api/struct_field_list.hpp
 
-// Begin /home/hari/repos/s2s/include/field/field_metafunctions.hpp
+// Begin field/field_metafunctions.hpp
 #ifndef _FIELD_METAFUNCTIONS_HPP_
 #define _FIELD_METAFUNCTIONS_HPP_
  
@@ -2875,9 +3048,9 @@ using extract_type_from_field_v = typename extract_type_from_field<T>::type;
 
 #endif // _FIELD_METAFUNCTIONS_HPP_
 
-// End /home/hari/repos/s2s/include/field/field_metafunctions.hpp
+// End field/field_metafunctions.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_impl.hpp
+// Begin type_deduction/if_else_ladder/ladder_impl.hpp
 #ifndef _LADDER_IMPL_HPP_
 #define _LADDER_IMPL_HPP_
  
@@ -2937,9 +3110,9 @@ struct evaluate_ladder<type_if_else<branches...>> {
 
 #endif // _LADDER_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/if_else_ladder/ladder_impl.hpp
+// End type_deduction/if_else_ladder/ladder_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/switch/switch_impl.hpp
+// Begin type_deduction/switch/switch_impl.hpp
 #ifndef _SWITCH_IMPL_HPP_
 #define _SWITCH_IMPL_HPP_
  
@@ -2991,9 +3164,9 @@ struct evaluate_switch<type_switch<cases...>> {
 
 #endif // _SWITCH_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/switch/switch_impl.hpp
+// End type_deduction/switch/switch_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/type_deduction/type/type_impl.hpp
+// Begin type_deduction/type/type_impl.hpp
 #ifndef _TYPE_IMPL_HPP_
 #define _TYPE_IMPL_HPP_
  
@@ -3035,9 +3208,9 @@ struct deduce_type<type<ladder>> {
 
 #endif // _TYPE_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/type_deduction/type/type_impl.hpp
+// End type_deduction/type/type_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/stream/stream_traits.hpp
+// Begin stream/stream_traits.hpp
 #ifndef _STREAM_TRAITS_HPP_
 #define _STREAM_TRAITS_HPP_
  
@@ -3098,14 +3271,14 @@ template <typename T>
 concept input_stream_like = (identified_as_constexpr_stream<T> || readable<T>) && convertible_to_bool<T>;
 
 template <typename T>
-concept output_stream_like = writeable<T> && convertible_to_bool<T>;
+concept output_stream_like = (identified_as_constexpr_stream<T> || writeable<T>) && convertible_to_bool<T>;
 }
 
 #endif /* _STREAM_TRAITS_HPP_ */
 
-// End /home/hari/repos/s2s/include/stream/stream_traits.hpp
+// End stream/stream_traits.hpp
 
-// Begin /home/hari/repos/s2s/include/lib/memory/address_manip.hpp
+// Begin lib/memory/address_manip.hpp
 #ifndef _ADDRESS_MANIP_HPP_
 #define _ADDRESS_MANIP_HPP_
  
@@ -3136,25 +3309,66 @@ inline char* byte_addressof(std::string& obj) {
   return reinterpret_cast<char*>(&obj[0]);
 }
 
+template <output_stream_like stream, typename T>
+const char* const_byte_addressof(const T& obj) {
+  return reinterpret_cast<const char*>(&obj);
+}
+
+template <output_stream_like stream, typename T, std::size_t N>
+const char* const_byte_addressof(const std::array<T, N>& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
+template <output_stream_like stream, std::size_t N>
+const char* const_byte_addressof(const fixed_string<N>& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
+template <output_stream_like stream, typename T>
+const char* const_byte_addressof(const std::vector<T>& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
+template <output_stream_like stream>
+inline const char* const_byte_addressof(const std::string& obj) {
+  return reinterpret_cast<const char*>(obj.data());
+}
+
 // todo generate this as configurable parameter
 constexpr std::size_t constexpr_buffer_size = 2048;
 
 template <identified_as_constexpr_stream stream, typename T, std::size_t size = sizeof(T)>
-constexpr auto as_byte_buffer(T& obj) -> std::array<char, size> {
+constexpr auto as_byte_buffer(const T& obj) -> std::array<char, size> {
   return std::bit_cast<std::array<char, size>>(obj);
 }
 }
 
 #endif // _ADDRESS_MANIP_HPP_
 
-// End /home/hari/repos/s2s/include/lib/memory/address_manip.hpp
+// End lib/memory/address_manip.hpp
 
-// Begin /home/hari/repos/s2s/include/field_read/read_impl.hpp
-#ifndef _READ_IMPL_HPP_
-#define _READ_IMPL_HPP_
- 
+// Begin stream/byte_order.hpp
+#ifndef _BYTE_ORDER_HPP_
+#define _BYTE_ORDER_HPP_
  
 namespace s2s {
+// Single-byte elements have no byte order, and fixed_string exposes no
+// iterators, so both fall through untouched. Shared by the read and write
+// directions, which is why it lives here rather than beside either one.
+template <buffer_like T>
+constexpr auto byteswap_elements(T& obj) -> void {
+  if constexpr(!fixed_string_like<T>) {
+    for(auto& elem: obj) {
+      // Multi-dimensional aggregates nest, so descend until the scalars.
+      if constexpr(buffer_like<std::remove_reference_t<decltype(elem)>>)
+        byteswap_elements(elem);
+      else if constexpr(sizeof(elem) > 1)
+        elem = std::byteswap(elem);
+    }
+  }
+}
+
+
 enum cast_endianness {
   host = 0,
   foreign = 1
@@ -3163,12 +3377,23 @@ enum cast_endianness {
 
 template <std::endian endianness>
 constexpr cast_endianness deduce_byte_order() {
-  if constexpr(std::endian::native == endianness) 
+  if constexpr(std::endian::native == endianness)
     return cast_endianness::host;
-  else if constexpr(std::endian::native != endianness) 
+  else if constexpr(std::endian::native != endianness)
     return cast_endianness::foreign;
 }
+} /* namespace s2s */
 
+#endif // _BYTE_ORDER_HPP_
+
+// End stream/byte_order.hpp
+
+// Begin field_read/read_impl.hpp
+#ifndef _READ_IMPL_HPP_
+#define _READ_IMPL_HPP_
+ 
+ 
+namespace s2s {
 template <typename T, identified_as_constexpr_stream stream>
 constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
@@ -3195,7 +3420,18 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
 template <variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   obj.resize(len_to_read);
-  return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // Mirrors write_native: a vector cannot be bit_cast during constant
+    // evaluation, so fill it element by element.
+    for(auto& elem: obj) {
+      auto res = read_native_impl(s, elem, sizeof(elem));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+  }
 }
 
 template <trivial T, input_stream_like stream>
@@ -3213,8 +3449,7 @@ template <buffer_like T, input_stream_like stream>
 constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   auto res = read_native(s, obj, len_to_read);
   if(res) {
-    for(auto& elem: obj) 
-      obj = std::byteswap(obj);
+    byteswap_elements(obj);
     return {};
   }
   return res;
@@ -3235,29 +3470,13 @@ constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
 }
 
 
-template <output_stream_like stream>
-class output_stream {
-private:
-  stream& s;
-
-public:
-  // delete copy constructor?
-  template <typename T>
-  constexpr auto write(const char* src_mem, std::size_t size_to_read) -> rw_result {
-    // eof = buffer_exhaustion
-    // bad | fail = io_error
-    if(!s.write(src_mem, size_to_read))
-      return std::unexpected(error_reason::buffer_exhaustion);
-    return {};
-  }
-};
 } /* namespace s2s */
 
 #endif /* _READ_IMPL_HPP_ */
 
-// End /home/hari/repos/s2s/include/field_read/read_impl.hpp
+// End field_read/read_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/field_read/field_reader.hpp
+// Begin field_read/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
  
@@ -3487,11 +3706,6 @@ struct read_variant_impl {
   }
 };
 
-constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
 template <typename T, typename F, typename field_choices, typename idx_seq>
 struct read_variant_helper;
 
@@ -3557,19 +3771,13 @@ struct read_field<T, F> {
 
 #endif // _FIELD_READER_HPP_
 
-// End /home/hari/repos/s2s/include/field_read/field_reader.hpp
+// End field_read/field_reader.hpp
 
-// Begin /home/hari/repos/s2s/include/cast/struct_cast_impl.hpp
+// Begin cast/struct_cast_impl.hpp
 #ifndef _STRUCT_CAST_IMPL_HPP_
 #define _STRUCT_CAST_IMPL_HPP_
  
 namespace s2s {
-
-constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
 
 template <typename F, typename stream, auto endianness>
 struct struct_cast_impl;
@@ -3615,9 +3823,9 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
 
 #endif // _STRUCT_CAST_IMPL_HPP_
 
-// End /home/hari/repos/s2s/include/cast/struct_cast_impl.hpp
+// End cast/struct_cast_impl.hpp
 
-// Begin /home/hari/repos/s2s/include/api/struct_cast.hpp
+// Begin api/struct_cast.hpp
 #ifndef _STRUCT_CAST_HPP_
 #define _STRUCT_CAST_HPP_
 
@@ -3638,9 +3846,714 @@ template <field_list_like T, input_stream_like stream>
 
 #endif // _STRUCT_CAST_HPP_
 
-// End /home/hari/repos/s2s/include/api/struct_cast.hpp
+// End api/struct_cast.hpp
 
-// Begin /home/hari/repos/s2s/include/s2s.hpp
+// Begin field_write/derived_value.hpp
+#ifndef _DERIVED_VALUE_HPP_
+#define _DERIVED_VALUE_HPP_
+ 
+namespace s2s {
+// An obligation: a field whose data implies what an earlier field's value has
+// to be. Only len_from_field is invertible — len_from_fields wraps an
+// arbitrary callable, so it obligates nothing and its sources stay writable.
+template <typename T>
+struct len_obligation {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+struct len_obligation<field<id, T, field_size<len_from_field<len_source>>, constraint>> {
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(len_source);
+};
+
+template <typename producer, typename target>
+constexpr auto obligates() -> bool {
+  if constexpr(len_obligation<producer>::present)
+    return len_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
+// The other invertible dependency. variant_from_type_conditions_v builds the
+// variant in case order, so index i is case i positionally — the inverse is
+// total, with no search and no ambiguity, and has_unique_match_values keeps
+// it that way.
+template <typename T>
+struct discriminant_obligation {
+  static constexpr bool present = false;
+};
+
+template <
+  fixed_string id, fixed_string matched_id,
+  template<typename...> typename type_switch,
+  auto... match_values, typename... type_tags
+>
+struct discriminant_obligation<
+  union_field<
+    id,
+    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>
+  >
+>
+{
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(matched_id);
+
+  static constexpr auto value_at(std::size_t alternative_index) -> std::size_t {
+    constexpr std::size_t values[] = {static_cast<std::size_t>(match_values)...};
+    return values[alternative_index];
+  }
+};
+
+template <typename producer, typename target>
+constexpr auto discriminant_obligates() -> bool {
+  if constexpr(discriminant_obligation<producer>::present)
+    return discriminant_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
+// A producer sitting inside a maybe_field obligates its target only when the
+// optional is actually present. That is why such a target cannot be derived —
+// there may be nothing to derive from — but when the producer is present its
+// container still has to match whatever goes on the wire.
+template <typename T>
+struct conditional_len_obligation {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename T, fixed_string len_source, auto constraint,
+          typename present_only_if, typename optional>
+struct conditional_len_obligation<
+  maybe_field<
+    field<id, T, field_size<len_from_field<len_source>>, constraint>,
+    present_only_if,
+    optional
+  >
+>
+{
+  static constexpr bool present = true;
+  static constexpr sv target = as_sv(len_source);
+};
+
+template <typename producer, typename target>
+constexpr auto conditionally_obligates() -> bool {
+  if constexpr(conditional_len_obligation<producer>::present)
+    return conditional_len_obligation<producer>::target == as_sv(target::field_id);
+  else
+    return false;
+}
+
+// The other conditional shape: a union alternative that is itself a
+// length-prefixed container obligates its length only while that alternative
+// is the one held.
+template <typename producer, typename target, typename idx_seq>
+struct union_len_obligation {
+  static constexpr bool present = false;
+};
+
+template <typename target, typename... choices, std::size_t... idx>
+struct union_len_obligation<field_choice_list<choices...>, target, std::index_sequence<idx...>> {
+  static constexpr bool present = (... || obligates<choices, target>());
+
+  template <typename V>
+  static constexpr auto agrees(const V& variant, std::size_t value_on_the_wire) -> bool {
+    bool ok{true};
+    (([&] {
+      if constexpr(obligates<choices, target>()) {
+        if(variant.index() == idx && std::get<idx>(variant).size() != value_on_the_wire)
+          ok = false;
+      }
+    }()), ...);
+    return ok;
+  }
+};
+
+template <typename producer, typename target>
+struct union_len_obligation_of {
+  static constexpr bool present = false;
+};
+
+template <fixed_string id, typename type_deducer, typename target>
+struct union_len_obligation_of<union_field<id, type_deducer>, target> {
+  using field = union_field<id, type_deducer>;
+  using resolved = union_len_obligation<
+    typename field::field_choices,
+    target,
+    std::make_index_sequence<field::variant_size>
+  >;
+  static constexpr bool present = resolved::present;
+};
+
+
+template <typename target, typename F>
+struct has_conditional_len_obligation {
+  static constexpr bool value = false;
+};
+
+template <typename target, auto metadata, typename... fields>
+struct has_conditional_len_obligation<target, struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool value =
+    (... || (conditionally_obligates<fields, target>() ||
+             union_len_obligation_of<fields, target>::present));
+};
+
+template <typename target, typename F>
+inline constexpr bool has_conditional_len_obligation_v =
+  has_conditional_len_obligation<target, F>::value;
+
+
+template <typename target, typename F>
+struct verify_conditional_len;
+
+template <typename target, auto metadata, typename... fields>
+struct verify_conditional_len<target, struct_field_list_impl<metadata, fields...>> {
+  using S = struct_field_list_impl<metadata, fields...>;
+
+  // An obligation counts only when its producer will actually be written.
+  // Presence is judged by the same predicate the reader will apply, so a
+  // predicate that disagrees with has_value() is left to fail at the optional
+  // itself rather than being reported here as a length contradiction.
+  constexpr auto operator()(const S& field_list, std::size_t value_on_the_wire) const
+    -> rw_result
+  {
+    bool agreed{true};
+
+    (([&] {
+      const auto& producer = static_cast<const fields&>(field_list);
+      if constexpr(conditionally_obligates<fields, target>()) {
+        const auto is_active =
+          producer.value.has_value() &&
+          compute_impl<typename fields::field_presence_checker>{}(field_list);
+        if(is_active && producer.value->size() != value_on_the_wire)
+          agreed = false;
+      } else if constexpr(union_len_obligation_of<fields, target>::present) {
+        using resolved = typename union_len_obligation_of<fields, target>::resolved;
+        if(!resolved::agrees(producer.value, value_on_the_wire))
+          agreed = false;
+      }
+    }()), ...);
+
+    if(!agreed)
+      return std::unexpected(error_reason::found_contradicting_length);
+    return {};
+  }
+};
+
+
+template <typename target, typename F>
+struct is_derived_target {
+  static constexpr bool value = false;
+};
+
+// Deliberately not an independent scan: operator[] rejects assignment to
+// exactly the fields the writer overwrites, and two scans would drift.
+template <typename target, auto metadata, typename... fields>
+struct is_derived_target<target, struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool value = is_derived_field<metadata>(as_sv(target::field_id));
+
+  // A length slot is always a fixed-width field. Without this a schema
+  // pointing len_from_field at a variable-sized field fails deep inside
+  // deduce_field_size with an incomplete-type error instead.
+  static_assert(!value || fixed_sized_field_like<target>,
+                "a derived length field must be a fixed-sized field");
+};
+
+template <typename target, typename F>
+inline constexpr bool is_derived_target_v = is_derived_target<target, F>::value;
+
+
+template <typename target, typename F>
+struct derive_value;
+
+// The obligations for a target all live in fields that come after it, and
+// is_dependencies_resolved has already rejected any schema where that is not
+// so — hence the forward scan over the whole pack.
+template <typename target, auto metadata, typename... fields>
+struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
+  using S = struct_field_list_impl<metadata, fields...>;
+  using field_type = typename target::field_type;
+
+  constexpr auto operator()(const S& field_list) const
+    -> std::expected<field_type, error_reason>
+  {
+    std::size_t derived{0};
+    bool seen{false};
+    bool agreed{true};
+
+    auto record = [&](std::size_t implied) {
+      if(seen && implied != derived)
+        agreed = false;
+      derived = implied;
+      seen = true;
+    };
+
+    (([&] {
+      const auto& producer = static_cast<const fields&>(field_list);
+      if constexpr(obligates<fields, target>())
+        record(producer.value.size());
+      else if constexpr(discriminant_obligates<fields, target>())
+        record(discriminant_obligation<fields>::value_at(producer.value.index()));
+    }()), ...);
+
+    // Two distinct failures: the dependents contradict one another, or they
+    // agree on a value the declared slot cannot hold.
+    if(!agreed)
+      return std::unexpected(error_reason::found_contradicting_length);
+    if(!fits_declared_width(derived))
+      return std::unexpected(error_reason::validation_failure);
+    return static_cast<field_type>(derived);
+  }
+
+private:
+  // The declared width, not sizeof(field_type): a u32 slot declared
+  // field_size<fixed<2>> puts two bytes on the wire, and a length needing
+  // three must fail rather than reach the stream truncated.
+  static constexpr auto declared_width = deduce_field_size<typename target::field_size>{}();
+
+  static constexpr auto fits_declared_width(std::size_t v) -> bool {
+    if constexpr(declared_width < sizeof(std::size_t)) {
+      if((v >> (declared_width * 8)) != 0)
+        return false;
+    }
+    return static_cast<std::size_t>(static_cast<field_type>(v)) == v;
+  }
+};
+} /* namespace s2s */
+
+#endif // _DERIVED_VALUE_HPP_
+
+// End field_write/derived_value.hpp
+
+// Begin field_write/write_impl.hpp
+#ifndef _WRITE_IMPL_HPP_
+#define _WRITE_IMPL_HPP_
+ 
+ 
+namespace s2s {
+template <typename T, identified_as_constexpr_stream stream>
+constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
+  if(!s.write(as_byte_buffer_rep, size_to_write)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <typename T, writeable stream>
+constexpr auto write_native_impl(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  if(!s.write(const_byte_addressof<stream>(obj), size_to_write)) {
+    return std::unexpected(error_reason::buffer_exhaustion);
+  }
+  return {};
+}
+
+template <constant_sized_like T, output_stream_like stream>
+constexpr auto write_native(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  return write_native_impl(s, obj, size_to_write);
+}
+
+template <variable_sized_buffer_like T, output_stream_like stream>
+constexpr auto write_native(stream& s, const T& obj, std::size_t len_to_write) -> rw_result {
+  if constexpr(identified_as_constexpr_stream<stream>) {
+    // A vector's bytes cannot be bit_cast out of it during constant
+    // evaluation, so the constexpr stream takes one element at a time.
+    for(std::size_t idx = 0; idx < len_to_write; ++idx) {
+      auto res = write_native_impl(s, obj[idx], sizeof(obj[idx]));
+      if(!res)
+        return res;
+    }
+    return {};
+  } else {
+    return write_native_impl(s, obj, len_to_write * sizeof(T{}[0]));
+  }
+}
+
+template <trivial T, output_stream_like stream>
+constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
+  // The source is const and belongs to the caller, so the swap lands in a
+  // stack temporary rather than mutating it in place as the read path does.
+  T swapped = std::byteswap(obj);
+  return write_native_impl(s, swapped, size_to_write);
+}
+
+// The source buffer is const, so unlike the read direction there is nothing to
+// swap in place. Writing element by element keeps the swap in a scalar
+// temporary rather than staging a byteswapped copy of the whole buffer, which
+// for a vector would mean allocating.
+template <buffer_like T, output_stream_like stream>
+constexpr auto write_foreign_buffer(stream& s, const T& obj, std::size_t len_to_write) -> rw_result {
+  if constexpr(fixed_string_like<T>) {
+    return write_native(s, obj, len_to_write);
+  } else {
+    for(const auto& elem: obj) {
+      auto res = [&] {
+        // Multi-dimensional aggregates nest, so descend until the scalars.
+        if constexpr(buffer_like<std::remove_cvref_t<decltype(elem)>>)
+          return write_foreign_buffer(s, elem, sizeof(elem));
+        else if constexpr(sizeof(elem) > 1)
+          return write_foreign_scalar(s, elem, sizeof(elem));
+        else
+          return write_native_impl(s, elem, sizeof(elem));
+      }();
+      if(!res)
+        return res;
+    }
+    return {};
+  }
+}
+
+template <std::endian endianness, typename T, output_stream_like stream>
+constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
+  auto constexpr byte_order = deduce_byte_order<endianness>();
+  if constexpr(byte_order == cast_endianness::host) {
+    return write_native(s, obj, N);
+  } else if constexpr(byte_order == cast_endianness::foreign) {
+    if constexpr(trivial<T>) {
+      return write_foreign_scalar(s, obj, N);
+    } else if constexpr(buffer_like<T>) {
+      return write_foreign_buffer(s, obj, N);
+    }
+  }
+}
+} /* namespace s2s */
+
+#endif // _WRITE_IMPL_HPP_
+
+// End field_write/write_impl.hpp
+
+// Begin field_write/field_writer.hpp
+#ifndef _FIELD_WRITER_HPP_
+#define _FIELD_WRITER_HPP_
+ 
+ 
+ 
+namespace s2s {
+template <typename F, typename L>
+struct write_field;
+
+template <fixed_sized_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using field_size = typename T::field_size;
+    constexpr auto size_to_write = deduce_field_size<field_size>{}();
+    if constexpr(is_derived_target_v<T, F>) {
+      // The stored value is ignored, so the constraint has to be checked
+      // against the derived one — struct_write_impl skips this field.
+      auto derived = derive_value<T, F>{}(field_list);
+      if(!derived)
+        return std::unexpected(derived.error());
+      if(!T::constraint_checker(*derived))
+        return std::unexpected(error_reason::validation_failure);
+      return verify_then_write<endianness>(s, *derived, size_to_write);
+    } else {
+      return verify_then_write<endianness>(s, value, size_to_write);
+    }
+  }
+
+private:
+  // Conditional producers cannot make this field derived, so whatever value
+  // reaches this point — derived or stored — still has to satisfy every
+  // obligation that is currently active.
+  template <auto endianness, typename stream>
+  constexpr auto verify_then_write(
+    stream& s, const typename T::field_type& v, std::size_t size_to_write) const -> rw_result
+  {
+    if constexpr(has_conditional_len_obligation_v<T, F>) {
+      auto res = verify_conditional_len<T, F>{}(field_list, static_cast<std::size_t>(v));
+      if(!res)
+        return res;
+    }
+    return write_impl<endianness>(s, v, size_to_write);
+  }
+};
+
+template <variable_sized_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using field_size = typename T::field_size;
+    if constexpr(is_computed_size_v<field_size>) {
+      // An arbitrary N-ary callable has no inverse, so its source fields stay
+      // ordinary data and the size they imply can only be checked against the
+      // container, never used to repair it.
+      if(deduce_field_size<field_size>{}(field_list) != value.size())
+        return std::unexpected(error_reason::found_contradicting_length);
+    }
+    // For a len_from_field size there is nothing to check: the length slot was
+    // derived from this very container, so the container is the authority.
+    return write_impl<endianness>(s, value, value.size());
+  }
+};
+
+
+template <typename F, typename stream, auto endianness>
+struct struct_write_impl;
+
+// The one seam where the error representation narrows. A nested list names
+// its own failing field, but rw_result carries no name and the outer fold
+// re-attaches the outer field's id, so failed_at ends up naming the outermost
+// record field. read_field<struct_field_like> does exactly the same.
+template <field_list_like L, auto endianness, typename stream>
+constexpr auto write_nested(stream& s, const L& nested) -> rw_result {
+  auto res = struct_write_impl<L, stream, endianness>{}(s, nested);
+  if(!res)
+    return std::unexpected(res.error().failure_reason);
+  return {};
+}
+
+template <struct_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using field_list_t = extract_type_from_field_v<T>;
+    return write_nested<field_list_t, endianness>(s, value);
+  }
+};
+
+template <array_of_record_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using array_type = typename T::field_type;
+    using element_t = extract_type_from_array_v<array_type>;
+    constexpr auto array_len = extract_size_from_array_v<array_type>;
+
+    for(std::size_t count = 0; count < array_len; ++count) {
+      auto res = write_nested<element_t, endianness>(s, value[count]);
+      if(!res)
+        return res;
+    }
+    return {};
+  }
+};
+
+template <vector_of_record_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using vector_type = typename T::field_type;
+    using element_t = extract_type_from_vec_t<vector_type>;
+    using field_size = typename T::field_size;
+
+    if constexpr(is_computed_size_v<field_size>) {
+      if(deduce_field_size<field_size>{}(field_list) != value.size())
+        return std::unexpected(error_reason::found_contradicting_length);
+    }
+    for(const auto& record: value) {
+      auto res = write_nested<element_t, endianness>(s, record);
+      if(!res)
+        return res;
+    }
+    return {};
+  }
+};
+
+template <optional_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    // Presence is a predicate over siblings, not a stored flag, so there is
+    // nothing to derive here — only to check that the struct agrees with what
+    // the reader will conclude from the very same sibling bytes.
+    const auto should_be_present =
+      compute_impl<typename T::field_presence_checker>{}(field_list);
+    if(should_be_present != value.has_value())
+      return std::unexpected(error_reason::validation_failure);
+    if(!should_be_present)
+      return {};
+
+    using base_t = typename T::field_base_type;
+    // maybe_field rewrites the base field's constraint to no_constraint over
+    // the optional, so the fold cannot run it and this is the only place it
+    // reaches the engaged value.
+    if(!base_t::constraint_checker(*value))
+      return std::unexpected(error_reason::validation_failure);
+    return write_field<base_t, F>(*value, field_list).template write<endianness>(s);
+  }
+};
+
+
+template <std::size_t idx, typename E, typename F, typename V>
+struct write_variant_impl {
+  const V& variant;
+  const F& field_list;
+
+  constexpr write_variant_impl(const V& variant, const F& field_list)
+    : variant(variant), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    if(variant.index() != idx)
+      return {};
+    return write_field<E, F>(std::get<idx>(variant), field_list).template write<endianness>(s);
+  }
+};
+
+template <typename F, typename field_choices, typename idx_seq>
+struct write_variant_helper;
+
+template <typename F, typename... choices, std::size_t... idx>
+struct write_variant_helper<F, field_choice_list<choices...>, std::index_sequence<idx...>> {
+  template <auto endianness, typename stream, typename V>
+  static constexpr auto write(stream& s, const V& variant, const F& field_list) -> rw_result {
+    rw_result pipeline_seed{};
+    return (
+      pipeline_seed |
+      ... |
+      [&]() {
+        return write_variant_impl<idx, choices, F, V>(variant, field_list)
+                 .template write<endianness>(s);
+      }
+    );
+  }
+};
+
+template <union_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <auto endianness, typename stream>
+  constexpr auto write(stream& s) const -> rw_result {
+    using guide = typename T::type_deduction_guide;
+
+    // Exactly the unions whose discriminant is derivable need no check here:
+    // the discriminant came from this alternative, so agreement is structural.
+    // A computed switch input or a ladder cannot be inverted, so the held
+    // alternative can only be checked against what the reader will conclude
+    // from the same sibling bytes.
+    if constexpr(!discriminant_obligation<T>::present) {
+      auto deduced = deduce_type<guide>{}(field_list);
+      if(!deduced)
+        return std::unexpected(deduced.error());
+      if(*deduced != value.index())
+        return std::unexpected(error_reason::validation_failure);
+    }
+
+    using helper = write_variant_helper<
+      F,
+      typename T::field_choices,
+      std::make_index_sequence<T::variant_size>
+    >;
+    return helper::template write<endianness>(s, value, field_list);
+  }
+};
+} /* namespace s2s */
+
+#endif // _FIELD_WRITER_HPP_
+
+// End field_write/field_writer.hpp
+
+// Begin cast/struct_write_impl.hpp
+#ifndef _STRUCT_WRITE_IMPL_HPP_
+#define _STRUCT_WRITE_IMPL_HPP_
+ 
+namespace s2s {
+
+template <typename F, typename stream, auto endianness>
+struct struct_write_impl;
+
+template <auto metadata, typename... fields, typename stream, auto endianness>
+struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+  using S = struct_field_list_impl<metadata, fields...>;
+
+  constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
+    cast_result pipeline_seed{};
+    return (
+      pipeline_seed |
+      ... |
+      [&]() -> cast_result {
+        const auto& field = static_cast<const fields&>(field_list);
+        // Validated before writing, not after: a struct that fails its own
+        // constraint would otherwise emit bytes that cannot be read back.
+        // Derived fields are the exception — their stored value is ignored,
+        // so write_field checks the constraint against the derived one.
+        if constexpr(!is_derived_target_v<fields, S>) {
+          if(!fields::constraint_checker(field.value)) {
+            auto field_name = std::string_view{fields::field_id.data()};
+            return std::unexpected(cast_error{error_reason::validation_failure, field_name});
+          }
+        }
+        auto writer = write_field<fields, S>(field.value, field_list);
+        auto write_res = writer.template write<endianness>(s);
+        if(!write_res) {
+          auto field_name = std::string_view{fields::field_id.data()};
+          return std::unexpected(cast_error{write_res.error(), field_name});
+        }
+        return {};
+      }
+    );
+  }
+};
+
+} /* namespace s2s */
+
+#endif // _STRUCT_WRITE_IMPL_HPP_
+
+// End cast/struct_write_impl.hpp
+
+// Begin api/struct_write.hpp
+#ifndef _STRUCT_WRITE_HPP_
+#define _STRUCT_WRITE_HPP_
+ 
+namespace s2s {
+template <field_list_like T, output_stream_like stream>
+[[nodiscard]] constexpr auto struct_write_le(stream& s, const T& obj) -> cast_result {
+  return struct_write_impl<T, stream, std::endian::little>{}(s, obj);
+}
+
+template <field_list_like T, output_stream_like stream>
+[[nodiscard]] constexpr auto struct_write_be(stream& s, const T& obj) -> cast_result {
+  return struct_write_impl<T, stream, std::endian::big>{}(s, obj);
+}
+} /* namespace s2s */
+
+#endif // _STRUCT_WRITE_HPP_
+
+// End api/struct_write.hpp
+
+// Begin s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
  
@@ -3652,6 +4565,10 @@ template <field_list_like T, input_stream_like stream>
  
  
  
+ 
+ 
+ 
+ 
 #endif // STRUCT_CAST_HPP
 
-// End /home/hari/repos/s2s/include/s2s.hpp
+// End s2s.hpp

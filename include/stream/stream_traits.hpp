@@ -61,7 +61,7 @@ template <typename T>
 concept input_stream_like = (identified_as_constexpr_stream<T> || readable<T>) && convertible_to_bool<T>;
 
 template <typename T>
-concept output_stream_like = writeable<T> && convertible_to_bool<T>;
+concept output_stream_like = (identified_as_constexpr_stream<T> || writeable<T>) && convertible_to_bool<T>;
 }
 
 #endif /* _STREAM_TRAITS_HPP_ */

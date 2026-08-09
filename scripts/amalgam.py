@@ -98,13 +98,16 @@ def topological_sort(graph, start_file):
     # return stack[::-1]  # Reverse to get the correct include order
     return stack
 
-def concatenate_files(file_order, std_includes, output_path):
+def concatenate_files(file_order, std_includes, output_path, base_dir):
     """Concatenates file contents into a single output file."""
     seen_files = set()
 
     try:
         std_include_output = StringIO()
-        for include in std_includes:
+        # Sorted, and paths below are relative to base_dir: the generated
+        # header is tracked in git, so unordered set iteration and absolute
+        # build-machine paths would make every regeneration a large diff.
+        for include in sorted(std_includes):
             std_include_output.write(f"#include <{include}>\n")
         
         single_header_output = StringIO()
@@ -115,9 +118,10 @@ def concatenate_files(file_order, std_includes, output_path):
                     input_file_contents = input_file.read()
                     input_file_contents = re.sub(include_pattern, ' ', input_file_contents, flags=re.MULTILINE)
                     input_file_contents = re.sub(std_include_pattern, ' ', input_file_contents, flags=re.MULTILINE)
-                    single_header_output.write(f"\n// Begin {file_path}\n")
+                    rel_path = os.path.relpath(file_path, base_dir)
+                    single_header_output.write(f"\n// Begin {rel_path}\n")
                     single_header_output.write(input_file_contents)
-                    single_header_output.write(f"\n// End {file_path}\n")
+                    single_header_output.write(f"\n// End {rel_path}\n")
  
         with open(output_path, 'w', encoding='utf-8') as output_file:
             output_file.write(std_include_output.getvalue())
@@ -165,7 +169,7 @@ def main():
         print(file)
 
     # Concatenate and write to output file
-    concatenate_files(file_order, std_includes, output_file)
+    concatenate_files(file_order, std_includes, output_file, directory)
 
 if __name__ == '__main__':
     main()
