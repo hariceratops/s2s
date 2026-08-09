@@ -66,11 +66,11 @@ TEST(WriteFixedBufferFields, ByteswapsPerElementNotPerBuffer) {
   original["arr"_f] = std::array<u16, 3>{0x1122, 0x3344, 0x5566};
 
   std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_le<test_field_list>(le, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(le, original).has_value());
   EXPECT_EQ(le.str(), std::string("\x22\x11\x44\x33\x66\x55", 6));
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(be, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(be, original).has_value());
   EXPECT_EQ(be.str(), std::string("\x11\x22\x33\x44\x55\x66", 6));
 }
 
@@ -84,7 +84,7 @@ TEST(WriteFixedBufferFields, ByteswapsNestedAggregatesElementWise) {
   original["arr"_f] = std::array<std::array<u16, 2>, 2>{{{0x1122, 0x3344}, {0x5566, 0x7788}}};
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(be, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(be, original).has_value());
   EXPECT_EQ(be.str(), std::string("\x11\x22\x33\x44\x55\x66\x77\x88", 8));
 
   FIELD_LIST_BE_ROUNDTRIP_CHECK(original, {
@@ -103,6 +103,6 @@ TEST(WriteFixedBufferFields, LeavesCharBuffersUnswapped) {
   original["name"_f] = s2s::fixed_string<4>("abcd");
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(be, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(be, original).has_value());
   EXPECT_EQ(be.str().substr(0, 4), std::string("abcd"));
 }

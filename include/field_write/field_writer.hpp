@@ -34,7 +34,7 @@ struct write_field<T, F> {
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
     if constexpr(is_derived_target_v<T, F>) {
       // The stored value is ignored, so the constraint has to be checked
-      // against the derived one — struct_write_impl skips this field.
+      // against the derived one — stream_cast_impl skips this field.
       auto derived = derive_value<T, F>{}(field_list);
       if(!derived)
         return std::unexpected(derived.error());
@@ -89,7 +89,7 @@ struct write_field<T, F> {
 
 
 template <typename F, typename stream, auto endianness>
-struct struct_write_impl;
+struct stream_cast_impl;
 
 // The one seam where the error representation narrows. A nested list names
 // its own failing field, but rw_result carries no name and the outer fold
@@ -97,7 +97,7 @@ struct struct_write_impl;
 // record field. read_field<struct_field_like> does exactly the same.
 template <field_list_like L, auto endianness, typename stream>
 constexpr auto write_nested(stream& s, const L& nested) -> rw_result {
-  auto res = struct_write_impl<L, stream, endianness>{}(s, nested);
+  auto res = stream_cast_impl<L, stream, endianness>{}(s, nested);
   if(!res)
     return std::unexpected(res.error().failure_reason);
   return {};

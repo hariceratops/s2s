@@ -47,7 +47,7 @@ TEST(WriteOptionalFields, EmitsNothingWhenAbsent) {
   obj["flag"_f] = 0x11223344;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_le<test_field_list>(stream, obj).has_value());
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(stream, obj).has_value());
   EXPECT_EQ(stream.str(), std::string("\x44\x33\x22\x11", 4));
 
   FIELD_LIST_LE_ROUNDTRIP_CHECK(obj, {
@@ -64,7 +64,7 @@ TEST(WriteOptionalFields, RejectsPredicateTrueButOptionalEmpty) {
   obj["flag"_f] = 0xdeadbeef;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "payload");
@@ -80,7 +80,7 @@ TEST(WriteOptionalFields, RejectsPredicateFalseButOptionalEngaged) {
   obj["payload"_f] = 0xcafed00d;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "payload");
@@ -169,7 +169,7 @@ TEST(WriteOptionalFields, RejectsAConditionalLengthThatDisagreesWhenPresent) {
   obj["data"_f] = std::vector<u16>{0x1122, 0x3344, 0x5566};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "len");
@@ -187,7 +187,7 @@ TEST(WriteOptionalFields, LeavesAConditionalLengthAloneWhenAbsent) {
   obj["len"_f] = 7;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(stream, obj).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(stream, obj).has_value());
   EXPECT_EQ(stream.str(), std::string("\x11\x22\x33\x44\x00\x00\x00\x07", 8));
 }
 
@@ -237,7 +237,7 @@ TEST(WriteOptionalFields, RejectsAConditionalProducerThatDisagreesWithTheDerived
   obj["sometimes"_f] = std::vector<u8>{4, 5};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "len");

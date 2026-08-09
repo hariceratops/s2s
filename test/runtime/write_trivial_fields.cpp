@@ -55,11 +55,11 @@ TEST(WriteTrivialFields, EmitsDeclaredByteOrder) {
   original["a"_f] = 0xdeadbeef;
 
   std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_le<test_field_list>(le, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(le, original).has_value());
   EXPECT_EQ(le.str(), std::string("\xef\xbe\xad\xde", 4));
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(be, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(be, original).has_value());
   EXPECT_EQ(be.str(), std::string("\xde\xad\xbe\xef", 4));
 }
 
@@ -77,6 +77,6 @@ TEST(WriteTrivialFields, WritesFieldsInDeclarationOrder) {
   original["third"_f] = 0x33;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_le<test_field_list>(stream, original).has_value());
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(stream, original).has_value());
   EXPECT_EQ(stream.str(), std::string("\x11\x22\x33", 3));
 }

@@ -123,12 +123,12 @@ The APIs return std::expected which either contains a struct_field_list or read_
 ## Writing to stream
 ```cpp
 template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto struct_write_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
+[[nodiscard]] auto stream_cast_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
 
 template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto struct_write_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+[[nodiscard]] auto stream_cast_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
 ```
-The APIs struct_write_xx serialize a struct_field_list to a stream. They mirror
+The APIs stream_cast_xx serialize a struct_field_list to a stream. They mirror
 struct_cast_xx: the same schema drives both directions, the xx suffix picks the
 byte order of every member, and failures come back as the same cast_error.
 There is nothing to return on success, so the expected holds void.
@@ -160,11 +160,11 @@ auto main() -> int {
   // Note: "count" is never assigned. It is derived from data.size().
 
   std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  if(auto res = s2s::struct_write_le<our_struct>(le, obj); !res)
+  if(auto res = s2s::stream_cast_le<our_struct>(le, obj); !res)
     return 1;
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  if(auto res = s2s::struct_write_be<our_struct>(be, obj); !res)
+  if(auto res = s2s::stream_cast_be<our_struct>(be, obj); !res)
     return 1;
 
   // Read either one back with the matching byte order.

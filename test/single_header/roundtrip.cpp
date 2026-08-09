@@ -58,8 +58,8 @@ auto roundtrips() -> bool {
   const auto original = populated();
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
 
-  const auto written = big_endian ? s2s::struct_write_be<schema>(stream, original)
-                                  : s2s::struct_write_le<schema>(stream, original);
+  const auto written = big_endian ? s2s::stream_cast_be<schema>(stream, original)
+                                  : s2s::stream_cast_le<schema>(stream, original);
   if(!written) {
     std::printf("write failed at %s\n", written.error().failed_at.data());
     return false;

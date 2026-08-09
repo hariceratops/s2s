@@ -37,7 +37,7 @@
 #define FIELD_LIST_LE_ROUNDTRIP_CHECK(obj, code) \
   do { \
     std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary); \
-    auto written = s2s::struct_write_le<test_field_list>(stream, obj); \
+    auto written = s2s::stream_cast_le<test_field_list>(stream, obj); \
     auto result = s2s::struct_cast_le<test_field_list>(stream); \
     code; \
   } while(0)
@@ -45,7 +45,7 @@
 #define FIELD_LIST_BE_ROUNDTRIP_CHECK(obj, code) \
   do { \
     std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary); \
-    auto written = s2s::struct_write_be<test_field_list>(stream, obj); \
+    auto written = s2s::stream_cast_be<test_field_list>(stream, obj); \
     auto result = s2s::struct_cast_be<test_field_list>(stream); \
     code; \
   } while(0)
@@ -55,7 +55,7 @@
 #define FIELD_LIST_LE_WRITE_REJECTED(obj, reason) \
   do { \
     std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary); \
-    auto written = s2s::struct_write_le<test_field_list>(stream, obj); \
+    auto written = s2s::stream_cast_le<test_field_list>(stream, obj); \
     ASSERT_FALSE(written.has_value()); \
     EXPECT_EQ(written.error().failure_reason, reason); \
   } while(0)

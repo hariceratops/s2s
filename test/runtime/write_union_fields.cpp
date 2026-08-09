@@ -89,7 +89,7 @@ TEST(WriteUnionFields, DerivesTheDiscriminantFromTheHeldAlternative) {
   obj["body"_f] = make_inner_2(0x11223344, 0x55667788);
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(be, obj).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(be, obj).has_value());
   // 0xdeadbeef is the match_case value for inner_2 — never stored, derived.
   EXPECT_EQ(be.str(), std::string("\xde\xad\xbe\xef\x11\x22\x33\x44\x55\x66\x77\x88", 12));
 }
@@ -162,7 +162,7 @@ TEST(WriteUnionFields, RejectsALadderAlternativeThePredicatesWouldNotSelect) {
   obj["body"_f] = static_cast<i32>(-1);
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "body");
@@ -178,7 +178,7 @@ TEST(WriteUnionFields, RejectsAComputedSwitchAlternativeThatDisagrees) {
   obj["body"_f] = static_cast<i32>(-1);
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "body");
@@ -226,7 +226,7 @@ TEST(WriteUnionFields, PropagatesTypeDeductionFailure) {
   obj["body"_f] = static_cast<u32>(7);
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::type_deduction_failure);
   EXPECT_EQ(written.error().failed_at, "body");
@@ -282,7 +282,7 @@ TEST(WriteUnionFields, VerifiesALengthObligatedByAUnionAlternative) {
   disagreeing["body"_f] = std::vector<u8>{1, 2, 3};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, disagreeing);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, disagreeing);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "len");
@@ -294,6 +294,6 @@ TEST(WriteUnionFields, VerifiesALengthObligatedByAUnionAlternative) {
   other["body"_f] = static_cast<u32>(0x11223344);
 
   std::stringstream untouched(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(untouched, other).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(untouched, other).has_value());
   EXPECT_EQ(untouched.str(), std::string("\xde\xad\xbe\xef\x00\x00\x00\x09\x11\x22\x33\x44", 12));
 }

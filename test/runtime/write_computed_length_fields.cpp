@@ -72,7 +72,7 @@ TEST(WriteComputedLengthFields, RejectsSourcesThatDisagreeWithTheContainer) {
   obj["cells"_f] = std::vector<u16>{1, 2, 3, 4};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "cells");
@@ -126,7 +126,7 @@ TEST(WriteComputedLengthFields, RejectsFanOutContradiction) {
   obj["b"_f] = std::vector<u32>{0xaaaaaaaa};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::found_contradicting_length);
   EXPECT_EQ(written.error().failed_at, "len");
@@ -148,7 +148,7 @@ TEST(WriteComputedLengthFields, AppliesTheWidthCheckToAFannedOutLength) {
   obj["b"_f] = std::vector<u8>(300, 0x22);
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "len");

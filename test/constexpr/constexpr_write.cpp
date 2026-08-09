@@ -25,7 +25,7 @@ constexpr auto populated() -> our_struct {
 constexpr auto roundtrip_le() -> bool {
   std::array<u8, 8> buffer{};
   memstream<8> stream(buffer);
-  if(!s2s::struct_write_le<our_struct>(stream, populated()))
+  if(!s2s::stream_cast_le<our_struct>(stream, populated()))
     return false;
   stream.rewind();
   auto res = s2s::struct_cast_le<our_struct>(stream);
@@ -35,7 +35,7 @@ constexpr auto roundtrip_le() -> bool {
 constexpr auto roundtrip_be() -> bool {
   std::array<u8, 8> buffer{};
   memstream<8> stream(buffer);
-  if(!s2s::struct_write_be<our_struct>(stream, populated()))
+  if(!s2s::stream_cast_be<our_struct>(stream, populated()))
     return false;
   stream.rewind();
   auto res = s2s::struct_cast_be<our_struct>(stream);
@@ -47,7 +47,7 @@ constexpr auto roundtrip_be() -> bool {
 constexpr auto write_into_undersized_buffer() -> s2s::cast_result {
   std::array<u8, 7> buffer{};
   memstream<7> stream(buffer);
-  return s2s::struct_write_le<our_struct>(stream, populated());
+  return s2s::stream_cast_le<our_struct>(stream, populated());
 }
 
 using u16 = unsigned short;
@@ -71,10 +71,10 @@ constexpr auto roundtrip_aggregate() -> bool {
   memstream<11> stream(buffer);
   const auto original = populated_aggregate();
   if constexpr(big_endian) {
-    if(!s2s::struct_write_be<aggregate_struct>(stream, original))
+    if(!s2s::stream_cast_be<aggregate_struct>(stream, original))
       return false;
   } else {
-    if(!s2s::struct_write_le<aggregate_struct>(stream, original))
+    if(!s2s::stream_cast_le<aggregate_struct>(stream, original))
       return false;
   }
   stream.rewind();
@@ -92,7 +92,7 @@ constexpr auto roundtrip_aggregate() -> bool {
 constexpr auto foreign_bytes_are_element_swapped() -> bool {
   std::array<u8, 11> buffer{};
   memstream<11> stream(buffer);
-  if(!s2s::struct_write_be<aggregate_struct>(stream, populated_aggregate()))
+  if(!s2s::stream_cast_be<aggregate_struct>(stream, populated_aggregate()))
     return false;
   return buffer == std::array<u8, 11>{
     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 'a', 'b', 'c', 'd', '\0'};
@@ -118,10 +118,10 @@ constexpr auto roundtrip_magic() -> bool {
   std::array<u8, 10> buffer{};
   memstream<10> stream(buffer);
   if constexpr(big_endian) {
-    if(!s2s::struct_write_be<magic_struct>(stream, populated_magic()))
+    if(!s2s::stream_cast_be<magic_struct>(stream, populated_magic()))
       return false;
   } else {
-    if(!s2s::struct_write_le<magic_struct>(stream, populated_magic()))
+    if(!s2s::stream_cast_le<magic_struct>(stream, populated_magic()))
       return false;
   }
   stream.rewind();
@@ -142,9 +142,9 @@ constexpr auto write_wrong_magic() -> s2s::cast_result {
   auto obj = populated_magic();
   obj["magic_num"_f] = 0xbeefbeef;
   if constexpr(big_endian)
-    return s2s::struct_write_be<magic_struct>(stream, obj);
+    return s2s::stream_cast_be<magic_struct>(stream, obj);
   else
-    return s2s::struct_write_le<magic_struct>(stream, obj);
+    return s2s::stream_cast_le<magic_struct>(stream, obj);
 }
 
 using prefixed_struct =
@@ -163,10 +163,10 @@ constexpr auto roundtrip_prefixed() -> bool {
   obj["vec"_f] = std::vector<u16>{0x1122, 0x3344, 0x5566};
 
   if constexpr(big_endian) {
-    if(!s2s::struct_write_be<prefixed_struct>(stream, obj))
+    if(!s2s::stream_cast_be<prefixed_struct>(stream, obj))
       return false;
   } else {
-    if(!s2s::struct_write_le<prefixed_struct>(stream, obj))
+    if(!s2s::stream_cast_le<prefixed_struct>(stream, obj))
       return false;
   }
   stream.rewind();
@@ -186,7 +186,7 @@ constexpr auto derived_length_bytes() -> bool {
   memstream<10> stream(buffer);
   prefixed_struct obj{};
   obj["vec"_f] = std::vector<u16>{0x1122, 0x3344, 0x5566};
-  if(!s2s::struct_write_be<prefixed_struct>(stream, obj))
+  if(!s2s::stream_cast_be<prefixed_struct>(stream, obj))
     return false;
   return buffer == std::array<u8, 10>{
     0x00, 0x00, 0x00, 0x03, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
@@ -203,7 +203,7 @@ constexpr auto write_overlong_container() -> s2s::cast_result {
   memstream<400> stream(buffer);
   narrow_prefixed_struct obj{};
   obj["vec"_f] = std::vector<u8>(300, 0x5a);
-  return s2s::struct_write_le<narrow_prefixed_struct>(stream, obj);
+  return s2s::stream_cast_le<narrow_prefixed_struct>(stream, obj);
 }
 
 auto area_of = [](auto rows, auto cols) { return rows * cols; };
@@ -230,7 +230,7 @@ constexpr auto make_computed(std::size_t cell_count) -> computed_struct {
 constexpr auto roundtrip_computed() -> bool {
   std::array<u8, 16> buffer{};
   memstream<16> stream(buffer);
-  if(!s2s::struct_write_le<computed_struct>(stream, make_computed(4)))
+  if(!s2s::stream_cast_le<computed_struct>(stream, make_computed(4)))
     return false;
   stream.rewind();
   auto res = s2s::struct_cast_le<computed_struct>(stream);
@@ -242,7 +242,7 @@ constexpr auto roundtrip_computed() -> bool {
 constexpr auto write_disagreeing_computed() -> s2s::cast_result {
   std::array<u8, 16> buffer{};
   memstream<16> stream(buffer);
-  return s2s::struct_write_le<computed_struct>(stream, make_computed(3));
+  return s2s::stream_cast_le<computed_struct>(stream, make_computed(3));
 }
 
 using fanout_struct =
@@ -262,7 +262,7 @@ constexpr auto make_fanout(std::size_t b_count) -> fanout_struct {
 constexpr auto roundtrip_fanout() -> bool {
   std::array<u8, 16> buffer{};
   memstream<16> stream(buffer);
-  if(!s2s::struct_write_le<fanout_struct>(stream, make_fanout(2)))
+  if(!s2s::stream_cast_le<fanout_struct>(stream, make_fanout(2)))
     return false;
   stream.rewind();
   auto res = s2s::struct_cast_le<fanout_struct>(stream);
@@ -274,7 +274,7 @@ constexpr auto roundtrip_fanout() -> bool {
 constexpr auto write_contradicting_fanout() -> s2s::cast_result {
   std::array<u8, 16> buffer{};
   memstream<16> stream(buffer);
-  return s2s::struct_write_le<fanout_struct>(stream, make_fanout(1));
+  return s2s::stream_cast_le<fanout_struct>(stream, make_fanout(1));
 }
 
 using point =
@@ -312,10 +312,10 @@ constexpr auto roundtrip_records() -> bool {
   std::array<u8, 18> buffer{};
   memstream<18> stream(buffer);
   if constexpr(big_endian) {
-    if(!s2s::struct_write_be<record_struct>(stream, populated_records()))
+    if(!s2s::stream_cast_be<record_struct>(stream, populated_records()))
       return false;
   } else {
-    if(!s2s::struct_write_le<record_struct>(stream, populated_records()))
+    if(!s2s::stream_cast_le<record_struct>(stream, populated_records()))
       return false;
   }
   stream.rewind();
@@ -337,7 +337,7 @@ constexpr auto roundtrip_records() -> bool {
 constexpr auto nested_bytes_are_in_declaration_order() -> bool {
   std::array<u8, 18> buffer{};
   memstream<18> stream(buffer);
-  if(!s2s::struct_write_be<record_struct>(stream, populated_records()))
+  if(!s2s::stream_cast_be<record_struct>(stream, populated_records()))
     return false;
   return buffer == std::array<u8, 18>{
     0x11, 0x11, 0x22, 0x22,
@@ -372,10 +372,10 @@ constexpr auto roundtrip_optional_present() -> bool {
   memstream<8> stream(buffer);
   const auto obj = make_optional(0xdeadbeef, true);
   if constexpr(big_endian) {
-    if(!s2s::struct_write_be<optional_struct>(stream, obj))
+    if(!s2s::stream_cast_be<optional_struct>(stream, obj))
       return false;
   } else {
-    if(!s2s::struct_write_le<optional_struct>(stream, obj))
+    if(!s2s::stream_cast_le<optional_struct>(stream, obj))
       return false;
   }
   stream.rewind();
@@ -393,7 +393,7 @@ constexpr auto roundtrip_optional_present() -> bool {
 constexpr auto roundtrip_optional_absent() -> bool {
   std::array<u8, 8> buffer{};
   memstream<8> stream(buffer);
-  if(!s2s::struct_write_be<optional_struct>(stream, make_optional(0x11223344, false)))
+  if(!s2s::stream_cast_be<optional_struct>(stream, make_optional(0x11223344, false)))
     return false;
   if(buffer != std::array<u8, 8>{0x11, 0x22, 0x33, 0x44, 0x00, 0x00, 0x00, 0x00})
     return false;
@@ -405,13 +405,13 @@ constexpr auto roundtrip_optional_absent() -> bool {
 constexpr auto write_present_but_empty() -> s2s::cast_result {
   std::array<u8, 8> buffer{};
   memstream<8> stream(buffer);
-  return s2s::struct_write_le<optional_struct>(stream, make_optional(0xdeadbeef, false));
+  return s2s::stream_cast_le<optional_struct>(stream, make_optional(0xdeadbeef, false));
 }
 
 constexpr auto write_absent_but_engaged() -> s2s::cast_result {
   std::array<u8, 8> buffer{};
   memstream<8> stream(buffer);
-  return s2s::struct_write_le<optional_struct>(stream, make_optional(0x11223344, true));
+  return s2s::stream_cast_le<optional_struct>(stream, make_optional(0x11223344, true));
 }
 
 using conditional_len_struct =
@@ -438,7 +438,7 @@ constexpr auto make_conditional(u32 stored_len, bool engaged) -> conditional_len
 constexpr auto roundtrip_conditional_len() -> bool {
   std::array<u8, 11> buffer{};
   memstream<11> stream(buffer);
-  if(!s2s::struct_write_be<conditional_len_struct>(stream, make_conditional(3, true)))
+  if(!s2s::stream_cast_be<conditional_len_struct>(stream, make_conditional(3, true)))
     return false;
   stream.rewind();
   auto res = s2s::struct_cast_be<conditional_len_struct>(stream);
@@ -449,14 +449,14 @@ constexpr auto roundtrip_conditional_len() -> bool {
 constexpr auto write_disagreeing_conditional_len() -> s2s::cast_result {
   std::array<u8, 11> buffer{};
   memstream<11> stream(buffer);
-  return s2s::struct_write_le<conditional_len_struct>(stream, make_conditional(7, true));
+  return s2s::stream_cast_le<conditional_len_struct>(stream, make_conditional(7, true));
 }
 
 // Absent producer, no obligation: the stored length is written untouched.
 constexpr auto write_unverified_conditional_len() -> s2s::cast_result {
   std::array<u8, 11> buffer{};
   memstream<11> stream(buffer);
-  return s2s::struct_write_le<conditional_len_struct>(stream, make_conditional(7, false));
+  return s2s::stream_cast_le<conditional_len_struct>(stream, make_conditional(7, false));
 }
 
 using alt_1 =
@@ -496,10 +496,10 @@ constexpr auto roundtrip_union() -> bool {
   std::array<u8, 6> buffer{};
   memstream<6> stream(buffer);
   if constexpr(big_endian) {
-    if(!s2s::struct_write_be<union_struct>(stream, held_alt_2()))
+    if(!s2s::stream_cast_be<union_struct>(stream, held_alt_2()))
       return false;
   } else {
-    if(!s2s::struct_write_le<union_struct>(stream, held_alt_2()))
+    if(!s2s::stream_cast_le<union_struct>(stream, held_alt_2()))
       return false;
   }
   stream.rewind();
@@ -518,7 +518,7 @@ constexpr auto roundtrip_union() -> bool {
 constexpr auto discriminant_is_derived() -> bool {
   std::array<u8, 6> buffer{};
   memstream<6> stream(buffer);
-  if(!s2s::struct_write_be<union_struct>(stream, held_alt_2()))
+  if(!s2s::stream_cast_be<union_struct>(stream, held_alt_2()))
     return false;
   return buffer == std::array<u8, 6>{0xde, 0xad, 0xbe, 0xef, 0x11, 0x22};
 }

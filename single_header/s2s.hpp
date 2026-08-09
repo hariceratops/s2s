@@ -4246,7 +4246,7 @@ struct write_field<T, F> {
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
     if constexpr(is_derived_target_v<T, F>) {
       // The stored value is ignored, so the constraint has to be checked
-      // against the derived one — struct_write_impl skips this field.
+      // against the derived one — stream_cast_impl skips this field.
       auto derived = derive_value<T, F>{}(field_list);
       if(!derived)
         return std::unexpected(derived.error());
@@ -4301,7 +4301,7 @@ struct write_field<T, F> {
 
 
 template <typename F, typename stream, auto endianness>
-struct struct_write_impl;
+struct stream_cast_impl;
 
 // The one seam where the error representation narrows. A nested list names
 // its own failing field, but rw_result carries no name and the outer fold
@@ -4309,7 +4309,7 @@ struct struct_write_impl;
 // record field. read_field<struct_field_like> does exactly the same.
 template <field_list_like L, auto endianness, typename stream>
 constexpr auto write_nested(stream& s, const L& nested) -> rw_result {
-  auto res = struct_write_impl<L, stream, endianness>{}(s, nested);
+  auto res = stream_cast_impl<L, stream, endianness>{}(s, nested);
   if(!res)
     return std::unexpected(res.error().failure_reason);
   return {};
@@ -4485,17 +4485,17 @@ struct write_field<T, F> {
 
 // End field_write/field_writer.hpp
 
-// Begin cast/struct_write_impl.hpp
-#ifndef _STRUCT_WRITE_IMPL_HPP_
-#define _STRUCT_WRITE_IMPL_HPP_
+// Begin cast/stream_cast_impl.hpp
+#ifndef _STREAM_CAST_IMPL_HPP_
+#define _STREAM_CAST_IMPL_HPP_
  
 namespace s2s {
 
 template <typename F, typename stream, auto endianness>
-struct struct_write_impl;
+struct stream_cast_impl;
 
 template <auto metadata, typename... fields, typename stream, auto endianness>
-struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
   using S = struct_field_list_impl<metadata, fields...>;
 
   constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
@@ -4529,29 +4529,29 @@ struct struct_write_impl<struct_field_list_impl<metadata, fields...>, stream, en
 
 } /* namespace s2s */
 
-#endif // _STRUCT_WRITE_IMPL_HPP_
+#endif // _STREAM_CAST_IMPL_HPP_
 
-// End cast/struct_write_impl.hpp
+// End cast/stream_cast_impl.hpp
 
-// Begin api/struct_write.hpp
-#ifndef _STRUCT_WRITE_HPP_
-#define _STRUCT_WRITE_HPP_
+// Begin api/stream_cast.hpp
+#ifndef _STREAM_CAST_HPP_
+#define _STREAM_CAST_HPP_
  
 namespace s2s {
 template <field_list_like T, output_stream_like stream>
-[[nodiscard]] constexpr auto struct_write_le(stream& s, const T& obj) -> cast_result {
-  return struct_write_impl<T, stream, std::endian::little>{}(s, obj);
+[[nodiscard]] constexpr auto stream_cast_le(stream& s, const T& obj) -> cast_result {
+  return stream_cast_impl<T, stream, std::endian::little>{}(s, obj);
 }
 
 template <field_list_like T, output_stream_like stream>
-[[nodiscard]] constexpr auto struct_write_be(stream& s, const T& obj) -> cast_result {
-  return struct_write_impl<T, stream, std::endian::big>{}(s, obj);
+[[nodiscard]] constexpr auto stream_cast_be(stream& s, const T& obj) -> cast_result {
+  return stream_cast_impl<T, stream, std::endian::big>{}(s, obj);
 }
 } /* namespace s2s */
 
-#endif // _STRUCT_WRITE_HPP_
+#endif // _STREAM_CAST_HPP_
 
-// End api/struct_write.hpp
+// End api/stream_cast.hpp
 
 // Begin s2s.hpp
 #ifndef STRUCT_CAST_HPP

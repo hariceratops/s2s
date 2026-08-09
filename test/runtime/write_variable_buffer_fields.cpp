@@ -62,7 +62,7 @@ TEST(WriteVariableBufferFields, IgnoresTheStoredLengthAndDerivesIt) {
   obj["vec"_f] = std::vector<u16>{0xaabb, 0xccdd};
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_le<test_field_list>(stream, obj).has_value());
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(stream, obj).has_value());
   EXPECT_EQ(stream.str(), std::string("\x02\x00\x00\x00\xbb\xaa\xdd\xcc", 8));
 }
 
@@ -79,7 +79,7 @@ TEST(WriteVariableBufferFields, EmitsDerivedLengthInDeclaredWidthAndByteOrder) {
   obj["vec"_f] = std::vector<u16>{0xaabb, 0xccdd};
 
   std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_be<test_field_list>(be, obj).has_value());
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(be, obj).has_value());
   EXPECT_EQ(be.str(), std::string("\x00\x00\x00\x02\xaa\xbb\xcc\xdd", 8));
 }
 
@@ -109,7 +109,7 @@ TEST(WriteVariableBufferFields, RejectsLengthTooWideForItsDeclaredSlot) {
   obj["vec"_f] = std::vector<u8>(300, 0x5a);
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::struct_write_le<test_field_list>(stream, obj);
+  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
   ASSERT_FALSE(written.has_value());
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "len");
@@ -127,7 +127,7 @@ TEST(WriteVariableBufferFields, AcceptsALengthThatExactlyFillsItsSlot) {
   obj["vec"_f] = std::vector<u8>(255, 0x5a);
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  ASSERT_TRUE(s2s::struct_write_le<test_field_list>(stream, obj).has_value());
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(stream, obj).has_value());
   EXPECT_EQ(stream.str().size(), 256u);
   EXPECT_EQ(static_cast<u8>(stream.str()[0]), 255);
 }
