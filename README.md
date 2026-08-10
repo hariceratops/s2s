@@ -78,7 +78,7 @@ allocate, say vector or string.
 Link to Godbolt: https://godbolt.org/z/YcTqq58z4
 ```cpp
   #include "s2s.hpp"
-  #include "test/constexpr_memstream.hpp"
+  #include "test/utils/constexpr_memstream.hpp"
   #include <print>
 
   using namespace s2s_literals;

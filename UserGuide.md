@@ -61,7 +61,7 @@ Available descriptors are: basic_fields, fixed_array, fixed_string,
 array_of_records, vec_field, str_field, vector_of_records,
 magic_string, magic_number, magic_byte_array, union_field and maybe
 
-
+```cpp
 template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
   requires field_fits_to_underlying_type<size_type, T>
 using basic_field = field<id, T, size_type, constraint_on_value>;
@@ -104,6 +104,7 @@ using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
 using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+```
 
 
 ## Cast
