@@ -1,6 +1,6 @@
 # Design: Struct-to-Stream Serialization (Write Direction)
 
-Consumes `specs/struct-to-stream-write.md` and `issues/001`–`issues/011`.
+Consumes `dev/specs/struct-to-stream-write.md` and `dev/issues/001`–`dev/issues/011`.
 Mirrors the existing read path (`include/field_read/`, `include/cast/`,
 `include/api/`). Conventions per `AGENTS.md`: `std::expected` errors,
 trailing return types, dual constexpr/runtime stream paths, named concepts,

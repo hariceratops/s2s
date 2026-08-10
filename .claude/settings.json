@@ -1,8 +1,8 @@
 {
   "permissions": {
     "deny": [
-      "Edit(specs/**)",
-      "Write(specs/**)"
+      "Edit(dev/specs/**)",
+      "Write(dev/specs/**)"
     ]
   }
 }
