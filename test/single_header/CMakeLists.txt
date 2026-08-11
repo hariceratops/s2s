@@ -115,6 +115,15 @@ target_compile_options(readme_read_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME readme_read_example COMMAND readme_read_example)
 
+# Every complete program shown in README.md or UserGuide.md must be bound to a
+# source under this directory, and must still match it. The README shipped a
+# wrong include path for months because nothing compiled the block it sat in;
+# registering the targets above only fixes that for as long as someone
+# remembers to, so the pairing is checked rather than trusted.
+add_test(
+  NAME doc_examples_match
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check_doc_examples.py ${CMAKE_SOURCE_DIR})
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
