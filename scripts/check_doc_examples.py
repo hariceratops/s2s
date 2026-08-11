@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Check that every bound doc example matches the source that compiles it.
 
+Scans README.md and every page under docs/.
+
 A fenced block in a markdown file is bound to a source file by an HTML comment
 on the line directly above the fence:
 
@@ -65,10 +67,11 @@ def main(argv: list[str]) -> int:
     root = Path(argv[1]) if len(argv) > 1 else Path.cwd()
     failures: list[str] = []
 
-    for name in ("README.md", "UserGuide.md"):
-        md = root / name
+    pages = [root / "README.md"] + sorted((root / "docs").rglob("*.md"))
+    for md in pages:
         if not md.exists():
             continue
+        name = md.relative_to(root).as_posix()
         for line_no, binding, body in doc_blocks(md):
             if binding is None:
                 if any(ENTRY_POINT.search(l) for l in body):

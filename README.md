@@ -5,19 +5,19 @@ interface, and back again.
 
 Implemented as an embedded DSL powered by C++23 TMP.
 
-**Your parser is generated at compile time.** You declare the schema as a type
+**The parser is generated at compile time.** The schema is declared as a type
 and the template machinery turns it into straight-line read and write code —
 no runtime dispatch over the field list, no reflection, no format interpreter.
 This is unconditional. It holds when the stream is a plain `std::ifstream` and
-when the schema is full of `std::string` and `std::vector`, and it is what you
-get for free by using the library at all.
+when the schema is full of `std::string` and `std::vector`, and it comes with
+using the library at all.
 
 **Parsing can additionally be performed at compile time.** This is the narrower
 claim, and it has two conditions: the stream must be usable during constant
 evaluation, and the schema must have no allocating fields. When both hold, the
 whole parse — validation included — happens in the compiler and the result is a
-`constexpr` value. When they do not, you still get everything in the paragraph
-above.
+`constexpr` value. When they do not, everything in the paragraph above still
+holds.
 
 Library is single header and the file "s2s.hpp" from the single_header
 folder can be used for direct inclusion into a project
@@ -154,9 +154,12 @@ auto main() -> int {
 ```
 
 ## Documentation
-[UserGuide.md](UserGuide.md) is the reference: the schema language and its four
-axes, the constraint DSL, both directions in depth, writing a custom stream, and
-what "compile time" does and does not mean here.
+The full guide lives in [`docs/`](docs/index.md) and is published as a site
+built with mkdocs-material: the schema language and its four axes, the
+constraint DSL, both directions in depth, writing a custom stream, and what
+"compile time" does and does not mean here.
+
+Build it locally with `pip install -r requirements-docs.txt && mkdocs serve`.
 
 ## Roadmap
 - [x] Trivials

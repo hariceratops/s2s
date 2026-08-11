@@ -134,13 +134,12 @@ add_test(
   NAME doc_examples_match
   COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check_doc_examples.py ${CMAKE_SOURCE_DIR})
 
-# The guide's contents page promised three sections that did not exist for long
-# enough that the gap became the reason for restructuring it. Checked in both
-# directions, and by position rather than by set, so two headings sharing a name
-# cannot swap anchors and still pass.
+# The guide used to promise sections that did not exist; split across pages the
+# equivalent failure is a page nothing links to. mkdocs --strict catches nav
+# entries pointing at missing files, but not files no nav entry points at.
 add_test(
-  NAME guide_toc_matches_sections
-  COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check_toc.py ${CMAKE_SOURCE_DIR}/UserGuide.md)
+  NAME docs_nav_lists_every_page
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check_nav.py ${CMAKE_SOURCE_DIR})
 
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.

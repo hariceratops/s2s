@@ -21,18 +21,27 @@ and are split into `test/runtime/` and `test/constexpr/`.
 There is no `.clang-format` or `.clang-tidy` in the repo, so formatting
 follows the surrounding file rather than a tool.
 
-Documentation lives in `README.md` (a pitch) and `UserGuide.md` (all reference
-material). Nothing is documented in both — the guide owns the schema language,
-the constraint DSL, both directions, streams and the compile-time claims, and
-the README links to it.
+Documentation lives in `README.md` (a pitch) and `docs/` (everything else),
+built as an mkdocs-material site — `mkdocs.yml` holds the nav,
+`requirements-docs.txt` the one dependency, and `.github/workflows/docs.yml`
+builds on every PR and deploys from main. `UserGuide.md` is a stub pointing at
+`docs/`, kept only so existing links resolve. Nothing is documented twice; the
+site owns the schema language, the constraint DSL, both directions, streams and
+the compile-time claims.
 
-Every complete program shown in either file is backed by a source under
-`test/single_header/`, registered as a CTest target, and bound to its fenced
-block: an `<!-- docs: <path> -->` comment above the fence, and a
+Prose addresses the reader in neutral third person, not as "you".
+
+Every complete program shown in `README.md` or `docs/` is backed by a source
+under `test/single_header/`, registered as a CTest target, and bound to its
+fenced block: an `<!-- docs: <path> -->` comment above the fence, and a
 `// docs-begin` / `// docs-end` region in the source. The two must match line
-for line. `ctest` enforces this (`doc_examples_match`), along with the guide's
-contents page matching its sections (`guide_toc_matches_sections`). Adding an
-example means adding the target and the binding, not just the prose.
+for line, and `ctest` enforces it (`doc_examples_match`), alongside every page
+appearing in the nav (`docs_nav_lists_every_page`). Adding an example means
+adding the target and the binding, not just the prose.
+
+Examples use realistic wire formats and real names rather than `our_struct` and
+`foo`, and read or write through `std::fstream`/`std::ifstream` opened with
+`std::ios::binary` rather than a `std::stringstream`.
 
 ## Overrides
 
