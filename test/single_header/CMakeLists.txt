@@ -91,6 +91,14 @@ target_compile_options(guide_writing_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_writing_example COMMAND guide_writing_example)
 
+# UserGuide.md's Streams section: the reference implementation.
+add_executable(guide_stream_example guide_stream_example.cpp)
+add_dependencies(guide_stream_example generate_single_header)
+target_include_directories(guide_stream_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_stream_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME guide_stream_example COMMAND guide_stream_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
