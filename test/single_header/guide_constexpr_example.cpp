@@ -46,7 +46,7 @@ using our_struct =
     s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
-constexpr auto parse_it() {
+constexpr auto parse_it() -> std::expected<our_struct, s2s::cast_error> {
   std::array<u8, 8> buffer{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xd0, 0x0d};
   memstream<8> stream(buffer);
   return s2s::struct_cast_be<our_struct>(stream);
