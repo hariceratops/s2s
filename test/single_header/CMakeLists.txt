@@ -107,6 +107,14 @@ target_compile_options(guide_constexpr_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_constexpr_example COMMAND guide_constexpr_example)
 
+# README.md's read-direction example.
+add_executable(readme_read_example readme_read_example.cpp)
+add_dependencies(readme_read_example generate_single_header)
+target_include_directories(readme_read_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(readme_read_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME readme_read_example COMMAND readme_read_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
