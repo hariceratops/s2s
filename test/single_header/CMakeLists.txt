@@ -44,6 +44,14 @@ target_compile_options(guide_schema_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_schema_example COMMAND guide_schema_example)
 
+# UserGuide.md's Schema section: the computed-values example.
+add_executable(guide_computed_example guide_computed_example.cpp)
+add_dependencies(guide_computed_example generate_single_header)
+target_include_directories(guide_computed_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_computed_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME guide_computed_example COMMAND guide_computed_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
