@@ -132,6 +132,49 @@ Link to Godbolt: https://godbolt.org/z/YcTqq58z4
   }
 ```
 
+The same schema drives the other direction. Fields the schema can work out for
+itself — here `count`, the length of `data` — are derived during the write
+rather than being yours to keep in sync:
+
+<!-- docs: test/single_header/readme_roundtrip_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <sstream>
+#include <vector>
+
+using namespace s2s_literals;
+
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+// One schema, both directions.
+using our_struct =
+  s2s::struct_field_list<
+    s2s::magic_string<"magic", "S2S">,
+    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"count">>>
+  >;
+
+auto main() -> int {
+  our_struct obj{};
+  obj["magic"_f] = s2s::fixed_string<3>("S2S");
+  obj["data"_f] = std::vector<u16>{0x1122, 0x3344};
+  // "count" is never assigned. It is derived from data.size() during the write.
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  if(const auto written = s2s::struct_write_be<our_struct>(stream, obj); !written)
+    return 1;
+
+  const auto back = s2s::struct_cast_be<our_struct>(stream);
+  if(!back)
+    return 1;
+
+  return (*back)["count"_f] == 2
+      && (*back)["data"_f] == std::vector<u16>{0x1122, 0x3344} ? 0 : 1;
+}
+```
+
 ## API documentation
 Refer file UserGuide.md for detailed API documentation, for a brief 
 tour, refer the section [Brief Tour](#Brief-Tour)

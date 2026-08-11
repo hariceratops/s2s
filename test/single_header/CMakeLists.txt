@@ -26,6 +26,16 @@ target_compile_options(doc_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME doc_example COMMAND doc_example)
 
+# README.md's write-direction example, kept compilable for the same reason as
+# doc_example: the README shipped a wrong include path for months because
+# nothing compiled the block it sat in.
+add_executable(readme_roundtrip_example readme_roundtrip_example.cpp)
+add_dependencies(readme_roundtrip_example generate_single_header)
+target_include_directories(readme_roundtrip_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(readme_roundtrip_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME readme_roundtrip_example COMMAND readme_roundtrip_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
