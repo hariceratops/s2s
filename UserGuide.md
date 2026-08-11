@@ -589,6 +589,144 @@ diagnostics readable, they have no user-facing uses, and they are deliberately
 undocumented. Treat them as internal and subject to change; `fixed_string` is
 the exception, for the reason above.
 
+## Constraints and validation
+
+The `constraint` axis narrows which values a field may hold. It is the last
+parameter of every descriptor that takes one, and it defaults to
+`no_constraint`, so leaving it off means "any value the type can represent".
+
+A constraint is checked in **both** directions:
+
+- **reading** — after the bytes are decoded, before the value is stored;
+- **writing** — before the field's first byte reaches the stream.
+
+A violation is `validation_failure` either way, with `failed_at` naming the
+field. This symmetry is the point: a schema that refuses to parse a bad value
+also refuses to produce one.
+
+### The constructs
+
+| Constraint | Holds when | Value type |
+|---|---|---|
+| `no_constraint<T>{}` | always | any |
+| `eq{v}` | `value == v` | equality-comparable, non-floating-point |
+| `neq{v}` | `value != v` | equality-comparable, non-floating-point |
+| `lt{v}` | `value < v` | comparable |
+| `gt{v}` | `value > v` | comparable |
+| `lte{v}` | `value <= v` | comparable |
+| `gte{v}` | `value >= v` | integral or `fixed_string` |
+| `any_of{a, b, ...}` | `value` is one of the listed values | all arguments the same type |
+
+They are used as values, not types, and CTAD deduces the parameter:
+
+```cpp
+s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>
+```
+
+Two type restrictions are worth knowing before a template error explains them.
+`eq` and `neq` exclude floating-point types outright — equality on a float
+decoded from a wire format is a trap, so the library refuses it rather than
+supporting it badly. `gte` is narrower still, admitting only integrals and
+`fixed_string`.
+
+### Range constraints do not currently compile
+
+`range`, `is_in_open_range` and `is_in_closed_range` are present in the headers
+and are **not usable**. `range`'s constructor applies `static_assert` to its own
+function parameters, which are not constant expressions, so constructing one is
+a hard compile error — and both range constraints take `range` arguments.
+
+```cpp
+constexpr s2s::range<int> r{1, 5};   // error: 'value1' is not a constant expression
+```
+
+See `dev/issues/026-range-constraints-do-not-compile.md`. Until that is fixed,
+express a bounded field with `gte`/`lte` on adjacent fields or with `any_of` for
+a small set. This section will list them among the working constructs once they
+work.
+
+### The magic descriptors are constraints
+
+`magic_string`, `magic_number` and `magic_byte_array` are not a separate
+validation mechanism. Each is an ordinary descriptor whose constraint axis is
+already filled in with `eq`:
+
+```cpp
+magic_string<"magic", "S2S">
+// is
+field<"magic", fixed_string<3>, field_size<fixed<4>>, eq{fixed_string<3>("S2S")}>
+```
+
+which is why they take an `expected` value where other descriptors take a
+constraint, and why a wrong magic value reports `validation_failure` like any
+other constraint breach rather than an error of its own.
+
+<!-- docs: test/single_header/guide_constraints_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <sstream>
+
+using namespace s2s_literals;
+
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+using record =
+  s2s::struct_field_list<
+    s2s::magic_string<"magic", "S2S">,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
+    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>, s2s::gte{u32{1}}>
+  >;
+
+auto main() -> int {
+  record ok{};
+  ok["magic"_f] = s2s::fixed_string<3>("S2S");
+  ok["version"_f] = u16{2};
+  ok["count"_f] = 7u;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  if(const auto written = s2s::struct_write_be<record>(stream, ok); !written)
+    return 1;
+  if(!s2s::struct_cast_be<record>(stream))
+    return 1;
+
+  // Writing: the constraint is checked before the field's first byte is out.
+  record bad_version = ok;
+  bad_version["version"_f] = u16{9};
+  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
+  const auto rejected = s2s::struct_write_be<record>(discard, bad_version);
+  if(!(!rejected
+       && rejected.error().failure_reason == s2s::error_reason::validation_failure
+       && rejected.error().failed_at == std::string_view{"version"}))
+    return 1;
+
+  // Reading: the same constraint rejects the same value off the wire.
+  record bad_count = ok;
+  bad_count["count"_f] = 0u;
+  std::stringstream on_wire(std::ios::in | std::ios::out | std::ios::binary);
+  // Write it through a schema with no constraint so the bytes actually exist.
+  using unchecked =
+    s2s::struct_field_list<
+      s2s::magic_string<"magic", "S2S">,
+      s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
+      s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>
+    >;
+  unchecked loose{};
+  loose["magic"_f] = s2s::fixed_string<3>("S2S");
+  loose["version"_f] = u16{2};
+  loose["count"_f] = 0u;
+  if(const auto written = s2s::struct_write_be<unchecked>(on_wire, loose); !written)
+    return 1;
+
+  const auto read_back = s2s::struct_cast_be<record>(on_wire);
+  return !read_back
+      && read_back.error().failure_reason == s2s::error_reason::validation_failure
+      && read_back.error().failed_at == std::string_view{"count"}
+        ? 0 : 1;
+}
+```
+
 ## Field Descriptors
 ```cpp
 using our_struct = 

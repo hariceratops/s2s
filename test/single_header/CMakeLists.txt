@@ -67,6 +67,14 @@ target_compile_options(guide_variance_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_variance_example COMMAND guide_variance_example)
 
+# UserGuide.md's Constraints and validation section.
+add_executable(guide_constraints_example guide_constraints_example.cpp)
+add_dependencies(guide_constraints_example generate_single_header)
+target_include_directories(guide_constraints_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_constraints_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME guide_constraints_example COMMAND guide_constraints_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
