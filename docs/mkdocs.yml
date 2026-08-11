@@ -17,6 +17,12 @@ exclude_docs: |
 
 theme:
   name: material
+  # Fetched from Google Fonts at page load. Set `font: false` to opt out and
+  # fall back to system faces, which is the move if the site ever needs to work
+  # offline or avoid a third-party request.
+  font:
+    text: Roboto
+    code: Source Code Pro
   features:
     - navigation.sections
     - navigation.top
