@@ -1,0 +1,3 @@
+# Documentation site only. The library itself is header-only and needs none of
+# this; python3 is already a build dependency because of scripts/amalgam.py.
+mkdocs-material==9.5.39

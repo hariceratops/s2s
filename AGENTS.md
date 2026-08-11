@@ -14,12 +14,35 @@ but gcc 13 covers the runtime path only — constexpr use of `struct_field_list`
 requires gcc 14 or newer, and `CMakeLists.txt` fails configure below it.
 Sources live under `include/` and are amalgamated by `scripts/amalgam.py`
 into the shipped `single_header/s2s.hpp`, which is what consumers include.
-The read direction (stream to struct) is complete; the write direction
-(struct to stream) is work in progress.
+Both directions are complete: stream to struct via `struct_cast_le`/`_be`, and
+struct to stream via `stream_cast_le`/`_be`.
 Tests use GoogleTest, fetched at configure time via CMake `FetchContent`,
 and are split into `test/runtime/` and `test/constexpr/`.
 There is no `.clang-format` or `.clang-tidy` in the repo, so formatting
 follows the surrounding file rather than a tool.
+
+Documentation lives in `README.md` (a pitch) and `docs/` (everything else),
+built as an mkdocs-material site. Everything needed to render it is confined to
+`docs/`: `docs/mkdocs.yml` holds the nav, `docs/requirements.txt` the one
+dependency. Both commands name that config —
+`mkdocs serve -f docs/mkdocs.yml` — and `.github/workflows/docs.yml` builds on
+every PR and deploys from main. Nothing is documented twice; the site owns the
+schema language, the constraint DSL, both directions, streams and the
+compile-time claims.
+
+Prose addresses the reader in neutral third person, not as "you".
+
+Every complete program shown in `README.md` or `docs/` is backed by a source
+under `test/single_header/`, registered as a CTest target, and bound to its
+fenced block: an `<!-- docs: <path> -->` comment above the fence, and a
+`// docs-begin` / `// docs-end` region in the source. The two must match line
+for line, and `ctest` enforces it (`doc_examples_match`), alongside every page
+appearing in the nav (`docs_nav_lists_every_page`). Adding an example means
+adding the target and the binding, not just the prose.
+
+Examples use realistic wire formats and real names rather than `our_struct` and
+`foo`, and read or write through `std::fstream`/`std::ifstream` opened with
+`std::ios::binary` rather than a `std::stringstream`.
 
 ## Overrides
 

@@ -3,3 +3,9 @@ build_clang
 .cache
 compile_commands.json
 worktree
+
+# mkdocs build output
+site/
+
+# Local Python environment for the docs build
+.venv/

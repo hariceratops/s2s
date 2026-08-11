@@ -5,12 +5,27 @@ interface, and back again.
 
 Implemented as an embedded DSL powered by C++23 TMP.
 
+**The parser is generated at compile time.** The schema is declared as a type
+and the template machinery turns it into straight-line read and write code —
+no runtime dispatch over the field list, no reflection, no format interpreter.
+This is unconditional. It holds when the stream is a plain `std::ifstream` and
+when the schema is full of `std::string` and `std::vector`, and it comes with
+using the library at all.
+
+**Parsing can additionally be performed at compile time.** This is the narrower
+claim, and it has two conditions: the stream must be usable during constant
+evaluation, and the schema must have no allocating fields. When both hold, the
+whole parse — validation included — happens in the compiler and the result is a
+`constexpr` value. When they do not, everything in the paragraph above still
+holds.
+
 Library is single header and the file "s2s.hpp" from the single_header
 folder can be used for direct inclusion into a project
 
 ## Features
 * Single header
-* constexpr! as much as possible
+* Parser generated at compile time, unconditionally; parsing itself performed at
+  compile time when the stream and schema allow it
 * Support for 
     * Trivial
     * Array of trivials 
@@ -43,164 +58,126 @@ The compiler version requirements are
 
 
 ## Taste of the API
-Link to Godbolt: https://godbolt.org/z/fxEPoG4Kv
+<!-- docs: test/single_header/readme_read_example.cpp -->
 ```cpp
-  #include "s2s.hpp"
-  #include <print>
+#include "s2s.hpp"
 
-  using namespace s2s_literals;
+#include <array>
+#include <fstream>
+#include <print>
+#include <vector>
 
-  auto main(void) -> int {
-    // Our "struct" has 2 members. A length field of size 8 and type
-    // std::size_t, and a length prefixed string whose length is 
-    // derived from the "len" field
-    using our_struct = 
-      s2s::struct_field_list<
-        s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-        s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
-      >;
-    std::ifstream ifs("sample.bin", std::ios::in | std::ios::binary);
-    auto res = 
-      s2s::struct_cast_le<our_struct>(ifs)
-          .transform([](const our_struct& fields){
-            std::println("len={} str={}", fields["len"_f], fields["str"_f]);
-            return fields;
-          }).transform_error([](const s2s::cast_error& err){
-            std::println("failure_reason={} failed_at={}", static_cast<int>(err.failure_reason), err.failed_at);
-            return err;
-          });
-    return 0;
-  }
-```
+using namespace s2s_literals;
 
-Or let's go constexpr everything, as long as we do not have fields which we would
-allocate, say vector or string. 
-Link to Godbolt: https://godbolt.org/z/YcTqq58z4
-```cpp
-  #include "s2s.hpp"
-  #include "test/constexpr_memstream.hpp"
-  #include <print>
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
 
-  using namespace s2s_literals;
-
-  using u32 = unsigned int;
-  // a trivial struct with two u32 members
-  using our_struct =
-    s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
-    >;
-
-  constexpr auto parse_our_struct() -> std::expected<our_struct, s2s::cast_error>
-  {
-    std::array<u8, 8> buffer{0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe, 0xca};
-    // custom stream written for compile time struct_cast
-    // refer constexpr_memstream.hpp for implementation which can 
-    // be extended as required
-    memstream<8> stream(buffer);
-    return s2s::struct_cast_le<our_struct>(stream);
-  }
-
-  // complete marshalling and validation in compile time
-  constexpr auto res = parse_our_struct();
-  static_assert(res);
-  constexpr auto fields = *res;
-  static_assert(fields["a"_f] == 0xdeadbeef);
-  static_assert(fields["b"_f] == 0xcafed00d);
-
-  auto main(void) -> int {
-    // Compiler might emit assembly for [] operators
-    // We can further optimize to store [] operator results
-    // in constexpr variable
-    std::println("{} {}", fields["a"_f], fields["b"_f]);
-    return 0;
-  }
-```
-
-## API documentation
-Refer file UserGuide.md for detailed API documentation, for a brief 
-tour, refer the section [Brief Tour](#Brief-Tour)
-
-## Brief Tour
-### "Struct"
-```cpp
-template <typename... fields>
-struct struct_field_list { /* implementation */ };
-```
-A struct_field_list datatype is a meta-struct with a map-like interface to access
-a field member for read or write operation. The operator[] when provided with 
-custom literal "<field_name>"_f as key, returns a reference or const reference 
-to the member with name <field_name>
-
-Accessing field not present in the struct_field_list(the "map") will result
-in compilation error for field lookup failure, since a check is enforced via concepts 
-
-```cpp
-template <typename field_accessor, typename field_lookup = /* field_lookup metafunction */>
-    requires /* field_lookup success */
-auto& operator[](field_accessor);
-
-template <typename field_accessor, typename field_lookup = /* field_lookup metafunction */>
-    requires /* field_lookup success */
-const auto& operator[](field_accessor);
-```
-
-### Writing a data member schema
-```cpp
-using our_struct = 
+// A firmware image: a two-byte marker, a version, and a payload whose length
+// is carried on the wire just before it.
+using firmware_image =
   s2s::struct_field_list<
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
   >;
+
+auto main() -> int {
+  std::ifstream image("firmware.bin", std::ios::in | std::ios::binary);
+
+  const auto res =
+    s2s::struct_cast_be<firmware_image>(image)
+      .transform([](const firmware_image& fields){
+        std::println("version={} payload={} bytes",
+                     fields["version"_f], fields["payload_length"_f]);
+        return fields;
+      }).transform_error([](const s2s::cast_error& err){
+        std::println("failure_reason={} failed_at={}",
+                     static_cast<int>(err.failure_reason), err.failed_at);
+        return err;
+      });
+
+  return res.has_value() ? 0 : 1;
+}
 ```
-Library provides users a way to describe the fields contained in the struct_field_list
-Each descriptor is a variadic template, describing the name, type, size, constraint on 
-value along with type deduction or presence deduction guides if any
 
-Available descriptors are: basic_fields, fixed_array, fixed_string, 
-array_of_records, vec_field, str_field, vector_of_records,
-magic_string, magic_number, magic_byte_array, union_field and maybe
+The same schema drives the other direction. Fields the schema can work out for
+itself — here `payload_length` — are derived during the write rather than being
+data anyone has to keep in sync:
 
-### Cast API
+<!-- docs: test/single_header/readme_roundtrip_example.cpp -->
 ```cpp
-template <struct_field_list_like T, stream_like S>
-auto struct_cast_le(S& stream) -> std::expected<T, cast_error>;
+#include "s2s.hpp"
 
-template <struct_field_list_like T, stream_like S>
-auto struct_cast_be(S& stream) -> std::expected<T, cast_error>;
+#include <array>
+#include <fstream>
+#include <vector>
+
+using namespace s2s_literals;
+
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+// One schema, both directions.
+using firmware_image =
+  s2s::struct_field_list<
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
+  >;
+
+auto main() -> int {
+  firmware_image image{};
+  image["marker"_f] = std::array<u8, 2>{0x46, 0x57};
+  image["version"_f] = u16{1};
+  image["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
+  // "payload_length" is never assigned. It is derived from payload.size().
+
+  std::fstream file("firmware_out.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+
+  // Each step returns an expected, so writing and reading back chain into one
+  // expression; a failure at either end carries its cast_error through.
+  const auto round_tripped =
+    s2s::stream_cast_be<firmware_image>(file, image)
+      .and_then([&file] {
+        // A file stream shares one position between reads and writes.
+        file.seekg(0);
+        return s2s::struct_cast_be<firmware_image>(file);
+      })
+      .transform([](const firmware_image& parsed) {
+        return parsed["payload_length"_f] == 4;
+      });
+
+  return round_tripped.value_or(false) ? 0 : 1;
+}
 ```
-The APIs struct_cast_xx reads from a stream into struct_field_list, when 
-provided a stream as a runtime argument and a struct-schema as a template argument. 
-The xx is either le or be denoting byteorder of all the struct members.
-The APIs return std::expected which either contains a struct_field_list or read_error
 
-Error codes are returned in case a read fails. The read can fail 
-currently in one of the three scenarios: field value validation failure,
-provided input stream is exhausted or when type deduction failed while reading into union
+## Documentation
+The full guide lives in [`docs/`](docs/index.md) and is published as a site
+built with mkdocs-material: the schema language and its four axes, the
+constraint DSL, both directions in depth, writing a custom stream, and what
+"compile time" does and does not mean here.
 
-### Write API
-```cpp
-template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto stream_cast_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
+### Reading it locally
 
-template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto stream_cast_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+Everything needed to render the guide lives in `docs/`, so both commands name
+the config there:
+
+```sh
+pip install -r docs/requirements.txt
+
+mkdocs serve -f docs/mkdocs.yml   # live-reloading site on http://127.0.0.1:8000
+mkdocs build -f docs/mkdocs.yml   # or render once into site/
 ```
-The APIs stream_cast_xx serialize a struct_field_list to a stream, driven by the
-same schema as the read direction.
 
-Fields the schema can derive are not yours to set: the target of a
-`len_from_field` size comes from the container's `size()`, and a `type_switch`
-discriminant comes from the alternative the variant currently holds. Both are
-derived on write and are read-only at compile time — assigning to one does not
-compile. This is a breaking change to code that previously assigned to a length
-field on a parsed struct; see UserGuide.md for what to do instead.
-
-Writing adds a fourth error reason, `found_contradicting_length`, for the cases
-where two parts of the struct imply different lengths for the same data. A write
-is fail-fast and never rolled back: a failure at field `k` leaves fields `0..k-1`
-in the stream and nothing of `k`.
-
+`mkdocs serve` watches the pages and reloads on every edit. They are plain
+markdown with relative links, so they also read fine straight from
+[`docs/`](docs/index.md) on GitHub — building is only needed for the rendered
+site.
 
 ## Roadmap
 - [x] Trivials

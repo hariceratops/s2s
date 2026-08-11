@@ -21,4 +21,4 @@ add_constexpr_test(constexpr_write)
 # means rewriting the assertions against the current API and deciding whether
 # that orphaned header should be wired in or deleted — which is the "Static
 # test cases for all type traits and concepts" and "Remove dead code" items in
-# doc/todos.md, not part of repairing the harness.
+# dev/inbox/todos.md, not part of repairing the harness.

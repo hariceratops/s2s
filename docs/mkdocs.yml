@@ -1,0 +1,73 @@
+# Kept beside the pages it builds rather than at the repo root, so everything
+# needed to render the guide lives in one directory. Invoke with
+#   mkdocs serve -f docs/mkdocs.yml
+site_name: s2s
+site_description: A declarative binary parser for C++23 — stream to struct, and back again.
+repo_url: https://github.com/hariprasad12994/struct_cast
+repo_name: hariprasad12994/struct_cast
+edit_uri: edit/main/docs/
+
+# The pages sit next to this file, so the config and its requirements would
+# otherwise be copied into the built site as if they were content.
+docs_dir: .
+site_dir: ../site
+exclude_docs: |
+  mkdocs.yml
+  requirements.txt
+
+theme:
+  name: material
+  # Fetched from Google Fonts at page load. Set `font: false` to opt out and
+  # fall back to system faces, which is the move if the site ever needs to work
+  # offline or avoid a third-party request.
+  font:
+    text: Roboto
+    code: Source Code Pro
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Overview: index.md
+  - The meta-struct: struct.md
+  - Schema:
+      - Fields and axes: schema/index.md
+      - The size axis: schema/size-axis.md
+      - Computed values: schema/computed-values.md
+      - Optional and variant fields: schema/optional-and-variant.md
+  - Constraints and validation: constraints.md
+  - Reading: reading.md
+  - Writing: writing.md
+  - Streams: streams.md
+  - Compile time: compile-time.md
+  - Errors: errors.md
+  - Reference: reference.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - tables
+
+# Every fenced program in these pages is compiled by ctest and compared against
+# its source. A broken link or a moved page is cheap to miss by eye, so the
+# build is strict about both.
+strict: true
