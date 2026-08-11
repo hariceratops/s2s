@@ -4,7 +4,8 @@
 // docs-begin
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 #include <vector>
 
 using namespace s2s_literals;
@@ -13,30 +14,43 @@ using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
-using packet =
+// A telemetry frame: a two-byte marker, the device that sent it, a protocol
+// revision, and a run of samples whose count is carried on the wire.
+using telemetry_frame =
   s2s::struct_field_list<
-    // id         type    size                              constraint
-    s2s::magic_string<"magic", "PKT">,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0xab, 0xcd}>,
+    s2s::basic_field<"device_id", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"revision", u8, s2s::field_size<s2s::fixed<1>>, s2s::any_of{u8{1}, u8{2}}>,
+    s2s::basic_field<"sample_count", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"samples", u16, s2s::field_size<s2s::len_from_field<"sample_count">>>
   >;
 
 auto main() -> int {
-  packet obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("PKT");
-  obj["version"_f] = u16{2};
-  obj["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
+  telemetry_frame frame{};
+  frame["marker"_f] = std::array<u8, 2>{0xab, 0xcd};
+  frame["device_id"_f] = u16{0x2a};
+  frame["revision"_f] = u8{2};
+  frame["samples"_f] = std::vector<u16>{300, 301, 299, 302};
+  // "sample_count" is not assigned: it is the size axis of "samples" resolved.
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<packet>(stream, obj); !written)
+  std::fstream file("telemetry_frame.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
 
-  const auto back = s2s::struct_cast_be<packet>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<telemetry_frame>(file, frame); !written)
     return 1;
 
-  // "len" was never assigned; it is the size axis of "payload" resolved.
-  return (*back)["len"_f] == 4 && (*back)["version"_f] == 2 ? 0 : 1;
+  // A file stream shares one position between reads and writes, so rewind
+  // before parsing the bytes just emitted.
+  file.seekg(0);
+
+  const auto parsed = s2s::struct_cast_be<telemetry_frame>(file);
+  if(!parsed)
+    return 1;
+
+  return (*parsed)["sample_count"_f] == 4
+      && (*parsed)["device_id"_f] == 0x2a
+      && (*parsed)["samples"_f][2] == 299 ? 0 : 1;
 }
 // docs-end

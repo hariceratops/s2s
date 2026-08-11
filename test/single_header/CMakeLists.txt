@@ -115,6 +115,16 @@ target_compile_options(readme_read_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME readme_read_example COMMAND readme_read_example)
 
+# The README's read example opens a file the way a consumer would, so the file
+# has to exist before it runs. Generated rather than shown, to keep that example
+# a pitch instead of a setup script.
+add_test(
+  NAME make_doc_fixtures
+  COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/make_doc_fixtures.py
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(make_doc_fixtures PROPERTIES FIXTURES_SETUP doc_fixtures)
+set_tests_properties(readme_read_example PROPERTIES FIXTURES_REQUIRED doc_fixtures)
+
 # Every complete program shown in README.md or UserGuide.md must be bound to a
 # source under this directory, and must still match it. The README shipped a
 # wrong include path for months because nothing compiled the block it sat in;

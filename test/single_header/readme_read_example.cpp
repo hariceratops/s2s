@@ -4,30 +4,35 @@
 // docs-begin
 #include "s2s.hpp"
 
+#include <array>
+#include <fstream>
 #include <print>
-#include <sstream>
-#include <string>
+#include <vector>
 
 using namespace s2s_literals;
 
-// Two members: a length field of size 8 and type std::size_t, and a
-// length-prefixed string whose length is derived from the "len" field.
-using our_struct =
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+// A firmware image: a two-byte marker, a version, and a payload whose length
+// is carried on the wire just before it.
+using firmware_image =
   s2s::struct_field_list<
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
   >;
 
 auto main() -> int {
-  // Any input stream works; a std::ifstream over a file is the same call.
-  std::stringstream input(
-    std::string("\x05\x00\x00\x00\x00\x00\x00\x00" "hello", 13),
-    std::ios::in | std::ios::binary);
+  std::ifstream image("firmware.bin", std::ios::in | std::ios::binary);
 
   const auto res =
-    s2s::struct_cast_le<our_struct>(input)
-      .transform([](const our_struct& fields){
-        std::println("len={} str={}", fields["len"_f], fields["str"_f]);
+    s2s::struct_cast_be<firmware_image>(image)
+      .transform([](const firmware_image& fields){
+        std::println("version={} payload={} bytes",
+                     fields["version"_f], fields["payload_length"_f]);
         return fields;
       }).transform_error([](const s2s::cast_error& err){
         std::println("failure_reason={} failed_at={}",

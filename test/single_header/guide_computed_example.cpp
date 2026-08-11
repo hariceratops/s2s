@@ -4,53 +4,60 @@
 // docs-begin
 #include "s2s.hpp"
 
-#include <sstream>
+#include <fstream>
 #include <vector>
 
 using namespace s2s_literals;
 
 using u16 = unsigned short;
-using u32 = unsigned int;
 
 // The callable is a non-type template argument, so it has to be usable in a
 // constant expression and named somewhere the schema can reach.
-constexpr auto area_of = [](auto rows, auto cols) { return rows * cols; };
+constexpr auto pixel_count = [](auto width, auto height) { return width * height; };
 
-using matrix =
+// An image tile. Nothing on the wire states how many pixels follow — the count
+// is the product of two fields that are each meaningful on their own.
+using image_tile =
   s2s::struct_field_list<
-    s2s::basic_field<"rows", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"cols", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"width", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"height", u16, s2s::field_size<s2s::fixed<2>>>,
     s2s::vec_field<
-      "cells",
+      "pixels",
       u16,
-      s2s::field_size<s2s::len_from_fields<area_of, s2s::with_fields<"rows", "cols">>>
+      s2s::field_size<s2s::len_from_fields<pixel_count, s2s::with_fields<"width", "height">>>
     >
   >;
 
 auto main() -> int {
-  matrix obj{};
-  // "rows" and "cols" stay assignable: area_of cannot be run backwards, so
-  // the library verifies them against cells.size() rather than deriving them.
-  obj["rows"_f] = 2u;
-  obj["cols"_f] = 3u;
-  obj["cells"_f] = std::vector<u16>{1, 2, 3, 4, 5, 6};
+  image_tile tile{};
+  // "width" and "height" stay assignable: multiplication cannot be run
+  // backwards, so they are verified against pixels.size() rather than derived.
+  tile["width"_f] = u16{4};
+  tile["height"_f] = u16{2};
+  tile["pixels"_f] = std::vector<u16>(8, 0x7fff);
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<matrix>(stream, obj); !written)
+  std::fstream file("image_tile.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
 
-  const auto back = s2s::struct_cast_be<matrix>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<image_tile>(file, tile); !written)
     return 1;
 
-  // A disagreement is caught rather than silently written.
-  matrix wrong = obj;
-  wrong["cols"_f] = 4u;
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<matrix>(discard, wrong);
+  file.seekg(0);
+  const auto parsed = s2s::struct_cast_be<image_tile>(file);
+  if(!parsed || (*parsed)["pixels"_f].size() != 8)
+    return 1;
 
-  return (*back)["cells"_f].size() == 6
-      && !rejected
+  // A tile claiming dimensions its pixel run cannot satisfy is rejected rather
+  // than written as a stream that will not read back.
+  image_tile inconsistent = tile;
+  inconsistent["height"_f] = u16{3};
+  std::fstream discard("image_tile_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<image_tile>(discard, inconsistent);
+
+  return !rejected
       && rejected.error().failure_reason == s2s::error_reason::found_contradicting_length
         ? 0 : 1;
 }

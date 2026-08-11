@@ -4,53 +4,65 @@
 // docs-begin
 #include "s2s.hpp"
 
-#include <sstream>
-#include <string>
+#include <array>
+#include <fstream>
 
 using namespace s2s_literals;
 
-using u16 = unsigned short;
+using u8 = unsigned char;
 using u32 = unsigned int;
 
-using header =
+// The 14-byte header every BMP file starts with. BMP is a little-endian
+// format, so it is read with struct_cast_le.
+using bmp_header =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"name", s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::basic_field<"flags", u16, s2s::field_size<s2s::fixed<2>>>
+    s2s::magic_byte_array<"signature", 2, std::array<u8, 2>{0x42, 0x4d}>,
+    s2s::basic_field<"file_size", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"reserved", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"pixel_offset", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
-// The bytes a big-endian "header" occupies, written out by hand:
-//   53 32 53 00     magic, "S2S" plus its terminator
-//   00 00 00 05     len = 5
-//   68 65 6c 6c 6f  name, "hello", exactly len bytes
-//   00 01           flags = 1
-constexpr auto on_the_wire =
-  "\x53\x32\x53\x00"
-  "\x00\x00\x00\x05"
-  "hello"
-  "\x00\x01";
+// 'B' 'M', then file_size, reserved and pixel_offset, each little-endian.
+constexpr unsigned char header_bytes[] = {
+  0x42, 0x4d,
+  0x36, 0x00, 0x0c, 0x00,
+  0x00, 0x00, 0x00, 0x00,
+  0x36, 0x00, 0x00, 0x00
+};
+
+auto write_sample(const char* path, std::size_t count) -> bool {
+  std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+  out.write(reinterpret_cast<const char*>(header_bytes),
+            static_cast<std::streamsize>(count));
+  return static_cast<bool>(out);
+}
 
 auto main() -> int {
-  std::stringstream stream(std::string(on_the_wire, 15),
-                           std::ios::in | std::ios::out | std::ios::binary);
+  if(!write_sample("sample.bmp", sizeof(header_bytes)))
+    return 1;
 
-  const auto parsed = s2s::struct_cast_be<header>(stream);
+  std::ifstream file("sample.bmp", std::ios::in | std::ios::binary);
+  if(!file)
+    return 1;
+
+  const auto parsed = s2s::struct_cast_le<bmp_header>(file);
   if(!parsed)
     return 1;
 
-  const auto& h = *parsed;
-  if(!(h["len"_f] == 5 && h["name"_f] == "hello" && h["flags"_f] == 1))
+  const auto& header = *parsed;
+  if(!(header["file_size"_f] == 0x000c0036 && header["pixel_offset"_f] == 54))
     return 1;
 
-  // A stream that stops short reports where it ran out, not merely that it did.
-  std::stringstream truncated(std::string(on_the_wire, 9),
-                              std::ios::in | std::ios::out | std::ios::binary);
-  const auto failed = s2s::struct_cast_be<header>(truncated);
+  // A file that stops short reports which field ran out, not merely that one did.
+  if(!write_sample("truncated.bmp", 8))
+    return 1;
+
+  std::ifstream short_file("truncated.bmp", std::ios::in | std::ios::binary);
+  const auto failed = s2s::struct_cast_le<bmp_header>(short_file);
 
   return !failed
       && failed.error().failure_reason == s2s::error_reason::buffer_exhaustion
-      && failed.error().failed_at == std::string_view{"name"}
+      && failed.error().failed_at == std::string_view{"reserved"}
         ? 0 : 1;
 }
 // docs-end

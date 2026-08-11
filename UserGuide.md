@@ -95,7 +95,8 @@ Every field declares up to four things.
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 #include <vector>
 
 using namespace s2s_literals;
@@ -104,31 +105,44 @@ using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
-using packet =
+// A telemetry frame: a two-byte marker, the device that sent it, a protocol
+// revision, and a run of samples whose count is carried on the wire.
+using telemetry_frame =
   s2s::struct_field_list<
-    // id         type    size                              constraint
-    s2s::magic_string<"magic", "PKT">,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0xab, 0xcd}>,
+    s2s::basic_field<"device_id", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"revision", u8, s2s::field_size<s2s::fixed<1>>, s2s::any_of{u8{1}, u8{2}}>,
+    s2s::basic_field<"sample_count", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"samples", u16, s2s::field_size<s2s::len_from_field<"sample_count">>>
   >;
 
 auto main() -> int {
-  packet obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("PKT");
-  obj["version"_f] = u16{2};
-  obj["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
+  telemetry_frame frame{};
+  frame["marker"_f] = std::array<u8, 2>{0xab, 0xcd};
+  frame["device_id"_f] = u16{0x2a};
+  frame["revision"_f] = u8{2};
+  frame["samples"_f] = std::vector<u16>{300, 301, 299, 302};
+  // "sample_count" is not assigned: it is the size axis of "samples" resolved.
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<packet>(stream, obj); !written)
+  std::fstream file("telemetry_frame.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
 
-  const auto back = s2s::struct_cast_be<packet>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<telemetry_frame>(file, frame); !written)
     return 1;
 
-  // "len" was never assigned; it is the size axis of "payload" resolved.
-  return (*back)["len"_f] == 4 && (*back)["version"_f] == 2 ? 0 : 1;
+  // A file stream shares one position between reads and writes, so rewind
+  // before parsing the bytes just emitted.
+  file.seekg(0);
+
+  const auto parsed = s2s::struct_cast_be<telemetry_frame>(file);
+  if(!parsed)
+    return 1;
+
+  return (*parsed)["sample_count"_f] == 4
+      && (*parsed)["device_id"_f] == 0x2a
+      && (*parsed)["samples"_f][2] == 299 ? 0 : 1;
 }
 ```
 
@@ -294,53 +308,60 @@ here.
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
+#include <fstream>
 #include <vector>
 
 using namespace s2s_literals;
 
 using u16 = unsigned short;
-using u32 = unsigned int;
 
 // The callable is a non-type template argument, so it has to be usable in a
 // constant expression and named somewhere the schema can reach.
-constexpr auto area_of = [](auto rows, auto cols) { return rows * cols; };
+constexpr auto pixel_count = [](auto width, auto height) { return width * height; };
 
-using matrix =
+// An image tile. Nothing on the wire states how many pixels follow — the count
+// is the product of two fields that are each meaningful on their own.
+using image_tile =
   s2s::struct_field_list<
-    s2s::basic_field<"rows", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"cols", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"width", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"height", u16, s2s::field_size<s2s::fixed<2>>>,
     s2s::vec_field<
-      "cells",
+      "pixels",
       u16,
-      s2s::field_size<s2s::len_from_fields<area_of, s2s::with_fields<"rows", "cols">>>
+      s2s::field_size<s2s::len_from_fields<pixel_count, s2s::with_fields<"width", "height">>>
     >
   >;
 
 auto main() -> int {
-  matrix obj{};
-  // "rows" and "cols" stay assignable: area_of cannot be run backwards, so
-  // the library verifies them against cells.size() rather than deriving them.
-  obj["rows"_f] = 2u;
-  obj["cols"_f] = 3u;
-  obj["cells"_f] = std::vector<u16>{1, 2, 3, 4, 5, 6};
+  image_tile tile{};
+  // "width" and "height" stay assignable: multiplication cannot be run
+  // backwards, so they are verified against pixels.size() rather than derived.
+  tile["width"_f] = u16{4};
+  tile["height"_f] = u16{2};
+  tile["pixels"_f] = std::vector<u16>(8, 0x7fff);
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<matrix>(stream, obj); !written)
+  std::fstream file("image_tile.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
 
-  const auto back = s2s::struct_cast_be<matrix>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<image_tile>(file, tile); !written)
     return 1;
 
-  // A disagreement is caught rather than silently written.
-  matrix wrong = obj;
-  wrong["cols"_f] = 4u;
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<matrix>(discard, wrong);
+  file.seekg(0);
+  const auto parsed = s2s::struct_cast_be<image_tile>(file);
+  if(!parsed || (*parsed)["pixels"_f].size() != 8)
+    return 1;
 
-  return (*back)["cells"_f].size() == 6
-      && !rejected
+  // A tile claiming dimensions its pixel run cannot satisfy is rejected rather
+  // than written as a stream that will not read back.
+  image_tile inconsistent = tile;
+  inconsistent["height"_f] = u16{3};
+  std::fstream discard("image_tile_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<image_tile>(discard, inconsistent);
+
+  return !rejected
       && rejected.error().failure_reason == s2s::error_reason::found_contradicting_length
         ? 0 : 1;
 }
@@ -388,58 +409,73 @@ The field's value is reached by dereferencing:
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
+using u16 = unsigned short;
 using u32 = unsigned int;
 
-// "detail" is on the wire only when "kind" is 1. The predicate reads siblings
-// that have already been parsed, which is why it must name them.
-constexpr auto kind_is_one = [](auto kind) { return kind == 1u; };
+// Bit 3 of the flags byte says an original-filename length follows. The
+// predicate reads a field already parsed, which is why it must name it.
+constexpr auto has_name = [](auto flags) { return (flags & 0x08u) != 0u; };
 
-using message =
+// A gzip member header, trimmed to the part that shows conditional presence.
+using gzip_header =
   s2s::struct_field_list<
-    s2s::basic_field<"kind", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::magic_byte_array<"magic", 2, std::array<u8, 2>{0x1f, 0x8b}>,
+    s2s::basic_field<"method", u8, s2s::field_size<s2s::fixed<1>>>,
+    s2s::basic_field<"flags", u8, s2s::field_size<s2s::fixed<1>>>,
+    s2s::basic_field<"mtime", u32, s2s::field_size<s2s::fixed<4>>>,
     s2s::maybe<
-      s2s::basic_field<"detail", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::parse_if<kind_is_one, s2s::with_fields<"kind">>
+      s2s::basic_field<"name_length", u16, s2s::field_size<s2s::fixed<2>>>,
+      s2s::parse_if<has_name, s2s::with_fields<"flags">>
     >
   >;
 
-auto write_and_read(u32 kind, bool with_detail) -> bool {
-  message obj{};
-  obj["kind"_f] = kind;
-  if(with_detail)
-    obj["detail"_f] = 0xbeefbeefu;
+auto round_trip(u8 flags, bool with_name, const char* path) -> bool {
+  gzip_header header{};
+  header["magic"_f] = std::array<u8, 2>{0x1f, 0x8b};
+  header["method"_f] = u8{8};
+  header["flags"_f] = flags;
+  header["mtime"_f] = 0x5f000000u;
+  if(with_name)
+    header["name_length"_f] = u16{12};
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  const auto written = s2s::struct_write_be<message>(stream, obj);
-  if(!written)
+  std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return false;
 
-  const auto back = s2s::struct_cast_be<message>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<gzip_header>(file, header); !written)
+    return false;
+
+  file.seekg(0);
+  const auto parsed = s2s::struct_cast_be<gzip_header>(file);
+  if(!parsed)
     return false;
 
   // An absent optional is empty; a present one is dereferenced.
-  return with_detail ? *((*back)["detail"_f]) == 0xbeefbeefu : true;
+  return with_name ? *((*parsed)["name_length"_f]) == 12 : true;
 }
 
 auto main() -> int {
-  // kind == 1: the predicate says present, and the struct supplies it.
-  if(!write_and_read(1u, true))
+  // FNAME set: the predicate says present, and the header supplies it.
+  if(!round_trip(u8{0x08}, true, "gzip_named.bin"))
     return 1;
 
-  // kind == 2: the predicate says absent, and the struct leaves it unset.
-  if(!write_and_read(2u, false))
+  // FNAME clear: the predicate says absent, and the field occupies no bytes.
+  if(!round_trip(u8{0x00}, false, "gzip_plain.bin"))
     return 1;
 
-  // Disagreement is caught: the predicate says present, the struct is empty.
-  message bad{};
-  bad["kind"_f] = 1u;
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<message>(discard, bad);
+  // Disagreement is caught: the flag promises a name length, the header has none.
+  gzip_header bad{};
+  bad["magic"_f] = std::array<u8, 2>{0x1f, 0x8b};
+  bad["flags"_f] = u8{0x08};
+  std::fstream discard("gzip_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<gzip_header>(discard, bad);
 
   return !rejected
       && rejected.error().failure_reason == s2s::error_reason::validation_failure
@@ -498,20 +534,22 @@ disagrees.
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
+#include <fstream>
 #include <variant>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u32 = unsigned int;
 using i32 = int;
 
-// Selection by discriminant: "tag" says which alternative "body" holds.
-using switched =
+// Selection by discriminant. A tag-length-value record carries the tag on the
+// wire, and it says how the value should be read.
+using tlv_record =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u8, s2s::field_size<s2s::fixed<1>>>,
     s2s::variance<
-      "body",
+      "value",
       s2s::type<
         s2s::match_field<"tag">,
         s2s::type_switch<
@@ -522,25 +560,25 @@ using switched =
     >
   >;
 
-// Selection by predicate: no discriminant on the wire at all, so there is no
-// match_field and nothing for the library to derive.
-constexpr auto sum_is_small = [](auto a, auto b) { return a + b < 100u; };
-constexpr auto sum_is_large = [](auto a, auto b) { return a + b >= 100u; };
+// Selection by predicate. Nothing on the wire names the payload shape; it
+// follows from a length already read, the way formats inline small values and
+// reference large ones.
+constexpr auto fits_inline = [](auto length) { return length <= 4u; };
+constexpr auto needs_reference = [](auto length) { return length > 4u; };
 
-using laddered =
+using extent_record =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"length", u32, s2s::field_size<s2s::fixed<4>>>,
     s2s::variance<
-      "body",
+      "payload",
       s2s::type<
         s2s::type_if_else<
           s2s::branch<
-            s2s::predicate<sum_is_small, s2s::with_fields<"a", "b">>,
+            s2s::predicate<fits_inline, s2s::with_fields<"length">>,
             s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
           >,
           s2s::branch<
-            s2s::predicate<sum_is_large, s2s::with_fields<"a", "b">>,
+            s2s::predicate<needs_reference, s2s::with_fields<"length">>,
             s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>
           >
         >
@@ -549,38 +587,47 @@ using laddered =
   >;
 
 auto main() -> int {
-  // "tag" is never assigned: it is derived from which alternative body holds.
-  switched s{};
-  s["body"_f] = i32{-7};
+  // "tag" is never assigned: it is derived from the alternative held.
+  tlv_record record{};
+  record["value"_f] = i32{-40};
 
-  std::stringstream a(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<switched>(a, s); !written)
+  std::fstream tlv("tlv_record.bin",
+                   std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!tlv)
     return 1;
-  const auto s_back = s2s::struct_cast_be<switched>(a);
-  if(!s_back || (*s_back)["tag"_f] != 2 || std::get<i32>((*s_back)["body"_f]) != -7)
+  if(const auto written = s2s::struct_write_be<tlv_record>(tlv, record); !written)
+    return 1;
+  tlv.seekg(0);
+  const auto tlv_back = s2s::struct_cast_be<tlv_record>(tlv);
+  if(!tlv_back
+     || (*tlv_back)["tag"_f] != 2
+     || std::get<i32>((*tlv_back)["value"_f]) != -40)
     return 1;
 
-  // "a" and "b" stay assignable: a predicate has no inverse, so they are
-  // verified against the alternative held rather than derived from it.
-  laddered l{};
-  l["a"_f] = 10u;
-  l["b"_f] = 20u;
-  l["body"_f] = u32{42};
+  // "length" stays assignable: a predicate has no inverse, so it is verified
+  // against the alternative held rather than derived from it.
+  extent_record extent{};
+  extent["length"_f] = 4u;
+  extent["payload"_f] = u32{0xfeedface};
 
-  std::stringstream b(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<laddered>(b, l); !written)
+  std::fstream ext("extent_record.bin",
+                   std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!ext)
     return 1;
-  const auto l_back = s2s::struct_cast_be<laddered>(b);
-  if(!l_back || std::get<u32>((*l_back)["body"_f]) != 42)
+  if(const auto written = s2s::struct_write_be<extent_record>(ext, extent); !written)
+    return 1;
+  ext.seekg(0);
+  const auto ext_back = s2s::struct_cast_be<extent_record>(ext);
+  if(!ext_back || std::get<u32>((*ext_back)["payload"_f]) != 0xfeedface)
     return 1;
 
   // The held alternative contradicts the branch the predicates select.
-  laddered wrong{};
-  wrong["a"_f] = 500u;
-  wrong["b"_f] = 500u;
-  wrong["body"_f] = u32{42};
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<laddered>(discard, wrong);
+  extent_record inconsistent{};
+  inconsistent["length"_f] = 64u;
+  inconsistent["payload"_f] = u32{1};
+  std::fstream discard("extent_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<extent_record>(discard, inconsistent);
 
   return !rejected
       && rejected.error().failure_reason == s2s::error_reason::validation_failure
@@ -689,64 +736,91 @@ other constraint breach rather than an error of its own.
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
-using record =
+// The fmt chunk of a WAV file. Most of what makes a fmt chunk valid is a
+// constraint on a single field, so most of it is declared rather than checked.
+using wav_format =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
-    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>, s2s::gte{u32{1}}>
+    s2s::magic_byte_array<"chunk_id", 4, std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20}>,
+    s2s::basic_field<"chunk_size", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq{u32{16}}>,
+    s2s::basic_field<"audio_format", u16, s2s::field_size<s2s::fixed<2>>, s2s::eq{u16{1}}>,
+    s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
+    s2s::basic_field<"sample_rate", u32, s2s::field_size<s2s::fixed<4>>, s2s::gte{u32{8000}}>,
+    s2s::basic_field<"bits_per_sample", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{8}, u16{16}, u16{24}}>
+  >;
+
+// The same layout with the constraint axis left off every field.
+using wav_format_unchecked =
+  s2s::struct_field_list<
+    s2s::magic_byte_array<"chunk_id", 4, std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20}>,
+    s2s::basic_field<"chunk_size", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"audio_format", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"sample_rate", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"bits_per_sample", u16, s2s::field_size<s2s::fixed<2>>>
   >;
 
 auto main() -> int {
-  record ok{};
-  ok["magic"_f] = s2s::fixed_string<3>("S2S");
-  ok["version"_f] = u16{2};
-  ok["count"_f] = 7u;
+  wav_format fmt{};
+  fmt["chunk_id"_f] = std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20};
+  fmt["chunk_size"_f] = 16u;
+  fmt["audio_format"_f] = u16{1};
+  fmt["channels"_f] = u16{2};
+  fmt["sample_rate"_f] = 44100u;
+  fmt["bits_per_sample"_f] = u16{16};
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<record>(stream, ok); !written)
+  std::fstream file("wav_format.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
-  if(!s2s::struct_cast_be<record>(stream))
+  if(const auto written = s2s::struct_write_be<wav_format>(file, fmt); !written)
+    return 1;
+  file.seekg(0);
+  if(!s2s::struct_cast_be<wav_format>(file))
     return 1;
 
   // Writing: the constraint is checked before the field's first byte is out.
-  record bad_version = ok;
-  bad_version["version"_f] = u16{9};
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<record>(discard, bad_version);
+  wav_format surround = fmt;
+  surround["channels"_f] = u16{6};
+  std::fstream discard("wav_format_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<wav_format>(discard, surround);
   if(!(!rejected
        && rejected.error().failure_reason == s2s::error_reason::validation_failure
-       && rejected.error().failed_at == std::string_view{"version"}))
+       && rejected.error().failed_at == std::string_view{"channels"}))
     return 1;
 
-  // Reading: the same constraint rejects the same value off the wire.
-  record bad_count = ok;
-  bad_count["count"_f] = 0u;
-  std::stringstream on_wire(std::ios::in | std::ios::out | std::ios::binary);
-  // Write it through a schema with no constraint so the bytes actually exist.
-  using unchecked =
-    s2s::struct_field_list<
-      s2s::magic_string<"magic", "S2S">,
-      s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
-      s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>
-    >;
-  unchecked loose{};
-  loose["magic"_f] = s2s::fixed_string<3>("S2S");
-  loose["version"_f] = u16{2};
-  loose["count"_f] = 0u;
-  if(const auto written = s2s::struct_write_be<unchecked>(on_wire, loose); !written)
-    return 1;
+  // Reading: the same constraint rejects the same value coming off the wire.
+  // The bytes have to exist first, so they are written through the unchecked
+  // layout and parsed back through the checked one.
+  wav_format_unchecked loose{};
+  loose["chunk_id"_f] = std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20};
+  loose["chunk_size"_f] = 16u;
+  loose["audio_format"_f] = u16{1};
+  loose["channels"_f] = u16{6};
+  loose["sample_rate"_f] = 44100u;
+  loose["bits_per_sample"_f] = u16{16};
 
-  const auto read_back = s2s::struct_cast_be<record>(on_wire);
-  return !read_back
-      && read_back.error().failure_reason == s2s::error_reason::validation_failure
-      && read_back.error().failed_at == std::string_view{"count"}
+  std::fstream on_disk("wav_format_loose.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!on_disk)
+    return 1;
+  if(const auto written = s2s::struct_write_be<wav_format_unchecked>(on_disk, loose); !written)
+    return 1;
+  on_disk.seekg(0);
+
+  const auto parsed = s2s::struct_cast_be<wav_format>(on_disk);
+  return !parsed
+      && parsed.error().failure_reason == s2s::error_reason::validation_failure
+      && parsed.error().failed_at == std::string_view{"channels"}
         ? 0 : 1;
 }
 ```
@@ -778,53 +852,65 @@ parsed.
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
-#include <string>
+#include <array>
+#include <fstream>
 
 using namespace s2s_literals;
 
-using u16 = unsigned short;
+using u8 = unsigned char;
 using u32 = unsigned int;
 
-using header =
+// The 14-byte header every BMP file starts with. BMP is a little-endian
+// format, so it is read with struct_cast_le.
+using bmp_header =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"name", s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::basic_field<"flags", u16, s2s::field_size<s2s::fixed<2>>>
+    s2s::magic_byte_array<"signature", 2, std::array<u8, 2>{0x42, 0x4d}>,
+    s2s::basic_field<"file_size", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"reserved", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"pixel_offset", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
-// The bytes a big-endian "header" occupies, written out by hand:
-//   53 32 53 00     magic, "S2S" plus its terminator
-//   00 00 00 05     len = 5
-//   68 65 6c 6c 6f  name, "hello", exactly len bytes
-//   00 01           flags = 1
-constexpr auto on_the_wire =
-  "\x53\x32\x53\x00"
-  "\x00\x00\x00\x05"
-  "hello"
-  "\x00\x01";
+// 'B' 'M', then file_size, reserved and pixel_offset, each little-endian.
+constexpr unsigned char header_bytes[] = {
+  0x42, 0x4d,
+  0x36, 0x00, 0x0c, 0x00,
+  0x00, 0x00, 0x00, 0x00,
+  0x36, 0x00, 0x00, 0x00
+};
+
+auto write_sample(const char* path, std::size_t count) -> bool {
+  std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+  out.write(reinterpret_cast<const char*>(header_bytes),
+            static_cast<std::streamsize>(count));
+  return static_cast<bool>(out);
+}
 
 auto main() -> int {
-  std::stringstream stream(std::string(on_the_wire, 15),
-                           std::ios::in | std::ios::out | std::ios::binary);
+  if(!write_sample("sample.bmp", sizeof(header_bytes)))
+    return 1;
 
-  const auto parsed = s2s::struct_cast_be<header>(stream);
+  std::ifstream file("sample.bmp", std::ios::in | std::ios::binary);
+  if(!file)
+    return 1;
+
+  const auto parsed = s2s::struct_cast_le<bmp_header>(file);
   if(!parsed)
     return 1;
 
-  const auto& h = *parsed;
-  if(!(h["len"_f] == 5 && h["name"_f] == "hello" && h["flags"_f] == 1))
+  const auto& header = *parsed;
+  if(!(header["file_size"_f] == 0x000c0036 && header["pixel_offset"_f] == 54))
     return 1;
 
-  // A stream that stops short reports where it ran out, not merely that it did.
-  std::stringstream truncated(std::string(on_the_wire, 9),
-                              std::ios::in | std::ios::out | std::ios::binary);
-  const auto failed = s2s::struct_cast_be<header>(truncated);
+  // A file that stops short reports which field ran out, not merely that one did.
+  if(!write_sample("truncated.bmp", 8))
+    return 1;
+
+  std::ifstream short_file("truncated.bmp", std::ios::in | std::ios::binary);
+  const auto failed = s2s::struct_cast_le<bmp_header>(short_file);
 
   return !failed
       && failed.error().failure_reason == s2s::error_reason::buffer_exhaustion
-      && failed.error().failed_at == std::string_view{"name"}
+      && failed.error().failed_at == std::string_view{"reserved"}
         ? 0 : 1;
 }
 ```
@@ -915,37 +1001,45 @@ values it previously only consumed. Every construct below is declared in
 <!-- docs: test/single_header/guide_writing_example.cpp -->
 ```cpp
 #include "s2s.hpp"
-#include <sstream>
-#include <vector>
+
+#include <array>
+#include <fstream>
+#include <string>
 
 using namespace s2s_literals;
-using u16 = unsigned short;
-using u32 = unsigned int;
 
-using our_struct =
+using u8 = unsigned char;
+using u16 = unsigned short;
+
+// A length-prefixed log record. The length is not data anyone supplies; it is
+// a consequence of the message.
+using log_record =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"count">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x4c, 0x47}>,
+    s2s::basic_field<"message_length", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::str_field<"message", s2s::field_size<s2s::len_from_field<"message_length">>>
   >;
 
 auto main() -> int {
-  our_struct obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("S2S");
-  obj["data"_f] = std::vector<u16>{0x1122, 0x3344};
-  // Note: "count" is never assigned. It is derived from data.size().
+  log_record record{};
+  record["marker"_f] = std::array<u8, 2>{0x4c, 0x47};
+  record["message"_f] = std::string("disk nearly full");
+  // "message_length" is never assigned. It is derived from message.size().
 
-  std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  if(auto res = s2s::stream_cast_le<our_struct>(le, obj); !res)
+  std::fstream file("log_record.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
 
-  std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  if(auto res = s2s::stream_cast_be<our_struct>(be, obj); !res)
+  if(const auto written = s2s::struct_write_be<log_record>(file, record); !written)
     return 1;
 
-  // Read either one back with the matching byte order.
-  auto back = s2s::struct_cast_be<our_struct>(be);
-  return back && (*back)["count"_f] == 2 ? 0 : 1;
+  file.seekg(0);
+  const auto parsed = s2s::struct_cast_be<log_record>(file);
+
+  return parsed
+      && (*parsed)["message_length"_f] == 16
+      && (*parsed)["message"_f] == "disk nearly full" ? 0 : 1;
 }
 ```
 
@@ -1110,12 +1204,14 @@ which is not designed to be exception-safe part way through a field.
 #include "s2s.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <ios>
 #include <vector>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u32 = unsigned int;
 
 // A complete stream, satisfying read_trait, write_trait and convertible_to_bool.
@@ -1148,30 +1244,31 @@ public:
   explicit operator bool() const { return ok; }
 };
 
-using our_struct =
+// A heartbeat frame, small enough that the stream is the interesting part.
+using heartbeat =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x48, 0x42}>,
+    s2s::basic_field<"sequence", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
 static_assert(s2s::input_stream_like<byte_stream>);
 static_assert(s2s::output_stream_like<byte_stream>);
 
 auto main() -> int {
-  our_struct obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("S2S");
-  obj["a"_f] = 0xdeadbeefu;
+  heartbeat beat{};
+  beat["marker"_f] = std::array<u8, 2>{0x48, 0x42};
+  beat["sequence"_f] = 0xdeadbeefu;
 
   byte_stream stream;
-  if(const auto written = s2s::struct_write_be<our_struct>(stream, obj); !written)
+  if(const auto written = s2s::struct_write_be<heartbeat>(stream, beat); !written)
     return 1;
 
-  const auto back = s2s::struct_cast_be<our_struct>(stream);
-  if(!back || (*back)["a"_f] != 0xdeadbeefu)
+  const auto back = s2s::struct_cast_be<heartbeat>(stream);
+  if(!back || (*back)["sequence"_f] != 0xdeadbeefu)
     return 1;
 
   // Reading past the end sets the bad flag, which surfaces as buffer_exhaustion.
-  const auto overrun = s2s::struct_cast_be<our_struct>(stream);
+  const auto overrun = s2s::struct_cast_be<heartbeat>(stream);
   return !overrun
       && overrun.error().failure_reason == s2s::error_reason::buffer_exhaustion
         ? 0 : 1;
@@ -1301,24 +1398,25 @@ public:
   [[nodiscard]] explicit constexpr operator bool() const { return ok; }
 };
 
-// No allocating fields, so this schema is eligible for a compile-time parse.
-using our_struct =
+// A fixed-layout partition entry. No allocating fields, so this schema is
+// eligible for a compile-time parse.
+using partition_entry =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"start_lba", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"sector_count", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
-constexpr auto parse_it() -> std::expected<our_struct, s2s::cast_error> {
+constexpr auto parse_it() -> std::expected<partition_entry, s2s::cast_error> {
   std::array<u8, 8> buffer{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xd0, 0x0d};
   memstream<8> stream(buffer);
-  return s2s::struct_cast_be<our_struct>(stream);
+  return s2s::struct_cast_be<partition_entry>(stream);
 }
 
 // The parse, the validation and the field lookups all happen in the compiler.
 constexpr auto result = parse_it();
 static_assert(result);
-static_assert((*result)["a"_f] == 0xdeadbeef);
-static_assert((*result)["b"_f] == 0xcafed00d);
+static_assert((*result)["start_lba"_f] == 0xdeadbeef);
+static_assert((*result)["sector_count"_f] == 0xcafed00d);
 
 auto main() -> int {
   return 0;

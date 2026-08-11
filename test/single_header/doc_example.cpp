@@ -1,63 +1,75 @@
-// The worked example and the derived-field claims from UserGuide.md's
-// "Writing to stream" section, kept compilable so the documentation cannot
-// drift away from the library without something failing.
+// The derived-field claims UserGuide.md's Writing section makes in prose,
+// asserted rather than shown. They are not part of any fenced block, so the
+// doc_examples_match test cannot cover them; this target does.
+//
+// guide_writing_example.cpp is the other half of the pair, and carries the
+// worked example that section displays.
 #include "s2s.hpp"
 
-#include <sstream>
-#include <vector>
+#include <array>
+#include <fstream>
+#include <string>
 #include <utility>
 #include <cstdio>
 
 using namespace s2s_literals;
-using u16 = unsigned short;
-using u32 = unsigned int;
 
-using our_struct =
+using u8 = unsigned char;
+using u16 = unsigned short;
+
+using log_record =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"count">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x4c, 0x47}>,
+    s2s::basic_field<"message_length", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::str_field<"message", s2s::field_size<s2s::len_from_field<"message_length">>>
   >;
 
 auto main() -> int {
-  our_struct obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("S2S");
-  obj["data"_f] = std::vector<u16>{0x1122, 0x3344};
-  // "count" is never assigned. It is derived from data.size().
+  log_record record{};
+  record["marker"_f] = std::array<u8, 2>{0x4c, 0x47};
+  record["message"_f] = std::string("disk nearly full");
 
-  // The guide states reads give the stored slot, not the derived value.
-  if(obj["count"_f] != 0) {
-    std::printf("a derived slot is not populated before a write\n");
+  // The guide states that reading a derived field gives the stored slot, not
+  // the derived value, and that nothing is written back during a write.
+  if(record["message_length"_f] != 0) {
+    std::printf("a derived slot is populated before any write\n");
     return 1;
   }
-  const auto through_const = std::as_const(obj)["count"_f];
+  const auto through_const = std::as_const(record)["message_length"_f];
   if(through_const != 0)
     return 1;
 
-  std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  if(!s2s::stream_cast_le<our_struct>(le, obj))
+  std::fstream le("doc_claims_le.bin",
+                  std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!le || !s2s::struct_write_le<log_record>(le, record))
     return 1;
 
-  std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  if(!s2s::stream_cast_be<our_struct>(be, obj))
+  std::fstream be("doc_claims_be.bin",
+                  std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!be || !s2s::struct_write_be<log_record>(be, record))
     return 1;
 
-  auto back = s2s::struct_cast_be<our_struct>(be);
-  if(!back || (*back)["count"_f] != 2)
+  be.seekg(0);
+  const auto parsed = s2s::struct_cast_be<log_record>(be);
+  if(!parsed || (*parsed)["message_length"_f] != 16)
     return 1;
 
-  // The guide's replacement for the no-longer-compiling `["count"] = 5`.
-  auto parsed = *back;
-  parsed["data"_f] = std::vector<u16>(5);
-  std::stringstream again(std::ios::in | std::ios::out | std::ios::binary);
-  if(!s2s::stream_cast_be<our_struct>(again, parsed))
+  // The guide's replacement for the no-longer-compiling assignment to a
+  // derived length: assign the container, and the length follows.
+  auto reopened = *parsed;
+  reopened["message"_f] = std::string("ok");
+
+  std::fstream again("doc_claims_again.bin",
+                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!again || !s2s::struct_write_be<log_record>(again, reopened))
     return 1;
-  auto reread = s2s::struct_cast_be<our_struct>(again);
-  if(!reread || (*reread)["count"_f] != 5) {
+  again.seekg(0);
+  const auto reread = s2s::struct_cast_be<log_record>(again);
+  if(!reread || (*reread)["message_length"_f] != 2) {
     std::printf("assigning the container did not move the derived length\n");
     return 1;
   }
 
-  std::printf("doc example ok\n");
+  std::printf("doc claims ok\n");
   return 0;
 }

@@ -6,12 +6,14 @@
 #include "s2s.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <ios>
 #include <vector>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u32 = unsigned int;
 
 // A complete stream, satisfying read_trait, write_trait and convertible_to_bool.
@@ -44,30 +46,31 @@ public:
   explicit operator bool() const { return ok; }
 };
 
-using our_struct =
+// A heartbeat frame, small enough that the stream is the interesting part.
+using heartbeat =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x48, 0x42}>,
+    s2s::basic_field<"sequence", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
 static_assert(s2s::input_stream_like<byte_stream>);
 static_assert(s2s::output_stream_like<byte_stream>);
 
 auto main() -> int {
-  our_struct obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("S2S");
-  obj["a"_f] = 0xdeadbeefu;
+  heartbeat beat{};
+  beat["marker"_f] = std::array<u8, 2>{0x48, 0x42};
+  beat["sequence"_f] = 0xdeadbeefu;
 
   byte_stream stream;
-  if(const auto written = s2s::struct_write_be<our_struct>(stream, obj); !written)
+  if(const auto written = s2s::struct_write_be<heartbeat>(stream, beat); !written)
     return 1;
 
-  const auto back = s2s::struct_cast_be<our_struct>(stream);
-  if(!back || (*back)["a"_f] != 0xdeadbeefu)
+  const auto back = s2s::struct_cast_be<heartbeat>(stream);
+  if(!back || (*back)["sequence"_f] != 0xdeadbeefu)
     return 1;
 
   // Reading past the end sets the bad flag, which surfaces as buffer_exhaustion.
-  const auto overrun = s2s::struct_cast_be<our_struct>(stream);
+  const auto overrun = s2s::struct_cast_be<heartbeat>(stream);
   return !overrun
       && overrun.error().failure_reason == s2s::error_reason::buffer_exhaustion
         ? 0 : 1;

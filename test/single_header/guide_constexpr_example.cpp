@@ -39,24 +39,25 @@ public:
   [[nodiscard]] explicit constexpr operator bool() const { return ok; }
 };
 
-// No allocating fields, so this schema is eligible for a compile-time parse.
-using our_struct =
+// A fixed-layout partition entry. No allocating fields, so this schema is
+// eligible for a compile-time parse.
+using partition_entry =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"start_lba", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"sector_count", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
-constexpr auto parse_it() -> std::expected<our_struct, s2s::cast_error> {
+constexpr auto parse_it() -> std::expected<partition_entry, s2s::cast_error> {
   std::array<u8, 8> buffer{0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xd0, 0x0d};
   memstream<8> stream(buffer);
-  return s2s::struct_cast_be<our_struct>(stream);
+  return s2s::struct_cast_be<partition_entry>(stream);
 }
 
 // The parse, the validation and the field lookups all happen in the compiler.
 constexpr auto result = parse_it();
 static_assert(result);
-static_assert((*result)["a"_f] == 0xdeadbeef);
-static_assert((*result)["b"_f] == 0xcafed00d);
+static_assert((*result)["start_lba"_f] == 0xdeadbeef);
+static_assert((*result)["sector_count"_f] == 0xcafed00d);
 
 auto main() -> int {
   return 0;

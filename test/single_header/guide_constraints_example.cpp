@@ -4,64 +4,91 @@
 // docs-begin
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
-using record =
+// The fmt chunk of a WAV file. Most of what makes a fmt chunk valid is a
+// constraint on a single field, so most of it is declared rather than checked.
+using wav_format =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
-    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>, s2s::gte{u32{1}}>
+    s2s::magic_byte_array<"chunk_id", 4, std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20}>,
+    s2s::basic_field<"chunk_size", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq{u32{16}}>,
+    s2s::basic_field<"audio_format", u16, s2s::field_size<s2s::fixed<2>>, s2s::eq{u16{1}}>,
+    s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
+    s2s::basic_field<"sample_rate", u32, s2s::field_size<s2s::fixed<4>>, s2s::gte{u32{8000}}>,
+    s2s::basic_field<"bits_per_sample", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{8}, u16{16}, u16{24}}>
+  >;
+
+// The same layout with the constraint axis left off every field.
+using wav_format_unchecked =
+  s2s::struct_field_list<
+    s2s::magic_byte_array<"chunk_id", 4, std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20}>,
+    s2s::basic_field<"chunk_size", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"audio_format", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"sample_rate", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"bits_per_sample", u16, s2s::field_size<s2s::fixed<2>>>
   >;
 
 auto main() -> int {
-  record ok{};
-  ok["magic"_f] = s2s::fixed_string<3>("S2S");
-  ok["version"_f] = u16{2};
-  ok["count"_f] = 7u;
+  wav_format fmt{};
+  fmt["chunk_id"_f] = std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20};
+  fmt["chunk_size"_f] = 16u;
+  fmt["audio_format"_f] = u16{1};
+  fmt["channels"_f] = u16{2};
+  fmt["sample_rate"_f] = 44100u;
+  fmt["bits_per_sample"_f] = u16{16};
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<record>(stream, ok); !written)
+  std::fstream file("wav_format.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
-  if(!s2s::struct_cast_be<record>(stream))
+  if(const auto written = s2s::struct_write_be<wav_format>(file, fmt); !written)
+    return 1;
+  file.seekg(0);
+  if(!s2s::struct_cast_be<wav_format>(file))
     return 1;
 
   // Writing: the constraint is checked before the field's first byte is out.
-  record bad_version = ok;
-  bad_version["version"_f] = u16{9};
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<record>(discard, bad_version);
+  wav_format surround = fmt;
+  surround["channels"_f] = u16{6};
+  std::fstream discard("wav_format_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<wav_format>(discard, surround);
   if(!(!rejected
        && rejected.error().failure_reason == s2s::error_reason::validation_failure
-       && rejected.error().failed_at == std::string_view{"version"}))
+       && rejected.error().failed_at == std::string_view{"channels"}))
     return 1;
 
-  // Reading: the same constraint rejects the same value off the wire.
-  record bad_count = ok;
-  bad_count["count"_f] = 0u;
-  std::stringstream on_wire(std::ios::in | std::ios::out | std::ios::binary);
-  // Write it through a schema with no constraint so the bytes actually exist.
-  using unchecked =
-    s2s::struct_field_list<
-      s2s::magic_string<"magic", "S2S">,
-      s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
-      s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>
-    >;
-  unchecked loose{};
-  loose["magic"_f] = s2s::fixed_string<3>("S2S");
-  loose["version"_f] = u16{2};
-  loose["count"_f] = 0u;
-  if(const auto written = s2s::struct_write_be<unchecked>(on_wire, loose); !written)
-    return 1;
+  // Reading: the same constraint rejects the same value coming off the wire.
+  // The bytes have to exist first, so they are written through the unchecked
+  // layout and parsed back through the checked one.
+  wav_format_unchecked loose{};
+  loose["chunk_id"_f] = std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20};
+  loose["chunk_size"_f] = 16u;
+  loose["audio_format"_f] = u16{1};
+  loose["channels"_f] = u16{6};
+  loose["sample_rate"_f] = 44100u;
+  loose["bits_per_sample"_f] = u16{16};
 
-  const auto read_back = s2s::struct_cast_be<record>(on_wire);
-  return !read_back
-      && read_back.error().failure_reason == s2s::error_reason::validation_failure
-      && read_back.error().failed_at == std::string_view{"count"}
+  std::fstream on_disk("wav_format_loose.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!on_disk)
+    return 1;
+  if(const auto written = s2s::struct_write_be<wav_format_unchecked>(on_disk, loose); !written)
+    return 1;
+  on_disk.seekg(0);
+
+  const auto parsed = s2s::struct_cast_be<wav_format>(on_disk);
+  return !parsed
+      && parsed.error().failure_reason == s2s::error_reason::validation_failure
+      && parsed.error().failed_at == std::string_view{"channels"}
         ? 0 : 1;
 }
 // docs-end

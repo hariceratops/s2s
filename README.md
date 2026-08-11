@@ -62,30 +62,35 @@ The compiler version requirements are
 ```cpp
 #include "s2s.hpp"
 
+#include <array>
+#include <fstream>
 #include <print>
-#include <sstream>
-#include <string>
+#include <vector>
 
 using namespace s2s_literals;
 
-// Two members: a length field of size 8 and type std::size_t, and a
-// length-prefixed string whose length is derived from the "len" field.
-using our_struct =
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+// A firmware image: a two-byte marker, a version, and a payload whose length
+// is carried on the wire just before it.
+using firmware_image =
   s2s::struct_field_list<
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
   >;
 
 auto main() -> int {
-  // Any input stream works; a std::ifstream over a file is the same call.
-  std::stringstream input(
-    std::string("\x05\x00\x00\x00\x00\x00\x00\x00" "hello", 13),
-    std::ios::in | std::ios::binary);
+  std::ifstream image("firmware.bin", std::ios::in | std::ios::binary);
 
   const auto res =
-    s2s::struct_cast_le<our_struct>(input)
-      .transform([](const our_struct& fields){
-        std::println("len={} str={}", fields["len"_f], fields["str"_f]);
+    s2s::struct_cast_be<firmware_image>(image)
+      .transform([](const firmware_image& fields){
+        std::println("version={} payload={} bytes",
+                     fields["version"_f], fields["payload_length"_f]);
         return fields;
       }).transform_error([](const s2s::cast_error& err){
         std::println("failure_reason={} failed_at={}",
@@ -98,45 +103,53 @@ auto main() -> int {
 ```
 
 The same schema drives the other direction. Fields the schema can work out for
-itself — here `count`, the length of `data` — are derived during the write
-rather than being yours to keep in sync:
+itself — here `payload_length` — are derived during the write rather than being
+data anyone has to keep in sync:
 
 <!-- docs: test/single_header/readme_roundtrip_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 #include <vector>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
 // One schema, both directions.
-using our_struct =
+using firmware_image =
   s2s::struct_field_list<
-    s2s::magic_string<"magic", "S2S">,
-    s2s::basic_field<"count", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"count">>>
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
   >;
 
 auto main() -> int {
-  our_struct obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("S2S");
-  obj["data"_f] = std::vector<u16>{0x1122, 0x3344};
-  // "count" is never assigned. It is derived from data.size() during the write.
+  firmware_image image{};
+  image["marker"_f] = std::array<u8, 2>{0x46, 0x57};
+  image["version"_f] = u16{1};
+  image["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
+  // "payload_length" is never assigned. It is derived from payload.size().
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  if(const auto written = s2s::struct_write_be<our_struct>(stream, obj); !written)
+  std::fstream file("firmware_out.bin",
+                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return 1;
 
-  const auto back = s2s::struct_cast_be<our_struct>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<firmware_image>(file, image); !written)
     return 1;
 
-  return (*back)["count"_f] == 2
-      && (*back)["data"_f] == std::vector<u16>{0x1122, 0x3344} ? 0 : 1;
+  // A file stream shares one position between reads and writes, so rewind
+  // before parsing the bytes just emitted.
+  file.seekg(0);
+  const auto parsed = s2s::struct_cast_be<firmware_image>(file);
+
+  return parsed && (*parsed)["payload_length"_f] == 4 ? 0 : 1;
 }
 ```
 

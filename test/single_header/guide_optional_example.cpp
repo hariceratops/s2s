@@ -4,58 +4,73 @@
 // docs-begin
 #include "s2s.hpp"
 
-#include <sstream>
+#include <array>
+#include <fstream>
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
+using u16 = unsigned short;
 using u32 = unsigned int;
 
-// "detail" is on the wire only when "kind" is 1. The predicate reads siblings
-// that have already been parsed, which is why it must name them.
-constexpr auto kind_is_one = [](auto kind) { return kind == 1u; };
+// Bit 3 of the flags byte says an original-filename length follows. The
+// predicate reads a field already parsed, which is why it must name it.
+constexpr auto has_name = [](auto flags) { return (flags & 0x08u) != 0u; };
 
-using message =
+// A gzip member header, trimmed to the part that shows conditional presence.
+using gzip_header =
   s2s::struct_field_list<
-    s2s::basic_field<"kind", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::magic_byte_array<"magic", 2, std::array<u8, 2>{0x1f, 0x8b}>,
+    s2s::basic_field<"method", u8, s2s::field_size<s2s::fixed<1>>>,
+    s2s::basic_field<"flags", u8, s2s::field_size<s2s::fixed<1>>>,
+    s2s::basic_field<"mtime", u32, s2s::field_size<s2s::fixed<4>>>,
     s2s::maybe<
-      s2s::basic_field<"detail", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::parse_if<kind_is_one, s2s::with_fields<"kind">>
+      s2s::basic_field<"name_length", u16, s2s::field_size<s2s::fixed<2>>>,
+      s2s::parse_if<has_name, s2s::with_fields<"flags">>
     >
   >;
 
-auto write_and_read(u32 kind, bool with_detail) -> bool {
-  message obj{};
-  obj["kind"_f] = kind;
-  if(with_detail)
-    obj["detail"_f] = 0xbeefbeefu;
+auto round_trip(u8 flags, bool with_name, const char* path) -> bool {
+  gzip_header header{};
+  header["magic"_f] = std::array<u8, 2>{0x1f, 0x8b};
+  header["method"_f] = u8{8};
+  header["flags"_f] = flags;
+  header["mtime"_f] = 0x5f000000u;
+  if(with_name)
+    header["name_length"_f] = u16{12};
 
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  const auto written = s2s::struct_write_be<message>(stream, obj);
-  if(!written)
+  std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!file)
     return false;
 
-  const auto back = s2s::struct_cast_be<message>(stream);
-  if(!back)
+  if(const auto written = s2s::struct_write_be<gzip_header>(file, header); !written)
+    return false;
+
+  file.seekg(0);
+  const auto parsed = s2s::struct_cast_be<gzip_header>(file);
+  if(!parsed)
     return false;
 
   // An absent optional is empty; a present one is dereferenced.
-  return with_detail ? *((*back)["detail"_f]) == 0xbeefbeefu : true;
+  return with_name ? *((*parsed)["name_length"_f]) == 12 : true;
 }
 
 auto main() -> int {
-  // kind == 1: the predicate says present, and the struct supplies it.
-  if(!write_and_read(1u, true))
+  // FNAME set: the predicate says present, and the header supplies it.
+  if(!round_trip(u8{0x08}, true, "gzip_named.bin"))
     return 1;
 
-  // kind == 2: the predicate says absent, and the struct leaves it unset.
-  if(!write_and_read(2u, false))
+  // FNAME clear: the predicate says absent, and the field occupies no bytes.
+  if(!round_trip(u8{0x00}, false, "gzip_plain.bin"))
     return 1;
 
-  // Disagreement is caught: the predicate says present, the struct is empty.
-  message bad{};
-  bad["kind"_f] = 1u;
-  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
-  const auto rejected = s2s::struct_write_be<message>(discard, bad);
+  // Disagreement is caught: the flag promises a name length, the header has none.
+  gzip_header bad{};
+  bad["magic"_f] = std::array<u8, 2>{0x1f, 0x8b};
+  bad["flags"_f] = u8{0x08};
+  std::fstream discard("gzip_bad.bin",
+                       std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+  const auto rejected = s2s::struct_write_be<gzip_header>(discard, bad);
 
   return !rejected
       && rejected.error().failure_reason == s2s::error_reason::validation_failure
