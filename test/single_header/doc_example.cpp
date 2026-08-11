@@ -41,17 +41,20 @@ auto main() -> int {
 
   std::fstream le("doc_claims_le.bin",
                   std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!le || !s2s::stream_cast_le<log_record>(le, record))
+  if(!s2s::stream_cast_le<log_record>(le, record).has_value())
     return 1;
 
   std::fstream be("doc_claims_be.bin",
                   std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!be || !s2s::stream_cast_be<log_record>(be, record))
-    return 1;
 
-  be.seekg(0);
-  const auto parsed = s2s::struct_cast_be<log_record>(be);
-  if(!parsed || (*parsed)["message_length"_f] != 16)
+  const auto parsed =
+    s2s::stream_cast_be<log_record>(be, record)
+      .and_then([&be] {
+        be.seekg(0);
+        return s2s::struct_cast_be<log_record>(be);
+      });
+
+  if(!parsed.has_value() || (*parsed)["message_length"_f] != 16)
     return 1;
 
   // The guide's replacement for the no-longer-compiling assignment to a
@@ -61,11 +64,16 @@ auto main() -> int {
 
   std::fstream again("doc_claims_again.bin",
                      std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!again || !s2s::stream_cast_be<log_record>(again, reopened))
-    return 1;
-  again.seekg(0);
-  const auto reread = s2s::struct_cast_be<log_record>(again);
-  if(!reread || (*reread)["message_length"_f] != 2) {
+
+  const auto reread =
+    s2s::stream_cast_be<log_record>(again, reopened)
+      .and_then([&again] {
+        again.seekg(0);
+        return s2s::struct_cast_be<log_record>(again);
+      })
+      .transform([](const log_record& r) { return r["message_length"_f] == 2; });
+
+  if(!reread.value_or(false)) {
     std::printf("assigning the container did not move the derived length\n");
     return 1;
   }

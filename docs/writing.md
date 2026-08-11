@@ -57,18 +57,20 @@ auto main() -> int {
 
   std::fstream file("log_record.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!file)
-    return 1;
 
-  if(const auto written = s2s::stream_cast_be<log_record>(file, record); !written)
-    return 1;
+  const auto round_tripped =
+    s2s::stream_cast_be<log_record>(file, record)
+      .and_then([&file] {
+        // A file stream shares one position between reads and writes.
+        file.seekg(0);
+        return s2s::struct_cast_be<log_record>(file);
+      })
+      .transform([](const log_record& parsed) {
+        return parsed["message_length"_f] == 16
+            && parsed["message"_f] == "disk nearly full";
+      });
 
-  file.seekg(0);
-  const auto parsed = s2s::struct_cast_be<log_record>(file);
-
-  return parsed
-      && (*parsed)["message_length"_f] == 16
-      && (*parsed)["message"_f] == "disk nearly full" ? 0 : 1;
+  return round_tripped.value_or(false) ? 0 : 1;
 }
 ```
 

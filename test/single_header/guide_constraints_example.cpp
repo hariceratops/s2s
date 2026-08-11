@@ -47,12 +47,16 @@ auto main() -> int {
 
   std::fstream file("wav_format.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!file)
-    return 1;
-  if(const auto written = s2s::stream_cast_be<wav_format>(file, fmt); !written)
-    return 1;
-  file.seekg(0);
-  if(!s2s::struct_cast_be<wav_format>(file))
+
+  const auto accepted =
+    s2s::stream_cast_be<wav_format>(file, fmt)
+      .and_then([&file] {
+        file.seekg(0);
+        return s2s::struct_cast_be<wav_format>(file);
+      })
+      .transform([](const wav_format&) { return true; });
+
+  if(!accepted.value_or(false))
     return 1;
 
   // Writing: the constraint is checked before the field's first byte is out.
@@ -60,10 +64,11 @@ auto main() -> int {
   surround["channels"_f] = u16{6};
   std::fstream discard("wav_format_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::stream_cast_be<wav_format>(discard, surround);
-  if(!(!rejected
-       && rejected.error().failure_reason == s2s::error_reason::validation_failure
-       && rejected.error().failed_at == std::string_view{"channels"}))
+
+  const auto refused = s2s::stream_cast_be<wav_format>(discard, surround);
+  if(refused.has_value()
+     || refused.error().failure_reason != s2s::error_reason::validation_failure
+     || refused.error().failed_at != std::string_view{"channels"})
     return 1;
 
   // Reading: the same constraint rejects the same value coming off the wire.
@@ -79,16 +84,18 @@ auto main() -> int {
 
   std::fstream on_disk("wav_format_loose.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!on_disk)
-    return 1;
-  if(const auto written = s2s::stream_cast_be<wav_format_unchecked>(on_disk, loose); !written)
-    return 1;
-  on_disk.seekg(0);
 
-  const auto parsed = s2s::struct_cast_be<wav_format>(on_disk);
-  return !parsed
-      && parsed.error().failure_reason == s2s::error_reason::validation_failure
-      && parsed.error().failed_at == std::string_view{"channels"}
-        ? 0 : 1;
+  const auto parsed =
+    s2s::stream_cast_be<wav_format_unchecked>(on_disk, loose)
+      .and_then([&on_disk] {
+        on_disk.seekg(0);
+        return s2s::struct_cast_be<wav_format>(on_disk);
+      });
+
+  if(parsed.has_value())
+    return 1;
+
+  return parsed.error().failure_reason == s2s::error_reason::validation_failure
+      && parsed.error().failed_at == std::string_view{"channels"} ? 0 : 1;
 }
 // docs-end

@@ -67,15 +67,14 @@ auto main() -> int {
     return 1;
 
   std::ifstream file("sample.bmp", std::ios::in | std::ios::binary);
-  if(!file)
-    return 1;
 
-  const auto parsed = s2s::struct_cast_le<bmp_header>(file);
-  if(!parsed)
-    return 1;
+  const auto parsed =
+    s2s::struct_cast_le<bmp_header>(file)
+      .transform([](const bmp_header& header) {
+        return header["file_size"_f] == 0x000c0036 && header["pixel_offset"_f] == 54;
+      });
 
-  const auto& header = *parsed;
-  if(!(header["file_size"_f] == 0x000c0036 && header["pixel_offset"_f] == 54))
+  if(!parsed.value_or(false))
     return 1;
 
   // A file that stops short reports which field ran out, not merely that one did.
@@ -84,11 +83,11 @@ auto main() -> int {
 
   std::ifstream short_file("truncated.bmp", std::ios::in | std::ios::binary);
   const auto failed = s2s::struct_cast_le<bmp_header>(short_file);
+  if(failed.has_value())
+    return 1;
 
-  return !failed
-      && failed.error().failure_reason == s2s::error_reason::buffer_exhaustion
-      && failed.error().failed_at == std::string_view{"reserved"}
-        ? 0 : 1;
+  return failed.error().failure_reason == s2s::error_reason::buffer_exhaustion
+      && failed.error().failed_at == std::string_view{"reserved"} ? 0 : 1;
 }
 ```
 

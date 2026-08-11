@@ -32,17 +32,20 @@ auto main() -> int {
 
   std::fstream file("firmware_out.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!file)
-    return 1;
 
-  if(const auto written = s2s::stream_cast_be<firmware_image>(file, image); !written)
-    return 1;
+  // Each step returns an expected, so writing and reading back chain into one
+  // expression; a failure at either end carries its cast_error through.
+  const auto round_tripped =
+    s2s::stream_cast_be<firmware_image>(file, image)
+      .and_then([&file] {
+        // A file stream shares one position between reads and writes.
+        file.seekg(0);
+        return s2s::struct_cast_be<firmware_image>(file);
+      })
+      .transform([](const firmware_image& parsed) {
+        return parsed["payload_length"_f] == 4;
+      });
 
-  // A file stream shares one position between reads and writes, so rewind
-  // before parsing the bytes just emitted.
-  file.seekg(0);
-  const auto parsed = s2s::struct_cast_be<firmware_image>(file);
-
-  return parsed && (*parsed)["payload_length"_f] == 4 ? 0 : 1;
+  return round_tripped.value_or(false) ? 0 : 1;
 }
 // docs-end

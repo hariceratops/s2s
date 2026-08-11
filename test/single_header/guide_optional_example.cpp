@@ -40,19 +40,17 @@ auto round_trip(u8 flags, bool with_name, const char* path) -> bool {
     header["name_length"_f] = u16{12};
 
   std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!file)
-    return false;
 
-  if(const auto written = s2s::stream_cast_be<gzip_header>(file, header); !written)
-    return false;
-
-  file.seekg(0);
-  const auto parsed = s2s::struct_cast_be<gzip_header>(file);
-  if(!parsed)
-    return false;
-
-  // An absent optional is empty; a present one is dereferenced.
-  return with_name ? *((*parsed)["name_length"_f]) == 12 : true;
+  return s2s::stream_cast_be<gzip_header>(file, header)
+    .and_then([&file] {
+      file.seekg(0);
+      return s2s::struct_cast_be<gzip_header>(file);
+    })
+    .transform([with_name](const gzip_header& parsed) {
+      // An absent optional is empty; a present one is dereferenced.
+      return with_name ? *(parsed["name_length"_f]) == 12 : true;
+    })
+    .value_or(false);
 }
 
 auto main() -> int {
@@ -70,10 +68,11 @@ auto main() -> int {
   bad["flags"_f] = u8{0x08};
   std::fstream discard("gzip_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::stream_cast_be<gzip_header>(discard, bad);
 
-  return !rejected
-      && rejected.error().failure_reason == s2s::error_reason::validation_failure
-        ? 0 : 1;
+  const auto rejected = s2s::stream_cast_be<gzip_header>(discard, bad);
+  if(rejected.has_value())
+    return 1;
+
+  return rejected.error().failure_reason == s2s::error_reason::validation_failure ? 0 : 1;
 }
 // docs-end

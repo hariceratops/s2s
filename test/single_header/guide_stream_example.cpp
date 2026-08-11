@@ -62,17 +62,22 @@ auto main() -> int {
   beat["sequence"_f] = 0xdeadbeefu;
 
   byte_stream stream;
-  if(const auto written = s2s::stream_cast_be<heartbeat>(stream, beat); !written)
-    return 1;
 
-  const auto back = s2s::struct_cast_be<heartbeat>(stream);
-  if(!back || (*back)["sequence"_f] != 0xdeadbeefu)
+  const auto round_tripped =
+    s2s::stream_cast_be<heartbeat>(stream, beat)
+      .and_then([&stream] { return s2s::struct_cast_be<heartbeat>(stream); })
+      .transform([](const heartbeat& parsed) {
+        return parsed["sequence"_f] == 0xdeadbeefu;
+      });
+
+  if(!round_tripped.value_or(false))
     return 1;
 
   // Reading past the end sets the bad flag, which surfaces as buffer_exhaustion.
   const auto overrun = s2s::struct_cast_be<heartbeat>(stream);
-  return !overrun
-      && overrun.error().failure_reason == s2s::error_reason::buffer_exhaustion
-        ? 0 : 1;
+  if(overrun.has_value())
+    return 1;
+
+  return overrun.error().failure_reason == s2s::error_reason::buffer_exhaustion ? 0 : 1;
 }
 // docs-end

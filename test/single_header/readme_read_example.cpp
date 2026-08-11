@@ -40,6 +40,6 @@ auto main() -> int {
         return err;
       });
 
-  return res ? 0 : 1;
+  return res.has_value() ? 0 : 1;
 }
 // docs-end

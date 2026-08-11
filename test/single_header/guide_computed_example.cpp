@@ -38,15 +38,18 @@ auto main() -> int {
 
   std::fstream file("image_tile.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!file)
-    return 1;
 
-  if(const auto written = s2s::stream_cast_be<image_tile>(file, tile); !written)
-    return 1;
+  const auto round_tripped =
+    s2s::stream_cast_be<image_tile>(file, tile)
+      .and_then([&file] {
+        file.seekg(0);
+        return s2s::struct_cast_be<image_tile>(file);
+      })
+      .transform([](const image_tile& parsed) {
+        return parsed["pixels"_f].size() == 8;
+      });
 
-  file.seekg(0);
-  const auto parsed = s2s::struct_cast_be<image_tile>(file);
-  if(!parsed || (*parsed)["pixels"_f].size() != 8)
+  if(!round_tripped.value_or(false))
     return 1;
 
   // A tile claiming dimensions its pixel run cannot satisfy is rejected rather
@@ -55,10 +58,12 @@ auto main() -> int {
   inconsistent["height"_f] = u16{3};
   std::fstream discard("image_tile_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::stream_cast_be<image_tile>(discard, inconsistent);
 
-  return !rejected
-      && rejected.error().failure_reason == s2s::error_reason::found_contradicting_length
-        ? 0 : 1;
+  const auto rejected = s2s::stream_cast_be<image_tile>(discard, inconsistent);
+  if(rejected.has_value())
+    return 1;
+
+  return rejected.error().failure_reason == s2s::error_reason::found_contradicting_length
+    ? 0 : 1;
 }
 // docs-end
