@@ -162,7 +162,20 @@ built with mkdocs-material: the schema language and its four axes, the
 constraint DSL, both directions in depth, writing a custom stream, and what
 "compile time" does and does not mean here.
 
-Build it locally with `pip install -r requirements-docs.txt && mkdocs serve`.
+### Reading it locally
+
+```sh
+pip install -r requirements-docs.txt
+
+mkdocs serve     # live-reloading site on http://127.0.0.1:8000
+mkdocs build     # or render once into site/
+```
+
+`mkdocs serve` watches `docs/` and `mkdocs.yml` and reloads on every edit. The
+pages are plain markdown with relative links, so they also read fine straight
+from [`docs/`](docs/index.md) on GitHub, or from
+[UserGuide.md](UserGuide.md), which indexes them — building is only needed for
+the rendered site.
 
 ## Roadmap
 - [x] Trivials
