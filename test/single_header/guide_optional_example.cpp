@@ -43,7 +43,7 @@ auto round_trip(u8 flags, bool with_name, const char* path) -> bool {
   if(!file)
     return false;
 
-  if(const auto written = s2s::struct_write_be<gzip_header>(file, header); !written)
+  if(const auto written = s2s::stream_cast_be<gzip_header>(file, header); !written)
     return false;
 
   file.seekg(0);
@@ -70,7 +70,7 @@ auto main() -> int {
   bad["flags"_f] = u8{0x08};
   std::fstream discard("gzip_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::struct_write_be<gzip_header>(discard, bad);
+  const auto rejected = s2s::stream_cast_be<gzip_header>(discard, bad);
 
   return !rejected
       && rejected.error().failure_reason == s2s::error_reason::validation_failure

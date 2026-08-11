@@ -37,7 +37,7 @@ auto main() -> int {
   if(!file)
     return 1;
 
-  if(const auto written = s2s::struct_write_be<log_record>(file, record); !written)
+  if(const auto written = s2s::stream_cast_be<log_record>(file, record); !written)
     return 1;
 
   file.seekg(0);

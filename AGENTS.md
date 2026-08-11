@@ -15,7 +15,7 @@ requires gcc 14 or newer, and `CMakeLists.txt` fails configure below it.
 Sources live under `include/` and are amalgamated by `scripts/amalgam.py`
 into the shipped `single_header/s2s.hpp`, which is what consumers include.
 Both directions are complete: stream to struct via `struct_cast_le`/`_be`, and
-struct to stream via `struct_write_le`/`_be`.
+struct to stream via `stream_cast_le`/`_be`.
 Tests use GoogleTest, fetched at configure time via CMake `FetchContent`,
 and are split into `test/runtime/` and `test/constexpr/`.
 There is no `.clang-format` or `.clang-tidy` in the repo, so formatting

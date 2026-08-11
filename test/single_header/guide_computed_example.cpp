@@ -41,7 +41,7 @@ auto main() -> int {
   if(!file)
     return 1;
 
-  if(const auto written = s2s::struct_write_be<image_tile>(file, tile); !written)
+  if(const auto written = s2s::stream_cast_be<image_tile>(file, tile); !written)
     return 1;
 
   file.seekg(0);
@@ -55,7 +55,7 @@ auto main() -> int {
   inconsistent["height"_f] = u16{3};
   std::fstream discard("image_tile_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::struct_write_be<image_tile>(discard, inconsistent);
+  const auto rejected = s2s::stream_cast_be<image_tile>(discard, inconsistent);
 
   return !rejected
       && rejected.error().failure_reason == s2s::error_reason::found_contradicting_length

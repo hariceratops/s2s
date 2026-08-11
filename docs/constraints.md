@@ -118,7 +118,7 @@ auto main() -> int {
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
   if(!file)
     return 1;
-  if(const auto written = s2s::struct_write_be<wav_format>(file, fmt); !written)
+  if(const auto written = s2s::stream_cast_be<wav_format>(file, fmt); !written)
     return 1;
   file.seekg(0);
   if(!s2s::struct_cast_be<wav_format>(file))
@@ -129,7 +129,7 @@ auto main() -> int {
   surround["channels"_f] = u16{6};
   std::fstream discard("wav_format_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::struct_write_be<wav_format>(discard, surround);
+  const auto rejected = s2s::stream_cast_be<wav_format>(discard, surround);
   if(!(!rejected
        && rejected.error().failure_reason == s2s::error_reason::validation_failure
        && rejected.error().failed_at == std::string_view{"channels"}))
@@ -150,7 +150,7 @@ auto main() -> int {
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
   if(!on_disk)
     return 1;
-  if(const auto written = s2s::struct_write_be<wav_format_unchecked>(on_disk, loose); !written)
+  if(const auto written = s2s::stream_cast_be<wav_format_unchecked>(on_disk, loose); !written)
     return 1;
   on_disk.seekg(0);
 

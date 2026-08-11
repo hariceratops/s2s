@@ -141,7 +141,7 @@ auto main() -> int {
   if(!file)
     return 1;
 
-  if(const auto written = s2s::struct_write_be<firmware_image>(file, image); !written)
+  if(const auto written = s2s::stream_cast_be<firmware_image>(file, image); !written)
     return 1;
 
   // A file stream shares one position between reads and writes, so rewind

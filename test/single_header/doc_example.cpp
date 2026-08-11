@@ -41,12 +41,12 @@ auto main() -> int {
 
   std::fstream le("doc_claims_le.bin",
                   std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!le || !s2s::struct_write_le<log_record>(le, record))
+  if(!le || !s2s::stream_cast_le<log_record>(le, record))
     return 1;
 
   std::fstream be("doc_claims_be.bin",
                   std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!be || !s2s::struct_write_be<log_record>(be, record))
+  if(!be || !s2s::stream_cast_be<log_record>(be, record))
     return 1;
 
   be.seekg(0);
@@ -61,7 +61,7 @@ auto main() -> int {
 
   std::fstream again("doc_claims_again.bin",
                      std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  if(!again || !s2s::struct_write_be<log_record>(again, reopened))
+  if(!again || !s2s::stream_cast_be<log_record>(again, reopened))
     return 1;
   again.seekg(0);
   const auto reread = s2s::struct_cast_be<log_record>(again);

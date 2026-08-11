@@ -2,7 +2,7 @@
 
 A schema is a type. It is declared once as a `struct_field_list` of field
 descriptors, and that single declaration drives both directions: `struct_cast`
-reads a stream into it, `struct_write` writes it back out.
+reads a stream into it, `stream_cast` writes it back out.
 
 Nothing in this section belongs to one direction. Field descriptors are the
 schema language, not a read-side feature — where the two directions genuinely
@@ -58,7 +58,7 @@ auto main() -> int {
   if(!file)
     return 1;
 
-  if(const auto written = s2s::struct_write_be<telemetry_frame>(file, frame); !written)
+  if(const auto written = s2s::stream_cast_be<telemetry_frame>(file, frame); !written)
     return 1;
 
   // A file stream shares one position between reads and writes, so rewind

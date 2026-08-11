@@ -65,7 +65,7 @@ auto main() -> int {
                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
   if(!tlv)
     return 1;
-  if(const auto written = s2s::struct_write_be<tlv_record>(tlv, record); !written)
+  if(const auto written = s2s::stream_cast_be<tlv_record>(tlv, record); !written)
     return 1;
   tlv.seekg(0);
   const auto tlv_back = s2s::struct_cast_be<tlv_record>(tlv);
@@ -84,7 +84,7 @@ auto main() -> int {
                    std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
   if(!ext)
     return 1;
-  if(const auto written = s2s::struct_write_be<extent_record>(ext, extent); !written)
+  if(const auto written = s2s::stream_cast_be<extent_record>(ext, extent); !written)
     return 1;
   ext.seekg(0);
   const auto ext_back = s2s::struct_cast_be<extent_record>(ext);
@@ -97,7 +97,7 @@ auto main() -> int {
   inconsistent["payload"_f] = u32{1};
   std::fstream discard("extent_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-  const auto rejected = s2s::struct_write_be<extent_record>(discard, inconsistent);
+  const auto rejected = s2s::stream_cast_be<extent_record>(discard, inconsistent);
 
   return !rejected
       && rejected.error().failure_reason == s2s::error_reason::validation_failure

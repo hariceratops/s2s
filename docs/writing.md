@@ -2,16 +2,20 @@
 
 ```cpp
 template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto struct_write_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
+[[nodiscard]] auto stream_cast_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
 
 template <struct_field_list_like T, output_stream_like S>
-[[nodiscard]] auto struct_write_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+[[nodiscard]] auto stream_cast_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
 ```
 
 These mirror `struct_cast_xx`: the same schema drives both directions, the
 suffix picks the byte order of every member, and failures come back as the same
 `cast_error`. There is nothing to return on success, so the `expected` holds
 `void`.
+
+Both entry points are named after what they produce, which is what makes the
+pair read as one API: `struct_cast` yields a struct, `stream_cast` yields a
+stream.
 
 The struct is written strictly left to right, one field at a time, in
 declaration order and at every nesting level — the same traversal
@@ -56,7 +60,7 @@ auto main() -> int {
   if(!file)
     return 1;
 
-  if(const auto written = s2s::struct_write_be<log_record>(file, record); !written)
+  if(const auto written = s2s::stream_cast_be<log_record>(file, record); !written)
     return 1;
 
   file.seekg(0);

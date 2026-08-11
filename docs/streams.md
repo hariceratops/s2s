@@ -108,7 +108,7 @@ auto main() -> int {
   beat["sequence"_f] = 0xdeadbeefu;
 
   byte_stream stream;
-  if(const auto written = s2s::struct_write_be<heartbeat>(stream, beat); !written)
+  if(const auto written = s2s::stream_cast_be<heartbeat>(stream, beat); !written)
     return 1;
 
   const auto back = s2s::struct_cast_be<heartbeat>(stream);
