@@ -1,25 +1,49 @@
-# User Guide [Work in Progress]
-Struct
-Reading from stream
-    Trivial
-    Array of trivials
-    Array of records
-    Length prefixed vector of trivials
-    Length prefixed vector of records
-    Const sized strings
-    Length prefixed strings
-    Optionals
-    Unions
-    Magic strings
-    Magic numbers
-Writing to stream
-    A worked example
-    Derived fields are read-only
-    What is checked at write time
-    Write-once, fail-fast
-Using custom stream
-Validating field members
-Error Handling
+# User Guide
+
+The schema is the spine of this guide. It is declared once and drives both
+directions, so it is documented once — [Schema](#schema) and
+[Constraints](#constraints-and-validation) are shared vocabulary, and
+[Reading](#reading) and [Writing](#writing) cover only what each direction does
+differently.
+
+- [The struct](#the-struct)
+- [Schema](#schema)
+  - [The four axes](#the-four-axes)
+  - [The descriptors](#the-descriptors)
+  - [The size axis](#the-size-axis)
+    - [Invertible sizes, and why the write path cares](#invertible-sizes-and-why-the-write-path-cares)
+    - [Computed values](#computed-values)
+    - [`size_choices` is not currently declarable](#size_choices-is-not-currently-declarable)
+  - [Optional and variant fields](#optional-and-variant-fields)
+    - [`maybe` — presence deduction](#maybe--presence-deduction)
+    - [`variance` — type deduction](#variance--type-deduction)
+  - [`fixed_string`](#fixed_string)
+  - [What this guide does not cover](#what-this-guide-does-not-cover)
+- [Constraints and validation](#constraints-and-validation)
+  - [The constructs](#the-constructs)
+  - [Range constraints do not currently compile](#range-constraints-do-not-currently-compile)
+  - [The magic descriptors are constraints](#the-magic-descriptors-are-constraints)
+- [Reading](#reading)
+  - [A worked example](#a-worked-example)
+  - [The field kinds](#the-field-kinds)
+  - [What a failed read leaves behind](#what-a-failed-read-leaves-behind)
+  - [Read errors](#read-errors)
+- [Writing](#writing)
+  - [A worked example](#a-worked-example-1)
+  - [Derived fields are read-only](#derived-fields-are-read-only)
+  - [What is checked at write time](#what-is-checked-at-write-time)
+  - [Write-once, fail-fast](#write-once-fail-fast)
+- [Streams](#streams)
+  - [What a stream must provide](#what-a-stream-must-provide)
+  - [A reference implementation](#a-reference-implementation)
+  - [Constexpr streams](#constexpr-streams)
+- [Compile time](#compile-time)
+  - [The parser is generated at compile time](#the-parser-is-generated-at-compile-time)
+  - [Parsing can be performed at compile time](#parsing-can-be-performed-at-compile-time)
+  - [Compiler support for the constexpr path](#compiler-support-for-the-constexpr-path)
+- [Errors](#errors)
+- [Reference](#reference)
+  - [Known limitations](#known-limitations)
 
 
 ## The struct
@@ -727,63 +751,6 @@ auto main() -> int {
 }
 ```
 
-## Field Descriptors
-```cpp
-using our_struct = 
-  s2s::struct_field_list<
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
-  >;
-```
-The alias list below is the reference form of the table above; it moves into the
-Reference section once the guide's ordering settles.
-
-```cpp
-template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
-  requires field_fits_to_underlying_type<size_type, T>
-using basic_field = field<id, T, size_type, constraint_on_value>;
-
-template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
-
-template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
-
-template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
-using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
-
-template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<T[N]>{}>
-using c_arr_field = field<id, T[N], field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
-
-template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<char[N + 1]>{}>
-using c_str_field = field<id, char[N + 1], field_size<fixed<N * sizeof(char) + 1>>, constraint_on_value>;
-
-template <fixed_string id, std::size_t N, auto expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixed<N>>, eq{expected}>;
-
-template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
-
-template <fixed_string id, integral T, fixed_size_like size, auto expected>
-using magic_number = field<id, T, size, eq{expected}>;
-
-// todo get vector length in bytes instead of size to read additional overload
-// todo how user can provide user defined vector impl or allocator
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
-using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
-
-template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
-using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
-
-// todo check if this will work for all char types like wstring
-template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
-using str_field = field<id, std::string, size, constraint_on_value>;
-
-template <fixed_string id, field_list_like T>
-using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
-```
-
-
 ## Reading
 
 ```cpp
@@ -900,7 +867,7 @@ to where the cast started. If you intend to retry, or to try a second schema
 against the same bytes, record the position yourself before the call. Reading
 from a fresh stream over the same buffer is usually simpler.
 
-### Errors
+### Read errors
 
 | Cause | `failure_reason` | `failed_at` |
 |---|---|---|
@@ -1400,4 +1367,82 @@ stream is exhausted, or type deduction failed while reading into a union.
 A write can fail in those same three ways plus `found_contradicting_length`,
 which means two parts of the struct imply different lengths for the same data
 — a cross-field disagreement rather than a value that is wrong on its own
-terms. See the table above for which check produces which reason.
+terms. See [What is checked at write time](#what-is-checked-at-write-time) for
+which check produces which reason, and [Read errors](#read-errors) for the
+read side.
+
+## Reference
+
+The descriptor aliases as declared in `include/api/field_descriptors.hpp`. The
+[descriptor table](#the-descriptors) is the readable form; this is the exact one.
+
+```cpp
+template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
+  requires field_fits_to_underlying_type<size_type, T>
+using basic_field = field<id, T, size_type, constraint_on_value>;
+
+template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
+using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+
+template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
+using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
+
+template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
+using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
+
+template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<T[N]>{}>
+using c_arr_field = field<id, T[N], field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+
+template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<char[N + 1]>{}>
+using c_str_field = field<id, char[N + 1], field_size<fixed<N * sizeof(char) + 1>>, constraint_on_value>;
+
+template <fixed_string id, std::size_t N, auto expected>
+using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixed<N>>, eq{expected}>;
+
+template <fixed_string id, fixed_string expected>
+using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
+
+template <fixed_string id, integral T, fixed_size_like size, auto expected>
+using magic_number = field<id, T, size, eq{expected}>;
+
+template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
+
+template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
+
+template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
+using str_field = field<id, std::string, size, constraint_on_value>;
+
+template <fixed_string id, field_list_like T>
+using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+
+template <no_variance_field_like base_field, typename present_only_if>
+  requires is_eval_bool_from_fields_v<present_only_if>
+using maybe = maybe_field<base_field, present_only_if>;
+
+template <fixed_string id, type_deduction_like type_deducer>
+  requires (has_unique_field_choices(extract_field_choices<type_deducer>::value)) &&
+           (has_unique_match_values(extract_match_values<type_deducer>::value))
+using variance = union_field<id, type_deducer>;
+```
+
+### Known limitations
+
+Recorded here because they constrain what you can express, not because they are
+planned work:
+
+- **Vector lengths are element counts, not byte counts.** A `vec_field`'s size
+  axis yields how many elements to read. There is no overload taking a length in
+  bytes, so a format that prefixes a byte count for a vector of multi-byte
+  elements needs a `len_from_fields` callable to do the division.
+- **The vector descriptors are fixed to `std::vector`.** There is no hook for a
+  custom container or allocator, so a schema cannot read into a
+  `pmr::vector` or a fixed-capacity vector.
+- **The string descriptors are fixed to `char`.** `str_field` is `std::string`
+  and `fixed_string` holds `char`; wide and UTF-16 character types are not
+  supported.
+- **`size_choices` cannot be declared** — see
+  [The size axis](#size_choices-is-not-currently-declarable).
+- **`range`, `is_in_open_range` and `is_in_closed_range` do not compile** — see
+  [Constraints](#range-constraints-do-not-currently-compile).
