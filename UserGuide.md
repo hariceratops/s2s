@@ -784,7 +784,8 @@ using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}
 ```
 
 
-## Cast
+## Reading
+
 ```cpp
 template <struct_field_list_like T, stream_like S>
 auto struct_cast_le(S& stream) -> std::expected<T, cast_error>;
@@ -792,10 +793,131 @@ auto struct_cast_le(S& stream) -> std::expected<T, cast_error>;
 template <struct_field_list_like T, stream_like S>
 auto struct_cast_be(S& stream) -> std::expected<T, cast_error>;
 ```
-The APIs struct_cast_xx reads from a stream into struct_field_list, when 
-provided a stream as a runtime argument and a struct-schema as a template argument. 
-The xx is either le or be denoting byteorder of all the struct members.
-The APIs return std::expected which either contains a struct_field_list or read_error
+
+The schema is the template argument, the stream is the runtime one. The `le` and
+`be` suffix fixes the byte order of every integral member of the schema — it is
+not a per-field setting. Success gives you the populated `struct_field_list`;
+failure gives you a `cast_error`.
+
+The struct is read strictly left to right, one field at a time, in declaration
+order and at every nesting level. That ordering is not an implementation detail
+you can ignore: it is why a `len_from_field` must name a field declared *before*
+the one it sizes, and why a `parse_if` predicate can only read fields already
+parsed.
+
+### A worked example
+
+<!-- docs: test/single_header/guide_reading_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <sstream>
+#include <string>
+
+using namespace s2s_literals;
+
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+using header =
+  s2s::struct_field_list<
+    s2s::magic_string<"magic", "S2S">,
+    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::str_field<"name", s2s::field_size<s2s::len_from_field<"len">>>,
+    s2s::basic_field<"flags", u16, s2s::field_size<s2s::fixed<2>>>
+  >;
+
+// The bytes a big-endian "header" occupies, written out by hand:
+//   53 32 53 00     magic, "S2S" plus its terminator
+//   00 00 00 05     len = 5
+//   68 65 6c 6c 6f  name, "hello", exactly len bytes
+//   00 01           flags = 1
+constexpr auto on_the_wire =
+  "\x53\x32\x53\x00"
+  "\x00\x00\x00\x05"
+  "hello"
+  "\x00\x01";
+
+auto main() -> int {
+  std::stringstream stream(std::string(on_the_wire, 15),
+                           std::ios::in | std::ios::out | std::ios::binary);
+
+  const auto parsed = s2s::struct_cast_be<header>(stream);
+  if(!parsed)
+    return 1;
+
+  const auto& h = *parsed;
+  if(!(h["len"_f] == 5 && h["name"_f] == "hello" && h["flags"_f] == 1))
+    return 1;
+
+  // A stream that stops short reports where it ran out, not merely that it did.
+  std::stringstream truncated(std::string(on_the_wire, 9),
+                              std::ios::in | std::ios::out | std::ios::binary);
+  const auto failed = s2s::struct_cast_be<header>(truncated);
+
+  return !failed
+      && failed.error().failure_reason == s2s::error_reason::buffer_exhaustion
+      && failed.error().failed_at == std::string_view{"name"}
+        ? 0 : 1;
+}
+```
+
+### The field kinds
+
+Every kind of field the library reads is a descriptor from
+[Schema](#schema); nothing here is read-only vocabulary. What differs per kind
+is how many bytes get consumed and where that count comes from.
+
+| What is on the wire | Declared as | Bytes consumed |
+|---|---|---|
+| Trivial | `basic_field` | its `fixed<N>` |
+| Array of trivials | `fixed_array_field`, `c_arr_field` | `N * sizeof(T)`, fixed |
+| Array of records | `array_of_records` | sum of `N` nested schemas |
+| Length-prefixed vector of trivials | `vec_field` | element count from the size axis |
+| Length-prefixed vector of records | `vector_of_records` | element count from the size axis |
+| Const-sized string | `fixed_string_field`, `c_str_field` | `N + 1`, terminator included |
+| Length-prefixed string | `str_field` | byte count from the size axis |
+| Optional | `maybe` | zero, or the wrapped field's |
+| Union | `variance` | the selected alternative's |
+| Magic string | `magic_string` | `size() + 1`, and the value is checked |
+| Magic number | `magic_number` | its declared size, and the value is checked |
+| Nested record | `struct_field` | whatever the nested schema occupies |
+
+Two of these consume a variable number of bytes on a *per-read* basis rather
+than a per-schema one: `maybe` consumes nothing when its predicate is false, and
+`variance` consumes whatever the selected alternative needs. Everything else has
+a width that is either fixed at compile time or read from an earlier field.
+
+### What a failed read leaves behind
+
+`struct_cast` returns `std::expected`, so a failure gives you a `cast_error` and
+no struct — there is no partially populated result to inspect. What the library
+had parsed up to that point is discarded along with the `expected`.
+
+The stream is a different matter. It is yours, the library does not own it, and
+on failure its read position is wherever the failing field stopped — not rewound
+to where the cast started. If you intend to retry, or to try a second schema
+against the same bytes, record the position yourself before the call. Reading
+from a fresh stream over the same buffer is usually simpler.
+
+### Errors
+
+| Cause | `failure_reason` | `failed_at` |
+|---|---|---|
+| the stream ran out mid-field | `buffer_exhaustion` | the field being read |
+| a `constraint_checker` rejected the decoded value | `validation_failure` | that field |
+| a magic value did not match | `validation_failure` | the magic field |
+| no `match_case` matched and no `branch` predicate held | `type_deduction_failure` | the union field |
+
+`found_contradicting_length`, the fourth `error_reason`, cannot arise on a read.
+It reports two parts of a struct implying different lengths for the same data,
+which is only detectable when writing — reading takes the length off the wire
+and has nothing to disagree with it. See [Writing](#writing).
+
+For a failure inside a nested record, `failed_at` names the outermost record
+field rather than the inner one. A validation failure two levels down inside
+`struct_field<"header", ...>` reports `"header"`, so the name you get back is
+always one that appears in the schema you handed to `struct_cast`.
 
 
 ## Writing to stream

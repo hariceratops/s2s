@@ -75,6 +75,14 @@ target_compile_options(guide_constraints_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_constraints_example COMMAND guide_constraints_example)
 
+# UserGuide.md's Reading section: the worked example.
+add_executable(guide_reading_example guide_reading_example.cpp)
+add_dependencies(guide_reading_example generate_single_header)
+target_include_directories(guide_reading_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_reading_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME guide_reading_example COMMAND guide_reading_example)
+
 # The generated header is tracked, so it has to be byte-identical between
 # runs or every slice's diff is unreviewable.
 add_test(
