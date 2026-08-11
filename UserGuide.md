@@ -331,6 +331,242 @@ would admit a `size_choices` rejects it and admits fixed sizes instead. See
 `dev/issues/027-is-selectable-size-trait-reads-wrong-trait.md`. It is listed
 here for completeness; treat it as unavailable until that is fixed.
 
+### Optional and variant fields
+
+Two combinators sit on top of the descriptors. `maybe` makes a field's
+*presence* conditional; `variance` makes its *type* conditional. Both decide by
+looking at fields already parsed, using the computed-value machinery above.
+
+#### `maybe` — presence deduction
+
+```cpp
+s2s::maybe<
+  s2s::basic_field<"detail", u32, s2s::field_size<s2s::fixed<4>>>,
+  s2s::parse_if<kind_is_one, s2s::with_fields<"kind">>
+>
+```
+
+The first argument is an ordinary descriptor; the second is a `parse_if` whose
+predicate decides whether the field is on the wire at all. Reading, a false
+predicate means the field is skipped and the stream position does not move.
+Writing, the predicate is checked against whether the struct actually holds a
+value, and a disagreement is a `validation_failure` — the predicate is not
+allowed to say "present" while the struct is empty, because the result would not
+read back.
+
+The field's value is reached by dereferencing:
+
+```cpp
+*(obj["detail"_f])
+```
+
+<!-- docs: test/single_header/guide_optional_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <sstream>
+
+using namespace s2s_literals;
+
+using u32 = unsigned int;
+
+// "detail" is on the wire only when "kind" is 1. The predicate reads siblings
+// that have already been parsed, which is why it must name them.
+constexpr auto kind_is_one = [](auto kind) { return kind == 1u; };
+
+using message =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::maybe<
+      s2s::basic_field<"detail", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::parse_if<kind_is_one, s2s::with_fields<"kind">>
+    >
+  >;
+
+auto write_and_read(u32 kind, bool with_detail) -> bool {
+  message obj{};
+  obj["kind"_f] = kind;
+  if(with_detail)
+    obj["detail"_f] = 0xbeefbeefu;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  const auto written = s2s::struct_write_be<message>(stream, obj);
+  if(!written)
+    return false;
+
+  const auto back = s2s::struct_cast_be<message>(stream);
+  if(!back)
+    return false;
+
+  // An absent optional is empty; a present one is dereferenced.
+  return with_detail ? *((*back)["detail"_f]) == 0xbeefbeefu : true;
+}
+
+auto main() -> int {
+  // kind == 1: the predicate says present, and the struct supplies it.
+  if(!write_and_read(1u, true))
+    return 1;
+
+  // kind == 2: the predicate says absent, and the struct leaves it unset.
+  if(!write_and_read(2u, false))
+    return 1;
+
+  // Disagreement is caught: the predicate says present, the struct is empty.
+  message bad{};
+  bad["kind"_f] = 1u;
+  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
+  const auto rejected = s2s::struct_write_be<message>(discard, bad);
+
+  return !rejected
+      && rejected.error().failure_reason == s2s::error_reason::validation_failure
+        ? 0 : 1;
+}
+```
+
+#### `variance` — type deduction
+
+`variance<id, type<...>>` produces a field whose C++ type is a `std::variant` of
+the alternatives, reached with `std::get`. There are two ways to say which
+alternative applies, and they differ in a way that matters on the write path.
+
+**By discriminant.** `type<match_field<"tag">, type_switch<match_case<v, tag>...>>`
+reads the field named by `match_field` and picks the `match_case` whose value
+matches. The discriminant can also be computed rather than read directly, by
+putting a `compute<...>` where the `match_field` goes.
+
+**By predicate.** `type<type_if_else<branch<predicate, tag>...>>` evaluates each
+branch's predicate in order and takes the first that holds. There is no
+discriminant field and no `match_field` — nothing about the choice is on the
+wire.
+
+> The directory `include/type_deduction/if_else_ladder/` gives this construct its
+> informal name, but `if_else_ladder` is not an identifier. The types are
+> `type_if_else` and `branch`.
+
+The alternatives are named with type tags rather than descriptors, because an
+alternative has no id of its own — it inherits the `variance`'s.
+
+| Tag | Alternative type |
+|---|---|
+| `as_trivial<T, size>` | integral `T` |
+| `as_struct<T>` | a nested schema |
+| `as_fixed_arr<T, N>` | `std::array<T, N>` |
+| `as_arr_of_records<T, N>` | `std::array<T, N>` of schemas |
+| `as_vec<T, size>` | `std::vector<T>` |
+| `as_vec_of_records<T, size>` | `std::vector<T>` of schemas |
+| `as_string<size>` | `std::string` |
+| `as_fixed_string<N>` | `fixed_string<N>` |
+
+**Which form you choose decides whether the discriminant is yours to set.** A
+`match_case` value can be run backwards — if the variant holds the alternative
+tagged `2`, the discriminant is `2` — so the library derives the `match_field`
+target and makes assigning to it a compile error. A `branch` predicate cannot be
+inverted, so the fields feeding it stay assignable and are verified instead: at
+write time the predicates are re-evaluated, and if the branch they select is not
+the alternative being held, the write fails with `validation_failure`.
+
+If no branch holds and no `match_case` matches, the failure is
+`type_deduction_failure` rather than `validation_failure` — the library could not
+work out which alternative applies at all, as opposed to finding one that
+disagrees.
+
+<!-- docs: test/single_header/guide_variance_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <sstream>
+#include <variant>
+
+using namespace s2s_literals;
+
+using u32 = unsigned int;
+using i32 = int;
+
+// Selection by discriminant: "tag" says which alternative "body" holds.
+using switched =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<1, s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>>,
+          s2s::match_case<2, s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>>
+        >
+      >
+    >
+  >;
+
+// Selection by predicate: no discriminant on the wire at all, so there is no
+// match_field and nothing for the library to derive.
+constexpr auto sum_is_small = [](auto a, auto b) { return a + b < 100u; };
+constexpr auto sum_is_large = [](auto a, auto b) { return a + b >= 100u; };
+
+using laddered =
+  s2s::struct_field_list<
+    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::type_if_else<
+          s2s::branch<
+            s2s::predicate<sum_is_small, s2s::with_fields<"a", "b">>,
+            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+          >,
+          s2s::branch<
+            s2s::predicate<sum_is_large, s2s::with_fields<"a", "b">>,
+            s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>
+          >
+        >
+      >
+    >
+  >;
+
+auto main() -> int {
+  // "tag" is never assigned: it is derived from which alternative body holds.
+  switched s{};
+  s["body"_f] = i32{-7};
+
+  std::stringstream a(std::ios::in | std::ios::out | std::ios::binary);
+  if(const auto written = s2s::struct_write_be<switched>(a, s); !written)
+    return 1;
+  const auto s_back = s2s::struct_cast_be<switched>(a);
+  if(!s_back || (*s_back)["tag"_f] != 2 || std::get<i32>((*s_back)["body"_f]) != -7)
+    return 1;
+
+  // "a" and "b" stay assignable: a predicate has no inverse, so they are
+  // verified against the alternative held rather than derived from it.
+  laddered l{};
+  l["a"_f] = 10u;
+  l["b"_f] = 20u;
+  l["body"_f] = u32{42};
+
+  std::stringstream b(std::ios::in | std::ios::out | std::ios::binary);
+  if(const auto written = s2s::struct_write_be<laddered>(b, l); !written)
+    return 1;
+  const auto l_back = s2s::struct_cast_be<laddered>(b);
+  if(!l_back || std::get<u32>((*l_back)["body"_f]) != 42)
+    return 1;
+
+  // The held alternative contradicts the branch the predicates select.
+  laddered wrong{};
+  wrong["a"_f] = 500u;
+  wrong["b"_f] = 500u;
+  wrong["body"_f] = u32{42};
+  std::stringstream discard(std::ios::in | std::ios::out | std::ios::binary);
+  const auto rejected = s2s::struct_write_be<laddered>(discard, wrong);
+
+  return !rejected
+      && rejected.error().failure_reason == s2s::error_reason::validation_failure
+        ? 0 : 1;
+}
+```
+
+Two constraints are enforced on a `variance` at compile time: the alternatives
+must be distinct types, and the `match_case` values must be unique.
+
 ### `fixed_string`
 
 `fixed_string<N>` is part of the supported surface, not an internal detail. You
