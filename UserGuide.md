@@ -920,7 +920,8 @@ field rather than the inner one. A validation failure two levels down inside
 always one that appears in the schema you handed to `struct_cast`.
 
 
-## Writing to stream
+## Writing
+
 ```cpp
 template <struct_field_list_like T, output_stream_like S>
 [[nodiscard]] auto stream_cast_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
@@ -928,15 +929,23 @@ template <struct_field_list_like T, output_stream_like S>
 template <struct_field_list_like T, output_stream_like S>
 [[nodiscard]] auto stream_cast_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
 ```
-The APIs stream_cast_xx serialize a struct_field_list to a stream. They mirror
-struct_cast_xx: the same schema drives both directions, the xx suffix picks the
-byte order of every member, and failures come back as the same cast_error.
-There is nothing to return on success, so the expected holds void.
+
+The APIs mirror `struct_cast_xx`: the same schema drives both directions, the
+suffix picks the byte order of every member, and failures come back as the same
+`cast_error`. There is nothing to return on success, so the `expected` holds
+`void`.
 
 The struct is written strictly left to right, one field at a time, in
-declaration order and at every nesting level.
+declaration order and at every nesting level — the same traversal
+[Reading](#reading) describes.
+
+What is specific to this direction is that the schema now has to *produce* the
+values it previously only consumed. Every construct below is declared in
+[Schema](#schema); this section covers only what writing does with them.
 
 ### A worked example
+
+<!-- docs: test/single_header/guide_writing_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 #include <sstream>
@@ -1035,10 +1044,14 @@ parsed["data"_f] = std::vector<u16>(5);   // "count" becomes 5 on the next write
 
 Fields that are *not* derived stay assignable, including ones that look
 similar: the sources feeding a `len_from_fields<callable, ...>` callable, the
-siblings feeding a `parse_if` predicate, the fields feeding an
-`if_else_ladder` branch, and a length whose only container sits inside a
-`maybe` or a union alternative. None of those can be inverted, so they remain
-yours to set — and are verified rather than derived.
+siblings feeding a `parse_if` predicate, the fields feeding a `branch`
+predicate inside a `type_if_else`, and a length whose only container sits
+inside a `maybe` or a union alternative. None of those can be inverted, so they
+remain yours to set — and are verified rather than derived.
+
+The rule behind that list is [invertibility](#invertible-sizes-and-why-the-write-path-cares):
+a construct the library can run backwards is derived and made read-only, and one
+it cannot is left to you and checked.
 
 ### What is checked at write time
 Everything the library can check without a second pass is checked *before*
@@ -1048,7 +1061,7 @@ the offending field's first byte is emitted.
 |---|---|---|
 | `constraint_checker` rejects the value (e.g. a wrong magic value) | `validation_failure` | that field |
 | a `parse_if` predicate disagrees with the optional's `has_value()` | `validation_failure` | the optional field |
-| an `if_else_ladder` or computed-switch selects an alternative other than the one held | `validation_failure` | the union field |
+| a `type_if_else` or computed-switch selects an alternative other than the one held | `validation_failure` | the union field |
 | no ladder branch and no `match_case` matches at all | `type_deduction_failure` | the union field |
 | a derived or verified length does not fit its declared width | `validation_failure` | the length field |
 | a `len_from_fields` callable disagrees with the container's real size | `found_contradicting_length` | the container field |
