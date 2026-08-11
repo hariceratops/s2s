@@ -1,4 +1,4 @@
-// Backs the variance/type-deduction example in UserGuide.md. The region between
+// Backs the variance/type-deduction example in docs/schema/optional-and-variant.md. The region between
 // docs-begin and docs-end is compared against that fenced block by the
 // doc_examples_match test, so edit them together or the check fails.
 // docs-begin

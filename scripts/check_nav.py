@@ -41,10 +41,10 @@ def nav_pages(mkdocs_yml: Path) -> list[str]:
 def main(argv: list[str]) -> int:
     root = Path(argv[1] if len(argv) > 1 else ".")
     docs = root / "docs"
-    mkdocs_yml = root / "mkdocs.yml"
+    mkdocs_yml = root / "docs" / "mkdocs.yml"
 
     if not mkdocs_yml.exists():
-        print("check_nav: no mkdocs.yml", file=sys.stderr)
+        print("check_nav: no docs/mkdocs.yml", file=sys.stderr)
         return 1
 
     listed = nav_pages(mkdocs_yml)

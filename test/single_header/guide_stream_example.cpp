@@ -1,4 +1,4 @@
-// Backs the reference stream implementation in UserGuide.md's Streams section.
+// Backs the reference stream implementation in docs/streams.md.
 // The region between docs-begin and docs-end is compared against that fenced
 // block by the doc_examples_match test, so edit them together or the check
 // fails.

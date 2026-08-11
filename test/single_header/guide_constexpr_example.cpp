@@ -1,4 +1,4 @@
-// Backs the constexpr example in UserGuide.md's Compile time section. The
+// Backs the constexpr example in docs/compile-time.md. The
 // region between docs-begin and docs-end is compared against that fenced block
 // by the doc_examples_match test, so edit them together or the check fails.
 // docs-begin

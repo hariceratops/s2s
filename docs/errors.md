@@ -37,6 +37,6 @@ not the inner one — a validation failure two levels down inside
 
 That is a deliberate limitation rather than an oversight: `cast_error` carries
 one name, so a nesting chain and a cross-field contradiction cannot both be
-expressed. `doc/todos.md` records the design discussion under "Error
-ergonomics", including why a shared-length contradiction names the length field
-but not the dependent that disagreed with it.
+expressed. The project's development backlog records the design discussion under
+"Error ergonomics", including why a shared-length contradiction names the length
+field but not the dependent that disagreed with it.

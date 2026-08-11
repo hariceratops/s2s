@@ -1,4 +1,4 @@
-// Backs the computed-values example in UserGuide.md. The region between
+// Backs the computed-values example in docs/schema/computed-values.md. The region between
 // docs-begin and docs-end is compared against that fenced block by the
 // doc_examples_match test, so edit them together or the check fails.
 // docs-begin

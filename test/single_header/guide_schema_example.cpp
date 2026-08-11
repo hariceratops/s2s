@@ -1,4 +1,4 @@
-// Backs the four-axes example in UserGuide.md's Schema section. The region
+// Backs the four-axes example in docs/schema/index.md. The region
 // between docs-begin and docs-end is compared against that fenced block by the
 // doc_examples_match test, so edit them together or the check fails.
 // docs-begin

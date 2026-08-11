@@ -164,18 +164,20 @@ constraint DSL, both directions in depth, writing a custom stream, and what
 
 ### Reading it locally
 
-```sh
-pip install -r requirements-docs.txt
+Everything needed to render the guide lives in `docs/`, so both commands name
+the config there:
 
-mkdocs serve     # live-reloading site on http://127.0.0.1:8000
-mkdocs build     # or render once into site/
+```sh
+pip install -r docs/requirements.txt
+
+mkdocs serve -f docs/mkdocs.yml   # live-reloading site on http://127.0.0.1:8000
+mkdocs build -f docs/mkdocs.yml   # or render once into site/
 ```
 
-`mkdocs serve` watches `docs/` and `mkdocs.yml` and reloads on every edit. The
-pages are plain markdown with relative links, so they also read fine straight
-from [`docs/`](docs/index.md) on GitHub, or from
-[UserGuide.md](UserGuide.md), which indexes them — building is only needed for
-the rendered site.
+`mkdocs serve` watches the pages and reloads on every edit. They are plain
+markdown with relative links, so they also read fine straight from
+[`docs/`](docs/index.md) on GitHub — building is only needed for the rendered
+site.
 
 ## Roadmap
 - [x] Trivials

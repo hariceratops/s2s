@@ -22,12 +22,13 @@ There is no `.clang-format` or `.clang-tidy` in the repo, so formatting
 follows the surrounding file rather than a tool.
 
 Documentation lives in `README.md` (a pitch) and `docs/` (everything else),
-built as an mkdocs-material site — `mkdocs.yml` holds the nav,
-`requirements-docs.txt` the one dependency, and `.github/workflows/docs.yml`
-builds on every PR and deploys from main. `UserGuide.md` is a stub pointing at
-`docs/`, kept only so existing links resolve. Nothing is documented twice; the
-site owns the schema language, the constraint DSL, both directions, streams and
-the compile-time claims.
+built as an mkdocs-material site. Everything needed to render it is confined to
+`docs/`: `docs/mkdocs.yml` holds the nav, `docs/requirements.txt` the one
+dependency. Both commands name that config —
+`mkdocs serve -f docs/mkdocs.yml` — and `.github/workflows/docs.yml` builds on
+every PR and deploys from main. Nothing is documented twice; the site owns the
+schema language, the constraint DSL, both directions, streams and the
+compile-time claims.
 
 Prose addresses the reader in neutral third person, not as "you".
 

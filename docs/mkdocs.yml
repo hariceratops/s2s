@@ -1,8 +1,19 @@
+# Kept beside the pages it builds rather than at the repo root, so everything
+# needed to render the guide lives in one directory. Invoke with
+#   mkdocs serve -f docs/mkdocs.yml
 site_name: s2s
 site_description: A declarative binary parser for C++23 — stream to struct, and back again.
 repo_url: https://github.com/hariprasad12994/struct_cast
 repo_name: hariprasad12994/struct_cast
 edit_uri: edit/main/docs/
+
+# The pages sit next to this file, so the config and its requirements would
+# otherwise be copied into the built site as if they were content.
+docs_dir: .
+site_dir: ../site
+exclude_docs: |
+  mkdocs.yml
+  requirements.txt
 
 theme:
   name: material

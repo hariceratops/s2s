@@ -1,4 +1,4 @@
-// The derived-field claims UserGuide.md's Writing section makes in prose,
+// The derived-field claims docs/writing.md makes in prose,
 // asserted rather than shown. They are not part of any fenced block, so the
 // doc_examples_match test cannot cover them; this target does.
 //

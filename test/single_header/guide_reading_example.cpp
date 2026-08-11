@@ -1,4 +1,4 @@
-// Backs the worked example in UserGuide.md's Reading section. The region
+// Backs the worked example in docs/reading.md. The region
 // between docs-begin and docs-end is compared against that fenced block by the
 // doc_examples_match test, so edit them together or the check fails.
 // docs-begin
