@@ -2,7 +2,11 @@
 #define _CONSTEXPR_MEMSTREAM_HPP_
 
 #include <array>
-#include "../../single_header/s2s.hpp"
+// Only s2s::constexpr_stream is needed. Including the single header here would
+// pull the generated artifact into ut sources that compile against include/,
+// and a compile-time diagnostic pointing into a 20k-line amalgam costs the
+// readability ut is being adopted for.
+#include "../../include/stream/stream_traits.hpp"
 
 using u8 = unsigned char;
 
