@@ -16,8 +16,26 @@ Sources live under `include/` and are amalgamated by `scripts/amalgam.py`
 into the shipped `single_header/s2s.hpp`, which is what consumers include.
 Both directions are complete: stream to struct via `struct_cast_le`/`_be`, and
 struct to stream via `stream_cast_le`/`_be`.
-Tests use GoogleTest, fetched at configure time via CMake `FetchContent`,
-and are split into `test/runtime/` and `test/constexpr/`.
+Tests use two frameworks, both fetched at configure time via CMake
+`FetchContent`. Routing between them is by constant-evaluability, and the
+compiler enforces it: a body the compiler can evaluate on its own belongs to
+qlibs/ut, registered with `add_ut_test`, which builds one source twice — once
+under `UT_COMPILE_TIME_ONLY` and once under `UT_RUN_TIME_ONLY` — so the same
+test runs at compile time and at run time. Anything holding a real stream
+object (`ifstream`, `ofstream`, `stringstream`) is not constant-evaluable and
+belongs to GoogleTest, registered with `add_struct_cast_test`. The two never
+share a binary: ut aborts from a static destructor, and its compile-time mode
+is a `static_assert` inside the translation unit.
+
+Both helpers live in `test/CMakeLists.txt`; per-directory files only call
+them. A `ut` CTest entry named `*_compile_time` drives `cmake --build` rather
+than running its binary — running it reports a stale binary from the last good
+build as a pass.
+
+The tree is mid-reorganisation from execution-mode directories
+(`test/runtime/`, `test/constexpr/`) to per-feature ones under `test/fields/`,
+with `test/internals/` for machinery that is not a schema construct. See
+`dev/specs/compile-time-test-tier.md`.
 There is no `.clang-format` or `.clang-tidy` in the repo, so formatting
 follows the surrounding file rather than a tool.
 
@@ -68,7 +86,8 @@ Examples use realistic wire formats and real names rather than `our_struct` and
   once against `identified_as_constexpr_stream` (buffer-based, usable in
   constant evaluation) and once against runtime `readable`/`writeable`
   streams. New stream-touching code is expected to provide both overloads
-  and to be covered by both `test/runtime/` and `test/constexpr/`.
+  and to be covered in both forms — a `ut` suite for the constexpr-stream
+  path and a GoogleTest case for the runtime one.
 
 - **Concepts, not SFINAE.** Templates are constrained with named concepts
   (`field_list_like`, `input_stream_like`, `trivial`,
