@@ -45,6 +45,154 @@ const auto& operator[](field_accessor);
 ```
 
 
+## Schema
+
+A schema is a type. You declare it once as a `struct_field_list` of field
+descriptors, and that single declaration drives both directions: `struct_cast`
+reads a stream into it, `struct_write` writes it back out.
+
+Nothing in this section belongs to one direction. Field descriptors are the
+schema language, not a read-side feature — where the two directions genuinely
+differ is in what they *do* with a declaration, and that is covered in
+[Reading](#reading) and [Writing](#writing).
+
+### The four axes
+
+Every field declares up to four things.
+
+| Axis | What it answers | Required |
+|---|---|---|
+| `id` | what the field is called | always |
+| `type` | which C++ type holds the value | always |
+| `size` | how many bytes it occupies on the wire | unless the type implies it |
+| `constraint` | which values are legal | no — defaults to `no_constraint` |
+
+<!-- docs: test/single_header/guide_schema_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <sstream>
+#include <vector>
+
+using namespace s2s_literals;
+
+using u8 = unsigned char;
+using u16 = unsigned short;
+using u32 = unsigned int;
+
+using packet =
+  s2s::struct_field_list<
+    // id         type    size                              constraint
+    s2s::magic_string<"magic", "PKT">,
+    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
+    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"len">>>
+  >;
+
+auto main() -> int {
+  packet obj{};
+  obj["magic"_f] = s2s::fixed_string<3>("PKT");
+  obj["version"_f] = u16{2};
+  obj["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  if(const auto written = s2s::struct_write_be<packet>(stream, obj); !written)
+    return 1;
+
+  const auto back = s2s::struct_cast_be<packet>(stream);
+  if(!back)
+    return 1;
+
+  // "len" was never assigned; it is the size axis of "payload" resolved.
+  return (*back)["len"_f] == 4 && (*back)["version"_f] == 2 ? 0 : 1;
+}
+```
+
+**`id`** is a string literal and is how you reach the field:
+`obj["version"_f]`, using the `_f` literal from `s2s_literals`. Ids are unique
+within a `struct_field_list` — a duplicate is a compile error, and so is looking
+up an id the schema does not contain, because the lookup is a concept check
+rather than a runtime search.
+
+**`type`** is an ordinary C++ type. Which types are admissible depends on the
+descriptor: `basic_field` takes integrals, the record descriptors take another
+`struct_field_list`, and the string and vector descriptors fix the type
+themselves.
+
+**`size`** says how many bytes the field occupies on the wire, which is not the
+same question as how large its C++ type is. A `u32` field can be declared to
+occupy two bytes. The axis has six forms and enough depth to warrant
+[its own section](#the-size-axis).
+
+**`constraint`** narrows which values are legal. It is checked in both
+directions — while reading, before the value is handed back; while writing,
+before the field's first byte is emitted — and a violation is a
+`validation_failure` either way. See [Constraints and validation](#constraints-and-validation).
+
+### The descriptors
+
+Each descriptor is an alias that fixes some axes and leaves the rest to you.
+`constraint` is the last parameter of every descriptor that accepts one, and
+defaults to `no_constraint`.
+
+| Descriptor | Type it holds | Size axis |
+|---|---|---|
+| `basic_field<id, T, size, c>` | integral `T` | yours, must be `fixed` and fit `sizeof(T)` |
+| `fixed_array_field<id, T, N, c>` | `std::array<T, N>` | fixed at `N * sizeof(T)` |
+| `c_arr_field<id, T, N, c>` | `T[N]` | fixed at `N * sizeof(T)` |
+| `array_of_records<id, T, N, c>` | `std::array<T, N>`, `T` a schema | `size_dont_care` |
+| `fixed_string_field<id, N, c>` | `fixed_string<N>` | fixed at `N + 1` |
+| `c_str_field<id, N, c>` | `char[N + 1]` | fixed at `N + 1` |
+| `str_field<id, size, c>` | `std::string` | yours, must be variable |
+| `vec_field<id, T, size, c>` | `std::vector<T>` | yours, must be variable |
+| `vector_of_records<id, T, size, c>` | `std::vector<T>`, `T` a schema | yours, must be variable |
+| `struct_field<id, T>` | `T`, a schema | `size_dont_care` — no constraint axis |
+| `magic_byte_array<id, N, expected>` | `std::array<unsigned char, N>` | fixed at `N` |
+| `magic_string<id, expected>` | `fixed_string<expected.size()>` | fixed at `expected.size() + 1` |
+| `magic_number<id, T, size, expected>` | integral `T` | yours |
+| `maybe<field, present_only_if>` | wraps another descriptor | inherited from it |
+| `variance<id, deducer>` | a `std::variant` of the alternatives | from the deduction |
+
+Three things in that table are easy to misread.
+
+The `+ 1` on `fixed_string_field`, `c_str_field` and `magic_string` is a
+terminator byte: a `fixed_string<3>` such as `"PKT"` occupies four bytes on the
+wire, not three.
+
+`size_dont_care` is not a size of zero. It marks a field whose width is whatever
+its own nested schema turns out to occupy, which is why the record descriptors
+use it and why you never write it yourself.
+
+The magic descriptors are not a separate mechanism. Each is an ordinary
+descriptor with an `eq` constraint already applied, which is why they take an
+`expected` value where the others take a constraint.
+
+`maybe` and `variance` are combinators rather than field kinds — they wrap or
+select among the descriptors above. They are covered in
+[Optional and variant fields](#optional-and-variant-fields).
+
+### `fixed_string`
+
+`fixed_string<N>` is part of the supported surface, not an internal detail. You
+cannot avoid it: `magic_string` and `fixed_string_field` use it as their field
+type, so assigning to one means constructing one.
+
+```cpp
+obj["magic"_f] = s2s::fixed_string<3>("PKT");
+```
+
+`N` is the length in characters, excluding the terminator, so the argument is a
+4-character string literal. It offers `data()`, `size()`, `to_sv()`, and
+comparison against other `fixed_string`s of any length.
+
+### What this guide does not cover
+
+`include/lib/` also holds `static_vector`, `static_map`, and a set of
+metaprogramming helpers. These are implementation machinery for keeping compiler
+diagnostics readable, they have no user-facing uses, and they are deliberately
+undocumented. Treat them as internal and subject to change; `fixed_string` is
+the exception, for the reason above.
+
 ## Field Descriptors
 ```cpp
 using our_struct = 
@@ -53,13 +201,8 @@ using our_struct =
     s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
   >;
 ```
-Library provides users a way to describe the fields contained in the struct_field_list
-Each descriptor is a variadic template, describing the name, type, size, constraint on 
-value along with type deduction or presence deduction guides if any
-
-Available descriptors are: basic_fields, fixed_array, fixed_string, 
-array_of_records, vec_field, str_field, vector_of_records,
-magic_string, magic_number, magic_byte_array, union_field and maybe
+The alias list below is the reference form of the table above; it moves into the
+Reference section once the guide's ordering settles.
 
 ```cpp
 template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
