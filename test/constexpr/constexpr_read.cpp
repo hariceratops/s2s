@@ -15,59 +15,6 @@ constexpr auto comptime_memcpy(char* dest, char* src, std::size_t size_to_copy) 
 }
 
 using u32 = unsigned int;
-using our_struct =
-  s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
-  >;
-
-
-constexpr auto parse_our_struct() -> std::expected<our_struct, s2s::cast_error>
-{
-  std::array<u8, 8> buffer{0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe, 0xca};
-  memstream<8> stream(buffer);
-  return s2s::struct_cast_le<our_struct>(stream);
-}
-
-constexpr auto failing_parse_our_struct() -> std::expected<our_struct, s2s::cast_error> 
-{
-  std::array<u8, 7> buffer{0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe};
-  memstream<7> stream(buffer);
-  return s2s::struct_cast_le<our_struct>(stream);
-}
-
-constexpr auto res = parse_our_struct();
-static_assert(res);
-constexpr auto fields = *res;
-static_assert(fields["a"_f] == 0xdeadbeef);
-static_assert(fields["b"_f] == 0xcafed00d);
-
-constexpr auto fail_res = failing_parse_our_struct();
-static_assert(not fail_res);
-constexpr auto err = fail_res.error();
-static_assert(err.failed_at == "b");
-static_assert(err.failure_reason == s2s::error_reason::buffer_exhaustion);
-
-
-void test_001() {
-  auto res = failing_parse_our_struct();
-  if(res) {
-    auto fields = *res;
-    std::cout << std::hex << fields["a"_f] << " " << fields["b"_f] << '\n';
-  } else {
-    std::cout << static_cast<int>(res.error().failure_reason) << " " << res.error().failed_at << '\n';
-  }
-}
-
-void test_002() {
-  auto res = parse_our_struct();
-  if(res) {
-    auto fields = *res;
-    std::cout << std::hex << fields["a"_f] << " " << fields["b"_f] << '\n';
-  } else {
-    std::cout << static_cast<int>(res.error().failure_reason) << " " << res.error().failed_at << '\n';
-  }
-}
 
 using test_struct = 
   s2s::struct_field_list<
@@ -243,10 +190,10 @@ static_assert(inner_2_obj["p"_f] == 0xdeadbeef);
 static_assert(inner_2_obj["q"_f] == 0xcafed00d);
 
 
+// The assertions above are all static_asserts; nothing is left to run. The
+// trivial-field section moved to test/fields/trivial_read_ct.cpp, taking the
+// test_001/test_002 debug printers with it — they asserted nothing.
 auto main(void) -> int {
-  test_001();
-  test_002();
-  std::cout << sizeof(our_struct) << " " << sizeof(unionish) << " " << sizeof(opt_field_struct) << " " << sizeof(arr_recs_struct);
   return 0;
 }
 

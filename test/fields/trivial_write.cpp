@@ -5,7 +5,7 @@
 
 using namespace s2s_literals;
 
-TEST(WriteTrivialFields, RoundTripsTrivialFieldsLittleEndian) {
+TEST(TrivialWrite, RoundTripsTrivialFieldsLittleEndian) {
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -24,7 +24,7 @@ TEST(WriteTrivialFields, RoundTripsTrivialFieldsLittleEndian) {
   });
 }
 
-TEST(WriteTrivialFields, RoundTripsTrivialFieldsBigEndian) {
+TEST(TrivialWrite, RoundTripsTrivialFieldsBigEndian) {
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -45,7 +45,7 @@ TEST(WriteTrivialFields, RoundTripsTrivialFieldsBigEndian) {
 
 // Round-trip alone would pass even if both directions ignored endianness, so
 // pin the bytes that actually reach the stream.
-TEST(WriteTrivialFields, EmitsDeclaredByteOrder) {
+TEST(TrivialWrite, EmitsDeclaredByteOrder) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>
@@ -63,7 +63,7 @@ TEST(WriteTrivialFields, EmitsDeclaredByteOrder) {
   EXPECT_EQ(be.str(), std::string("\xde\xad\xbe\xef", 4));
 }
 
-TEST(WriteTrivialFields, WritesFieldsInDeclarationOrder) {
+TEST(TrivialWrite, WritesFieldsInDeclarationOrder) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"first", u8, s2s::field_size<s2s::fixed<1>>>,
