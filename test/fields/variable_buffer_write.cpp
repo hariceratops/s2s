@@ -29,7 +29,7 @@ auto expect_matches_populated(const prefixed_schema& actual) -> void {
 }
 } /* namespace */
 
-TEST(WriteVariableBufferFields, RoundTripsLengthPrefixedFieldsLittleEndian) {
+TEST(VariableBufferWrite, RoundTripsLengthPrefixedFieldsLittleEndian) {
   using test_field_list = prefixed_schema;
 
   FIELD_LIST_LE_ROUNDTRIP_CHECK(populated(), {
@@ -39,7 +39,7 @@ TEST(WriteVariableBufferFields, RoundTripsLengthPrefixedFieldsLittleEndian) {
   });
 }
 
-TEST(WriteVariableBufferFields, RoundTripsLengthPrefixedFieldsBigEndian) {
+TEST(VariableBufferWrite, RoundTripsLengthPrefixedFieldsBigEndian) {
   using test_field_list = prefixed_schema;
 
   FIELD_LIST_BE_ROUNDTRIP_CHECK(populated(), {
@@ -51,7 +51,7 @@ TEST(WriteVariableBufferFields, RoundTripsLengthPrefixedFieldsBigEndian) {
 
 // The length slot is derived, not stored: whatever the caller left in it is
 // overwritten by the container's real size.
-TEST(WriteVariableBufferFields, IgnoresTheStoredLengthAndDerivesIt) {
+TEST(VariableBufferWrite, IgnoresTheStoredLengthAndDerivesIt) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -68,7 +68,7 @@ TEST(WriteVariableBufferFields, IgnoresTheStoredLengthAndDerivesIt) {
 
 // A derived length is emitted in its own declared width and byte order, not
 // the container's.
-TEST(WriteVariableBufferFields, EmitsDerivedLengthInDeclaredWidthAndByteOrder) {
+TEST(VariableBufferWrite, EmitsDerivedLengthInDeclaredWidthAndByteOrder) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -83,7 +83,7 @@ TEST(WriteVariableBufferFields, EmitsDerivedLengthInDeclaredWidthAndByteOrder) {
   EXPECT_EQ(be.str(), std::string("\x00\x00\x00\x02\xaa\xbb\xcc\xdd", 8));
 }
 
-TEST(WriteVariableBufferFields, RoundTripsEmptyContainers) {
+TEST(VariableBufferWrite, RoundTripsEmptyContainers) {
   using test_field_list = prefixed_schema;
 
   prefixed_schema obj{};
@@ -98,7 +98,7 @@ TEST(WriteVariableBufferFields, RoundTripsEmptyContainers) {
 
 // Silent truncation would produce a stream that reads back as a shorter
 // container, so a length that does not fit its slot must fail the write.
-TEST(WriteVariableBufferFields, RejectsLengthTooWideForItsDeclaredSlot) {
+TEST(VariableBufferWrite, RejectsLengthTooWideForItsDeclaredSlot) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
@@ -116,7 +116,7 @@ TEST(WriteVariableBufferFields, RejectsLengthTooWideForItsDeclaredSlot) {
   EXPECT_TRUE(stream.str().empty());
 }
 
-TEST(WriteVariableBufferFields, AcceptsALengthThatExactlyFillsItsSlot) {
+TEST(VariableBufferWrite, AcceptsALengthThatExactlyFillsItsSlot) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,

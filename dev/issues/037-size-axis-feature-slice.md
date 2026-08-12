@@ -31,3 +31,14 @@ Depends on: 028.
   behaviour `test/compile_fail/derived_field_assignment.cpp` asserts
   negatively — from the positive side.
 - Old sources deleted; `ctest` green.
+
+## Notes 2026-08-12 (from 031)
+
+`test/fields/size_axis_read.cpp` already exists, holding the one relocated
+`len_from_fields` case. Create nothing; fill it out.
+
+031 deferred shared-length fan-out here rather than covering it twice — this
+issue owns the contradiction case, which is the same behaviour from the failing
+side. The fan-out `static_assert`s are still in `constexpr_write.cpp`
+(`roundtrip_fanout`, `write_contradicting_fanout`), along with the computed
+ones (`roundtrip_computed`, `write_disagreeing_computed`).

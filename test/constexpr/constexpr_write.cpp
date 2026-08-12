@@ -59,65 +59,6 @@ constexpr auto write_wrong_magic() -> s2s::cast_result {
     return s2s::stream_cast_le<magic_struct>(stream, obj);
 }
 
-using prefixed_struct =
-  s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"len">>>
-  >;
-
-// The vector never escapes the constant evaluation, so its allocation is
-// transient and the round-trip is legal at compile time.
-template <bool big_endian>
-constexpr auto roundtrip_prefixed() -> bool {
-  std::array<u8, 10> buffer{};
-  memstream<10> stream(buffer);
-  prefixed_struct obj{};
-  obj["vec"_f] = std::vector<u16>{0x1122, 0x3344, 0x5566};
-
-  if constexpr(big_endian) {
-    if(!s2s::stream_cast_be<prefixed_struct>(stream, obj))
-      return false;
-  } else {
-    if(!s2s::stream_cast_le<prefixed_struct>(stream, obj))
-      return false;
-  }
-  stream.rewind();
-  auto res = [&] {
-    if constexpr(big_endian)
-      return s2s::struct_cast_be<prefixed_struct>(stream);
-    else
-      return s2s::struct_cast_le<prefixed_struct>(stream);
-  }();
-  return res && (*res)["len"_f] == 3 && (*res)["vec"_f] == obj["vec"_f];
-}
-
-// The length slot is never populated by the caller — since issue 005 it
-// cannot be — so what reaches the stream comes from the container alone.
-constexpr auto derived_length_bytes() -> bool {
-  std::array<u8, 10> buffer{};
-  memstream<10> stream(buffer);
-  prefixed_struct obj{};
-  obj["vec"_f] = std::vector<u16>{0x1122, 0x3344, 0x5566};
-  if(!s2s::stream_cast_be<prefixed_struct>(stream, obj))
-    return false;
-  return buffer == std::array<u8, 10>{
-    0x00, 0x00, 0x00, 0x03, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
-}
-
-using narrow_prefixed_struct =
-  s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
-    s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
-  >;
-
-constexpr auto write_overlong_container() -> s2s::cast_result {
-  std::array<u8, 400> buffer{};
-  memstream<400> stream(buffer);
-  narrow_prefixed_struct obj{};
-  obj["vec"_f] = std::vector<u8>(300, 0x5a);
-  return s2s::stream_cast_le<narrow_prefixed_struct>(stream, obj);
-}
-
 auto area_of = [](auto rows, auto cols) { return rows * cols; };
 
 using computed_struct =
@@ -442,13 +383,6 @@ static_assert(!write_wrong_magic<true>().has_value());
 static_assert(
   write_wrong_magic<false>().error().failure_reason == s2s::error_reason::validation_failure);
 static_assert(write_wrong_magic<true>().error().failed_at == "magic_num");
-static_assert(roundtrip_prefixed<false>(), "little-endian prefixed round-trip failed");
-static_assert(roundtrip_prefixed<true>(), "big-endian prefixed round-trip failed");
-static_assert(derived_length_bytes());
-static_assert(!write_overlong_container().has_value());
-static_assert(
-  write_overlong_container().error().failure_reason == s2s::error_reason::validation_failure);
-static_assert(write_overlong_container().error().failed_at == "len");
 static_assert(roundtrip_computed(), "computed-length constexpr round-trip failed");
 static_assert(!write_disagreeing_computed().has_value());
 static_assert(

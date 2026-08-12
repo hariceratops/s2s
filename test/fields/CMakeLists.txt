@@ -11,3 +11,12 @@ add_ut_test(fixed_buffer_write_ct)
 # Relocated from test/runtime/trivial_fields.cpp, which held a nested-record
 # case. 032 fills this out.
 add_struct_cast_test(record_read)
+
+add_struct_cast_test(variable_buffer_read)
+add_struct_cast_test(variable_buffer_write)
+add_ut_test(variable_buffer_read_ct)
+add_ut_test(variable_buffer_write_ct)
+
+# Relocated from test/runtime/variable_buffer_fields.cpp, which held a
+# computed-length case. 037 fills this out.
+add_struct_cast_test(size_axis_read)
