@@ -16,42 +16,6 @@ constexpr auto comptime_memcpy(char* dest, char* src, std::size_t size_to_copy) 
 
 using u32 = unsigned int;
 
-auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
-using opt_field_struct = 
-  s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::maybe<
-      s2s::fixed_array_field<"c", u32, 3>, 
-      s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
-    >
-  >;
-
-constexpr auto parse_opt_field_struct() -> std::expected<opt_field_struct, s2s::cast_error>
-{
-  std::array<u8, 20> buffer{
-    0xef, 0xbe, 0xad, 0xde, 
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xad, 0xde, 
-    0x0d, 0xd0, 0xfe, 0xca,
-    0xef, 0xbe, 0xef, 0xbe
-  };
-  memstream<20> stream(buffer);
-  return s2s::struct_cast_le<opt_field_struct>(stream);
-}
-
-constexpr auto opt_res = parse_opt_field_struct();
-static_assert(opt_res);
-constexpr auto opt_fields = *opt_res;
-static_assert(opt_fields["a"_f] == 0xdeadbeef);
-static_assert(opt_fields["b"_f] == 0xcafed00d);
-static_assert(opt_fields["c"_f]);
-constexpr auto arr = *opt_fields["c"_f];
-static_assert(arr[0] == 0xdeadbeef);
-static_assert(arr[1] == 0xcafed00d);
-static_assert(arr[2] == 0xbeefbeef);
-
-
 using inner_1 = 
  s2s::struct_field_list<
    s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 

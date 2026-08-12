@@ -7,7 +7,7 @@
 using namespace s2s_literals;
 
 
-TEST(S2STest, successful_parse_predicate) {
+TEST(OptionalRead, ReadsThePayloadWhenThePredicateHolds) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -40,7 +40,7 @@ TEST(S2STest, successful_parse_predicate) {
 }
 
 
-TEST(S2STest, parse_predicate_failure) {
+TEST(OptionalRead, SkipsThePayloadWhenThePredicateFails) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -73,7 +73,7 @@ TEST(S2STest, parse_predicate_failure) {
 }
 
 
-TEST(S2STest, optional_struct_successful_parse_predicate) {
+TEST(OptionalRead, ReadsAnOptionalRecord) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -115,7 +115,7 @@ TEST(S2STest, optional_struct_successful_parse_predicate) {
 }
 
 
-TEST(S2STest, optional_fixed_array_successful_parse_predicate) {
+TEST(OptionalRead, ReadsAnOptionalFixedArray) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -151,7 +151,7 @@ TEST(S2STest, optional_fixed_array_successful_parse_predicate) {
 }
 
 
-TEST(S2STest, optional_fixed_string_with_successful_parse_predicate) {
+TEST(OptionalRead, ReadsAnOptionalFixedString) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -188,7 +188,7 @@ TEST(S2STest, optional_fixed_string_with_successful_parse_predicate) {
 }
 
 
-TEST(S2STest, optional_length_prefixed_array_with_successful_parse_predicate) {
+TEST(OptionalRead, ReadsAnOptionalLengthPrefixedArray) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -243,7 +243,7 @@ TEST(S2STest, optional_length_prefixed_array_with_successful_parse_predicate) {
 }
 
 
-TEST(S2STest, optional_array_of_records_with_successful_parse_predicate) {
+TEST(OptionalRead, ReadsAnOptionalArrayOfRecords) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -291,7 +291,7 @@ TEST(S2STest, optional_array_of_records_with_successful_parse_predicate) {
 }
 
 
-TEST(S2STest, optional_vector_of_records_with_successful_parse_predicate) {
+TEST(OptionalRead, ReadsAnOptionalVectorOfRecords) {
   []() {
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;

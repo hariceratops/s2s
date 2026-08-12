@@ -1,9 +1,7 @@
 add_struct_cast_test(computation_from_fields)
 add_struct_cast_test(field_validators)
-add_struct_cast_test(optional_fields)
 add_struct_cast_test(union_fields)
 
 # Write path
 add_struct_cast_test(write_computed_length_fields)
-add_struct_cast_test(write_optional_fields)
 add_struct_cast_test(write_union_fields)

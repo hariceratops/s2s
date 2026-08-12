@@ -18,7 +18,7 @@ using optional_schema =
   >;
 } /* namespace */
 
-TEST(WriteOptionalFields, RoundTripsWhenPresentInBothByteOrders) {
+TEST(OptionalWrite, RoundTripsWhenPresentInBothByteOrders) {
   using test_field_list = optional_schema;
 
   optional_schema obj{};
@@ -40,7 +40,7 @@ TEST(WriteOptionalFields, RoundTripsWhenPresentInBothByteOrders) {
   });
 }
 
-TEST(WriteOptionalFields, EmitsNothingWhenAbsent) {
+TEST(OptionalWrite, EmitsNothingWhenAbsent) {
   using test_field_list = optional_schema;
 
   optional_schema obj{};
@@ -57,7 +57,7 @@ TEST(WriteOptionalFields, EmitsNothingWhenAbsent) {
 }
 
 // The reader would go looking for four bytes that were never written.
-TEST(WriteOptionalFields, RejectsPredicateTrueButOptionalEmpty) {
+TEST(OptionalWrite, RejectsPredicateTrueButOptionalEmpty) {
   using test_field_list = optional_schema;
 
   optional_schema obj{};
@@ -72,7 +72,7 @@ TEST(WriteOptionalFields, RejectsPredicateTrueButOptionalEmpty) {
 }
 
 // Emitting nothing here would silently discard data the caller handed in.
-TEST(WriteOptionalFields, RejectsPredicateFalseButOptionalEngaged) {
+TEST(OptionalWrite, RejectsPredicateFalseButOptionalEngaged) {
   using test_field_list = optional_schema;
 
   optional_schema obj{};
@@ -87,7 +87,7 @@ TEST(WriteOptionalFields, RejectsPredicateFalseButOptionalEngaged) {
   EXPECT_EQ(stream.str().size(), 4u);
 }
 
-TEST(WriteOptionalFields, RoundTripsAlwaysPresentWithoutSpecialCasing) {
+TEST(OptionalWrite, RoundTripsAlwaysPresentWithoutSpecialCasing) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -111,7 +111,7 @@ TEST(WriteOptionalFields, RoundTripsAlwaysPresentWithoutSpecialCasing) {
 
 // Presence is a predicate, not a stored flag, so there is nothing to derive
 // and 005's constraint must leave the siblings that feed it alone.
-TEST(WriteOptionalFields, SiblingsFeedingThePredicateStayAssignable) {
+TEST(OptionalWrite, SiblingsFeedingThePredicateStayAssignable) {
   optional_schema obj{};
   obj["flag"_f] = 0x1;
   EXPECT_EQ(obj["flag"_f], 0x1u);
@@ -142,7 +142,7 @@ using conditional_len_schema =
 } /* namespace */
 
 // An optional buffer must not copy its payload to write it.
-TEST(WriteOptionalFields, RoundTripsAnOptionalVariableSizedField) {
+TEST(OptionalWrite, RoundTripsAnOptionalVariableSizedField) {
   using test_field_list = conditional_len_schema;
 
   test_field_list obj{};
@@ -160,7 +160,7 @@ TEST(WriteOptionalFields, RoundTripsAnOptionalVariableSizedField) {
 
 // A conditional source is not derived, so a wrong length is the caller's to
 // get wrong — and must be caught rather than written out.
-TEST(WriteOptionalFields, RejectsAConditionalLengthThatDisagreesWhenPresent) {
+TEST(OptionalWrite, RejectsAConditionalLengthThatDisagreesWhenPresent) {
   using test_field_list = conditional_len_schema;
 
   test_field_list obj{};
@@ -179,7 +179,7 @@ TEST(WriteOptionalFields, RejectsAConditionalLengthThatDisagreesWhenPresent) {
 
 // When the optional is absent there is no obligation at all, so the length
 // keeps whatever the caller stored — the reader will not consult it either.
-TEST(WriteOptionalFields, LeavesAConditionalLengthAloneWhenAbsent) {
+TEST(OptionalWrite, LeavesAConditionalLengthAloneWhenAbsent) {
   using test_field_list = conditional_len_schema;
 
   test_field_list obj{};
@@ -207,7 +207,7 @@ using mixed_len_schema =
   >;
 } /* namespace */
 
-TEST(WriteOptionalFields, DerivesFromTheUnconditionalProducerAndVerifiesTheConditionalOne) {
+TEST(OptionalWrite, DerivesFromTheUnconditionalProducerAndVerifiesTheConditionalOne) {
   using test_field_list = mixed_len_schema;
 
   test_field_list obj{};
@@ -228,7 +228,7 @@ TEST(WriteOptionalFields, DerivesFromTheUnconditionalProducerAndVerifiesTheCondi
 // Without the verify-when-active path this would derive 3 from "always" and
 // then write a 2-element "sometimes" behind it, producing a stream that does
 // not read back.
-TEST(WriteOptionalFields, RejectsAConditionalProducerThatDisagreesWithTheDerivedValue) {
+TEST(OptionalWrite, RejectsAConditionalProducerThatDisagreesWithTheDerivedValue) {
   using test_field_list = mixed_len_schema;
 
   test_field_list obj{};
@@ -246,7 +246,7 @@ TEST(WriteOptionalFields, RejectsAConditionalProducerThatDisagreesWithTheDerived
 
 // The same disagreement is not an error when the optional is absent, because
 // then it contributes no bytes for the length to describe.
-TEST(WriteOptionalFields, IgnoresAnAbsentConditionalProducerWhenDeriving) {
+TEST(OptionalWrite, IgnoresAnAbsentConditionalProducerWhenDeriving) {
   using test_field_list = mixed_len_schema;
 
   test_field_list obj{};
@@ -263,7 +263,7 @@ TEST(WriteOptionalFields, IgnoresAnAbsentConditionalProducerWhenDeriving) {
 
 // Conditional sources are not derived, so 005's constraint must not reach
 // them: the caller has to be able to set the length.
-TEST(WriteOptionalFields, AConditionalLengthStaysAssignable) {
+TEST(OptionalWrite, AConditionalLengthStaysAssignable) {
   conditional_len_schema obj{};
   obj["len"_f] = 5;
   EXPECT_EQ(obj["len"_f], 5u);
