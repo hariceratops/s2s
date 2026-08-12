@@ -10,55 +10,6 @@ using u32 = unsigned int;
 
 using u16 = unsigned short;
 
-using magic_struct =
-  s2s::struct_field_list<
-    s2s::magic_string<"magic_str", "GIF">,
-    s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
-    s2s::magic_byte_array<"magic_arr", 2, std::array<unsigned char, 2>{0xbe, 0xef}>
-  >;
-
-constexpr auto populated_magic() -> magic_struct {
-  magic_struct obj{};
-  obj["magic_str"_f] = s2s::fixed_string<3>("GIF");
-  obj["magic_num"_f] = 0xdeadbeef;
-  obj["magic_arr"_f] = std::array<unsigned char, 2>{0xbe, 0xef};
-  return obj;
-}
-
-template <bool big_endian>
-constexpr auto roundtrip_magic() -> bool {
-  std::array<u8, 10> buffer{};
-  memstream<10> stream(buffer);
-  if constexpr(big_endian) {
-    if(!s2s::stream_cast_be<magic_struct>(stream, populated_magic()))
-      return false;
-  } else {
-    if(!s2s::stream_cast_le<magic_struct>(stream, populated_magic()))
-      return false;
-  }
-  stream.rewind();
-  auto res = [&] {
-    if constexpr(big_endian)
-      return s2s::struct_cast_be<magic_struct>(stream);
-    else
-      return s2s::struct_cast_le<magic_struct>(stream);
-  }();
-  return res && (*res)["magic_str"_f] == s2s::fixed_string<3>("GIF") &&
-         (*res)["magic_num"_f] == 0xdeadbeef;
-}
-
-template <bool big_endian>
-constexpr auto write_wrong_magic() -> s2s::cast_result {
-  std::array<u8, 10> buffer{};
-  memstream<10> stream(buffer);
-  auto obj = populated_magic();
-  obj["magic_num"_f] = 0xbeefbeef;
-  if constexpr(big_endian)
-    return s2s::stream_cast_be<magic_struct>(stream, obj);
-  else
-    return s2s::stream_cast_le<magic_struct>(stream, obj);
-}
-
 auto area_of = [](auto rows, auto cols) { return rows * cols; };
 
 using computed_struct =
@@ -306,13 +257,6 @@ constexpr auto discriminant_is_derived() -> bool {
   return buffer == std::array<u8, 6>{0xde, 0xad, 0xbe, 0xef, 0x11, 0x22};
 }
 
-static_assert(roundtrip_magic<false>(), "little-endian magic round-trip failed");
-static_assert(roundtrip_magic<true>(), "big-endian magic round-trip failed");
-static_assert(!write_wrong_magic<false>().has_value());
-static_assert(!write_wrong_magic<true>().has_value());
-static_assert(
-  write_wrong_magic<false>().error().failure_reason == s2s::error_reason::validation_failure);
-static_assert(write_wrong_magic<true>().error().failed_at == "magic_num");
 static_assert(roundtrip_computed(), "computed-length constexpr round-trip failed");
 static_assert(!write_disagreeing_computed().has_value());
 static_assert(

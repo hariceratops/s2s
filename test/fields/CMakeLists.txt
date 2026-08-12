@@ -21,3 +21,12 @@ add_struct_cast_test(record_read)
 add_struct_cast_test(record_write)
 add_ut_test(record_read_ct)
 add_ut_test(record_write_ct)
+
+add_struct_cast_test(magic_read)
+add_struct_cast_test(magic_write)
+add_ut_test(magic_read_ct)
+add_ut_test(magic_write_ct)
+
+# Relocated from test/runtime/write_magic_fields.cpp, which held a plain
+# constraint case. 036 fills this out.
+add_struct_cast_test(constraint_write)

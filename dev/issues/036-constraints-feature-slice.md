@@ -33,3 +33,10 @@ Depends on: 028.
 - `no_constraint` — the default — is covered, so the absence of a constraint is
   a tested state rather than an assumed one.
 - Old sources deleted; `ctest` green.
+
+## Notes 2026-08-12 (from 033)
+
+`test/fields/constraint_write.cpp` already exists, holding the one relocated
+case (`RejectsConstraintViolationOnAnOrdinaryField`, from
+`write_magic_fields.cpp`). Create nothing; fill it out.
+

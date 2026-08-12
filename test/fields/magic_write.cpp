@@ -31,7 +31,7 @@ auto expect_matches_populated(const magic_schema& actual) -> void {
 }
 } /* namespace */
 
-TEST(WriteMagicFields, RoundTripsMagicFieldsLittleEndian) {
+TEST(MagicWrite, RoundTripsMagicFieldsLittleEndian) {
   using test_field_list = magic_schema;
 
   FIELD_LIST_LE_ROUNDTRIP_CHECK(populated(), {
@@ -41,7 +41,7 @@ TEST(WriteMagicFields, RoundTripsMagicFieldsLittleEndian) {
   });
 }
 
-TEST(WriteMagicFields, RoundTripsMagicFieldsBigEndian) {
+TEST(MagicWrite, RoundTripsMagicFieldsBigEndian) {
   using test_field_list = magic_schema;
 
   FIELD_LIST_BE_ROUNDTRIP_CHECK(populated(), {
@@ -51,7 +51,7 @@ TEST(WriteMagicFields, RoundTripsMagicFieldsBigEndian) {
   });
 }
 
-TEST(WriteMagicFields, RejectsWrongMagicString) {
+TEST(MagicWrite, RejectsWrongMagicString) {
   using test_field_list = magic_schema;
 
   auto obj = populated();
@@ -64,7 +64,7 @@ TEST(WriteMagicFields, RejectsWrongMagicString) {
   EXPECT_EQ(written.error().failed_at, "magic_str");
 }
 
-TEST(WriteMagicFields, RejectsWrongMagicNumberInBothByteOrders) {
+TEST(MagicWrite, RejectsWrongMagicNumberInBothByteOrders) {
   using test_field_list = magic_schema;
 
   auto obj = populated();
@@ -83,7 +83,7 @@ TEST(WriteMagicFields, RejectsWrongMagicNumberInBothByteOrders) {
   EXPECT_EQ(be_written.error().failed_at, "magic_num");
 }
 
-TEST(WriteMagicFields, RejectsWrongMagicByteArray) {
+TEST(MagicWrite, RejectsWrongMagicByteArray) {
   using test_field_list = magic_schema;
 
   auto obj = populated();
@@ -95,24 +95,9 @@ TEST(WriteMagicFields, RejectsWrongMagicByteArray) {
   EXPECT_EQ(written.error().failed_at, "magic_arr");
 }
 
-// Constraints are not a magic-field feature: any field carrying one is checked.
-TEST(WriteMagicFields, RejectsConstraintViolationOnAnOrdinaryField) {
-  using test_field_list =
-    s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"bounded", u32, s2s::field_size<s2s::fixed<4>>, s2s::lt{100u}>
-    >;
-
-  test_field_list obj{};
-  obj["a"_f] = 0xdeadbeef;
-  obj["bounded"_f] = 500;
-
-  FIELD_LIST_LE_WRITE_REJECTED(obj, s2s::error_reason::validation_failure);
-}
-
 // Fail-fast, not rollback: fields already written stay on the stream, but the
 // offending field must contribute nothing.
-TEST(WriteMagicFields, OffendingFieldContributesNoBytes) {
+TEST(MagicWrite, OffendingFieldContributesNoBytes) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,

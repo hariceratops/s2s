@@ -4,7 +4,7 @@
 
 using namespace s2s_literals;
 
-TEST(S2STest, MagicNumber) {
+TEST(MagicRead, ReadsAMatchingMagicNumber) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -28,7 +28,7 @@ TEST(S2STest, MagicNumber) {
   });
 }
 
-TEST(S2STest, MagicArray) {
+TEST(MagicRead, ReadsAMatchingMagicByteArray) {
   PREPARE_INPUT_FILE({
     u32 bytes_0_3 = 0xffffffff;
     u32 bytes_4_7 = 0xffffffff;
@@ -54,7 +54,7 @@ TEST(S2STest, MagicArray) {
   });
 }
 
-TEST(S2STest, MagicString) {
+TEST(MagicRead, ReadsAMatchingMagicString) {
   PREPARE_INPUT_FILE({
     const u8 str[] = "GIF";
     const auto str_len = 3;
@@ -77,7 +77,7 @@ TEST(S2STest, MagicString) {
   });
 }
 
-TEST(S2STest, FailingMagicStringRead) {
+TEST(MagicRead, RejectsANonMatchingMagicString) {
   PREPARE_INPUT_FILE({
     const u8 str[] = "NAH";
     const auto str_len = 3;
