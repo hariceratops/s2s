@@ -3393,6 +3393,8 @@ constexpr cast_endianness deduce_byte_order() {
 #define _READ_IMPL_HPP_
  
  
+ 
+ 
 namespace s2s {
 template <typename T, identified_as_constexpr_stream stream>
 constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
@@ -3400,7 +3402,16 @@ constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> 
   if(!s.read(as_byte_buffer_rep, size_to_read)) {
     return std::unexpected(error_reason::buffer_exhaustion);
   }
-  obj = std::bit_cast<T>(as_byte_buffer_rep);
+  if constexpr(std::is_array_v<T>) {
+    // bit_cast cannot yield a C array — it returns by value. The buffer goes
+    // to the equivalent std::array instead and the elements are assigned.
+    using element = std::remove_extent_t<T>;
+    auto as_std_array = std::bit_cast<std::array<element, std::extent_v<T>>>(as_byte_buffer_rep);
+    for(std::size_t idx = 0; idx < std::extent_v<T>; ++idx)
+      obj[idx] = as_std_array[idx];
+  } else {
+    obj = std::bit_cast<T>(as_byte_buffer_rep);
+  }
   return {};
 }
 
