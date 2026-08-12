@@ -31,8 +31,9 @@ holds with a plain `std::ifstream` and with a schema full of `std::string` and
 `std::vector`.
 
 **Parsing can additionally be performed at compile time.** This is narrower and
-carries two conditions: a stream usable during constant evaluation, and a schema
-with no allocating fields. [Compile time](compile-time.md) covers both.
+carries two conditions: a stream usable during constant evaluation, and a parsed
+value that carries no heap memory out of it. [Compile time](compile-time.md)
+covers both.
 
 ## Getting the library
 

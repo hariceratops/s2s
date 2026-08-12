@@ -27,7 +27,7 @@ values it previously only consumed. Every construct below is declared in
 
 ## A worked example
 
-<!-- docs: test/single_header/guide_writing_example.cpp -->
+<!-- docs: test/doc_examples/guide_writing_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

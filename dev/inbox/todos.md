@@ -1,7 +1,7 @@
 - [x] Size dependency resolution checks
 - [x] Parse dependency resolution checks
-- [ ] Static test cases for all type traits and concepts
-- [ ] Remove dead code
+- [x] Static test cases for all type traits and concepts — `test/internals/traits_ct.cpp`, see `dev/issues/038-rewrite-static-tests-as-ut-traits-suite.md`
+- [ ] Remove dead code — two orphaned headers removed by 038 (`field_value_constraints_traits.hpp`, `typelist_manip.hpp`); the rest is untouched
 - [ ] Refactor type and non-type list
 - [x] Value based TMP
 - [x] Support all major compilers = msvc, indirectly supports more compilers = gcc 12.1
@@ -51,7 +51,7 @@ one enumerator that decision has since been reversed for
 - [ ] `-Wnon-template-friend` fires from the friend-injection trick for
       `type_id` (`include/lib/metaprog/mp.hpp:16`) on **every** consumer build
       with warnings enabled. Predates the write path; suppressed narrowly in
-      `test/single_header` so that guard stays sensitive to new diagnostics.
+      `test/shipped_header` so that guard stays sensitive to new diagnostics.
 - [ ] `scripts/amalgam.py:25,131` catch bare `Exception`. Predates the write
       path; `OSError` is what both sites actually handle.
 - [ ] "No heap allocation introduced" on issues 001, 002 and 004 was asserted

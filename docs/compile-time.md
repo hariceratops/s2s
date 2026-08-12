@@ -25,24 +25,44 @@ a type deriving from `s2s::constexpr_stream`, working on `std::array` rather
 than raw pointers — see [Constexpr streams](streams.md#constexpr-streams). A
 `std::ifstream` cannot be one; there are no files during constant evaluation.
 
-**The schema must have no allocating fields.** Anything needing the heap is
-disqualifying:
+**The result must not carry heap memory out of the constant evaluation.** This
+is a narrower restriction than "no allocating fields", and the difference
+matters. Every descriptor parses at compile time, allocating ones included:
+`str_field`, `vec_field`, `vector_of_records` and a `variance` with an
+`as_string` or `as_vec` alternative are all covered by compile-time tests. An
+allocation made and released inside one constant evaluation is transient, and
+transient allocation is allowed.
 
-| Disqualifies a compile-time parse | Fine at compile time |
-|---|---|
-| `str_field` (`std::string`) | `fixed_string_field`, `c_str_field` |
-| `vec_field` (`std::vector`) | `fixed_array_field`, `c_arr_field` |
-| `vector_of_records` | `array_of_records` |
-| `variance` with `as_string` or `as_vec` alternatives | `variance` over trivial and record alternatives |
+What is not allowed is a result that still owns heap memory when the evaluation
+ends. So this fails:
 
-The fixed-size counterparts exist precisely so a schema can be made
-constexpr-eligible without giving up strings and arrays.
+```cpp
+constexpr auto result = parse();   // holds a std::string
+static_assert(result);             // error: the value of 'result'
+                                   // is not usable in a constant expression
+```
+
+while the same parse inside a function that returns something non-allocating
+succeeds:
+
+```cpp
+constexpr auto parses_cleanly() -> bool {
+  auto result = parse();           // the std::string lives and dies in here
+  return result && (*result)["str"_f] == "abc";
+}
+static_assert(parses_cleanly());   // fine
+```
+
+The fixed-size counterparts — `fixed_string_field` and `c_str_field` for
+strings, `fixed_array_field` and `c_arr_field` for arrays, `array_of_records`
+for records — are the ones whose results *can* escape, so a parsed value can be
+held in a namespace-scope `constexpr` variable and asserted on directly. That
+is what they exist for.
 
 When both conditions hold, the whole parse happens in the compiler — including
-constraint checking, presence deduction and type deduction — and the result is a
-value that can be `static_assert`ed on.
+constraint checking, presence deduction and type deduction.
 
-<!-- docs: test/single_header/guide_constexpr_example.cpp -->
+<!-- docs: test/doc_examples/guide_constexpr_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
@@ -81,8 +101,8 @@ public:
   [[nodiscard]] explicit constexpr operator bool() const { return ok; }
 };
 
-// A fixed-layout partition entry. No allocating fields, so this schema is
-// eligible for a compile-time parse.
+// A fixed-layout partition entry. Nothing here allocates, so the parsed value
+// can be held in a constexpr variable and asserted on below.
 using partition_entry =
   s2s::struct_field_list<
     s2s::basic_field<"start_lba", u32, s2s::field_size<s2s::fixed<4>>>,
