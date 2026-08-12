@@ -27,9 +27,6 @@ add_struct_cast_test(magic_write)
 add_ut_test(magic_read_ct)
 add_ut_test(magic_write_ct)
 
-# Relocated from test/runtime/write_magic_fields.cpp, which held a plain
-# constraint case. 036 fills this out.
-add_struct_cast_test(constraint_write)
 
 add_struct_cast_test(optional_read)
 add_struct_cast_test(optional_write)
@@ -40,3 +37,9 @@ add_struct_cast_test(union_read)
 add_struct_cast_test(union_write)
 add_ut_test(union_read_ct)
 add_ut_test(union_write_ct)
+
+# No constraint_read.cpp: field_validators.cpp's cases were all
+# constant-evaluable, so they moved to ut rather than staying GoogleTest.
+add_struct_cast_test(constraint_write)
+add_ut_test(constraint_read_ct)
+add_ut_test(constraint_write_ct)
