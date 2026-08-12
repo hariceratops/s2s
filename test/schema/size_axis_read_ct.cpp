@@ -45,7 +45,7 @@ using fanout =
     s2s::vec_field<"b", u32, s2s::field_size<s2s::len_from_field<"len">>>
   >;
 
-int main() {
+auto main() -> int {
   // The element count is nowhere on the wire — it exists only as rows * cols.
   "a length computed from two fields sizes the container"_test = [] constexpr {
     std::array<u8, 16> buffer{

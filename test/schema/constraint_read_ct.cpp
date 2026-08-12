@@ -48,7 +48,7 @@ constexpr auto rejected_naming_a(const auto& result) -> bool {
          result.error().failed_at == std::string_view{"a"};
 }
 
-int main() {
+auto main() -> int {
   // --- the constraint objects, called directly -------------------------
   // Ported from test/runtime/field_validators.cpp unchanged. These check the
   // predicates themselves; the group below checks them reaching a read.

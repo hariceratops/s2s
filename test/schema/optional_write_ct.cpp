@@ -83,7 +83,7 @@ constexpr auto write_unverified_conditional_len() -> s2s::cast_result {
   return s2s::stream_cast_be<conditional_len_struct>(stream, make_conditional(99, false));
 }
 
-int main() {
+auto main() -> int {
   "little endian optionals round trip when present"_test = [] constexpr {
     std::array<u8, 8> buffer{};
     memstream<8> stream(buffer);

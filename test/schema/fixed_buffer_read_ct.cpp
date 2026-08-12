@@ -17,7 +17,7 @@ using namespace s2s_literals;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
-int main() {
+auto main() -> int {
   // One schema per descriptor family would leave the four untested together;
   // reading them in one pass also pins their relative offsets.
   "all four const sized descriptors read back"_test = [] constexpr {

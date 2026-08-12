@@ -43,7 +43,7 @@ constexpr auto write_wrong_magic() -> s2s::cast_result {
     return s2s::stream_cast_le<magic_schema>(stream, obj);
 }
 
-int main() {
+auto main() -> int {
   "little endian magic fields round trip"_test = [] constexpr {
     std::array<u8, 10> buffer{};
     memstream<10> stream(buffer);

@@ -92,7 +92,7 @@ using computed =
     >
   >;
 
-int main() {
+auto main() -> int {
   "a discriminant switch selects its matching alternative"_test = [] constexpr {
     std::array<u8, 16> buffer{
       0xef, 0xbe, 0xad, 0xde,

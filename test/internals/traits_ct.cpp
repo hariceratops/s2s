@@ -24,7 +24,7 @@ namespace tl = s2s::typelist;
 
 auto is_eq_1 = [](auto a) { return a == 1; };
 
-int main() {
+auto main() -> int {
   "field ids are checked for uniqueness"_test = [] constexpr {
     expect(eq(s2s::are_field_ids_unique(std::array<std::string_view, 3>{
       "hello", "world", "hello"}), false));

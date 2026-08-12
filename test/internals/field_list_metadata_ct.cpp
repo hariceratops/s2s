@@ -160,7 +160,7 @@ using illegal_len_field_list =
     s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>
   >;
 
-int main() {
+auto main() -> int {
   "the field table places every field at its declaration index"_test = [] constexpr {
     constexpr auto table = list_metadata::field_table;
 

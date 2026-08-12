@@ -30,7 +30,7 @@ constexpr auto populated() -> aggregate {
   return obj;
 }
 
-int main() {
+auto main() -> int {
   "little endian aggregates round trip"_test = [] constexpr {
     std::array<u8, 11> buffer{};
     memstream<11> stream(buffer);

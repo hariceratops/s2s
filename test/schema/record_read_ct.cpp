@@ -22,7 +22,7 @@ using point =
     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
   >;
 
-int main() {
+auto main() -> int {
   "a nested schema reads its own leaves"_test = [] constexpr {
     using nested =
       s2s::struct_field_list<

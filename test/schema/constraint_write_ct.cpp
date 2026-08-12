@@ -33,7 +33,7 @@ constexpr auto write(u32 value) -> s2s::cast_result {
   return s2s::stream_cast_le<constrained<constraint>>(stream, obj);
 }
 
-int main() {
+auto main() -> int {
   // The read side checks after taking bytes off the wire; the write side has
   // to check before putting any on. Same forms, opposite order.
   "a write consults eq"_test = [] constexpr {

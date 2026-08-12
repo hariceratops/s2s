@@ -29,7 +29,7 @@ constexpr auto populated() -> two_trivials {
   return obj;
 }
 
-int main() {
+auto main() -> int {
   "little endian trivials round trip"_test = [] constexpr {
     std::array<u8, 8> buffer{};
     memstream<8> stream(buffer);

@@ -69,7 +69,7 @@ constexpr auto write_contradicting_fanout() -> s2s::cast_result {
   return s2s::stream_cast_le<fanout_struct>(stream, make_fanout(1));
 }
 
-int main() {
+auto main() -> int {
   "a computed length round trips when the sources agree"_test = [] constexpr {
     std::array<u8, 16> buffer{};
     memstream<16> stream(buffer);

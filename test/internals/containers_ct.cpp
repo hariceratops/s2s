@@ -18,7 +18,7 @@ using ut::expect;
 using ut::eq;
 using ut::operator""_test;
 
-int main() {
+auto main() -> int {
   "a static_vector holds what it was constructed with"_test = [] constexpr {
     s2s::static_vector<int, 5> vec(1, 9, 5, 3, 0);
 

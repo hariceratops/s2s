@@ -51,7 +51,7 @@ constexpr auto write_overlong_container() -> s2s::cast_result {
   return s2s::stream_cast_le<narrow_prefixed>(stream, obj);
 }
 
-int main() {
+auto main() -> int {
   "little endian length prefixed fields round trip"_test = [] constexpr {
     std::array<u8, 10> buffer{};
     memstream<10> stream(buffer);

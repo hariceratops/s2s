@@ -33,7 +33,7 @@ using prefixed_str =
     s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
   >;
 
-int main() {
+auto main() -> int {
   "a vector takes its element count from the sibling length field"_test = [] constexpr {
     std::array<u8, 10> buffer{
       0x03, 0x00, 0x00, 0x00, 0x22, 0x11, 0x44, 0x33, 0x66, 0x55};

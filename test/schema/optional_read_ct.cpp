@@ -63,7 +63,7 @@ using unconditional =
     >
   >;
 
-int main() {
+auto main() -> int {
   "a satisfied predicate makes the payload present"_test = [] constexpr {
     std::array<u8, 8> buffer{0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe, 0xca};
     memstream<8> stream(buffer);

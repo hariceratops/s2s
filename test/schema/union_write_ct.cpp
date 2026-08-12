@@ -50,7 +50,7 @@ constexpr auto held_alt_2() -> union_struct {
   return obj;
 }
 
-int main() {
+auto main() -> int {
   "little endian unions round trip"_test = [] constexpr {
     std::array<u8, 6> buffer{};
     memstream<6> stream(buffer);

@@ -49,7 +49,7 @@ constexpr auto populated() -> records {
   return obj;
 }
 
-int main() {
+auto main() -> int {
   "little endian records round trip"_test = [] constexpr {
     std::array<u8, 18> buffer{};
     memstream<18> stream(buffer);
