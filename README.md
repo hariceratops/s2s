@@ -14,10 +14,10 @@ using the library at all.
 
 **Parsing can additionally be performed at compile time.** This is the narrower
 claim, and it has two conditions: the stream must be usable during constant
-evaluation, and the schema must have no allocating fields. When both hold, the
-whole parse — validation included — happens in the compiler and the result is a
-`constexpr` value. When they do not, everything in the paragraph above still
-holds.
+evaluation, and the parsed value must not carry heap memory out of it. When both
+hold, the whole parse — validation included — happens in the compiler and the
+result is a `constexpr` value. When they do not, everything in the paragraph
+above still holds.
 
 Library is single header and the file "s2s.hpp" from the single_header
 folder can be used for direct inclusion into a project

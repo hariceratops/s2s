@@ -51,7 +51,7 @@ one enumerator that decision has since been reversed for
 - [ ] `-Wnon-template-friend` fires from the friend-injection trick for
       `type_id` (`include/lib/metaprog/mp.hpp:16`) on **every** consumer build
       with warnings enabled. Predates the write path; suppressed narrowly in
-      `test/single_header` so that guard stays sensitive to new diagnostics.
+      `test/as_shipped` so that guard stays sensitive to new diagnostics.
 - [ ] `scripts/amalgam.py:25,131` catch bare `Exception`. Predates the write
       path; `OSError` is what both sites actually handle.
 - [ ] "No heap allocation introduced" on issues 001, 002 and 004 was asserted

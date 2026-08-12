@@ -34,7 +34,16 @@ build as a pass. The third build, `*_coverage`, is the one with no macro, so
 ut reports both counts; `test/ct_coverage_check.cmake` fails it unless every
 test also ran at compile time. That is what catches a **capturing** test
 lambda, which ut skips at compile time with no diagnostic while the other two
-entries stay green. Test lambdas must not capture.
+entries stay green. Test lambdas must not capture, and a ut source must not
+`using namespace ut` — ut exports `eq`/`neq`/`lt`/`gt`/`le`/`ge`, which collide
+with the s2s constraints of the same names. Import `ut::expect` and `ut::eq`
+individually and write the constraints `s2s::`-qualified.
+
+Both helpers also guard against a binary that runs nothing: `add_ut_test` via
+the count comparison above, `add_struct_cast_test` via a
+`FAIL_REGULAR_EXPRESSION` on gtest's `does NOT link in any test case`. A source
+that loses its cases still links and exits 0, so without these a green `ctest`
+does not mean the tests ran.
 
 The tree is organised by feature, not by execution mode. `test/fields/` holds
 one pair of sources per schema construct (`<feature>_{read,write}.cpp` for

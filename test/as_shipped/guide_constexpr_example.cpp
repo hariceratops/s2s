@@ -39,8 +39,8 @@ public:
   [[nodiscard]] explicit constexpr operator bool() const { return ok; }
 };
 
-// A fixed-layout partition entry. No allocating fields, so this schema is
-// eligible for a compile-time parse.
+// A fixed-layout partition entry. Nothing here allocates, so the parsed value
+// can be held in a constexpr variable and asserted on below.
 using partition_entry =
   s2s::struct_field_list<
     s2s::basic_field<"start_lba", u32, s2s::field_size<s2s::fixed<4>>>,
