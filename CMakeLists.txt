@@ -28,6 +28,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 set(SINGLE_HEADER_DIR "${CMAKE_SOURCE_DIR}/single_header")
 set(TEST_DIR "${CMAKE_SOURCE_DIR}/test")
+set(EXAMPLES_DIR "${CMAKE_SOURCE_DIR}/examples")
 # Define the input and output for quom
 set(INPUT_HEADER "${INCLUDE_DIR}/s2s.hpp")
 set(OUTPUT_HEADER "${SINGLE_HEADER_DIR}/s2s.hpp")
@@ -61,4 +62,5 @@ add_custom_target(generate_single_header ALL DEPENDS ${OUTPUT_HEADER})
 include(CTest)
 enable_testing()
 add_subdirectory(${TEST_DIR})
+add_subdirectory(${EXAMPLES_DIR})
 
