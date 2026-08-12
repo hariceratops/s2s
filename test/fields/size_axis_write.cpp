@@ -28,7 +28,7 @@ using fanout_schema =
   >;
 } /* namespace */
 
-TEST(WriteComputedLengthFields, RoundTripsWhenSourcesAgreeWithTheContainer) {
+TEST(SizeAxisWrite, RoundTripsWhenSourcesAgreeWithTheContainer) {
   using test_field_list = computed_schema;
 
   computed_schema obj{};
@@ -45,7 +45,7 @@ TEST(WriteComputedLengthFields, RoundTripsWhenSourcesAgreeWithTheContainer) {
   });
 }
 
-TEST(WriteComputedLengthFields, RoundTripsBigEndian) {
+TEST(SizeAxisWrite, RoundTripsBigEndian) {
   using test_field_list = computed_schema;
 
   computed_schema obj{};
@@ -63,7 +63,7 @@ TEST(WriteComputedLengthFields, RoundTripsBigEndian) {
 // The callable has no inverse, so a disagreement cannot be repaired by
 // rewriting either side — emitting either value would produce a stream that
 // does not read back as what was handed in.
-TEST(WriteComputedLengthFields, RejectsSourcesThatDisagreeWithTheContainer) {
+TEST(SizeAxisWrite, RejectsSourcesThatDisagreeWithTheContainer) {
   using test_field_list = computed_schema;
 
   computed_schema obj{};
@@ -82,7 +82,7 @@ TEST(WriteComputedLengthFields, RejectsSourcesThatDisagreeWithTheContainer) {
 
 // Issue 005 must not capture these: an arbitrary callable cannot be inverted,
 // so the fields feeding it are ordinary writable data.
-TEST(WriteComputedLengthFields, SourcesFeedingTheCallableStayAssignable) {
+TEST(SizeAxisWrite, SourcesFeedingTheCallableStayAssignable) {
   computed_schema obj{};
   obj["rows"_f] = 7;
   obj["cols"_f] = 9;
@@ -100,7 +100,7 @@ TEST(WriteComputedLengthFields, SourcesFeedingTheCallableStayAssignable) {
     >>>("rows"));
 }
 
-TEST(WriteComputedLengthFields, RoundTripsFanOutWhenDependentsAgree) {
+TEST(SizeAxisWrite, RoundTripsFanOutWhenDependentsAgree) {
   using test_field_list = fanout_schema;
 
   fanout_schema obj{};
@@ -118,7 +118,7 @@ TEST(WriteComputedLengthFields, RoundTripsFanOutWhenDependentsAgree) {
 
 // One length field cannot describe two containers of different sizes. Since
 // the length is written first, this has to fail there, before any bytes.
-TEST(WriteComputedLengthFields, RejectsFanOutContradiction) {
+TEST(SizeAxisWrite, RejectsFanOutContradiction) {
   using test_field_list = fanout_schema;
 
   fanout_schema obj{};
@@ -135,7 +135,7 @@ TEST(WriteComputedLengthFields, RejectsFanOutContradiction) {
 
 // 004's width check is on the derived value, so sharing a length field does
 // not let an over-wide length slip through.
-TEST(WriteComputedLengthFields, AppliesTheWidthCheckToAFannedOutLength) {
+TEST(SizeAxisWrite, AppliesTheWidthCheckToAFannedOutLength) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,

@@ -43,3 +43,7 @@ add_ut_test(union_write_ct)
 add_struct_cast_test(constraint_write)
 add_ut_test(constraint_read_ct)
 add_ut_test(constraint_write_ct)
+
+add_struct_cast_test(size_axis_write)
+add_ut_test(size_axis_read_ct)
+add_ut_test(size_axis_write_ct)

@@ -8,8 +8,6 @@ add_constexpr_test(containers)
 add_constexpr_test(field_list_metadata)
 add_constexpr_test(static_tests_2)
 
-# Write path
-add_constexpr_test(constexpr_write)
 
 # TODO: static_tests_1.cpp is not registered — it is written against an API
 # several generations old (`field<"x", int, 4>` for what is now

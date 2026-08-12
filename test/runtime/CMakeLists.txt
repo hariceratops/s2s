@@ -1,4 +1,0 @@
-add_struct_cast_test(computation_from_fields)
-
-# Write path
-add_struct_cast_test(write_computed_length_fields)
