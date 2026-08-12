@@ -49,8 +49,8 @@ function(add_ut_test name)
 
   # Neither macro: ut then runs both modes and its summary carries the
   # compile-time count, which is what the coverage check compares.
-  add_executable(${name}_ct_coverage ${name}.cpp)
-  target_link_libraries(${name}_ct_coverage PRIVATE qlibs_ut)
+  add_executable(${name}_coverage ${name}.cpp)
+  target_link_libraries(${name}_coverage PRIVATE qlibs_ut)
 
   # The compile-time binary does nothing when run — its assertions were spent
   # during compilation. Running it would report a stale binary from the last
@@ -58,7 +58,7 @@ function(add_ut_test name)
   # coverage target too, so that check cannot read a stale summary either.
   add_test(NAME ${name}_compile_time
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
-            --target ${name}_compile_time ${name}_ct_coverage --config $<CONFIG>)
+            --target ${name}_compile_time ${name}_coverage --config $<CONFIG>)
   set_tests_properties(${name}_compile_time PROPERTIES
     RESOURCE_LOCK build_tree
     FIXTURES_SETUP ${name}_built)
@@ -67,10 +67,10 @@ function(add_ut_test name)
   # compile-time expectation fails, which is exactly when it is wanted.
   add_test(NAME ${name}_run_time COMMAND ${name}_run_time)
 
-  add_test(NAME ${name}_ct_coverage
-    COMMAND ${CMAKE_COMMAND} -DBINARY=$<TARGET_FILE:${name}_ct_coverage>
+  add_test(NAME ${name}_coverage
+    COMMAND ${CMAKE_COMMAND} -DBINARY=$<TARGET_FILE:${name}_coverage>
             -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ct_coverage_check.cmake)
-  set_tests_properties(${name}_ct_coverage PROPERTIES
+  set_tests_properties(${name}_coverage PROPERTIES
     FIXTURES_REQUIRED ${name}_built)
 endfunction()
 

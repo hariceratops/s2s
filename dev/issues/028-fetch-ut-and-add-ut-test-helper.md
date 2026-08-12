@@ -87,7 +87,7 @@ no longer drag the generated amalgam into their diagnostics.
 
 ### Follow-up: compile-time coverage check (added after 029)
 
-`add_ut_test` grew a third target, `${name}_ct_coverage`, built with neither
+`add_ut_test` grew a third target, `${name}_coverage`, built with neither
 `UT_COMPILE_TIME_ONLY` nor `UT_RUN_TIME_ONLY` so ut's summary carries both
 counts. 029 found the gap it closes: the `_compile_time` entry proves the TU
 compiles, not that any test ran at compile time — ut skips a *capturing* test
@@ -112,7 +112,7 @@ Two things the check needed that were not obvious:
   and reported "could not find a ut summary", which reads like a format change
   rather than a stream mixup. Both streams now land in one variable.
 - The check runs a binary, so it is stale-able the way `_compile_time` was.
-  The `_compile_time` entry now builds `${name}_ct_coverage` too and is a
+  The `_compile_time` entry now builds `${name}_coverage` too and is a
   `FIXTURES_SETUP` for it. `_run_time` deliberately has no fixture: it is the
   build that still links when a compile-time expectation fails, which is
   exactly when its actual values are wanted.

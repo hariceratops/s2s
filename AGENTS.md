@@ -30,7 +30,7 @@ is a `static_assert` inside the translation unit.
 Both helpers live in `test/CMakeLists.txt`; per-directory files only call
 them. A `ut` CTest entry named `*_compile_time` drives `cmake --build` rather
 than running its binary — running it reports a stale binary from the last good
-build as a pass. The third build, `*_ct_coverage`, is the one with no macro, so
+build as a pass. The third build, `*_coverage`, is the one with no macro, so
 ut reports both counts; `test/ct_coverage_check.cmake` fails it unless every
 test also ran at compile time. That is what catches a **capturing** test
 lambda, which ut skips at compile time with no diagnostic while the other two
