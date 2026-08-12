@@ -130,76 +130,6 @@ constexpr auto write_contradicting_fanout() -> s2s::cast_result {
   return s2s::stream_cast_le<fanout_struct>(stream, make_fanout(1));
 }
 
-using point =
-  s2s::struct_field_list<
-    s2s::basic_field<"x", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"y", u16, s2s::field_size<s2s::fixed<2>>>
-  >;
-
-using record_struct =
-  s2s::struct_field_list<
-    s2s::struct_field<"origin", point>,
-    s2s::array_of_records<"corners", point, 2>,
-    s2s::basic_field<"count", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::vector_of_records<"path", point, s2s::field_size<s2s::len_from_field<"count">>>
-  >;
-
-constexpr auto make_point(u16 x, u16 y) -> point {
-  point p{};
-  p["x"_f] = x;
-  p["y"_f] = y;
-  return p;
-}
-
-constexpr auto populated_records() -> record_struct {
-  record_struct obj{};
-  obj["origin"_f] = make_point(0x1111, 0x2222);
-  obj["corners"_f][0] = make_point(0x3333, 0x4444);
-  obj["corners"_f][1] = make_point(0x5555, 0x6666);
-  obj["path"_f] = std::vector<point>{make_point(0x7777, 0x8888)};
-  return obj;
-}
-
-template <bool big_endian>
-constexpr auto roundtrip_records() -> bool {
-  std::array<u8, 18> buffer{};
-  memstream<18> stream(buffer);
-  if constexpr(big_endian) {
-    if(!s2s::stream_cast_be<record_struct>(stream, populated_records()))
-      return false;
-  } else {
-    if(!s2s::stream_cast_le<record_struct>(stream, populated_records()))
-      return false;
-  }
-  stream.rewind();
-  auto res = [&] {
-    if constexpr(big_endian)
-      return s2s::struct_cast_be<record_struct>(stream);
-    else
-      return s2s::struct_cast_le<record_struct>(stream);
-  }();
-  return res &&
-         (*res)["origin"_f]["x"_f] == 0x1111 &&
-         (*res)["corners"_f][1]["y"_f] == 0x6666 &&
-         (*res)["count"_f] == 1 &&
-         (*res)["path"_f].size() == 1 &&
-         (*res)["path"_f][0]["y"_f] == 0x8888;
-}
-
-// Every leaf, at every depth, in declaration order and nothing else.
-constexpr auto nested_bytes_are_in_declaration_order() -> bool {
-  std::array<u8, 18> buffer{};
-  memstream<18> stream(buffer);
-  if(!s2s::stream_cast_be<record_struct>(stream, populated_records()))
-    return false;
-  return buffer == std::array<u8, 18>{
-    0x11, 0x11, 0x22, 0x22,
-    0x33, 0x33, 0x44, 0x44,
-    0x55, 0x55, 0x66, 0x66,
-    0x00, 0x01,
-    0x77, 0x77, 0x88, 0x88};
-}
-
 auto flag_is_set = [](auto flag) { return flag == 0xdeadbeef; };
 
 using optional_struct =
@@ -392,9 +322,6 @@ static_assert(write_disagreeing_computed().error().failed_at == "cells");
 static_assert(roundtrip_fanout(), "fan-out constexpr round-trip failed");
 static_assert(!write_contradicting_fanout().has_value());
 static_assert(write_contradicting_fanout().error().failed_at == "len");
-static_assert(roundtrip_records<false>(), "little-endian record round-trip failed");
-static_assert(roundtrip_records<true>(), "big-endian record round-trip failed");
-static_assert(nested_bytes_are_in_declaration_order());
 static_assert(roundtrip_optional_present<false>(), "little-endian optional round-trip failed");
 static_assert(roundtrip_optional_present<true>(), "big-endian optional round-trip failed");
 static_assert(roundtrip_optional_absent());

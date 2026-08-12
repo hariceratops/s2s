@@ -48,7 +48,7 @@ auto expect_matches_populated(const record_schema& actual) -> void {
 }
 } /* namespace */
 
-TEST(WriteRecordFields, RoundTripsRecordFieldsLittleEndian) {
+TEST(RecordWrite, RoundTripsRecordFieldsLittleEndian) {
   using test_field_list = record_schema;
 
   FIELD_LIST_LE_ROUNDTRIP_CHECK(populated(), {
@@ -58,7 +58,7 @@ TEST(WriteRecordFields, RoundTripsRecordFieldsLittleEndian) {
   });
 }
 
-TEST(WriteRecordFields, RoundTripsRecordFieldsBigEndian) {
+TEST(RecordWrite, RoundTripsRecordFieldsBigEndian) {
   using test_field_list = record_schema;
 
   FIELD_LIST_BE_ROUNDTRIP_CHECK(populated(), {
@@ -70,7 +70,7 @@ TEST(WriteRecordFields, RoundTripsRecordFieldsBigEndian) {
 
 // Recursion must not reorder anything: the bytes are the concatenation of
 // every leaf in declaration order, at every depth.
-TEST(WriteRecordFields, PreservesDeclarationOrderAtEveryNestingLevel) {
+TEST(RecordWrite, PreservesDeclarationOrderAtEveryNestingLevel) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"lead", u16, s2s::field_size<s2s::fixed<2>>>,
@@ -95,7 +95,7 @@ TEST(WriteRecordFields, PreservesDeclarationOrderAtEveryNestingLevel) {
   EXPECT_EQ(be.str(), std::string("\x11\x11\x22\x22\x33\x33\x44\x44", 8));
 }
 
-TEST(WriteRecordFields, RunsConstraintCheckersInsideNestedRecords) {
+TEST(RecordWrite, RunsConstraintCheckersInsideNestedRecords) {
   using tagged =
     s2s::struct_field_list<
       s2s::magic_number<"tag", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
@@ -121,7 +121,7 @@ TEST(WriteRecordFields, RunsConstraintCheckersInsideNestedRecords) {
   EXPECT_EQ(stream.str().size(), 4u);
 }
 
-TEST(WriteRecordFields, RunsConstraintCheckersInsideVectorOfRecords) {
+TEST(RecordWrite, RunsConstraintCheckersInsideVectorOfRecords) {
   using tagged =
     s2s::struct_field_list<
       s2s::magic_number<"tag", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>
@@ -151,7 +151,7 @@ TEST(WriteRecordFields, RunsConstraintCheckersInsideVectorOfRecords) {
 
 // A length field inside a record element describes that element's own data,
 // not the outer struct's.
-TEST(WriteRecordFields, DerivesNestedLengthsFromTheirOwnElement) {
+TEST(RecordWrite, DerivesNestedLengthsFromTheirOwnElement) {
   using sized_record =
     s2s::struct_field_list<
       s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
