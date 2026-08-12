@@ -35,3 +35,8 @@ add_struct_cast_test(optional_read)
 add_struct_cast_test(optional_write)
 add_ut_test(optional_read_ct)
 add_ut_test(optional_write_ct)
+
+add_struct_cast_test(union_read)
+add_struct_cast_test(union_write)
+add_ut_test(union_read_ct)
+add_ut_test(union_write_ct)

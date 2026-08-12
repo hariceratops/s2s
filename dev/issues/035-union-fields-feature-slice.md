@@ -28,3 +28,40 @@ Depends on: 028.
   alternative is selectable.
 - At least one alternative that is itself a record is covered at compile time.
 - Old sources deleted; `ctest` green.
+
+## Notes 2026-08-12
+
+Done. `ctest` 89/89 (was 84; +8 entries, −3).
+
+GoogleTest inventory unchanged at 20 cases: `S2STest` (10) → `UnionRead`,
+`WriteUnionFields` (10) → `UnionWrite`. The read names were snake_case
+(`variant_field_parsing_with_complex_type_predicate`) and became behaviour
+sentences naming which selection form each covers.
+
+Ported to ut and removed from `constexpr_write.cpp`: `roundtrip_union` in both
+byte orders and `discriminant_is_derived`. From `constexpr_read.cpp`: the 5
+`unionish` asserts.
+
+`union_read_ct.cpp` is 9 tests, 31 asserts. The read side had one compile-time
+case — a discriminant switch landing on one alternative — so all three
+selection forms are now covered, each shown both selecting and failing:
+
+- discriminant switch, both `match_case` branches plus a value matching
+  neither. Selecting only ever one alternative would pass a switch that
+  ignores its discriminant entirely.
+- predicate ladder, first branch, a later branch whose alternative is a
+  record, and no branch holding.
+- computed switch, matching on a value that appears nowhere on the wire, and
+  failing when the computation lands between cases.
+
+`type_deduction_failure` naming field `"c"` is asserted in all three forms,
+since each reaches it by a different route.
+
+### `constexpr_read.cpp` is gone
+
+Every section had migrated by the end of this slice, leaving a file whose
+`main` was `return 0` and which asserted nothing — a binary that passes
+because it does nothing, which is the failure mode this whole feature exists
+to remove. Deleted, and dropped from `test/constexpr/CMakeLists.txt`. 041
+still owns retiring the directory: `constexpr_write.cpp` keeps 8
+`static_assert`s (computed lengths and fan-out), which are 037's to move.

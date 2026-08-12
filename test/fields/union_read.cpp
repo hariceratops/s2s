@@ -7,7 +7,7 @@
 using namespace s2s_literals;
 
 
-TEST(S2STest, failed_parsing_variant_field) {
+TEST(UnionRead, RejectsAValueNoAlternativeMatches) {
   PREPARE_INPUT_FILE({
     u32 a = 0xbeefbeef;
     u32 b = 0xbeefbeef;
@@ -55,7 +55,7 @@ TEST(S2STest, failed_parsing_variant_field) {
 }
 
 
-TEST(S2STest, successful_variant_field_parsing) {
+TEST(UnionRead, ReadsTheAlternativeTheDiscriminantSelects) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -103,7 +103,7 @@ TEST(S2STest, successful_variant_field_parsing) {
 }
 
 
-TEST(S2STest, variant_field_with_fixed_array) {
+TEST(UnionRead, ReadsAFixedArrayAlternative) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -153,7 +153,7 @@ TEST(S2STest, variant_field_with_fixed_array) {
 }
 
 
-TEST(S2STest, variant_field_with_variable_sized_array) {
+TEST(UnionRead, ReadsALengthPrefixedArrayAlternative) {
   [](){
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     u32 a = 0xdeadbeef;
@@ -218,7 +218,7 @@ TEST(S2STest, variant_field_with_variable_sized_array) {
 }
 
 
-TEST(S2STest, variant_field_with_fixed_string) {
+TEST(UnionRead, ReadsAFixedStringAlternative) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -267,7 +267,7 @@ TEST(S2STest, variant_field_with_fixed_string) {
 }
 
 
-TEST(S2STest, variant_field_with_variable_string) {
+TEST(UnionRead, ReadsALengthPrefixedStringAlternative) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -319,7 +319,7 @@ TEST(S2STest, variant_field_with_variable_string) {
 }
 
 
-TEST(S2STest, variant_field_parsing_with_complex_type_predicate) {
+TEST(UnionRead, ReadsTheAlternativeAComputedSwitchSelects) {
   PREPARE_INPUT_FILE({
     u32 a = 100;
     u32 b = 100;
@@ -368,7 +368,7 @@ TEST(S2STest, variant_field_parsing_with_complex_type_predicate) {
 }
 
 
-TEST(S2STest, variant_field_struct_fields) {
+TEST(UnionRead, ReadsARecordAlternative) {
   PREPARE_INPUT_FILE({
     u32 a = 0xdeadbeef;
     u32 b = 0xcafed00d;
@@ -420,7 +420,7 @@ TEST(S2STest, variant_field_struct_fields) {
 }
 
 
-TEST(S2STest, variant_field_parsing_with_boolean_clauses) {
+TEST(UnionRead, RejectsWhenNoLadderBranchMatches) {
   PREPARE_INPUT_FILE({
     u32 a = 50000;
     u32 b = 50000;
@@ -463,7 +463,7 @@ TEST(S2STest, variant_field_parsing_with_boolean_clauses) {
 }
 
 
-TEST(S2STest, variant_field_with_boolean_clauses) {
+TEST(UnionRead, ReadsTheAlternativeALadderSelects) {
   PREPARE_INPUT_FILE({
     u32 a = 12000;
     u32 b = 12000;

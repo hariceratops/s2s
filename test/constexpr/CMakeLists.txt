@@ -4,7 +4,6 @@ function(add_constexpr_test name)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-add_constexpr_test(constexpr_read)
 add_constexpr_test(containers)
 add_constexpr_test(field_list_metadata)
 add_constexpr_test(static_tests_2)
