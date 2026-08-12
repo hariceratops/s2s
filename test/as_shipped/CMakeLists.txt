@@ -2,20 +2,20 @@
 # shipped artifact is self-contained, and that it stays warning-clean for
 # consumers who build with warnings enabled.
 
-add_executable(single_header_roundtrip roundtrip.cpp)
-add_dependencies(single_header_roundtrip generate_single_header)
+add_executable(as_shipped_roundtrip roundtrip.cpp)
+add_dependencies(as_shipped_roundtrip generate_single_header)
 
 # Deliberately only the single header — not INCLUDE_DIR.
-target_include_directories(single_header_roundtrip PRIVATE ${SINGLE_HEADER_DIR})
+target_include_directories(as_shipped_roundtrip PRIVATE ${SINGLE_HEADER_DIR})
 
 # -Werror so a new diagnostic fails the build rather than scrolling past.
 # -Wnon-template-friend is pre-existing in include/lib/metaprog/mp.hpp's
 # friend-injection trick for type_id; suppressed here so the guard catches
 # anything new instead of being permanently red.
-target_compile_options(single_header_roundtrip PRIVATE
+target_compile_options(as_shipped_roundtrip PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 
-add_test(NAME single_header_roundtrip COMMAND single_header_roundtrip)
+add_test(NAME as_shipped_roundtrip COMMAND as_shipped_roundtrip)
 
 # docs/writing.md's claims about derived fields, kept
 # compilable so the docs cannot drift from the library unnoticed.

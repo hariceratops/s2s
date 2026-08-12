@@ -42,7 +42,7 @@ When both conditions hold, the whole parse happens in the compiler — including
 constraint checking, presence deduction and type deduction — and the result is a
 value that can be `static_assert`ed on.
 
-<!-- docs: test/single_header/guide_constexpr_example.cpp -->
+<!-- docs: test/as_shipped/guide_constexpr_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

@@ -114,7 +114,7 @@ int main() {
     expect(eq((*res)["b"_f][0], 0xdeadbeefu));
   };
 
-  // test/compile_fail/derived_field_assignment.cpp asserts that assigning to
+  // test/rejected_misuse/derived_field_assignment.cpp asserts that assigning to
   // a derived field does not compile. This is the other half: reading one
   // through the const accessor does, and gives the value from the wire.
   "a derived field is readable even though it cannot be assigned"_test = [] constexpr {

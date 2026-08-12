@@ -69,7 +69,7 @@ which is why they take an `expected` value where other descriptors take a
 constraint, and why a wrong magic value reports `validation_failure` like any
 other constraint breach rather than an error of its own.
 
-<!-- docs: test/single_header/guide_constraints_example.cpp -->
+<!-- docs: test/as_shipped/guide_constraints_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

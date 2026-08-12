@@ -39,3 +39,53 @@ Depends on: 028. Independent of 029-038.
   remove a case. `compile_fail/` still holds exactly its one existing case;
   expanding it is explicitly out of scope.
 - `ctest` green.
+
+## Notes 2026-08-12
+
+Done. `ctest` 104/104, the same 104 entries as before the rename — this moved
+things, it did not add or remove a case.
+
+`test/compile_fail/` → `test/rejected_misuse/`, `test/single_header/` →
+`test/as_shipped/`. Swept: 12 `<!-- docs: … -->` bindings across `docs/` and
+`README.md`, `AGENTS.md`, `test/CMakeLists.txt`'s two directory variables,
+both renamed directories' own CMakeLists, `scripts/check_doc_examples.py`, and
+one comment in `test/fields/size_axis_read_ct.cpp` pointing at the negative
+half of a case it covers positively.
+
+Test and target names carried the old mechanism names too, so they moved with
+the directories: `add_compile_fail_case`/`add_compile_pass_case` are now
+`add_rejected_case`/`add_accepted_case`, and the four cases read
+`rejects_assigning_a_derived_len`, `rejects_assigning_a_derived_discriminant`,
+`rejects_duplicate_match_values`, `accepts_reading_a_derived_field`.
+`single_header_roundtrip` is `as_shipped_roundtrip`. The root `single_header/`
+directory and `SINGLE_HEADER_DIR` are untouched — that is the amalgam output a
+consumer includes, not a test directory.
+
+### The checker was proven to still check, twice
+
+`doc_examples_match` passing after a rename proves nothing on its own: the
+script's own hard-coded path is the one reference that would keep passing
+while pointing at a directory that no longer exists. Both failure paths were
+triggered deliberately and both name the new directory:
+
+```
+docs/constraints.md:73: bound to 'test/as_shipped/no_such_example.cpp', which does not exist.
+docs/constraints.md:72: complete program has no '<!-- docs: <path> -->' binding. Back it
+with a source file under test/as_shipped/, register that file in
+test/as_shipped/CMakeLists.txt, and bind the block to it.
+```
+
+The second is the guidance text, which is where two of the script's three
+hard-coded paths lived and where a stale path would have been invisible.
+
+### Also corrected here
+
+`AGENTS.md` still described the tree as "mid-reorganisation from execution-mode
+directories (`test/runtime/`, `test/constexpr/`)". Both were retired in 037 and
+038, so that paragraph now describes the four directories that exist.
+
+`.claude/settings.local.json` still contains the old paths in 17 places. Those
+are historical Bash-permission records from earlier sessions, several pointing
+at scratchpad directories that no longer exist. Rewriting them would be editing
+a log of what was approved, not a reference to fix. Left alone deliberately;
+this is the one place the acceptance criterion's grep still matches.

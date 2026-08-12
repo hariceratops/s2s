@@ -36,10 +36,12 @@ test also ran at compile time. That is what catches a **capturing** test
 lambda, which ut skips at compile time with no diagnostic while the other two
 entries stay green. Test lambdas must not capture.
 
-The tree is mid-reorganisation from execution-mode directories
-(`test/runtime/`, `test/constexpr/`) to per-feature ones under `test/fields/`,
-with `test/internals/` for machinery that is not a schema construct. See
-`dev/specs/compile-time-test-tier.md`.
+The tree is organised by feature, not by execution mode. `test/fields/` holds
+one pair of sources per schema construct (`<feature>_{read,write}.cpp` for
+GoogleTest, `_ct.cpp` for ut); `test/internals/` holds machinery that is not a
+schema construct; `test/rejected_misuse/` asserts that misuse fails to
+compile; `test/as_shipped/` builds against the amalgamated header and compiles
+every documented example. See `dev/specs/compile-time-test-tier.md`.
 There is no `.clang-format` or `.clang-tidy` in the repo, so formatting
 follows the surrounding file rather than a tool.
 
@@ -55,7 +57,7 @@ compile-time claims.
 Prose addresses the reader in neutral third person, not as "you".
 
 Every complete program shown in `README.md` or `docs/` is backed by a source
-under `test/single_header/`, registered as a CTest target, and bound to its
+under `test/as_shipped/`, registered as a CTest target, and bound to its
 fenced block: an `<!-- docs: <path> -->` comment above the fence, and a
 `// docs-begin` / `// docs-end` region in the source. The two must match line
 for line, and `ctest` enforces it (`doc_examples_match`), alongside every page

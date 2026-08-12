@@ -6,7 +6,7 @@ Scans README.md and every page under docs/.
 A fenced block in a markdown file is bound to a source file by an HTML comment
 on the line directly above the fence:
 
-    <!-- docs: test/single_header/foo.cpp -->
+    <!-- docs: test/as_shipped/foo.cpp -->
     ```cpp
     ...
     ```
@@ -78,8 +78,8 @@ def main(argv: list[str]) -> int:
                     failures.append(
                         f"{name}:{line_no}: complete program has no "
                         f"'<!-- docs: <path> -->' binding. Back it with a source file "
-                        f"under test/single_header/, register that file in "
-                        f"test/single_header/CMakeLists.txt, and bind the block to it."
+                        f"under test/as_shipped/, register that file in "
+                        f"test/as_shipped/CMakeLists.txt, and bind the block to it."
                     )
                 continue
 

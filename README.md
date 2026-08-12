@@ -58,7 +58,7 @@ The compiler version requirements are
 
 
 ## Taste of the API
-<!-- docs: test/single_header/readme_read_example.cpp -->
+<!-- docs: test/as_shipped/readme_read_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
@@ -106,7 +106,7 @@ The same schema drives the other direction. Fields the schema can work out for
 itself — here `payload_length` — are derived during the write rather than being
 data anyone has to keep in sync:
 
-<!-- docs: test/single_header/readme_roundtrip_example.cpp -->
+<!-- docs: test/as_shipped/readme_roundtrip_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
