@@ -80,13 +80,11 @@ function(add_ut_test name)
 endfunction()
 
 set(FIELDS_TEST_DIR "fields")
-set(CONSTEXPR_TEST_DIR "constexpr")
 set(COMPILE_FAIL_TEST_DIR "compile_fail")
 set(SINGLE_HEADER_TEST_DIR "single_header")
 set(INTERNALS_TEST_DIR "internals")
 
 add_subdirectory(${FIELDS_TEST_DIR})
-add_subdirectory(${CONSTEXPR_TEST_DIR})
 add_subdirectory(${COMPILE_FAIL_TEST_DIR})
 add_subdirectory(${SINGLE_HEADER_TEST_DIR})
 add_subdirectory(${INTERNALS_TEST_DIR})

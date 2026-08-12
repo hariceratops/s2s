@@ -1,7 +1,7 @@
 - [x] Size dependency resolution checks
 - [x] Parse dependency resolution checks
-- [ ] Static test cases for all type traits and concepts
-- [ ] Remove dead code
+- [x] Static test cases for all type traits and concepts — `test/internals/traits_ct.cpp`, see `dev/issues/038-rewrite-static-tests-as-ut-traits-suite.md`
+- [ ] Remove dead code — two orphaned headers removed by 038 (`field_value_constraints_traits.hpp`, `typelist_manip.hpp`); the rest is untouched
 - [ ] Refactor type and non-type list
 - [x] Value based TMP
 - [x] Support all major compilers = msvc, indirectly supports more compilers = gcc 12.1
