@@ -32,6 +32,11 @@ function(add_struct_cast_test name)
   file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${name}.dir)
   add_test(NAME ${name} COMMAND ${name}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${name}.dir)
+  # A source with no TEST() in it still links against gtest_main and exits 0.
+  # gtest says so on stdout; without this the entry is green for a binary that
+  # ran nothing. The ut equivalent is ct_coverage_check.cmake.
+  set_tests_properties(${name} PROPERTIES
+    FAIL_REGULAR_EXPRESSION "does NOT link in any test case")
 endfunction()
 
 # One source, two builds. ut's compile-time mode is a static_assert inside the

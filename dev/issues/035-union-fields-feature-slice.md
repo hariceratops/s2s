@@ -65,3 +65,21 @@ because it does nothing, which is the failure mode this whole feature exists
 to remove. Deleted, and dropped from `test/constexpr/CMakeLists.txt`. 041
 still owns retiring the directory: `constexpr_write.cpp` keeps 8
 `static_assert`s (computed lengths and fan-out), which are 037's to move.
+
+### I emptied `union_write.cpp` and `ctest` stayed green
+
+A one-liner in the rename script read `open(p,'w').write(open(p).read()...)`.
+`open(p,'w')` truncates before the argument is evaluated, so it read back an
+empty file and wrote nothing. `union_write.cpp` went to 0 bytes, all 10 cases
+gone, and `ctest` reported 89/89.
+
+An empty source still links `gtest_main` and exits 0. gtest even prints
+`This test program does NOT link in any test case` — and nothing was reading
+it. Fixed in `add_struct_cast_test` with a `FAIL_REGULAR_EXPRESSION` on that
+message; verified by emptying the file again and watching the entry fail. This
+is the GoogleTest mirror of the `_coverage` check 028 added for ut, and the
+same class of bug: a binary that passes because it does nothing.
+
+It does not catch a *partial* loss — cases deleted from a file that still has
+others. That needs an expected-count manifest, which is 041's coverage-audit
+territory if it is worth doing at all.
