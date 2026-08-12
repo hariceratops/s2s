@@ -1,7 +1,6 @@
 add_struct_cast_test(arr_of_recs_fields)
 add_struct_cast_test(computation_from_fields)
 add_struct_cast_test(field_validators)
-add_struct_cast_test(fixed_buffer_fields)
 add_struct_cast_test(magic_fields)
 add_struct_cast_test(optional_fields)
 add_struct_cast_test(union_fields)
@@ -9,7 +8,6 @@ add_struct_cast_test(variable_buffer_fields)
 add_struct_cast_test(vec_of_recs_fields)
 
 # Write path
-add_struct_cast_test(write_fixed_buffer_fields)
 add_struct_cast_test(write_magic_fields)
 add_struct_cast_test(write_variable_buffer_fields)
 add_struct_cast_test(write_record_fields)

@@ -5,7 +5,7 @@
 
 using namespace s2s_literals;
 
-TEST(MetaStructReadTest, FixedBufferFieldsFromBinaryFile) {
+TEST(FixedBufferRead, ReadsFixedStringAndArrayFields) {
   {
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     constexpr std::size_t str_len = 10;
@@ -35,7 +35,7 @@ TEST(MetaStructReadTest, FixedBufferFieldsFromBinaryFile) {
   }();
 }
 
-TEST(MetaStructReadTest, MultiDimensionalFixedBufferFieldFromBinaryFile) {
+TEST(FixedBufferRead, ReadsNestedFixedArrays) {
   {
     std::ofstream ofs("test_input.bin", std::ios::out | std::ios::binary);
     const u32 u32_arr[3][3] = { 
@@ -67,7 +67,7 @@ TEST(MetaStructReadTest, MultiDimensionalFixedBufferFieldFromBinaryFile) {
 
 // No read test exercised a foreign-endian buffer, which is what let
 // read_foreign_buffer byteswap the container instead of its elements.
-TEST(MetaStructReadTest, ForeignEndianFixedBufferIsSwappedPerElement) {
+TEST(FixedBufferRead, SwapsForeignEndianBuffersPerElement) {
   {
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     // fixed_string_field<N> is sized fixed<N + 1>, so the terminator is on the wire.
@@ -92,7 +92,7 @@ TEST(MetaStructReadTest, ForeignEndianFixedBufferIsSwappedPerElement) {
 
 // The nested case only ever ran host-endian, so the per-element swap never
 // had to descend into the inner array.
-TEST(MetaStructReadTest, ForeignEndianMultiDimensionalFixedBuffer) {
+TEST(FixedBufferRead, SwapsNestedForeignEndianBuffersElementWise) {
   {
     std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
     const u8 be_bytes[] = {

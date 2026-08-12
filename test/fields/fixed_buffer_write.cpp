@@ -35,7 +35,7 @@ auto expect_matches_populated(const aggregate_schema& actual) -> void {
 }
 } /* namespace */
 
-TEST(WriteFixedBufferFields, RoundTripsFixedSizeAggregatesLittleEndian) {
+TEST(FixedBufferWrite, RoundTripsFixedSizeAggregatesLittleEndian) {
   using test_field_list = aggregate_schema;
   const auto original = populated();
 
@@ -46,7 +46,7 @@ TEST(WriteFixedBufferFields, RoundTripsFixedSizeAggregatesLittleEndian) {
   });
 }
 
-TEST(WriteFixedBufferFields, RoundTripsFixedSizeAggregatesBigEndian) {
+TEST(FixedBufferWrite, RoundTripsFixedSizeAggregatesBigEndian) {
   using test_field_list = aggregate_schema;
   const auto original = populated();
 
@@ -59,7 +59,7 @@ TEST(WriteFixedBufferFields, RoundTripsFixedSizeAggregatesBigEndian) {
 
 // Each element is swapped individually — a whole-buffer reversal would give
 // 66 55 44 33 22 11 and still round-trip, so pin the bytes.
-TEST(WriteFixedBufferFields, ByteswapsPerElementNotPerBuffer) {
+TEST(FixedBufferWrite, ByteswapsPerElementNotPerBuffer) {
   using test_field_list = s2s::struct_field_list<s2s::fixed_array_field<"arr", u16, 3>>;
 
   test_field_list original{};
@@ -76,7 +76,7 @@ TEST(WriteFixedBufferFields, ByteswapsPerElementNotPerBuffer) {
 
 // The swap has to descend into the inner array rather than treating each row
 // as one opaque element.
-TEST(WriteFixedBufferFields, ByteswapsNestedAggregatesElementWise) {
+TEST(FixedBufferWrite, ByteswapsNestedAggregatesElementWise) {
   using test_field_list =
     s2s::struct_field_list<s2s::fixed_array_field<"arr", std::array<u16, 2>, 2>>;
 
@@ -96,7 +96,7 @@ TEST(WriteFixedBufferFields, ByteswapsNestedAggregatesElementWise) {
 
 // Char elements have no byte order, so both directions must emit them
 // unchanged rather than reversing the string.
-TEST(WriteFixedBufferFields, LeavesCharBuffersUnswapped) {
+TEST(FixedBufferWrite, LeavesCharBuffersUnswapped) {
   using test_field_list = s2s::struct_field_list<s2s::fixed_string_field<"name", 4>>;
 
   test_field_list original{};
