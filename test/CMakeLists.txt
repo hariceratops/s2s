@@ -36,7 +36,8 @@ endfunction()
 
 # One source, two builds. ut's compile-time mode is a static_assert inside the
 # TU, so a compile-time failure is a build failure; its run-time mode aborts
-# from a static destructor. Two entries keep the two apart.
+# from a static destructor. Three entries: the first two keep those apart, the
+# third checks every test really did run at compile time.
 function(add_ut_test name)
   add_executable(${name}_compile_time ${name}.cpp)
   target_compile_definitions(${name}_compile_time PRIVATE UT_COMPILE_TIME_ONLY)
@@ -46,15 +47,31 @@ function(add_ut_test name)
   target_compile_definitions(${name}_run_time PRIVATE UT_RUN_TIME_ONLY)
   target_link_libraries(${name}_run_time PRIVATE qlibs_ut)
 
+  # Neither macro: ut then runs both modes and its summary carries the
+  # compile-time count, which is what the coverage check compares.
+  add_executable(${name}_ct_coverage ${name}.cpp)
+  target_link_libraries(${name}_ct_coverage PRIVATE qlibs_ut)
+
   # The compile-time binary does nothing when run — its assertions were spent
   # during compilation. Running it would report a stale binary from the last
-  # good build as a pass, so the entry drives the build instead.
+  # good build as a pass, so the entry drives the build instead. It builds the
+  # coverage target too, so that check cannot read a stale summary either.
   add_test(NAME ${name}_compile_time
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
-            --target ${name}_compile_time --config $<CONFIG>)
-  set_tests_properties(${name}_compile_time PROPERTIES RESOURCE_LOCK build_tree)
+            --target ${name}_compile_time ${name}_ct_coverage --config $<CONFIG>)
+  set_tests_properties(${name}_compile_time PROPERTIES
+    RESOURCE_LOCK build_tree
+    FIXTURES_SETUP ${name}_built)
 
+  # No fixture on this one: it is the build that still links when a
+  # compile-time expectation fails, which is exactly when it is wanted.
   add_test(NAME ${name}_run_time COMMAND ${name}_run_time)
+
+  add_test(NAME ${name}_ct_coverage
+    COMMAND ${CMAKE_COMMAND} -DBINARY=$<TARGET_FILE:${name}_ct_coverage>
+            -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ct_coverage_check.cmake)
+  set_tests_properties(${name}_ct_coverage PROPERTIES
+    FIXTURES_REQUIRED ${name}_built)
 endfunction()
 
 set(FIELDS_TEST_DIR "fields")

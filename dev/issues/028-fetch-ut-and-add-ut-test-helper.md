@@ -84,3 +84,38 @@ working directory (18 of them wrote the same `test_input.bin`, so `ctest -j`
 was unsafe), and `constexpr_memstream.hpp` includes
 `include/stream/stream_traits.hpp` instead of the single header, so ut sources
 no longer drag the generated amalgam into their diagnostics.
+
+### Follow-up: compile-time coverage check (added after 029)
+
+`add_ut_test` grew a third target, `${name}_ct_coverage`, built with neither
+`UT_COMPILE_TIME_ONLY` nor `UT_RUN_TIME_ONLY` so ut's summary carries both
+counts. 029 found the gap it closes: the `_compile_time` entry proves the TU
+compiles, not that any test ran at compile time — ut skips a *capturing* test
+lambda at compile time with no diagnostic, and both single-mode entries stay
+green.
+
+The first attempt was `FAIL_REGULAR_EXPRESSION "0 compile-time"` on the
+binary's output. **It does not work, and was only found out by trying it.**
+Making one of `trivial_write_ct.cpp`'s four lambdas capture produced
+`tests: 4 (4 passed, 0 failed, 3 compile-time)` — one test silently skipped,
+the regex never matched, all three entries green. The invariant is
+total == compile-time, and CMake's regex has no backreferences to say that.
+
+So the entry runs `test/ct_coverage_check.cmake`, which executes the binary,
+parses the summary, and fails unless the counts match. Re-run against the same
+capturing lambda: `3 of 4 tests ran at compile time (1 skipped)`. Sabotage
+reverted afterwards.
+
+Two things the check needed that were not obvious:
+
+- ut writes its summary to **stderr**. Capturing only stdout parsed nothing
+  and reported "could not find a ut summary", which reads like a format change
+  rather than a stream mixup. Both streams now land in one variable.
+- The check runs a binary, so it is stale-able the way `_compile_time` was.
+  The `_compile_time` entry now builds `${name}_ct_coverage` too and is a
+  `FIXTURES_SETUP` for it. `_run_time` deliberately has no fixture: it is the
+  build that still links when a compile-time expectation fails, which is
+  exactly when its actual values are wanted.
+
+Cost: ~4.4 s per ut source on gcc 14.2, a third TU where there were two. Clean
+build 90 s wall, `ctest` 54/54 in 5.4 s.

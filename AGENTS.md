@@ -19,9 +19,9 @@ struct to stream via `stream_cast_le`/`_be`.
 Tests use two frameworks, both fetched at configure time via CMake
 `FetchContent`. Routing between them is by constant-evaluability, and the
 compiler enforces it: a body the compiler can evaluate on its own belongs to
-qlibs/ut, registered with `add_ut_test`, which builds one source twice — once
-under `UT_COMPILE_TIME_ONLY` and once under `UT_RUN_TIME_ONLY` — so the same
-test runs at compile time and at run time. Anything holding a real stream
+qlibs/ut, registered with `add_ut_test`, which builds one source three times —
+under `UT_COMPILE_TIME_ONLY`, under `UT_RUN_TIME_ONLY`, and under neither — so
+the same test runs at compile time and at run time. Anything holding a real stream
 object (`ifstream`, `ofstream`, `stringstream`) is not constant-evaluable and
 belongs to GoogleTest, registered with `add_struct_cast_test`. The two never
 share a binary: ut aborts from a static destructor, and its compile-time mode
@@ -30,7 +30,11 @@ is a `static_assert` inside the translation unit.
 Both helpers live in `test/CMakeLists.txt`; per-directory files only call
 them. A `ut` CTest entry named `*_compile_time` drives `cmake --build` rather
 than running its binary — running it reports a stale binary from the last good
-build as a pass.
+build as a pass. The third build, `*_ct_coverage`, is the one with no macro, so
+ut reports both counts; `test/ct_coverage_check.cmake` fails it unless every
+test also ran at compile time. That is what catches a **capturing** test
+lambda, which ut skips at compile time with no diagnostic while the other two
+entries stay green. Test lambdas must not capture.
 
 The tree is mid-reorganisation from execution-mode directories
 (`test/runtime/`, `test/constexpr/`) to per-feature ones under `test/fields/`,

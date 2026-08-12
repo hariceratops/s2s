@@ -67,14 +67,16 @@ ut reports both counts: `4 passed, 0 failed, 4 compile-time` for each. This
 matters because ut skips a *capturing* test lambda at compile time silently —
 see the harness gap below.
 
-### Harness gap found here, not yet fixed
+### Harness gap found here — since fixed in 028
 
 A `_compile_time` CTest entry proves the translation unit compiles. It does
 **not** prove any test ran at compile time: a capturing lambda is skipped with
-no diagnostic, and the entry stays green. Today the only way to tell is the
-manual no-macro build above. That is a hole in 028's helper, and it will get
-wider with every slice that adds a ut source. Options, cheapest first: have
-`add_ut_test` build a third no-macro target and fail if its output reports
-`0 compile-time`; or replace the `UT_RUN_TIME_ONLY` target with a no-macro one
-and check the same thing. Not done here — it changes the shared helper, which
-is 028's territory.
+no diagnostic, and the entry stays green. The manual no-macro build above was
+the only way to tell, which would not have survived nine more slices.
+
+Fixed in 028 rather than here, since it changes the shared helper:
+`add_ut_test` now builds a third no-macro target and a CMake script compares
+ut's total against its compile-time count. The cheaper variant floated here —
+grep the output for `0 compile-time` — was tried and does **not** work; one
+skipped test out of four still reads `3 compile-time`. See 028's follow-up
+note. Slices 030-037 get the check for free.
