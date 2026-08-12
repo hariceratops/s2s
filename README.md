@@ -58,7 +58,7 @@ The compiler version requirements are
 
 
 ## Taste of the API
-<!-- docs: test/as_shipped/readme_read_example.cpp -->
+<!-- docs: test/doc_examples/readme_read_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
@@ -106,7 +106,7 @@ The same schema drives the other direction. Fields the schema can work out for
 itself — here `payload_length` — are derived during the write rather than being
 data anyone has to keep in sync:
 
-<!-- docs: test/as_shipped/readme_roundtrip_example.cpp -->
+<!-- docs: test/doc_examples/readme_roundtrip_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
@@ -178,6 +178,56 @@ mkdocs build -f docs/mkdocs.yml   # or render once into site/
 markdown with relative links, so they also read fine straight from
 [`docs/`](docs/index.md) on GitHub — building is only needed for the rendered
 site.
+
+## Building and running the tests
+
+Configure and build. gcc 14 or newer is required — `CMakeLists.txt` fails
+configure below it rather than letting the failure surface later as a template
+error:
+
+```sh
+cmake -S . -B build -DCMAKE_CXX_COMPILER=g++-14
+cmake --build build -j$(nproc)
+ctest --test-dir build -j$(nproc)
+```
+
+GoogleTest and qlibs/ut are both fetched at configure time, so the first
+configure needs network access. Nothing else is vendored.
+
+A single suite, or everything matching a name:
+
+```sh
+ctest --test-dir build -R union            # every union entry, both frameworks
+ctest --test-dir build -R '_ct_'           # the compile-time tier only
+ctest --test-dir build --output-on-failure # show output from what failed
+```
+
+The test tree is named for what each directory verifies:
+
+| Directory | Verifies |
+|---|---|
+| `test/schema/` | one schema construct per file pair — the descriptor table in [`docs/schema/`](docs/schema/index.md) |
+| `test/internals/` | traits, containers and field-list metadata |
+| `test/must_not_compile/` | programs that must fail to compile |
+| `test/doc_examples/` | every program shown in the docs compiles, runs, and matches its fenced block |
+| `test/shipped_header/` | the amalgamated header stands alone and regenerates byte-identically |
+| `examples/` | standalone programs a consumer could copy, built and run |
+
+Tests come in two forms. `<feature>_read.cpp` and `<feature>_write.cpp` are
+GoogleTest and run at run time. `<feature>_read_ct.cpp` and `<feature>_write_ct.cpp`
+are [qlibs/ut](https://github.com/qlibs/ut) and run **both** at compile time and
+at run time, from the same source — which is how the compile-time parsing claim
+above is checked rather than asserted. Each ut source produces three CTest
+entries:
+
+| Entry | What it does |
+|---|---|
+| `<name>_compile_time` | drives `cmake --build`; the assertions are spent during compilation, so a failure is a build failure |
+| `<name>_run_time` | runs the same tests at run time, printing actual values — the one build that still links when a compile-time expectation fails |
+| `<name>_coverage` | fails unless *every* test also ran at compile time; ut skips a capturing lambda silently, and this is what notices |
+
+Entries under `test/must_not_compile/` are expected to fail to build, and
+`ctest` reports them green when they do.
 
 ## Roadmap
 - [x] Trivials

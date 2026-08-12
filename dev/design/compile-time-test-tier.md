@@ -222,6 +222,26 @@ This changes where a scratch file lands, not what any test asserts.
 | `test/hello/` | `examples/` (repo root) | per issue 040 |
 | `test/utils/` | unchanged | §4 |
 
+**Superseded 2026-08-12, after the feature landed.** Three of these names did
+not survive first contact with a reader. `test/fields/` collided with
+`include/field/` and `include/field_list/`, which are different things, and
+`fields` never named what the directory groups by — it is one entry per row of
+the descriptor table in `docs/schema/index.md`, so `test/schema/` pairs with
+the page it covers. `rejected_misuse/` was vague, and the "holds the positive
+control too" reasoning above turned out to be the flaw rather than the
+justification: a directory of programs that must not compile has no business
+holding one that must, so that case moved to
+`test/schema/size_axis_read_ct.cpp` and the directory became
+`test/must_not_compile/`. `as_shipped/` tried to be one name for two jobs and
+was 12 targets of documentation to 1 of packaging; split into
+`test/doc_examples/` and `test/shipped_header/`, each name is exactly true.
+
+| Design said | Now | Why the change |
+|---|---|---|
+| `test/fields/` | `test/schema/` | mirrors `docs/schema/`; no collision with `include/field*/` |
+| `test/rejected_misuse/` | `test/must_not_compile/` | states the claim plainly, once the positive control moved out |
+| `test/as_shipped/` | `test/doc_examples/` + `test/shipped_header/` | one name could not cover both jobs |
+
 `test/internals/` exists so `test/fields/` can mean exactly "one entry per row
 of the `docs/schema/` table" — which is the property issue 041's audit walks.
 Mixing `containers_ct.cpp` in there would make that walk ambiguous forever.

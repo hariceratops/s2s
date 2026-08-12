@@ -47,7 +47,7 @@ which is not designed to be exception-safe part way through a field.
 
 ## A reference implementation
 
-<!-- docs: test/as_shipped/guide_stream_example.cpp -->
+<!-- docs: test/doc_examples/guide_stream_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

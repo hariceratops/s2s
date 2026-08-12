@@ -45,12 +45,19 @@ the count comparison above, `add_struct_cast_test` via a
 that loses its cases still links and exits 0, so without these a green `ctest`
 does not mean the tests ran.
 
-The tree is organised by feature, not by execution mode. `test/fields/` holds
-one pair of sources per schema construct (`<feature>_{read,write}.cpp` for
-GoogleTest, `_ct.cpp` for ut); `test/internals/` holds machinery that is not a
-schema construct; `test/rejected_misuse/` asserts that misuse fails to
-compile; `test/as_shipped/` builds against the amalgamated header and compiles
-every documented example. See `dev/specs/compile-time-test-tier.md`.
+The tree is organised by feature, not by execution mode. Each directory is
+named for what it verifies:
+
+| Directory | Verifies |
+|---|---|
+| `test/schema/` | one schema construct per `<feature>_{read,write}.cpp` (GoogleTest) and `_ct.cpp` (ut) pair; mirrors the descriptor table in `docs/schema/index.md` |
+| `test/internals/` | machinery that is not a schema construct — traits, containers, field-list metadata |
+| `test/must_not_compile/` | programs that must fail to compile; each is its own target, and `ctest` expects the build to fail |
+| `test/doc_examples/` | every program the documentation shows compiles, runs, and still matches its fenced block |
+| `test/shipped_header/` | the amalgam stands alone, warning-clean, and regenerates byte-identically |
+| `test/utils/` | helpers the suites share, notably `constexpr_memstream.hpp` |
+
+See `dev/specs/compile-time-test-tier.md`.
 
 `examples/` at the repo root holds standalone programs a consumer could copy.
 They are not tests, but each one is a CMake target with a CTest entry that
@@ -73,7 +80,7 @@ compile-time claims.
 Prose addresses the reader in neutral third person, not as "you".
 
 Every complete program shown in `README.md` or `docs/` is backed by a source
-under `test/as_shipped/`, registered as a CTest target, and bound to its
+under `test/doc_examples/`, registered as a CTest target, and bound to its
 fenced block: an `<!-- docs: <path> -->` comment above the fence, and a
 `// docs-begin` / `// docs-end` region in the source. The two must match line
 for line, and `ctest` enforces it (`doc_examples_match`), alongside every page

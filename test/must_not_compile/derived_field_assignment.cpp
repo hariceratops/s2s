@@ -1,8 +1,8 @@
-// Compile-fail test: assigning to a derived field must not compile, while
-// reading it through the const accessor must.
+// Assigning to a derived field must not compile.
 //
-// Built with -DCASE=<n>; each case is expected to fail compilation except
-// CASE_READS_OK, which must succeed. See CMakeLists.txt.
+// Built with -DCASE=<n>; every case here is expected to fail compilation. The
+// positive half — a derived field stays readable, its siblings assignable —
+// lives in test/schema/size_axis_read_ct.cpp, since it is code that compiles.
 
 #include "../../single_header/s2s.hpp"
 
@@ -70,21 +70,6 @@ auto main() -> int {
   // The schema above is the failure; nothing to do here.
   duplicate_value_struct dup{};
   (void)dup;
-#elif CASE == 3
-  // Must COMPILE — a derived field stays readable through both the const and
-  // the non-const subscript, and a non-derived field stays assignable.
-  const auto& const_len = std::as_const(obj)["len"_f];
-  const auto& mutable_len = obj["len"_f];
-  (void)const_len;
-  (void)mutable_len;
-  obj["str"_f] = "hello";
-
-  // Same for a discriminant: readable through both subscripts, and the
-  // union's own slot stays assignable because it is not derived.
-  union_struct u{};
-  const auto& tag = std::as_const(u)["tag"_f];
-  (void)tag;
-  u["body"_f] = alt_1{};
 #endif
 
   return 0;

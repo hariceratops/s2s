@@ -17,18 +17,6 @@ function(add_rejected_case name source case_id)
   set_tests_properties(${name} PROPERTIES WILL_FAIL TRUE)
 endfunction()
 
-function(add_accepted_case name source case_id)
-  add_executable(${name} ${source})
-  set_target_properties(${name} PROPERTIES
-    EXCLUDE_FROM_ALL TRUE
-    EXCLUDE_FROM_DEFAULT_BUILD TRUE)
-  target_compile_definitions(${name} PRIVATE CASE=${case_id})
-  add_dependencies(${name} generate_single_header)
-  add_test(NAME ${name}
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${name} --config $<CONFIG>)
-endfunction()
-
 add_rejected_case(rejects_assigning_a_derived_len derived_field_assignment.cpp 1)
 add_rejected_case(rejects_assigning_a_derived_discriminant derived_field_assignment.cpp 2)
 add_rejected_case(rejects_duplicate_match_values derived_field_assignment.cpp 4)
-add_accepted_case(accepts_reading_a_derived_field derived_field_assignment.cpp 3)

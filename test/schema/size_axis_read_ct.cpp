@@ -8,6 +8,8 @@
 #include <array>
 #include <cstddef>
 #include <string_view>
+#include <utility>
+#include <variant>
 #include <vector>
 #include <ut>
 
@@ -114,8 +116,8 @@ int main() {
     expect(eq((*res)["b"_f][0], 0xdeadbeefu));
   };
 
-  // test/rejected_misuse/derived_field_assignment.cpp asserts that assigning to
-  // a derived field does not compile. This is the other half: reading one
+  // test/must_not_compile/derived_field_assignment.cpp asserts that assigning
+  // to a derived field does not compile. This is the other half: reading one
   // through the const accessor does, and gives the value from the wire.
   "a derived field is readable even though it cannot be assigned"_test = [] constexpr {
     using derived =
@@ -133,6 +135,51 @@ int main() {
     const auto fields = *res;
     expect(eq(fields["len"_f], 3u));
     expect(eq(std::string_view{fields["str"_f]}, std::string_view{"abc"}));
+  };
+
+  // The rest of the positive half, moved here from what used to be
+  // derived_field_assignment.cpp's CASE 3. It is ordinary compiling code, so
+  // it had no business in a directory of programs that must not compile.
+  // Readable through *both* subscripts — the non-const one selects the
+  // const-returning overload rather than failing — and siblings that are not
+  // derived stay assignable.
+  "a derived length is readable through either subscript"_test = [] constexpr {
+    using derived_len =
+      s2s::struct_field_list<
+        s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+      >;
+
+    derived_len obj{};
+    obj["str"_f] = "hello";
+
+    expect(eq(std::as_const(obj)["len"_f], 0u));
+    expect(eq(obj["len"_f], 0u));
+    expect(eq(std::string_view{obj["str"_f]}, std::string_view{"hello"}));
+  };
+
+  "a derived discriminant is readable while its union stays assignable"_test = [] constexpr {
+    using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>>;
+    using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>>;
+    using tagged =
+      s2s::struct_field_list<
+        s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::variance<"body", s2s::type<
+          s2s::match_field<"tag">,
+          s2s::type_switch<
+            s2s::match_case<0xcafed00d, s2s::as_struct<alt_1>>,
+            s2s::match_case<0xdeadbeef, s2s::as_struct<alt_2>>
+          >
+        >>
+      >;
+
+    tagged obj{};
+    // "body" is not derived — the discriminant is derived *from* it.
+    obj["body"_f] = alt_1{};
+
+    expect(eq(std::as_const(obj)["tag"_f], 0u));
+    expect(eq(obj["tag"_f], 0u));
+    expect(eq(std::holds_alternative<alt_1>(obj["body"_f]), true));
   };
 
   // size_dont_care: the width comes from the nested schema rather than the

@@ -37,7 +37,7 @@ template rather than an alias of `compute`. The distinction rarely matters when
 writing a schema and matters a great deal when reading a compiler error, which
 is why it is called out here.
 
-<!-- docs: test/as_shipped/guide_computed_example.cpp -->
+<!-- docs: test/doc_examples/guide_computed_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

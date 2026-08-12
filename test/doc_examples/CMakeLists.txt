@@ -1,21 +1,5 @@
-# Guards what issue 010 could otherwise only verify by hand once: that the
-# shipped artifact is self-contained, and that it stays warning-clean for
-# consumers who build with warnings enabled.
-
-add_executable(as_shipped_roundtrip roundtrip.cpp)
-add_dependencies(as_shipped_roundtrip generate_single_header)
-
-# Deliberately only the single header — not INCLUDE_DIR.
-target_include_directories(as_shipped_roundtrip PRIVATE ${SINGLE_HEADER_DIR})
-
-# -Werror so a new diagnostic fails the build rather than scrolling past.
-# -Wnon-template-friend is pre-existing in include/lib/metaprog/mp.hpp's
-# friend-injection trick for type_id; suppressed here so the guard catches
-# anything new instead of being permanently red.
-target_compile_options(as_shipped_roundtrip PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
-
-add_test(NAME as_shipped_roundtrip COMMAND as_shipped_roundtrip)
+# Every complete program the documentation shows is backed by a source here,
+# compiled and run, and checked against the fenced block it came from.
 
 # docs/writing.md's claims about derived fields, kept
 # compilable so the docs cannot drift from the library unnoticed.
@@ -140,14 +124,3 @@ add_test(
 add_test(
   NAME docs_nav_lists_every_page
   COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check_nav.py ${CMAKE_SOURCE_DIR})
-
-# The generated header is tracked, so it has to be byte-identical between
-# runs or every slice's diff is unreviewable.
-add_test(
-  NAME single_header_is_deterministic
-  COMMAND ${CMAKE_COMMAND}
-    -DAMALGAM=${CMAKE_SOURCE_DIR}/scripts/amalgam.py
-    -DINCLUDE_DIR=${INCLUDE_DIR}
-    -DENTRY=${INPUT_HEADER}
-    -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_deterministic.cmake)

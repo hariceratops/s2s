@@ -62,7 +62,7 @@ is what they exist for.
 When both conditions hold, the whole parse happens in the compiler — including
 constraint checking, presence deduction and type deduction.
 
-<!-- docs: test/as_shipped/guide_constexpr_example.cpp -->
+<!-- docs: test/doc_examples/guide_constexpr_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

@@ -3,7 +3,7 @@
 
 The example opens a file the way a consumer would, so the file has to exist
 before it runs. CMake registers this as a CTest fixture. Same arrangement as
-test/as_shipped/make_doc_fixtures.py.
+test/doc_examples/make_doc_fixtures.py.
 """
 
 from pathlib import Path

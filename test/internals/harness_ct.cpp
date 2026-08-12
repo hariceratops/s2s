@@ -1,6 +1,6 @@
 // Smoke test for the compile-time tier itself: proves that a ut suite, the
 // memstream helper and s2s compile and pass under both UT_COMPILE_TIME_ONLY
-// and UT_RUN_TIME_ONLY. Per-construct coverage belongs in test/fields/, not
+// and UT_RUN_TIME_ONLY. Per-construct coverage belongs in test/schema/, not
 // here.
 //
 // No `using namespace ut;` — ut exports eq/neq/lt/gt/le/ge, which collide with

@@ -28,7 +28,7 @@ The value is reached by dereferencing:
 *(header["name_length"_f])
 ```
 
-<!-- docs: test/as_shipped/guide_optional_example.cpp -->
+<!-- docs: test/doc_examples/guide_optional_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
@@ -154,7 +154,7 @@ If no branch holds and no `match_case` matches, the failure is
 not work out which alternative applies at all, as opposed to finding one that
 disagrees.
 
-<!-- docs: test/as_shipped/guide_variance_example.cpp -->
+<!-- docs: test/doc_examples/guide_variance_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

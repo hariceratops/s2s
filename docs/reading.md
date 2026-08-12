@@ -25,7 +25,7 @@ language rather than of this direction — see the descriptor table in
 
 ## A worked example
 
-<!-- docs: test/as_shipped/guide_reading_example.cpp -->
+<!-- docs: test/doc_examples/guide_reading_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 

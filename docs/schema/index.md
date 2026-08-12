@@ -20,7 +20,7 @@ Every field declares up to four things.
 | `size` | how many bytes it occupies on the wire | unless the type implies it |
 | `constraint` | which values are legal | no — defaults to `no_constraint` |
 
-<!-- docs: test/as_shipped/guide_schema_example.cpp -->
+<!-- docs: test/doc_examples/guide_schema_example.cpp -->
 ```cpp
 #include "s2s.hpp"
 
