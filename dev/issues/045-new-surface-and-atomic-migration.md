@@ -44,3 +44,14 @@ Spec: `dev/specs/schema-api-verbosity.md`.
 - `single_header/s2s.hpp` is regenerated in the same commit;
   `shipped_header` and `doc_examples_match` are green.
 - `ctest` is green tree-wide, including `*_compile_time` and `*_coverage`.
+
+## Review 2026-08-13
+- A naming sweep runs at the end of all three slices, not per slice. Findings
+  accumulated across 043, 044 and 045 are collected and applied in one pass,
+  so that names are settled against the final surface rather than being
+  churned twice. Deferred deliberately — do not fix naming piecemeal as each
+  slice lands.
+- Dead declarations noticed during 044's review and left in place for that
+  sweep to judge: `size_choices_t::num_of_choices` and the `is_size_like`
+  concept both have zero users. `is_size_like` needs a beat of thought before
+  removal, since issue 027's acceptance criteria name it.
