@@ -27,11 +27,19 @@ using dep_vec = static_vector<sv, max_dep_count_per_struct>;
 using field_table_t = static_map<sv, field_type_info, max_field_count>;
 using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>;
 
+// A computed size keeps its field-name list in the size value's type; deducing
+// the pack out of the argument recovers it without a metafunction.
+template <fixed_string... fs>
+constexpr auto deps_of(fixed_string_list<fs...>) -> static_vector<sv, max_dep_count_per_struct> {
+  return static_vector<sv, max_dep_count_per_struct>(as_sv(fs)...);
+}
+
 // extract dependencies metafunction
 template <typename T>
 struct extract_length_dependencies;
 
-template <fixed_string id, typename T, fixed_size_like size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires fixed_size_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
@@ -39,7 +47,8 @@ struct extract_length_dependencies<
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, size_dont_care_like size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires size_dont_care_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
@@ -47,23 +56,26 @@ struct extract_length_dependencies<
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_length_dependencies<
-  field<id, T, field_size<len_from_field<len_source>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(len_source));
+  static constexpr auto value =
+    static_vector<sv, max_dep_count_per_struct>(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
-template <fixed_string id, typename T, auto callable, auto constraint, fixed_string... req_fields>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires is_computed_size_v<size_type_of<size>>
 struct extract_length_dependencies<
-  field<id, T, field_size<len_from_fields<callable, fixed_string_list<req_fields...>>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
+  static constexpr auto value = deps_of(size_type_of<size>::req_field_list);
 };
 
-template <fixed_string id, typename T, typename size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, 
           typename present_only_if, typename optional>
 struct extract_length_dependencies<
   maybe_field<field<id, T, size, constraint>, present_only_if, optional>
@@ -122,7 +134,7 @@ struct extract_parse_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, typename size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, 
           auto callable, fixed_string... req_fields, typename optional>
 struct extract_parse_dependencies<
   maybe_field<field<id, T, size, constraint>, compute<callable, bool, fixed_string_list<req_fields...>>, optional>
@@ -219,12 +231,13 @@ struct extract_unconditional_len_sources {
   static constexpr auto value = dep_vec();
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_unconditional_len_sources<
-  field<id, T, field_size<len_from_field<len_source>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = dep_vec(as_sv(len_source));
+  static constexpr auto value = dep_vec(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
 template <typename T>

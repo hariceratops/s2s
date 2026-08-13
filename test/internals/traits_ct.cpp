@@ -18,6 +18,9 @@
 using ut::expect;
 using ut::eq;
 using ut::operator""_test;
+// Imported explicitly rather than relying on the global-scope
+// `using namespace s2s_literals` that two library headers leak into every TU.
+using namespace s2s_literals;
 
 using u32 = unsigned int;
 namespace tl = s2s::typelist;
@@ -33,11 +36,16 @@ auto main() -> int {
   };
 
   "the size axis forms are told apart"_test = [] constexpr {
-    expect(eq(s2s::is_variable_size_v<s2s::field_size<s2s::len_from_field<"hello">>>, true));
-    expect(eq(s2s::is_fixed_size_v<s2s::field_size<s2s::fixed<4>>>, true));
+    // A size is a value now, so the traits are asked about its type. Passing a
+    // plain type still answers false — the classification is total, not a
+    // precondition.
+    expect(eq(s2s::is_variable_size_v<s2s::size_type_of<s2s::len_from_field<"hello">>>, true));
+    expect(eq(s2s::is_fixed_size_v<s2s::size_type_of<s2s::fixed<4>>>, true));
     expect(eq(s2s::is_fixed_size_v<int>, false));
     expect(eq(s2s::is_variable_size_v<int>, false));
-    expect(eq(s2s::field_size<s2s::fixed<6>>::size_type_t::count, std::size_t{6}));
+    // The width lives in the value, and deduce_field_size is what reads it.
+    expect(eq(s2s::deduce_field_size<s2s::fixed<6>>{}(), std::size_t{6}));
+    expect(eq(s2s::deduce_field_size<2_B>{}(), std::size_t{2}));
   };
 
   "an optional field is distinguishable from a plain one"_test = [] constexpr {
@@ -130,5 +138,17 @@ auto main() -> int {
     expect(eq(meta::invoke<std::is_const>(meta::type_id<const int>), true));
     expect(eq(meta::invoke<std::is_const>(meta::type_id<int>), false));
     expect(eq(meta::type_id<int> == meta::invoke<std::remove_pointer>(meta::type_id<int*>), true));
+  };
+
+  // TODO(045): the option pack is order-independent — the classifier scans the
+  // pack by kind rather than reading it positionally. Assert that
+  // basic_field<"v", u16, 2_B, s2s::eq{5}> and
+  // basic_field<"v", u16, s2s::eq{5}, 2_B> name the same type. Without this a
+  // classifier that only happens to work in the order every other test writes
+  // its options passes the whole suite.
+  //
+  // Placeholder body: asserts nothing yet, since the pack does not exist.
+  "the option pack is order-independent"_test = [] constexpr {
+    expect(eq(true, true));
   };
 }

@@ -12,8 +12,8 @@ struct not_a_field;
 template <typename T>
 struct extract_type_from_field;
 
-template <fixed_string id, typename field_type, typename size, auto constraint>
-struct extract_type_from_field<field<id, field_type, field_size<size>, constraint>> {
+template <fixed_string id, typename field_type, auto size, auto constraint>
+struct extract_type_from_field<field<id, field_type, size, constraint>> {
   using type = field_type;
 };
 

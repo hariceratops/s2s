@@ -33,14 +33,14 @@ struct size_from_type_condition;
 
 template <type_condition_like match_case>
 struct size_from_type_condition {
-  using size = typename match_case::type_tag::size;
+  static constexpr auto size = match_case::type_tag::size;
 };
 
 template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
 
 template <typename T>
-using size_from_type_condition_v = size_from_type_condition<T>::size;
+inline constexpr auto size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {
@@ -52,7 +52,7 @@ using variant_from_type_conditions_v = variant_from_type_conditions<cases...>::v
 
 template <type_condition_like... cases>
 struct size_choices_from_type_conditions {
-  using choices = field_size<size_choices<size_from_type_condition_v<cases>...>>;
+  using choices = size_choices_t<size_from_type_condition_v<cases>...>;
 };
 
 template <type_condition_like... cases>

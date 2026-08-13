@@ -22,10 +22,11 @@ struct len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
-struct len_obligation<field<id, T, field_size<len_from_field<len_source>>, constraint>> {
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
+struct len_obligation<field<id, T, size, constraint>> {
   static constexpr bool present = true;
-  static constexpr sv target = as_sv(len_source);
+  static constexpr sv target = as_sv(len_source_of<size_type_of<size>>::value);
 };
 
 template <typename producer, typename target>
@@ -83,18 +84,19 @@ struct conditional_len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint,
+template <fixed_string id, typename T, auto size, auto constraint,
           typename present_only_if, typename optional>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct conditional_len_obligation<
   maybe_field<
-    field<id, T, field_size<len_from_field<len_source>>, constraint>,
+    field<id, T, size, constraint>,
     present_only_if,
     optional
   >
 >
 {
   static constexpr bool present = true;
-  static constexpr sv target = as_sv(len_source);
+  static constexpr sv target = as_sv(len_source_of<size_type_of<size>>::value);
 };
 
 template <typename producer, typename target>
@@ -270,7 +272,7 @@ private:
   // The declared width, not sizeof(field_type): a u32 slot declared
   // field_size<fixed<2>> puts two bytes on the wire, and a length needing
   // three must fail rather than reach the stream truncated.
-  static constexpr auto declared_width = deduce_field_size<typename target::field_size>{}();
+  static constexpr auto declared_width = deduce_field_size<target::field_size>{}();
 
   static constexpr auto fits_declared_width(std::size_t v) -> bool {
     if constexpr(declared_width < sizeof(std::size_t)) {

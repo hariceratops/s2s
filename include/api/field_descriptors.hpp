@@ -23,12 +23,12 @@ struct always_true {
 
 using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
 
-template <typename size, typename field_type>
+template <auto size, typename field_type>
 concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
 
-template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
-  requires field_fits_to_underlying_type<size_type, T>
-using basic_field = field<id, T, size_type, constraint_on_value>;
+template <fixed_string id, integral T, auto size, auto constraint_on_value = no_constraint<T>{}>
+  requires fixed_size_like<size_type_of<size>> && field_fits_to_underlying_type<size, T>
+using basic_field = field<id, T, size, constraint_on_value>;
 
 template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
 using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
@@ -51,18 +51,22 @@ using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixe
 template <fixed_string id, fixed_string expected>
 using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
 
-template <fixed_string id, integral T, fixed_size_like size, auto expected>
+template <fixed_string id, integral T, auto size, auto expected>
+  requires fixed_size_like<size_type_of<size>>
 using magic_number = field<id, T, size, eq{expected}>;
 
 // todo how user can provide user defined vector impl or allocator
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+template <fixed_string id, typename T, auto size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+  requires variable_size_like<size_type_of<size>>
 using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
 
-template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
+  requires variable_size_like<size_type_of<size>>
 using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
 
 // todo check if this will work for all char types like wstring
-template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
+template <fixed_string id, auto size, auto constraint_on_value = no_constraint<std::string>{}>
+  requires variable_size_like<size_type_of<size>>
 using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>

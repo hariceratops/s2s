@@ -8,60 +8,63 @@
 
 
 namespace s2s {
-template <trivial T, fixed_size_like S>
-  requires (deduce_field_size<S>{}() <= sizeof(T))
+template <trivial T, auto S>
+  requires fixed_size_like<size_type_of<S>> && (deduce_field_size<S>{}() <= sizeof(T))
 struct as_trivial {
   using type = T;
-  using size = S;
+  static constexpr auto size = S;
 };
 
 template <field_list_like T>
 struct as_struct {
   using type = T;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
 };
 
 // todo how to handle array of array
 template <trivial T, std::size_t N> 
 struct as_fixed_arr {
   using type = std::array<T, N>;
-  using size = field_size<fixed<N * sizeof(T)>>;
+  static constexpr auto size = byte_count{N * sizeof(T)};
 };
 
 template <std::size_t N> 
 struct as_fixed_string {
   using type = fixed_string<N>;
-  using size = field_size<fixed<N + 1>>;
+  static constexpr auto size = byte_count{N + 1};
 };
 
-template <trivial T, variable_size_like S> 
+template <trivial T, auto S> 
+  requires variable_size_like<size_type_of<S>>
 struct as_vec {
   using type = std::vector<T>;
-  using size = S;
+  static constexpr auto size = S;
 };
 
-template <variable_size_like S> 
+template <auto S> 
+  requires variable_size_like<size_type_of<S>>
 struct as_string {
   using type = std::string;
-  using size = S;
+  static constexpr auto size = S;
 };
 
 template <field_list_like T, std::size_t N>
 struct as_arr_of_records {
   using type = std::array<T, N>;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
 };
 
-template <field_list_like T, variable_size_like S>
+template <field_list_like T, auto S>
+  requires variable_size_like<size_type_of<S>>
 struct as_vec_of_records {
   using type = std::vector<T>;
-  using size = S;
+  static constexpr auto size = S;
 };
 
 template <typename T>
 struct is_type_tag;
 
-template <typename T, typename size>
+template <typename T, auto size>
 struct is_type_tag<as_trivial<T, size>> {
   static constexpr bool res = true;
 };
@@ -76,12 +79,12 @@ struct is_type_tag<as_fixed_string<size>> {
   static constexpr bool res = true;
 };
 
-template <typename T, typename size>
+template <typename T, auto size>
 struct is_type_tag<as_vec<T, size>> {
   static constexpr bool res = true;
 };
 
-template <typename size>
+template <auto size>
 struct is_type_tag<as_string<size>> {
   static constexpr bool res = true;
 };
