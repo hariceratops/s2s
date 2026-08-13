@@ -21,6 +21,7 @@ using ut::eq;
 using ut::operator""_test;
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
@@ -219,6 +220,27 @@ auto main() -> int {
     expect(eq(res.has_value(), true));
     expect(eq((*res)["a"_f], u16{0x1122}));
     expect(eq((*res)["b"_f], u16{0x3344}));
+  };
+
+  // Three is the width that pins the claim: not the type's size, not half of
+  // it, and no power of two to fall back on. What it really guards is the
+  // field after it — a width silently rounded up to sizeof(T) would still
+  // decode "v" correctly and put "tail" one byte late.
+  "an odd byte count is not rounded up to the type's width"_test = [] constexpr {
+    using odd_width =
+      s2s::struct_field_list<
+        s2s::basic_field<"v", u32, 3_B>,
+        s2s::basic_field<"tail", u8>
+      >;
+
+    std::array<u8, 4> buffer{0x33, 0x22, 0x11, 0x7f};
+    memstream<4> stream(buffer);
+
+    auto res = s2s::struct_cast_le<odd_width>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["v"_f], 0x112233u));
+    expect(eq((*res)["tail"_f], u8{0x7f}));
   };
 
   // A width narrower than the type is the case an omitted size cannot express,

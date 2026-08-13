@@ -92,6 +92,24 @@ constexpr auto write_hidden_len() -> std::optional<std::array<u8, 7>> {
   return buffer;
 }
 
+using odd_width_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"v", u32, 3_B>,
+    s2s::basic_field<"tail", u8>
+  >;
+
+constexpr auto write_odd_width() -> std::optional<std::array<u8, 4>> {
+  odd_width_struct obj{};
+  obj["v"_f] = 0x112233u;
+  obj["tail"_f] = u8{0x7f};
+
+  std::array<u8, 4> buffer{};
+  memstream<4> stream(buffer);
+  if(!s2s::stream_cast_le<odd_width_struct>(stream, obj))
+    return std::nullopt;
+  return buffer;
+}
+
 constexpr auto write_defaulted_size() -> std::optional<std::array<u8, 2>> {
   defaulted_size_struct obj{};
   obj["a"_f] = u16{0x1122};
@@ -152,6 +170,18 @@ auto main() -> int {
     expect(eq(written.error().failure_reason,
               s2s::error_reason::found_contradicting_length));
     expect(eq(written.error().failed_at, std::string_view{"len"}));
+  };
+
+  // The write side of an odd width: three bytes for the u32 and the fourth
+  // belonging to "tail", so nothing was rounded up on the way out either.
+  "an odd byte count writes exactly what it declares"_test = [] constexpr {
+    auto written = write_odd_width();
+
+    expect(eq(written.has_value(), true));
+    expect(eq(written->at(0), u8{0x33}));
+    expect(eq(written->at(1), u8{0x22}));
+    expect(eq(written->at(2), u8{0x11}));
+    expect(eq(written->at(3), u8{0x7f}));
   };
 
   // The write side of the omitted size: two bytes out for a u16, in the
