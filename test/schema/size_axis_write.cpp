@@ -153,3 +153,11 @@ TEST(SizeAxisWrite, AppliesTheWidthCheckToAFannedOutLength) {
   EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
   EXPECT_EQ(written.error().failed_at, "len");
 }
+
+// TODO(045): the run-time half — a defaulted size and a 2_B size must emit the
+// same bytes as the field_size<fixed<2>> spelling they replace. Comparing the
+// emitted buffer against the pre-migration bytes is the evidence that the
+// migration was a spelling change and nothing else.
+TEST(SizeAxisWrite, WritesAFieldWhoseSizeIsDefaultedToSizeofT) {
+  GTEST_SKIP() << "TODO(045): defaulted size does not exist yet";
+}

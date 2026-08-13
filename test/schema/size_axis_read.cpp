@@ -84,3 +84,11 @@ TEST(SizeAxisRead, AppliesTheCallableToTheNamedSiblingFields) {
   auto comp_res = s2s::compute_impl<s2s::compute<callable, u32, s2s::with_fields<"a", "b">>>{}(fields);
   EXPECT_EQ(comp_res, 20);
 }
+
+// TODO(045): the run-time half of the defaulted size and the byte-count
+// literal. The compile-time cases in size_axis_read_ct.cpp cover the same
+// ground against a constexpr_memstream; this one wants a real stream, which is
+// what puts it in GoogleTest rather than ut.
+TEST(SizeAxisRead, ReadsAFieldWhoseSizeIsDefaultedToSizeofT) {
+  GTEST_SKIP() << "TODO(045): defaulted size does not exist yet";
+}

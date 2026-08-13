@@ -205,4 +205,21 @@ auto main() -> int {
     expect(eq((*res)["inner"_f]["y"_f], u16{0x3344}));
     expect(eq((*res)["tail"_f], u16{0x5566}));
   };
+
+  // TODO(045): a size the schema does not spell. basic_field<"v", u16> must
+  // occupy sizeof(u16) on the wire and read back identically to the same field
+  // written as 2_B — this is the claim the whole feature rests on and nothing
+  // asserts it today.
+  //
+  // Placeholder body: asserts nothing yet, since the defaulted size does not
+  // exist.
+  "a basic_field with no size occupies sizeof(T)"_test = [] constexpr {
+    expect(eq(true, true));
+  };
+
+  // TODO(045): 2_B must round-trip identically to today's
+  // field_size<fixed<2>> — same bytes, same value, both endiannesses.
+  "a byte-count literal reads the same as the spelling it replaces"_test = [] constexpr {
+    expect(eq(true, true));
+  };
 }

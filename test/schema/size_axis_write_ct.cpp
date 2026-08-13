@@ -120,4 +120,21 @@ auto main() -> int {
               s2s::error_reason::found_contradicting_length));
     expect(eq(written.error().failed_at, std::string_view{"len"}));
   };
+
+  // TODO(045): the write side of the defaulted size — a field declared
+  // basic_field<"v", u16> writes sizeof(u16) bytes, and 2_B writes the same
+  // bytes as today's field_size<fixed<2>>.
+  //
+  // Placeholder body: asserts nothing yet, since neither spelling exists.
+  "a basic_field with no size writes sizeof(T)"_test = [] constexpr {
+    expect(eq(true, true));
+  };
+
+  // TODO(043): the positive half of hidden_length_target.cpp — assigning the
+  // data field alone still writes a correct length, with the length target
+  // unnameable. Today's equivalent reads the length back to check it; after 043
+  // the check is on the bytes written, since there is nothing to read.
+  "a length target is derived without being nameable"_test = [] constexpr {
+    expect(eq(true, true));
+  };
 }
