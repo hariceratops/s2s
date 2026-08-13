@@ -28,7 +28,7 @@ auto main() -> int {
   image["marker"_f] = std::array<u8, 2>{0x46, 0x57};
   image["version"_f] = u16{1};
   image["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
-  // "payload_length" is never assigned. It is derived from payload.size().
+  // "payload_length" cannot be named at all. It is derived from payload.size().
 
   std::fstream file("firmware_out.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);

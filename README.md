@@ -39,8 +39,9 @@ folder can be used for direct inclusion into a project
     * Magic strings
     * Magic numbers
 * Writing a struct back to a stream with the same schema, in either byte order
-* Lengths and union discriminants derived on write, and read-only at compile
-  time so they cannot drift from the data they describe
+* Lengths and union discriminants derived on write, so they cannot drift from
+  the data they describe — a length is not part of the struct's interface at
+  all, and a discriminant is read-only
 * Validation of fields in place while reading and while writing
 * Compile time endianness handling 
 * Pluggable interfaces working with custom streams
@@ -104,7 +105,8 @@ auto main() -> int {
 
 The same schema drives the other direction. Fields the schema can work out for
 itself — here `payload_length` — are derived during the write rather than being
-data anyone has to keep in sync:
+data anyone has to keep in sync, which is why the schema names it and the
+struct does not expose it:
 
 <!-- docs: test/doc_examples/readme_roundtrip_example.cpp -->
 ```cpp
@@ -134,7 +136,7 @@ auto main() -> int {
   image["marker"_f] = std::array<u8, 2>{0x46, 0x57};
   image["version"_f] = u16{1};
   image["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
-  // "payload_length" is never assigned. It is derived from payload.size().
+  // "payload_length" cannot be named at all. It is derived from payload.size().
 
   std::fstream file("firmware_out.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
