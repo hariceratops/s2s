@@ -72,8 +72,7 @@ auto roundtrips() -> bool {
     return false;
   }
 
-  return (*back)["count"_f] == 2
-      && (*back)["data"_f] == std::vector<u16>{0x1122, 0x3344}
+  return (*back)["data"_f] == std::vector<u16>{0x1122, 0x3344}
       && (*back)["pair"_f] == std::array<u16, 2>{0x7788, 0x99aa}
       && (*back)["nested"_f]["x"_f] == 0x5566
       && (*back)["tag"_f] == 0xdeadbeef

@@ -1,4 +1,9 @@
-// Assigning to a derived field must not compile.
+// Assigning to a derived discriminant must not compile.
+//
+// The length-target half moved to hidden_length_target.cpp when 043 stopped
+// exposing those fields at all: the claim is no longer "assigning fails" but
+// "the field cannot be named", and a case asserting the old wording would go
+// on passing for the wrong reason.
 //
 // Built with -DCASE=<n>; every case here is expected to fail compilation. The
 // positive half — a derived field stays readable, its siblings assignable —
@@ -56,12 +61,7 @@ using duplicate_value_struct =
 auto main() -> int {
   our_struct obj{};
 
-#if CASE == 1
-  // Must NOT compile — "len" is a len_from_field target, so the writable
-  // operator[] is constrained away and the const-returning overload is
-  // selected, yielding an assign-to-const error.
-  obj["len"_f] = 5;
-#elif CASE == 2
+#if CASE == 2
   // Must NOT compile — a type_switch discriminant is derived from the held
   // alternative, so the schema owns its value, not the caller.
   union_struct u{};

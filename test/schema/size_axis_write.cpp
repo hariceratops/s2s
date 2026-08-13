@@ -110,7 +110,6 @@ TEST(SizeAxisWrite, RoundTripsFanOutWhenDependentsAgree) {
   FIELD_LIST_LE_ROUNDTRIP_CHECK(obj, {
     ASSERT_TRUE(written.has_value());
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((*result)["len"_f], 3u);
     EXPECT_EQ((*result)["a"_f].size(), 3u);
     EXPECT_EQ((*result)["b"_f], (std::vector<u32>{0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc}));
   });

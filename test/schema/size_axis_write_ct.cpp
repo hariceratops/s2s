@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <string_view>
 #include <vector>
 #include <ut>
@@ -19,6 +20,7 @@ using ut::eq;
 using ut::operator""_test;
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
@@ -63,10 +65,29 @@ constexpr auto make_fanout(std::size_t b_count) -> fanout_struct {
   return obj;
 }
 
+using hidden_len_struct =
+  s2s::struct_field_list<
+    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
+  >;
+
 constexpr auto write_contradicting_fanout() -> s2s::cast_result {
   std::array<u8, 16> buffer{};
   memstream<16> stream(buffer);
   return s2s::stream_cast_le<fanout_struct>(stream, make_fanout(1));
+}
+
+// Returns the emitted bytes rather than a cast_result: the length slot is the
+// only place the derived value is observable now.
+constexpr auto write_hidden_len() -> std::optional<std::array<u8, 7>> {
+  hidden_len_struct obj{};
+  obj["vec"_f] = std::vector<u8>{0x11, 0x22, 0x33};
+
+  std::array<u8, 7> buffer{};
+  memstream<7> stream(buffer);
+  if(!s2s::stream_cast_le<hidden_len_struct>(stream, obj))
+    return std::nullopt;
+  return buffer;
 }
 
 auto main() -> int {
@@ -105,7 +126,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<fanout_struct>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 2u));
     expect(eq((*res)["a"_f].size(), std::size_t{2}));
     expect(eq((*res)["b"_f].size(), std::size_t{2}));
   };
@@ -130,11 +150,14 @@ auto main() -> int {
     expect(eq(true, true));
   };
 
-  // TODO(043): the positive half of hidden_length_target.cpp — assigning the
-  // data field alone still writes a correct length, with the length target
-  // unnameable. Today's equivalent reads the length back to check it; after 043
-  // the check is on the bytes written, since there is nothing to read.
+  // The positive half of test/must_not_compile/hidden_length_target.cpp.
+  // Nothing assigns or reads "len", so the check is on the bytes: the length
+  // slot has to carry the container's size even though no caller can name it.
   "a length target is derived without being nameable"_test = [] constexpr {
-    expect(eq(true, true));
+    auto written = write_hidden_len();
+
+    expect(eq(written.has_value(), true));
+    expect(eq(written->at(0), u8{0x03}));
+    expect(eq(written->at(4), u8{0x11}));
   };
 }

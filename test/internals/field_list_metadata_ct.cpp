@@ -229,8 +229,19 @@ auto main() -> int {
   // "vec_union": derived from the union, while the optional's length is
   // verified against that derived value.
   "only invertible obligations make a field derived"_test = [] constexpr {
-    constexpr auto ids = list_metadata::derived_field_ids;
-    expect(eq(ids.size(), std::size_t{2}));
+    // Two lists rather than one, because operator[] now treats the two kinds
+    // differently: a length target has no overload at all, a discriminant
+    // keeps its const read. is_derived_field stays the OR of both, which is
+    // the question the write path asks.
+    constexpr auto len_ids = list_metadata::length_derived_field_ids;
+    constexpr auto tag_ids = list_metadata::discriminant_derived_field_ids;
+    expect(eq(len_ids.size(), std::size_t{1}));
+    expect(eq(tag_ids.size(), std::size_t{1}));
+
+    expect(eq(s2s::is_length_derived_field<meta::type_id<list_metadata>>("len"), true));
+    expect(eq(s2s::is_discriminant_derived_field<meta::type_id<list_metadata>>("len"), false));
+    expect(eq(s2s::is_discriminant_derived_field<meta::type_id<list_metadata>>("a"), true));
+    expect(eq(s2s::is_length_derived_field<meta::type_id<list_metadata>>("a"), false));
 
     expect(eq(s2s::is_derived_field<meta::type_id<list_metadata>>("len"), true));
     expect(eq(s2s::is_derived_field<meta::type_id<list_metadata>>("a"), true));

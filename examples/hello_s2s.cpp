@@ -32,6 +32,6 @@ auto main() -> int {
   }
 
   const auto fields = *result;
-  std::println("len={} text={}", fields["len"_f], fields["text"_f]);
+  std::println("len={} text={}", fields["text"_f].size(), fields["text"_f]);
   return 0;
 }

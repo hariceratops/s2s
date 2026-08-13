@@ -22,9 +22,7 @@ auto populated() -> prefixed_schema {
 }
 
 auto expect_matches_populated(const prefixed_schema& actual) -> void {
-  EXPECT_EQ(actual["str_len"_f], 10u);
   EXPECT_EQ(actual["str"_f], std::string("foo in bar"));
-  EXPECT_EQ(actual["vec_len"_f], 3u);
   EXPECT_EQ(actual["vec"_f], (std::vector<u16>{0x1122, 0x3344, 0x5566}));
 }
 } /* namespace */
@@ -91,7 +89,7 @@ TEST(VariableBufferWrite, RoundTripsEmptyContainers) {
   FIELD_LIST_LE_ROUNDTRIP_CHECK(obj, {
     ASSERT_TRUE(written.has_value());
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((*result)["str_len"_f], 0u);
+    EXPECT_TRUE((*result)["str"_f].empty());
     EXPECT_TRUE((*result)["vec"_f].empty());
   });
 }

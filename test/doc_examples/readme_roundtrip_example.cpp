@@ -43,7 +43,7 @@ auto main() -> int {
         return s2s::struct_cast_be<firmware_image>(file);
       })
       .transform([](const firmware_image& parsed) {
-        return parsed["payload_length"_f] == 4;
+        return parsed["payload"_f].size() == 4;
       });
 
   return round_tripped.value_or(false) ? 0 : 1;

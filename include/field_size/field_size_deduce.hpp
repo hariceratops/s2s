@@ -19,7 +19,9 @@ template <auto size>
 struct deduce_field_size<size> {
   template <auto metadata, typename... fields>
   constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) const -> std::size_t {
-    return struct_fields[size];
+    // Resolving a len_from_field size reads, by definition, a length target —
+    // the one thing operator[] no longer exposes.
+    return field_value_of<size_type_of<size>>(struct_fields);
   }
 };
 

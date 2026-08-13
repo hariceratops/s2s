@@ -41,7 +41,6 @@ auto expect_matches_populated(const record_schema& actual) -> void {
   EXPECT_EQ(actual["origin"_f]["y"_f], 0x2222u);
   EXPECT_EQ(actual["corners"_f][0]["x"_f], 0x3333u);
   EXPECT_EQ(actual["corners"_f][1]["y"_f], 0x6666u);
-  EXPECT_EQ(actual["count"_f], 2u);
   ASSERT_EQ(actual["path"_f].size(), 2u);
   EXPECT_EQ(actual["path"_f][0]["x"_f], 0x7777u);
   EXPECT_EQ(actual["path"_f][1]["y"_f], 0xaaaau);
@@ -174,11 +173,8 @@ TEST(RecordWrite, DerivesNestedLengthsFromTheirOwnElement) {
   FIELD_LIST_BE_ROUNDTRIP_CHECK(obj, {
     ASSERT_TRUE(written.has_value());
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((*result)["count"_f], 2u);
     ASSERT_EQ((*result)["records"_f].size(), 2u);
-    EXPECT_EQ((*result)["records"_f][0]["len"_f], 1u);
     EXPECT_EQ((*result)["records"_f][0]["data"_f], (std::vector<u8>{0xaa}));
-    EXPECT_EQ((*result)["records"_f][1]["len"_f], 3u);
     EXPECT_EQ((*result)["records"_f][1]["data"_f], (std::vector<u8>{0xbb, 0xcc, 0xdd}));
   });
 }

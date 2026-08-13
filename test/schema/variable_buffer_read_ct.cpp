@@ -42,7 +42,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed_vec>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
     expect(eq((*res)["vec"_f].size(), std::size_t{3}));
     expect(eq((*res)["vec"_f][0], u16{0x1122}));
     expect(eq((*res)["vec"_f][1], u16{0x3344}));
@@ -58,7 +57,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed_str>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
     expect(eq((*res)["str"_f].size(), std::size_t{3}));
     expect(eq(std::string_view{(*res)["str"_f]}, std::string_view{"abc"}));
   };
@@ -73,7 +71,7 @@ auto main() -> int {
     auto res = s2s::struct_cast_be<prefixed_vec>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
+    expect(eq((*res)["vec"_f].size(), std::size_t{3}));
     expect(eq((*res)["vec"_f][0], u16{0x1122}));
     expect(eq((*res)["vec"_f][2], u16{0x5566}));
   };
@@ -96,7 +94,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed_vec>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 0u));
     expect(eq((*res)["vec"_f].empty(), true));
   };
 

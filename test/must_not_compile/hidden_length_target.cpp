@@ -1,11 +1,9 @@
-// Reading a len_from_field target must not compile once 043 lands.
+// Reading a len_from_field target must not compile.
 //
-// Distinct from derived_field_assignment.cpp CASE 1, which pins the *current*
-// behaviour: a length target is readable and rejects assignment as
-// assign-to-const. After 043 the overload is gone entirely, so naming the field
-// at all is a no-such-member error. Both files must exist and both must fail —
-// derived_field_assignment.cpp CASE 2 keeps covering assign-to-const for a
-// *discriminant*, which 043 deliberately leaves alone.
+// Not the same claim as derived_field_assignment.cpp, which now covers only the
+// discriminant: that one is readable and rejects assignment as assign-to-const.
+// A length target has no overload at all, so naming it is a no-such-member
+// error — and the read below, not an assignment, is what pins the difference.
 //
 // Built with -DCASE=<n>; every case here is expected to fail compilation.
 
@@ -25,17 +23,16 @@ auto main() -> int {
   our_struct obj{};
 
 #if CASE == 1
-  // TODO(043): must NOT compile — "len" is a length-derived target and has no
-  // operator[] overload at all after 043. Assert the diagnostic is
-  // no-such-member, not assign-to-const; the const-read overload this replaces
-  // is what makes the two distinguishable.
+  // Must NOT compile — "len" is a length-derived target, so it has no
+  // operator[] overload at all. A read rather than an assignment, because an
+  // assignment would also fail against the old const-returning overload and
+  // would not tell the two apart.
   auto len = obj["len"_f];
   (void)len;
 #endif
 
-  // TODO(043): the positive half — assigning "str" and letting the write path
-  // derive "len" — belongs in test/schema/size_axis_write_ct.cpp, since it is
-  // code that compiles.
+  // The positive half — assigning "str" and letting the write path derive
+  // "len" — lives in test/schema/size_axis_write_ct.cpp, since it compiles.
 
   return 0;
 }

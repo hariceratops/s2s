@@ -46,7 +46,7 @@ auto main() -> int {
         return s2s::struct_cast_be<telemetry_frame>(file);
       })
       .transform([](const telemetry_frame& parsed) {
-        return parsed["sample_count"_f] == 4
+        return parsed["samples"_f].size() == 4
             && parsed["device_id"_f] == 0x2a
             && parsed["samples"_f][2] == 299;
       });

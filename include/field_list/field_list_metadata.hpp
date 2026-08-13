@@ -298,11 +298,16 @@ struct field_list_metadata {
     );
   }
 
-  static constexpr auto generate_derived_field_ids() {
-    dep_vec sources[sizeof...(fields) * 2] = {
-      dep_vec(extract_unconditional_len_sources_v<fields>)...,
-      dep_vec(extract_switch_discriminants_v<fields>)...
-    };
+  // Kept apart rather than concatenated: the two kinds now differ in how
+  // operator[] treats them, and a field can legitimately be both, which
+  // membership in two lists expresses and a tagged single list does not.
+  static constexpr auto generate_length_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_unconditional_len_sources_v<fields>)...};
+    return remove_duplicates(flatten(sources));
+  }
+
+  static constexpr auto generate_discriminant_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_switch_discriminants_v<fields>)...};
     return remove_duplicates(flatten(sources));
   }
 
@@ -310,7 +315,8 @@ struct field_list_metadata {
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
-  static constexpr dep_vec derived_field_ids = generate_derived_field_ids();
+  static constexpr dep_vec length_derived_field_ids = generate_length_derived_field_ids();
+  static constexpr dep_vec discriminant_derived_field_ids = generate_discriminant_derived_field_ids();
 };
 
 template <auto list_metadata>
@@ -319,15 +325,31 @@ constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   return field_table[field_name];
 }
 
-// The single source of truth for "derived": both the write path and
-// operator[]'s constraint answer the question here, so the two cannot drift.
 template <auto list_metadata>
-constexpr auto is_derived_field(sv field_name) -> bool {
-  for(auto id: meta::type_of<list_metadata>::derived_field_ids) {
+constexpr auto is_length_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::length_derived_field_ids) {
     if(id == field_name)
       return true;
   }
   return false;
+}
+
+template <auto list_metadata>
+constexpr auto is_discriminant_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::discriminant_derived_field_ids) {
+    if(id == field_name)
+      return true;
+  }
+  return false;
+}
+
+// The single source of truth for "derived": the write path asks this general
+// question, so its notion of "overwritten, do not accept an assignment" cannot
+// drift from the two specific questions operator[] asks.
+template <auto list_metadata>
+constexpr auto is_derived_field(sv field_name) -> bool {
+  return is_length_derived_field<list_metadata>(field_name) ||
+         is_discriminant_derived_field<list_metadata>(field_name);
 }
 
 

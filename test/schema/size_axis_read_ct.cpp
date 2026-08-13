@@ -109,17 +109,17 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<fanout>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 2u));
     expect(eq((*res)["a"_f].size(), std::size_t{2}));
     expect(eq((*res)["b"_f].size(), std::size_t{2}));
     expect(eq((*res)["a"_f][0], u16{0x1122}));
     expect(eq((*res)["b"_f][0], 0xdeadbeefu));
   };
 
-  // test/must_not_compile/derived_field_assignment.cpp asserts that assigning
-  // to a derived field does not compile. This is the other half: reading one
-  // through the const accessor does, and gives the value from the wire.
-  "a derived field is readable even though it cannot be assigned"_test = [] constexpr {
+  // test/must_not_compile/hidden_length_target.cpp asserts that naming a
+  // length target does not compile. This is the other half: the length is
+  // still read off the wire and still sizes its container — it is only the
+  // user's view of it that is gone.
+  "a length target sizes its container without being nameable"_test = [] constexpr {
     using derived =
       s2s::struct_field_list<
         s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -133,17 +133,14 @@ auto main() -> int {
 
     expect(eq(res.has_value(), true));
     const auto fields = *res;
-    expect(eq(fields["len"_f], 3u));
+    expect(eq(fields["str"_f].size(), std::size_t{3}));
     expect(eq(std::string_view{fields["str"_f]}, std::string_view{"abc"}));
   };
 
-  // The rest of the positive half, moved here from what used to be
-  // derived_field_assignment.cpp's CASE 3. It is ordinary compiling code, so
-  // it had no business in a directory of programs that must not compile.
-  // Readable through *both* subscripts — the non-const one selects the
-  // const-returning overload rather than failing — and siblings that are not
-  // derived stay assignable.
-  "a derived length is readable through either subscript"_test = [] constexpr {
+  // The container a length target sizes is ordinary assignable data — only
+  // the target itself is hidden. Nothing here reads "len": there is no
+  // subscript that reaches it, on a const object or otherwise.
+  "the container behind a length target stays assignable"_test = [] constexpr {
     using derived_len =
       s2s::struct_field_list<
         s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
@@ -153,9 +150,8 @@ auto main() -> int {
     derived_len obj{};
     obj["str"_f] = "hello";
 
-    expect(eq(std::as_const(obj)["len"_f], 0u));
-    expect(eq(obj["len"_f], 0u));
     expect(eq(std::string_view{obj["str"_f]}, std::string_view{"hello"}));
+    expect(eq(std::string_view{std::as_const(obj)["str"_f]}, std::string_view{"hello"}));
   };
 
   "a derived discriminant is readable while its union stays assignable"_test = [] constexpr {

@@ -43,7 +43,7 @@ auto main() -> int {
         return s2s::struct_cast_be<log_record>(file);
       })
       .transform([](const log_record& parsed) {
-        return parsed["message_length"_f] == 16
+        return parsed["message"_f].size() == 16
             && parsed["message"_f] == "disk nearly full";
       });
 

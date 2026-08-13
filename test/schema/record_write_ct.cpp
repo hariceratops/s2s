@@ -61,7 +61,6 @@ auto main() -> int {
     expect(eq(res.has_value(), true));
     expect(eq((*res)["origin"_f]["x"_f], u16{0x1111}));
     expect(eq((*res)["corners"_f][1]["y"_f], u16{0x6666}));
-    expect(eq((*res)["count"_f], u16{1}));
     expect(eq((*res)["path"_f].size(), std::size_t{1}));
     expect(eq((*res)["path"_f][0]["y"_f], u16{0x8888}));
   };
@@ -77,7 +76,6 @@ auto main() -> int {
     expect(eq(res.has_value(), true));
     expect(eq((*res)["origin"_f]["x"_f], u16{0x1111}));
     expect(eq((*res)["corners"_f][1]["y"_f], u16{0x6666}));
-    expect(eq((*res)["count"_f], u16{1}));
     expect(eq((*res)["path"_f].size(), std::size_t{1}));
     expect(eq((*res)["path"_f][0]["y"_f], u16{0x8888}));
   };

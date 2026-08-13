@@ -32,7 +32,7 @@ auto main() -> int {
     s2s::struct_cast_be<firmware_image>(image)
       .transform([](const firmware_image& fields){
         std::println("version={} payload={} bytes",
-                     fields["version"_f], fields["payload_length"_f]);
+                     fields["version"_f], fields["payload"_f].size());
         return fields;
       }).transform_error([](const s2s::cast_error& err){
         std::println("failure_reason={} failed_at={}",

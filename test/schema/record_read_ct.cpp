@@ -134,7 +134,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<schema>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], std::size_t{3}));
     expect(eq((*res)["records"_f].size(), std::size_t{3}));
     for(std::size_t idx = 0; idx < 3; ++idx) {
       expect(eq((*res)["records"_f][idx]["x"_f], 0xdeadbeefu));

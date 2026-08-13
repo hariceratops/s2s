@@ -22,7 +22,6 @@ TEST(VariableBufferRead, ReadsAStringSizedByItsLengthField) {
   FIELD_LIST_LE_READ_CHECK({
     ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    ASSERT_EQ(fields["len"_f], 10);
     ASSERT_EQ(fields["str"_f].size(), 10);
     std::string_view expected{"foo in bar"};
     ASSERT_EQ(std::string_view{fields["str"_f]}, expected);
@@ -59,7 +58,6 @@ TEST(VariableBufferRead, ReadsAVectorSizedByItsLengthField) {
   FIELD_LIST_LE_READ_CHECK({
     ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    ASSERT_EQ(fields["len"_f], 10);
     ASSERT_EQ(fields["vec"_f].size(), 10);
     ASSERT_EQ(fields["vec"_f], (std::vector<u32>{0xdeadbeef, 0xcafed00d,
                                                  0xdeadbeef, 0xcafed00d,

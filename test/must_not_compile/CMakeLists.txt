@@ -17,11 +17,11 @@ function(add_rejected_case name source case_id)
   set_tests_properties(${name} PROPERTIES WILL_FAIL TRUE)
 endfunction()
 
-add_rejected_case(rejects_assigning_a_derived_len derived_field_assignment.cpp 1)
 add_rejected_case(rejects_assigning_a_derived_discriminant derived_field_assignment.cpp 2)
+add_rejected_case(rejects_reading_a_hidden_length_target hidden_length_target.cpp 1)
 add_rejected_case(rejects_duplicate_match_values derived_field_assignment.cpp 4)
 
-# Scaffolded for 043 and 045, deliberately NOT registered yet.
+# Scaffolded for 045, deliberately NOT registered yet.
 #
 # add_rejected_case sets WILL_FAIL, so a case whose source names an API that
 # does not exist yet fails to build and the test passes — for the wrong reason.
@@ -30,6 +30,5 @@ add_rejected_case(rejects_duplicate_match_values derived_field_assignment.cpp 4)
 # prevent. Uncomment each line only once the API it exercises is in, so that the
 # build failure it observes is the rejection under test.
 #
-# add_rejected_case(rejects_reading_a_hidden_length_target hidden_length_target.cpp 1)
 # add_rejected_case(rejects_unrecognised_pack_entry option_pack_misuse.cpp 1)
 # add_rejected_case(rejects_duplicate_size_option option_pack_misuse.cpp 2)
