@@ -124,7 +124,7 @@ inline constexpr auto extract_length_dependencies_v = extract_length_dependencie
 
 
 template <auto callable, typename R, field_name_list Fs>
-struct compute;
+struct compute_t;
 
 template <typename T>
 struct extract_parse_dependencies;
@@ -137,7 +137,7 @@ struct extract_parse_dependencies {
 template <fixed_string id, typename T, auto size, auto constraint, 
           auto callable, fixed_string... req_fields, typename optional>
 struct extract_parse_dependencies<
-  maybe_field<field<id, T, size, constraint>, compute<callable, bool, fixed_string_list<req_fields...>>, optional>
+  maybe_field<field<id, T, size, constraint>, compute_t<callable, bool, fixed_string_list<req_fields...>>, optional>
 >
 {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
@@ -170,7 +170,7 @@ template <fixed_string id, auto callable, typename R, fixed_string... req_fields
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
+    type<compute_t<callable, R, fixed_string_list<req_fields...>>, type_switch>
   >
 > 
 {
@@ -183,7 +183,7 @@ struct extract_req_fields_from_clause;
 template <auto callable, fixed_string... req_fields, type_tag_like T>
 struct extract_req_fields_from_clause<
   branch<
-    compute<callable, bool, fixed_string_list<req_fields...>>,
+    compute_t<callable, bool, fixed_string_list<req_fields...>>,
     T
   >
 >

@@ -26,16 +26,16 @@ using u32 = unsigned int;
 using log_record =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x4c, 0x47}>,
-    s2s::basic_field<"message_length", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::str_field<"message", s2s::field_size<s2s::len_from_field<"message_length">>>
+    s2s::basic_field<"message_length", u16, 2_B>,
+    s2s::str_field<"message", s2s::len_from_field<"message_length">>
   >;
 
-using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>>;
-using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>>;
+using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, 4_B>>;
+using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, 4_B>>;
 
 using tagged =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<"body", s2s::type<
       s2s::match_field<"tag">,
       s2s::type_switch<

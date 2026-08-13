@@ -8,8 +8,8 @@ using namespace s2s_literals;
 TEST(TrivialWrite, RoundTripsTrivialFieldsLittleEndian) {
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   test_field_list original{};
@@ -27,8 +27,8 @@ TEST(TrivialWrite, RoundTripsTrivialFieldsLittleEndian) {
 TEST(TrivialWrite, RoundTripsTrivialFieldsBigEndian) {
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   test_field_list original{};
@@ -48,7 +48,7 @@ TEST(TrivialWrite, RoundTripsTrivialFieldsBigEndian) {
 TEST(TrivialWrite, EmitsDeclaredByteOrder) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>
     >;
 
   test_field_list original{};
@@ -66,9 +66,9 @@ TEST(TrivialWrite, EmitsDeclaredByteOrder) {
 TEST(TrivialWrite, WritesFieldsInDeclarationOrder) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"first", u8, s2s::field_size<s2s::fixed<1>>>,
-      s2s::basic_field<"second", u8, s2s::field_size<s2s::fixed<1>>>,
-      s2s::basic_field<"third", u8, s2s::field_size<s2s::fixed<1>>>
+      s2s::basic_field<"first", u8, 1_B>,
+      s2s::basic_field<"second", u8, 1_B>,
+      s2s::basic_field<"third", u8, 1_B>
     >;
 
   test_field_list original{};

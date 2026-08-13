@@ -21,12 +21,12 @@ constexpr auto has_name = [](auto flags) { return (flags & 0x08u) != 0u; };
 using gzip_header =
   s2s::struct_field_list<
     s2s::magic_byte_array<"magic", 2, std::array<u8, 2>{0x1f, 0x8b}>,
-    s2s::basic_field<"method", u8, s2s::field_size<s2s::fixed<1>>>,
-    s2s::basic_field<"flags", u8, s2s::field_size<s2s::fixed<1>>>,
-    s2s::basic_field<"mtime", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"method", u8, 1_B>,
+    s2s::basic_field<"flags", u8, 1_B>,
+    s2s::basic_field<"mtime", u32, 4_B>,
     s2s::maybe<
-      s2s::basic_field<"name_length", u16, s2s::field_size<s2s::fixed<2>>>,
-      s2s::parse_if<has_name, s2s::with_fields<"flags">>
+      s2s::basic_field<"name_length", u16, 2_B>,
+      s2s::parse_if<has_name, "flags">
     >
   >;
 

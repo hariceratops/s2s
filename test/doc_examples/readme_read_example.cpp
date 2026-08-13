@@ -20,9 +20,9 @@ using u32 = unsigned int;
 using firmware_image =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
+    s2s::basic_field<"version", u16, 2_B>,
+    s2s::basic_field<"payload_length", u32, 4_B>,
+    s2s::vec_field<"payload", u8, s2s::len_from_field<"payload_length">>
   >;
 
 auto main() -> int {

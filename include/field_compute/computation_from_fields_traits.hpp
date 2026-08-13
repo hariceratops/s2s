@@ -13,7 +13,7 @@ template <typename T>
 struct is_compute_like;
 
 template <auto callable, typename R, fixed_string... req_fields>
-struct is_compute_like<compute<callable, R, with_fields<req_fields...>>> {
+struct is_compute_like<compute_t<callable, R, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 
@@ -29,7 +29,7 @@ template <typename T>
 struct is_eval_bool_from_fields;
 
 template <auto callable, fixed_string... req_fields>
-struct is_eval_bool_from_fields<compute<callable, bool, with_fields<req_fields...>>> {
+struct is_eval_bool_from_fields<compute_t<callable, bool, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 
@@ -45,7 +45,7 @@ template <typename T>
 struct is_eval_size_from_fields;
 
 template <auto callable, fixed_string... req_fields>
-struct is_eval_size_from_fields<compute<callable, std::size_t, with_fields<req_fields...>>> {
+struct is_eval_size_from_fields<compute_t<callable, std::size_t, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 

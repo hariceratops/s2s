@@ -17,14 +17,14 @@ using i32 = int;
 // wire, and it says how the value should be read.
 using tlv_record =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u8, s2s::field_size<s2s::fixed<1>>>,
+    s2s::basic_field<"tag", u8, 1_B>,
     s2s::variance<
       "value",
       s2s::type<
         s2s::match_field<"tag">,
         s2s::type_switch<
-          s2s::match_case<1, s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>>,
-          s2s::match_case<2, s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>>
+          s2s::match_case<1, s2s::as_trivial<u32, 4_B>>,
+          s2s::match_case<2, s2s::as_trivial<i32, 4_B>>
         >
       >
     >
@@ -38,18 +38,18 @@ constexpr auto needs_reference = [](auto length) { return length > 4u; };
 
 using extent_record =
   s2s::struct_field_list<
-    s2s::basic_field<"length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"length", u32, 4_B>,
     s2s::variance<
       "payload",
       s2s::type<
         s2s::type_if_else<
           s2s::branch<
-            s2s::predicate<fits_inline, s2s::with_fields<"length">>,
-            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<fits_inline, "length">,
+            s2s::as_trivial<u32, 4_B>
           >,
           s2s::branch<
-            s2s::predicate<needs_reference, s2s::with_fields<"length">>,
-            s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<needs_reference, "length">,
+            s2s::as_trivial<i32, 4_B>
           >
         >
       >

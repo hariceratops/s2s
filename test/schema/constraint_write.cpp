@@ -10,8 +10,8 @@ using namespace s2s_literals;
 TEST(ConstraintWrite, RejectsConstraintViolationOnAnOrdinaryField) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"bounded", u32, s2s::field_size<s2s::fixed<4>>, s2s::lt{100u}>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"bounded", u32, 4_B, s2s::lt{100u}>
     >;
 
   test_field_list obj{};

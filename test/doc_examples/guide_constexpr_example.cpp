@@ -43,8 +43,8 @@ public:
 // can be held in a constexpr variable and asserted on below.
 using partition_entry =
   s2s::struct_field_list<
-    s2s::basic_field<"start_lba", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"sector_count", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"start_lba", u32, 4_B>,
+    s2s::basic_field<"sector_count", u32, 4_B>
   >;
 
 constexpr auto parse_it() -> std::expected<partition_entry, s2s::cast_error> {

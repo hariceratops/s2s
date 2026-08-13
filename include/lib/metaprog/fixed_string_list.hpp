@@ -3,15 +3,14 @@
 
 
 // status: might be deprecated due to value MP
+#include <type_traits>
+
 #include "../containers/fixed_string.hpp"
 
 
 namespace s2s {
 template <fixed_string... fs>
 struct fixed_string_list {};
-
-template <fixed_string... fs>
-using with_fields = fixed_string_list<fs...>;
 
 template <typename T>
 struct is_field_name_list;
@@ -22,7 +21,7 @@ struct is_field_name_list {
 };
 
 template <fixed_string... fs>
-struct is_field_name_list<with_fields<fs...>> {
+struct is_field_name_list<fixed_string_list<fs...>> {
   static constexpr bool res = true;
 };
 
@@ -101,6 +100,27 @@ using pop_t = typename pop<count, T>::type;
 
 template <typename T>
 concept field_name_list = is_field_name_list_v<T>;
+
+template <fixed_string... fs>
+inline constexpr auto with_fields = fixed_string_list<fs...>{};
+
+// A name list is spelled either as bare ids or as one with_fields value. The
+// normalization sits here, at the user-facing aliases, and never at `compute`
+// itself — every internal pattern match on compute_t<f, R, fixed_string_list<...>>
+// therefore stays untouched.
+template <auto... ids>
+struct names_of {
+  using type = fixed_string_list<ids...>;
+};
+
+template <auto list>
+  requires field_name_list<std::remove_cvref_t<decltype(list)>>
+struct names_of<list> {
+  using type = std::remove_cvref_t<decltype(list)>;
+};
+
+template <auto... ids>
+using field_names_of = typename names_of<ids...>::type;
 } /* namespace s2s */
 
 

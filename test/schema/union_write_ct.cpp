@@ -20,16 +20,16 @@ using u32 = unsigned int;
 
 using alt_1 =
   s2s::struct_field_list<
-    s2s::basic_field<"x", u16, s2s::field_size<s2s::fixed<2>>>
+    s2s::basic_field<"x", u16, 2_B>
   >;
 using alt_2 =
   s2s::struct_field_list<
-    s2s::basic_field<"y", u16, s2s::field_size<s2s::fixed<2>>>
+    s2s::basic_field<"y", u16, 2_B>
   >;
 
 using union_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<

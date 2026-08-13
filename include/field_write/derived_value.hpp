@@ -270,7 +270,7 @@ struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
 
 private:
   // The declared width, not sizeof(field_type): a u32 slot declared
-  // field_size<fixed<2>> puts two bytes on the wire, and a length needing
+  // 2_B puts two bytes on the wire, and a length needing
   // three must fail rather than reach the stream truncated.
   static constexpr auto declared_width = deduce_field_size<target::field_size>{}();
 

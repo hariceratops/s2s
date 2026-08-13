@@ -50,7 +50,7 @@ struct compute_impl;
 
 // todo: static_vector over fixed_string list?
 template <auto callable, typename R, fixed_string... req_fields>
-struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
+struct compute_impl<compute_t<callable, R, fixed_string_list<req_fields...>>>{
   template <auto metadata, typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 

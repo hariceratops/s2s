@@ -10,21 +10,21 @@ auto area_of = [](auto rows, auto cols) { return rows * cols; };
 
 using computed_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"rows", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"cols", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"rows", u32, 4_B>,
+    s2s::basic_field<"cols", u32, 4_B>,
     s2s::vec_field<
       "cells",
       u16,
-      s2s::field_size<s2s::len_from_fields<area_of, s2s::with_fields<"rows", "cols">>>
+      s2s::len_from_fields<area_of, "rows", "cols">
     >
   >;
 
 // Two variable-sized fields sharing one length field.
 using fanout_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"a", u16, s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::vec_field<"b", u32, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"a", u16, s2s::len_from_field<"len">>,
+    s2s::vec_field<"b", u32, s2s::len_from_field<"len">>
   >;
 } /* namespace */
 
@@ -91,11 +91,11 @@ TEST(SizeAxisWrite, SourcesFeedingTheCallableStayAssignable) {
 
   static_assert(
     !s2s::is_derived_field<meta::type_id<s2s::field_list_metadata<
-      s2s::basic_field<"rows", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"cols", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"rows", u32, 4_B>,
+      s2s::basic_field<"cols", u32, 4_B>,
       s2s::vec_field<
         "cells", u16,
-        s2s::field_size<s2s::len_from_fields<area_of, s2s::with_fields<"rows", "cols">>>
+        s2s::len_from_fields<area_of, "rows", "cols">
       >
     >>>("rows"));
 }
@@ -137,9 +137,9 @@ TEST(SizeAxisWrite, RejectsFanOutContradiction) {
 TEST(SizeAxisWrite, AppliesTheWidthCheckToAFannedOutLength) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
-      s2s::vec_field<"a", u8, s2s::field_size<s2s::len_from_field<"len">>>,
-      s2s::vec_field<"b", u8, s2s::field_size<s2s::len_from_field<"len">>>
+      s2s::basic_field<"len", u32, 1_B>,
+      s2s::vec_field<"a", u8, s2s::len_from_field<"len">>,
+      s2s::vec_field<"b", u8, s2s::len_from_field<"len">>
     >;
 
   test_field_list obj{};
@@ -154,9 +154,25 @@ TEST(SizeAxisWrite, AppliesTheWidthCheckToAFannedOutLength) {
 }
 
 // TODO(045): the run-time half — a defaulted size and a 2_B size must emit the
-// same bytes as the field_size<fixed<2>> spelling they replace. Comparing the
+// same bytes as the 2_B spelling they replace. Comparing the
 // emitted buffer against the pre-migration bytes is the evidence that the
 // migration was a spelling change and nothing else.
 TEST(SizeAxisWrite, WritesAFieldWhoseSizeIsDefaultedToSizeofT) {
-  GTEST_SKIP() << "TODO(045): defaulted size does not exist yet";
+  using test_field_list =
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u16>,
+      s2s::basic_field<"b", u32, 2_B>
+    >;
+
+  test_field_list obj{};
+  obj["a"_f] = u16{0x1122};
+  obj["b"_f] = 0x3344u;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  ASSERT_TRUE(s2s::stream_cast_le<test_field_list>(stream, obj).has_value());
+
+  // An omitted size is sizeof(T); a narrower one truncates to what it declares.
+  EXPECT_EQ(stream.str().size(), 4u);
+  EXPECT_EQ(static_cast<u8>(stream.str()[0]), 0x22);
+  EXPECT_EQ(static_cast<u8>(stream.str()[2]), 0x44);
 }

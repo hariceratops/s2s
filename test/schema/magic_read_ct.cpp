@@ -20,20 +20,20 @@ using u32 = unsigned int;
 // read, and the only way to see that it did is a field behind it.
 using magic_num_schema =
   s2s::struct_field_list<
-    s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
-    s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::magic_number<"magic_num", u32, 4_B, 0xdeadbeef>,
+    s2s::basic_field<"payload", u32, 4_B>
   >;
 
 using magic_str_schema =
   s2s::struct_field_list<
     s2s::magic_string<"magic_str", "GIF">,
-    s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"payload", u32, 4_B>
   >;
 
 using magic_arr_schema =
   s2s::struct_field_list<
     s2s::magic_byte_array<"magic_arr", 4, std::array<unsigned char, 4>{0xde, 0xad, 0xbe, 0xef}>,
-    s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"payload", u32, 4_B>
   >;
 
 auto main() -> int {
@@ -72,7 +72,7 @@ auto main() -> int {
     expect(eq((*res)["payload"_f], 0xcafed00du));
   };
 
-  // magic_string<N> is sized fixed<N + 1>, so the terminator is on the wire.
+  // magic_string<N> is sized N + 1 bytes, so the terminator is on the wire.
   "a matching magic string is accepted and kept"_test = [] constexpr {
     std::array<u8, 8> buffer{'G', 'I', 'F', '\0', 0x0d, 0xd0, 0xfe, 0xca};
     memstream<8> stream(buffer);

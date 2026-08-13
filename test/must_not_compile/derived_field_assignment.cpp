@@ -17,16 +17,16 @@ using u32 = unsigned int;
 
 using our_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>
   >;
 
-using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>>;
-using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>>;
+using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, 4_B>>;
+using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, 4_B>>;
 
 using union_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<
@@ -44,7 +44,7 @@ using union_struct =
 // silently: writing alt_2 emits 0xcafed00d, and reading it back selects alt_1.
 using duplicate_value_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<

@@ -37,28 +37,23 @@ struct size_choices_t {
   static constexpr auto num_of_choices = sizeof...(sizes);
 };
 
-// The spellings a schema writes. Each evaluates to one of the values above,
-// so every existing schema keeps compiling token-for-token while the internals
-// move to values. 045 deletes field_size and fixed; the rest survive.
-template <std::size_t N>
-inline constexpr auto fixed = byte_count{N};
-
+// The spellings a schema writes.
 template <fixed_string id>
 inline constexpr auto len_from_field = field_accessor<id>{};
 
 // todo constraint for callable
-template <auto callable, field_name_list req_fields>
-inline constexpr auto size_from_fields = size_from_fields_t<callable, req_fields>{};
+template <auto callable, fixed_string... ids>
+inline constexpr auto size_from_fields = size_from_fields_t<callable, field_names_of<ids...>>{};
 
-template <auto callable, field_name_list ids>
-inline constexpr auto len_from_fields = size_from_fields<callable, ids>;
+template <auto callable, fixed_string... ids>
+inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
 
 inline constexpr auto size_dont_care = size_dont_care_t{};
 
 template <auto... sizes>
 inline constexpr auto size_choices = size_choices_t<sizes...>{};
 
-// Identity on an already-value size: field_size<fixed<4>> is field_size<byte_count{4}>.
+// Identity on an already-value size: 4_B is byte_count{4}.
 template <auto size>
 inline constexpr auto field_size = size;
 

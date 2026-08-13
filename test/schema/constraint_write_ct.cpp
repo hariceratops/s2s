@@ -21,7 +21,7 @@ using u32 = unsigned int;
 template <auto constraint>
 using constrained =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>, constraint>
+    s2s::basic_field<"a", u32, 4_B, constraint>
   >;
 
 template <auto constraint>
@@ -92,8 +92,8 @@ auto main() -> int {
   "the offending field contributes no bytes"_test = [] constexpr {
     using two =
       s2s::struct_field_list<
-        s2s::basic_field<"lead", u32, s2s::field_size<s2s::fixed<4>>>,
-        s2s::basic_field<"bounded", u32, s2s::field_size<s2s::fixed<4>>, s2s::lt(100u)>
+        s2s::basic_field<"lead", u32, 4_B>,
+        s2s::basic_field<"bounded", u32, 4_B, s2s::lt(100u)>
       >;
 
     std::array<u8, 8> buffer{};

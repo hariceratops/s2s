@@ -15,8 +15,8 @@ using u32 = unsigned int;
 
 using our_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>
   >;
 
 auto main() -> int {

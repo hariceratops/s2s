@@ -26,8 +26,8 @@ using u32 = unsigned int;
 
 using prefixed =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"vec", u16, s2s::len_from_field<"len">>
   >;
 
 constexpr auto populated() -> prefixed {
@@ -39,8 +39,8 @@ constexpr auto populated() -> prefixed {
 // One byte of length slot cannot describe 300 elements.
 using narrow_prefixed =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
-    s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 1_B>,
+    s2s::vec_field<"vec", u8, s2s::len_from_field<"len">>
   >;
 
 constexpr auto write_overlong_container() -> s2s::cast_result {

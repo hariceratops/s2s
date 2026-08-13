@@ -10,10 +10,10 @@ auto flag_is_set = [](auto flag) { return flag == 0xdeadbeef; };
 
 using optional_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
     s2s::maybe<
-      s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+      s2s::basic_field<"payload", u32, 4_B>,
+      s2s::parse_if<flag_is_set, "flag">
     >
   >;
 } /* namespace */
@@ -90,9 +90,9 @@ TEST(OptionalWrite, RejectsPredicateFalseButOptionalEngaged) {
 TEST(OptionalWrite, RoundTripsAlwaysPresentWithoutSpecialCasing) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>,
       s2s::maybe<
-        s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::basic_field<"b", u32, 4_B>,
         s2s::always_present
       >
     >;
@@ -118,10 +118,10 @@ TEST(OptionalWrite, SiblingsFeedingThePredicateStayAssignable) {
 
   static_assert(
     !s2s::is_derived_field<meta::type_id<s2s::field_list_metadata<
-      s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"flag", u32, 4_B>,
       s2s::maybe<
-        s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
-        s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+        s2s::basic_field<"payload", u32, 4_B>,
+        s2s::parse_if<flag_is_set, "flag">
       >
     >>>("flag"));
 }
@@ -132,11 +132,11 @@ namespace {
 // from. It stays writable and is verified only when the optional is present.
 using conditional_len_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
+    s2s::basic_field<"len", u32, 4_B>,
     s2s::maybe<
-      s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"len">>>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+      s2s::vec_field<"data", u16, s2s::len_from_field<"len">>,
+      s2s::parse_if<flag_is_set, "flag">
     >
   >;
 } /* namespace */
@@ -197,12 +197,12 @@ namespace {
 // former, and the latter is verified against that derived value when present.
 using mixed_len_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"always", u8, s2s::field_size<s2s::len_from_field<"len">>>,
+    s2s::basic_field<"flag", u32, 4_B>,
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"always", u8, s2s::len_from_field<"len">>,
     s2s::maybe<
-      s2s::vec_field<"sometimes", u8, s2s::field_size<s2s::len_from_field<"len">>>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+      s2s::vec_field<"sometimes", u8, s2s::len_from_field<"len">>,
+      s2s::parse_if<flag_is_set, "flag">
     >
   >;
 } /* namespace */
@@ -269,11 +269,11 @@ TEST(OptionalWrite, AConditionalLengthStaysAssignable) {
 
   static_assert(
     !s2s::is_derived_field<meta::type_id<s2s::field_list_metadata<
-      s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"flag", u32, 4_B>,
+      s2s::basic_field<"len", u32, 4_B>,
       s2s::maybe<
-        s2s::vec_field<"data", u16, s2s::field_size<s2s::len_from_field<"len">>>,
-        s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+        s2s::vec_field<"data", u16, s2s::len_from_field<"len">>,
+        s2s::parse_if<flag_is_set, "flag">
       >
     >>>("len"));
 }

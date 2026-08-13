@@ -24,41 +24,41 @@ auto flag_is_set = [](auto flag) { return flag == 0xdeadbeef; };
 
 using optional_trivial =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
     s2s::maybe<
-      s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+      s2s::basic_field<"payload", u32, 4_B>,
+      s2s::parse_if<flag_is_set, "flag">
     >
   >;
 
 using optional_array =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>,
     s2s::maybe<
       s2s::fixed_array_field<"c", u32, 3>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"a">>
+      s2s::parse_if<flag_is_set, "a">
     >
   >;
 
 using point =
   s2s::struct_field_list<
-    s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"x", u32, 4_B>,
+    s2s::basic_field<"y", u32, 4_B>
   >;
 
 using optional_record =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
     s2s::maybe<s2s::struct_field<"inner", point>,
-               s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>>
+               s2s::parse_if<flag_is_set, "flag">>
   >;
 
 using unconditional =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
     s2s::maybe<
-      s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"payload", u32, 4_B>,
       s2s::always_present
     >
   >;
@@ -80,12 +80,12 @@ auto main() -> int {
   "an unsatisfied predicate leaves the payload absent and unconsumed"_test = [] constexpr {
     using trailing =
       s2s::struct_field_list<
-        s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::basic_field<"flag", u32, 4_B>,
         s2s::maybe<
-          s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
-          s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+          s2s::basic_field<"payload", u32, 4_B>,
+          s2s::parse_if<flag_is_set, "flag">
         >,
-        s2s::basic_field<"tail", u32, s2s::field_size<s2s::fixed<4>>>
+        s2s::basic_field<"tail", u32, 4_B>
       >;
 
     std::array<u8, 8> buffer{0x44, 0x33, 0x22, 0x11, 0x0d, 0xd0, 0xfe, 0xca};

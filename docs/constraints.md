@@ -29,7 +29,7 @@ also refuses to produce one.
 They are used as values, not types, and CTAD deduces the parameter:
 
 ```cpp
-s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>
+s2s::basic_field<"channels", u16, 2_B, s2s::any_of{u16{1}, u16{2}}>
 ```
 
 Two type restrictions are worth knowing before a template error explains them.
@@ -62,7 +62,7 @@ already filled in with `eq`:
 ```cpp
 magic_string<"magic", "S2S">
 // is
-field<"magic", fixed_string<3>, field_size<fixed<4>>, eq{fixed_string<3>("S2S")}>
+field<"magic", fixed_string<3>, 4_B, eq{fixed_string<3>("S2S")}>
 ```
 
 which is why they take an `expected` value where other descriptors take a
@@ -87,22 +87,22 @@ using u32 = unsigned int;
 using wav_format =
   s2s::struct_field_list<
     s2s::magic_byte_array<"chunk_id", 4, std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20}>,
-    s2s::basic_field<"chunk_size", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq{u32{16}}>,
-    s2s::basic_field<"audio_format", u16, s2s::field_size<s2s::fixed<2>>, s2s::eq{u16{1}}>,
-    s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{1}, u16{2}}>,
-    s2s::basic_field<"sample_rate", u32, s2s::field_size<s2s::fixed<4>>, s2s::gte{u32{8000}}>,
-    s2s::basic_field<"bits_per_sample", u16, s2s::field_size<s2s::fixed<2>>, s2s::any_of{u16{8}, u16{16}, u16{24}}>
+    s2s::basic_field<"chunk_size", u32, 4_B, s2s::eq{u32{16}}>,
+    s2s::basic_field<"audio_format", u16, 2_B, s2s::eq{u16{1}}>,
+    s2s::basic_field<"channels", u16, 2_B, s2s::any_of{u16{1}, u16{2}}>,
+    s2s::basic_field<"sample_rate", u32, 4_B, s2s::gte{u32{8000}}>,
+    s2s::basic_field<"bits_per_sample", u16, 2_B, s2s::any_of{u16{8}, u16{16}, u16{24}}>
   >;
 
 // The same layout with the constraint axis left off every field.
 using wav_format_unchecked =
   s2s::struct_field_list<
     s2s::magic_byte_array<"chunk_id", 4, std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20}>,
-    s2s::basic_field<"chunk_size", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"audio_format", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"channels", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"sample_rate", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"bits_per_sample", u16, s2s::field_size<s2s::fixed<2>>>
+    s2s::basic_field<"chunk_size", u32, 4_B>,
+    s2s::basic_field<"audio_format", u16, 2_B>,
+    s2s::basic_field<"channels", u16, 2_B>,
+    s2s::basic_field<"sample_rate", u32, 4_B>,
+    s2s::basic_field<"bits_per_sample", u16, 2_B>
   >;
 
 auto main() -> int {

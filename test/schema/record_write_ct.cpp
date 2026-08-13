@@ -19,8 +19,8 @@ using u16 = unsigned short;
 
 using point =
   s2s::struct_field_list<
-    s2s::basic_field<"x", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"y", u16, s2s::field_size<s2s::fixed<2>>>
+    s2s::basic_field<"x", u16, 2_B>,
+    s2s::basic_field<"y", u16, 2_B>
   >;
 
 // All three record descriptors in one schema, so their relative offsets are
@@ -29,8 +29,8 @@ using records =
   s2s::struct_field_list<
     s2s::struct_field<"origin", point>,
     s2s::array_of_records<"corners", point, 2>,
-    s2s::basic_field<"count", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::vector_of_records<"path", point, s2s::field_size<s2s::len_from_field<"count">>>
+    s2s::basic_field<"count", u16, 2_B>,
+    s2s::vector_of_records<"path", point, s2s::len_from_field<"count">>
   >;
 
 constexpr auto make_point(u16 x, u16 y) -> point {

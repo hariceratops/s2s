@@ -105,7 +105,7 @@ auto main() -> int {
     using schema =
       s2s::struct_field_list<
         s2s::fixed_string_field<"name", 4>,
-        s2s::basic_field<"tail", u16, s2s::field_size<s2s::fixed<2>>>
+        s2s::basic_field<"tail", u16, 2_B>
       >;
 
     std::array<u8, 7> buffer{'a', 'b', 'c', 'd', '\0', 0x22, 0x11};
@@ -122,7 +122,7 @@ auto main() -> int {
     using schema =
       s2s::struct_field_list<
         s2s::c_str_field<"cstr", 3>,
-        s2s::basic_field<"tail", u16, s2s::field_size<s2s::fixed<2>>>
+        s2s::basic_field<"tail", u16, 2_B>
       >;
 
     std::array<u8, 6> buffer{'x', 'y', 'z', '\0', 0x22, 0x11};

@@ -5,12 +5,12 @@ stated outright: a length the wire does not carry directly, a predicate deciding
 whether an optional field is present, a test choosing a union alternative. They
 share one shape — a callable, plus the names of the fields it reads.
 
-**`with_fields<"a", "b">`** is that list of names. It carries no values; it says
-which siblings to fetch and in what order, and they reach the callable as
-arguments in exactly that order.
+The names are written as a bare list of ids — `"a", "b"` — trailing the
+callable. There is no wrapper around them; the order is the order they reach
+the callable as arguments.
 
-**`compute<callable, R, Fs>`** is the general form: apply `callable` to the
-fields named by `Fs`, producing an `R`. The callable is a non-type template
+**`compute<callable, R, "a", "b">`** is the general form: apply `callable` to
+the fields named, producing an `R`. The callable is a non-type template
 argument, so it must be usable in a constant expression — a captureless lambda
 or a function object declared where the schema can name it.
 
@@ -18,15 +18,15 @@ Everything else in this family is that template under a shorter name.
 
 | Alias | Expands to | Reads as |
 |---|---|---|
-| `predicate<f, Fs>` | `compute<f, bool, Fs>` | a yes/no test over sibling fields |
-| `eval_bool_from_fields<f, Fs>` | `compute<f, bool, Fs>` | the same thing, older spelling |
-| `parse_if<f, Fs>` | `eval_bool_from_fields<f, Fs>` | is this optional field present? |
-| `eval_size_from_fields<f, Fs>` | `compute<f, std::size_t, Fs>` | a count derived from siblings |
+| `predicate<f, ids...>` | `compute<f, bool, ids...>` | a yes/no test over sibling fields |
+| `eval_bool_from_fields<f, ids...>` | `compute<f, bool, ids...>` | the same thing, older spelling |
+| `parse_if<f, ids...>` | `eval_bool_from_fields<f, ids...>` | is this optional field present? |
+| `eval_size_from_fields<f, ids...>` | `compute<f, std::size_t, ids...>` | a count derived from siblings |
 
 `compute` is documented here as a mechanism to be used directly, not as an
 implementation detail behind those aliases. Deriving a `u32` from two sibling
 fields is a legitimate thing to write, and the test suite already does it.
-**The signature of `compute<callable, R, Fs>` should be treated as stable**:
+**The signature of `compute<callable, R, ids...>` should be treated as stable**:
 documenting the general form commits the project to keeping it, not just the
 aliases built on top.
 
@@ -56,12 +56,12 @@ constexpr auto pixel_count = [](auto width, auto height) { return width * height
 // is the product of two fields that are each meaningful on their own.
 using image_tile =
   s2s::struct_field_list<
-    s2s::basic_field<"width", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"height", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"width", u16, 2_B>,
+    s2s::basic_field<"height", u16, 2_B>,
     s2s::vec_field<
       "pixels",
       u16,
-      s2s::field_size<s2s::len_from_fields<pixel_count, s2s::with_fields<"width", "height">>>
+      s2s::len_from_fields<pixel_count, "width", "height">
     >
   >;
 

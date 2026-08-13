@@ -12,8 +12,8 @@ using namespace s2s_literals;
 // Two fields: a length, and a string whose byte count is derived from it.
 using message =
   s2s::struct_field_list<
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"text", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", std::size_t, 8_B>,
+    s2s::str_field<"text", s2s::len_from_field<"len">>
   >;
 
 auto main() -> int {

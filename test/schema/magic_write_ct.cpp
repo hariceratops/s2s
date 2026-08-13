@@ -19,7 +19,7 @@ using u32 = unsigned int;
 using magic_schema =
   s2s::struct_field_list<
     s2s::magic_string<"magic_str", "GIF">,
-    s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
+    s2s::magic_number<"magic_num", u32, 4_B, 0xdeadbeef>,
     s2s::magic_byte_array<"magic_arr", 2, std::array<unsigned char, 2>{0xbe, 0xef}>
   >;
 

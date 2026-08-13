@@ -28,12 +28,12 @@ auto area_of = [](auto rows, auto cols) { return rows * cols; };
 
 using computed_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"rows", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"cols", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"rows", u32, 4_B>,
+    s2s::basic_field<"cols", u32, 4_B>,
     s2s::vec_field<
       "cells",
       u16,
-      s2s::field_size<s2s::len_from_fields<area_of, s2s::with_fields<"rows", "cols">>>
+      s2s::len_from_fields<area_of, "rows", "cols">
     >
   >;
 
@@ -53,9 +53,9 @@ constexpr auto write_disagreeing_computed() -> s2s::cast_result {
 
 using fanout_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"a", u16, s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::vec_field<"b", u32, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"a", u16, s2s::len_from_field<"len">>,
+    s2s::vec_field<"b", u32, s2s::len_from_field<"len">>
   >;
 
 constexpr auto make_fanout(std::size_t b_count) -> fanout_struct {
@@ -65,10 +65,12 @@ constexpr auto make_fanout(std::size_t b_count) -> fanout_struct {
   return obj;
 }
 
+using defaulted_size_struct = s2s::struct_field_list<s2s::basic_field<"a", u16>>;
+
 using hidden_len_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"vec", u8, s2s::len_from_field<"len">>
   >;
 
 constexpr auto write_contradicting_fanout() -> s2s::cast_result {
@@ -86,6 +88,17 @@ constexpr auto write_hidden_len() -> std::optional<std::array<u8, 7>> {
   std::array<u8, 7> buffer{};
   memstream<7> stream(buffer);
   if(!s2s::stream_cast_le<hidden_len_struct>(stream, obj))
+    return std::nullopt;
+  return buffer;
+}
+
+constexpr auto write_defaulted_size() -> std::optional<std::array<u8, 2>> {
+  defaulted_size_struct obj{};
+  obj["a"_f] = u16{0x1122};
+
+  std::array<u8, 2> buffer{};
+  memstream<2> stream(buffer);
+  if(!s2s::stream_cast_le<defaulted_size_struct>(stream, obj))
     return std::nullopt;
   return buffer;
 }
@@ -141,13 +154,14 @@ auto main() -> int {
     expect(eq(written.error().failed_at, std::string_view{"len"}));
   };
 
-  // TODO(045): the write side of the defaulted size — a field declared
-  // basic_field<"v", u16> writes sizeof(u16) bytes, and 2_B writes the same
-  // bytes as today's field_size<fixed<2>>.
-  //
-  // Placeholder body: asserts nothing yet, since neither spelling exists.
+  // The write side of the omitted size: two bytes out for a u16, in the
+  // declared order.
   "a basic_field with no size writes sizeof(T)"_test = [] constexpr {
-    expect(eq(true, true));
+    auto written = write_defaulted_size();
+
+    expect(eq(written.has_value(), true));
+    expect(eq(written->at(0), u8{0x22}));
+    expect(eq(written->at(1), u8{0x11}));
   };
 
   // The positive half of test/must_not_compile/hidden_length_target.cpp.

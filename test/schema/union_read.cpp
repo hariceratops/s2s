@@ -21,18 +21,18 @@ TEST(UnionRead, RejectsAValueNoAlternativeMatches) {
 
   using inner_1 = 
    s2s::struct_field_list<
-     s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+     s2s::basic_field<"x", u32, 4_B>, 
+     s2s::basic_field<"y", u32, 4_B>
   >;
   using inner_2 = 
    s2s::struct_field_list<
-     s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+     s2s::basic_field<"p", u32, 4_B>, 
+     s2s::basic_field<"q", u32, 4_B>
   >;
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -67,8 +67,8 @@ TEST(UnionRead, ReadsTheAlternativeTheDiscriminantSelects) {
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -76,15 +76,15 @@ TEST(UnionRead, ReadsTheAlternativeTheDiscriminantSelects) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, 4_B>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, 4_B>
             >
           >
         >
@@ -116,8 +116,8 @@ TEST(UnionRead, ReadsAFixedArrayAlternative) {
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -125,7 +125,7 @@ TEST(UnionRead, ReadsAFixedArrayAlternative) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::match_case<
               0xdeadbeef, 
@@ -133,7 +133,7 @@ TEST(UnionRead, ReadsAFixedArrayAlternative) {
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, 4_B>
             >
           >
         >
@@ -174,9 +174,9 @@ TEST(UnionRead, ReadsALengthPrefixedArrayAlternative) {
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -184,15 +184,15 @@ TEST(UnionRead, ReadsALengthPrefixedArrayAlternative) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::as_vec<u32, s2s::field_size<s2s::len_from_field<"len">>>
+              s2s::as_vec<u32, s2s::len_from_field<"len">>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, 4_B>
             >
           >
         >
@@ -231,8 +231,8 @@ TEST(UnionRead, ReadsAFixedStringAlternative) {
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -240,14 +240,14 @@ TEST(UnionRead, ReadsAFixedStringAlternative) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::match_case<
               0xdeadbeef, s2s::as_fixed_string<10>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, 4_B>
             >
           >
         >
@@ -281,9 +281,9 @@ TEST(UnionRead, ReadsALengthPrefixedStringAlternative) {
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -291,15 +291,15 @@ TEST(UnionRead, ReadsALengthPrefixedStringAlternative) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::match_case<
               0xdeadbeef, 
-              s2s::as_string<s2s::field_size<s2s::len_from_field<"len">>>
+              s2s::as_string<s2s::len_from_field<"len">>
             >,
             s2s::match_case<
               0xbeefbeef, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, 4_B>
             >
           >
         >
@@ -332,24 +332,24 @@ TEST(UnionRead, ReadsTheAlternativeAComputedSwitchSelects) {
   auto some_complex_calc = [](auto a, auto b){ return a + b; };
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
-          s2s::compute<some_complex_calc, u32, s2s::with_fields<"a", "b">>,
+          s2s::compute<some_complex_calc, u32, "a", "b">,
           s2s::type_switch<
             s2s::match_case<
               100, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::match_case<
               200, 
-              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, 4_B>
             >,
             s2s::match_case<
               300, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<int, 4_B>
             >
           >
         >
@@ -382,18 +382,18 @@ TEST(UnionRead, ReadsARecordAlternative) {
 
   using inner_1 = 
    s2s::struct_field_list<
-     s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+     s2s::basic_field<"x", u32, 4_B>, 
+     s2s::basic_field<"y", u32, 4_B>
   >;
   using inner_2 = 
    s2s::struct_field_list<
-     s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+     s2s::basic_field<"p", u32, 4_B>, 
+     s2s::basic_field<"q", u32, 4_B>
   >;
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
@@ -435,19 +435,19 @@ TEST(UnionRead, RejectsWhenNoLadderBranchMatches) {
   
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
           s2s::type_if_else<
             s2s::branch<
-              s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::predicate<bpred_1, "a", "b">, 
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::branch<
-              s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
-              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::predicate<bpred_2, "a", "b">, 
+              s2s::as_trivial<u32, 4_B>
             >
           >
         >
@@ -479,23 +479,23 @@ TEST(UnionRead, ReadsTheAlternativeALadderSelects) {
   
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "c", 
         s2s::type<
           s2s::type_if_else<
             s2s::branch<
-              s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
-              s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+              s2s::predicate<bpred_1, "a", "b">, 
+              s2s::as_trivial<float, 4_B>
             >,
             s2s::branch<
-              s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
-              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::predicate<bpred_2, "a", "b">, 
+              s2s::as_trivial<u32, 4_B>
             >,
             s2s::branch<
-              s2s::predicate<bpred_3, s2s::with_fields<"a", "b">>, 
-              s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+              s2s::predicate<bpred_3, "a", "b">, 
+              s2s::as_trivial<int, 4_B>
             >
           >
         >

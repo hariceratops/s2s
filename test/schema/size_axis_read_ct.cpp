@@ -28,21 +28,21 @@ auto area_of = [](auto rows, auto cols) { return rows * cols; };
 
 using computed =
   s2s::struct_field_list<
-    s2s::basic_field<"rows", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"cols", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"rows", u32, 4_B>,
+    s2s::basic_field<"cols", u32, 4_B>,
     s2s::vec_field<
       "cells",
       u16,
-      s2s::field_size<s2s::len_from_fields<area_of, s2s::with_fields<"rows", "cols">>>
+      s2s::len_from_fields<area_of, "rows", "cols">
     >
   >;
 
 // One length field, two dependents.
 using fanout =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"a", u16, s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::vec_field<"b", u32, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"a", u16, s2s::len_from_field<"len">>,
+    s2s::vec_field<"b", u32, s2s::len_from_field<"len">>
   >;
 
 auto main() -> int {
@@ -122,8 +122,8 @@ auto main() -> int {
   "a length target sizes its container without being nameable"_test = [] constexpr {
     using derived =
       s2s::struct_field_list<
-        s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-        s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+        s2s::basic_field<"len", u32, 4_B>,
+        s2s::str_field<"str", s2s::len_from_field<"len">>
       >;
 
     std::array<u8, 7> buffer{0x03, 0x00, 0x00, 0x00, 'a', 'b', 'c'};
@@ -143,8 +143,8 @@ auto main() -> int {
   "the container behind a length target stays assignable"_test = [] constexpr {
     using derived_len =
       s2s::struct_field_list<
-        s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-        s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+        s2s::basic_field<"len", u32, 4_B>,
+        s2s::str_field<"str", s2s::len_from_field<"len">>
       >;
 
     derived_len obj{};
@@ -155,11 +155,11 @@ auto main() -> int {
   };
 
   "a derived discriminant is readable while its union stays assignable"_test = [] constexpr {
-    using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>>;
-    using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>>;
+    using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, 4_B>>;
+    using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, 4_B>>;
     using tagged =
       s2s::struct_field_list<
-        s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::basic_field<"tag", u32, 4_B>,
         s2s::variance<"body", s2s::type<
           s2s::match_field<"tag">,
           s2s::type_switch<
@@ -183,13 +183,13 @@ auto main() -> int {
   "a size_dont_care field occupies exactly its nested schema"_test = [] constexpr {
     using point =
       s2s::struct_field_list<
-        s2s::basic_field<"x", u16, s2s::field_size<s2s::fixed<2>>>,
-        s2s::basic_field<"y", u16, s2s::field_size<s2s::fixed<2>>>
+        s2s::basic_field<"x", u16, 2_B>,
+        s2s::basic_field<"y", u16, 2_B>
       >;
     using schema =
       s2s::struct_field_list<
         s2s::struct_field<"inner", point>,
-        s2s::basic_field<"tail", u16, s2s::field_size<s2s::fixed<2>>>
+        s2s::basic_field<"tail", u16, 2_B>
       >;
 
     std::array<u8, 6> buffer{0x22, 0x11, 0x44, 0x33, 0x66, 0x55};
@@ -202,20 +202,41 @@ auto main() -> int {
     expect(eq((*res)["tail"_f], u16{0x5566}));
   };
 
-  // TODO(045): a size the schema does not spell. basic_field<"v", u16> must
-  // occupy sizeof(u16) on the wire and read back identically to the same field
-  // written as 2_B — this is the claim the whole feature rests on and nothing
-  // asserts it today.
-  //
-  // Placeholder body: asserts nothing yet, since the defaulted size does not
-  // exist.
+  // The claim the terse surface rests on: an omitted size means sizeof(T) on
+  // the wire.
   "a basic_field with no size occupies sizeof(T)"_test = [] constexpr {
-    expect(eq(true, true));
+    using defaulted =
+      s2s::struct_field_list<
+        s2s::basic_field<"a", u16>,
+        s2s::basic_field<"b", u16>
+      >;
+
+    std::array<u8, 4> buffer{0x22, 0x11, 0x44, 0x33};
+    memstream<4> stream(buffer);
+
+    auto res = s2s::struct_cast_le<defaulted>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["a"_f], u16{0x1122}));
+    expect(eq((*res)["b"_f], u16{0x3344}));
   };
 
-  // TODO(045): 2_B must round-trip identically to today's
-  // field_size<fixed<2>> — same bytes, same value, both endiannesses.
-  "a byte-count literal reads the same as the spelling it replaces"_test = [] constexpr {
-    expect(eq(true, true));
+  // A width narrower than the type is the case an omitted size cannot express,
+  // and the one 2_B still exists for.
+  "a byte-count literal narrower than the type is honoured"_test = [] constexpr {
+    using narrowed =
+      s2s::struct_field_list<
+        s2s::basic_field<"a", u32, 2_B>,
+        s2s::basic_field<"b", u16>
+      >;
+
+    std::array<u8, 4> buffer{0x22, 0x11, 0x44, 0x33};
+    memstream<4> stream(buffer);
+
+    auto res = s2s::struct_cast_le<narrowed>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["a"_f], 0x1122u));
+    expect(eq((*res)["b"_f], u16{0x3344}));
   };
 }

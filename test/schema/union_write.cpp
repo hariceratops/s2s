@@ -8,18 +8,18 @@ using namespace s2s_literals;
 namespace {
 using inner_1 =
   s2s::struct_field_list<
-    s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"x", u32, 4_B>,
+    s2s::basic_field<"y", u32, 4_B>
   >;
 using inner_2 =
   s2s::struct_field_list<
-    s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"p", u32, 4_B>,
+    s2s::basic_field<"q", u32, 4_B>
   >;
 
 using switch_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<
@@ -43,15 +43,15 @@ auto pick_by_sum = [](auto a, auto b) { return a + b; };
 
 using computed_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<
-        s2s::compute<pick_by_sum, u32, s2s::with_fields<"a", "b">>,
+        s2s::compute<pick_by_sum, u32, "a", "b">,
         s2s::type_switch<
-          s2s::match_case<100, s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>>,
-          s2s::match_case<200, s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>>
+          s2s::match_case<100, s2s::as_trivial<u32, 4_B>>,
+          s2s::match_case<200, s2s::as_trivial<i32, 4_B>>
         >
       >
     >
@@ -62,19 +62,19 @@ auto sum_is_large = [](auto a, auto b) { return a + b >= 100; };
 
 using ladder_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<
         s2s::type_if_else<
           s2s::branch<
-            s2s::predicate<sum_is_small, s2s::with_fields<"a", "b">>,
-            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<sum_is_small, "a", "b">,
+            s2s::as_trivial<u32, 4_B>
           >,
           s2s::branch<
-            s2s::predicate<sum_is_large, s2s::with_fields<"a", "b">>,
-            s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<sum_is_large, "a", "b">,
+            s2s::as_trivial<i32, 4_B>
           >
         >
       >
@@ -205,15 +205,15 @@ TEST(UnionWrite, PropagatesTypeDeductionFailure) {
   auto never = [](auto a, auto b) { return a + b == 0xffffffff; };
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::variance<
         "body",
         s2s::type<
           s2s::type_if_else<
             s2s::branch<
-              s2s::predicate<never, s2s::with_fields<"a", "b">>,
-              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::predicate<never, "a", "b">,
+              s2s::as_trivial<u32, 4_B>
             >
           >
         >
@@ -247,8 +247,8 @@ TEST(UnionWrite, FieldsFeedingLadderPredicatesStayAssignable) {
 TEST(UnionWrite, VerifiesALengthObligatedByAUnionAlternative) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"tag", u32, 4_B>,
+      s2s::basic_field<"len", u32, 4_B>,
       s2s::variance<
         "body",
         s2s::type<
@@ -256,11 +256,11 @@ TEST(UnionWrite, VerifiesALengthObligatedByAUnionAlternative) {
           s2s::type_switch<
             s2s::match_case<
               0xcafed00d,
-              s2s::as_vec<u8, s2s::field_size<s2s::len_from_field<"len">>>
+              s2s::as_vec<u8, s2s::len_from_field<"len">>
             >,
             s2s::match_case<
               0xdeadbeef,
-              s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+              s2s::as_trivial<u32, 4_B>
             >
           >
         >

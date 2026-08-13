@@ -29,7 +29,7 @@ template <auto size>
   requires is_computed_size_v<size_type_of<size>>
 struct deduce_field_size<size> {
   using field_size_type =
-    compute<size_type_of<size>::f, std::size_t, std::remove_cvref_t<decltype(size_type_of<size>::req_field_list)>>;
+    compute_t<size_type_of<size>::f, std::size_t, std::remove_cvref_t<decltype(size_type_of<size>::req_field_list)>>;
 
   template <auto metadata, typename... fields>
   constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) const -> std::size_t {
