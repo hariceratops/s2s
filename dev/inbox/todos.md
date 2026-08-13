@@ -10,6 +10,11 @@
 - [ ] Remove outdated todos
 - [ ] Refactor type deduction with fold expressions
 - [ ] Rename stream_wrapper_impl
+- [ ] Naming sweep across the size axis — many concepts, types and variables
+      want renaming after the value-based rewrite. Runs once, after 043, 044
+      and 045 have all landed, so names are settled against the final surface
+      rather than churned twice. See the Review note on
+      `dev/issues/045-new-surface-and-atomic-migration.md`
 - [ ] Refactor and remove cyclic inclusions
 - [ ] Split cast_impl into cast_api and cast_impl
 
