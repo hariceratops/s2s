@@ -3,6 +3,9 @@
 PRD. Supersedes the design-conversation brief this file replaced (same
 filename); the brief's substance survives here, chiefly in its Open
 Questions section, which was this interview's starting agenda.
+
+Revised after freezing, to make safety on by default rather than opt-in —
+see Goals. The rest of the interview's conclusions are unchanged.
 Flavor: minimal — single-maintainer library, no external users of
 `single_header/s2s.hpp` to coordinate with.
 
@@ -13,10 +16,12 @@ carry a variable-sized field's length as a corrupt value (a `len_from_field`
 `u32`, say) and today that length is handed straight to `resize` with
 nothing between the stream and the allocation. A `vec_field`/`str_field`
 allocates up to 4 GB; `vector_of_records` allocates up to 4 G elements,
-before a single byte of payload is read. This work adds a schema-declared
-per-field ceiling, `max_bytes<N>`, that rejects an oversized length as a
-recoverable `cast_error` before the allocation happens, and fixes an
-adjacent integer overflow in the same byte-count computation.
+before a single byte of payload is read. This work bounds every such
+allocation: a build-time default ceiling that applies wherever the schema
+declares nothing, and a per-field `max_bytes<N>` that overrides it. A length
+over the ceiling is rejected as a recoverable `cast_error` before the
+allocation happens. It also fixes an adjacent integer overflow in the same
+byte-count computation.
 
 ## Goals
 
@@ -75,10 +80,34 @@ adjacent integer overflow in the same byte-count computation.
   knows its own extent, so the reject-before-allocate path is testable
   without a real file, under both `add_ut_test`'s compile-time and run-time
   modes, per `dev/specs/compile-time-test-tier.md`.
-- Documented as a security-relevant, off-by-default knob: since a field that
-  declares no `max_bytes` gets no protection from this feature (see
-  Non-Goals), that fact must be discoverable in the documentation, not only
-  implicit in the option's reference entry.
+- **Safety is on by default.** A field that declares no `max_bytes` gets
+  `default_max_bytes` — 16 MiB — so a schema written without thinking about any
+  of this is still protected.
+
+  This revises the opposite decision recorded earlier in this document's own
+  history, and the reasoning is the failure mode rather than the number. "Too
+  low a default" fails *closed*: an oversized legitimate field is rejected
+  loudly, `failed_at` names it, and the fix is one declaration in the schema.
+  "No default" fails *open*, silently, in precisely the case nobody thought
+  about. A wrong default that announces itself beats no default that does not,
+  so "we would have to pick a number" was never the blocker it looked like. It
+  costs nothing at run time: the ceiling is a compile-time constant and the
+  gate is one comparison against it, so a default is a different constant in
+  the same comparison rather than an extra branch.
+
+  16 MiB is a judgement call, recorded so it can be argued with rather than
+  inherited: far above what fields in real binary formats carry, far below
+  what a corrupt `u32` can claim, and survivable as an accidental allocation
+  on any hosted target.
+- `S2S_DEFAULT_MAX_BYTES` is the single global knob. Raising it raises every
+  default; setting it to `SIZE_MAX` turns the defaults off wholesale, which is
+  the escape hatch instead of a second on/off mechanism to build and test.
+  **It cannot reach a declared `max_bytes`** — a default is the library
+  guessing, a declaration is the author's intent, and no build setting
+  discards the latter.
+- The default, how to move it, and the fact that a declared bound survives the
+  global knob are discoverable in the documentation, not only implicit in the
+  option's reference entry.
 
 ## Non-Goals
 
@@ -87,7 +116,7 @@ adjacent integer overflow in the same byte-count computation.
   on `input_stream_like` that every custom stream must satisfy (a breaking
   change), two independent bound sources with two error stories, and
   protection that varies silently by stream type — all to partially soften a
-  default (`max_bytes` is opt-in) chosen deliberately. Seeking may be worth
+  default chosen deliberately — at the time, an opt-in ceiling. Seeking may be worth
   adding later, but for *parsing* reasons rather than bounds — offset-
   indirection formats, back-patching a checksum on the write path, trailing
   structures located from the end, skipping, lazy reads, possibly coupled
@@ -109,13 +138,9 @@ adjacent integer overflow in the same byte-count computation.
 - **Write path untouched.** `field_writer` writes `value.size()` from a
   container the caller already owns; it never resizes from a length read off
   a wire, so there is nothing untrusted to bound in that direction.
-- **No library-wide default ceiling, no template parameter on
-  `struct_cast_le`/`_be`.** The bound is exclusively a per-field,
-  schema-declared option; the library invents no number of its own.
-  **"Safe is off by default" is a deliberate decision, not an oversight:** a
-  field that declares no `max_bytes` is exactly as exposed to an oversized
-  allocation as it is today, on every stream, seekable or not. See Goals on
-  documenting this.
+- **No template parameter on `struct_cast_le`/`_be`.** The bound is declared
+  per field in the schema, or comes from the build-time default; it is never a
+  property of a particular cast call.
 - **No incremental resize-and-fill loop.** Rejected as a bounding mechanism:
   it discards the wire-carried length (real protocol information) in favor
   of "however much arrived," and it pays repeated reallocation cost on every
@@ -157,7 +182,7 @@ adjacent integer overflow in the same byte-count computation.
   GoogleTest coverage for the runtime stream path per the project's
   "new stream-touching code needs both forms" convention.
 - Documentation: the schema reference gains `max_bytes`; because its
-  off-by-default exposure is security-relevant, it needs a discoverable
+  default is security-relevant, it needs a discoverable
   callout beyond the reference entry — exact placement left to the design/
   doc-authoring phase, but the requirement (must be discoverable, not only
   implicit) is binding.
@@ -170,6 +195,5 @@ adjacent integer overflow in the same byte-count computation.
   checking helper or keep two independent checks — left to the design
   phase; the PRD only requires that no allocation proportional to an
   unvalidated wire length occurs at either site.
-- Exact placement of the "safe is off by default" documentation callout —
-  left to the design/doc-authoring phase; only its discoverability is
-  binding here.
+- Exact placement of the allocation-limits documentation — left to the
+  design/doc-authoring phase; only its discoverability is binding here.
