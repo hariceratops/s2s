@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "../error/cast_error.hpp"
+#include "../field_size/field_size.hpp"
 #include "../lib/s2s_traits/type_traits.hpp"
 #include "../lib/memory/address_manip.hpp"
 #include "../stream/byte_order.hpp"
@@ -64,12 +65,16 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
   return read_native_impl(s, obj, size_to_read);   
 }
 
-template <variable_sized_buffer_like T, input_stream_like stream>
+template <std::size_t ceiling = default_max_bytes, variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
   // Above the resize *and* above the constexpr branch: no allocation
   // proportional to an unvalidated length happens in either mode, and the
   // reject path stays reachable during constant evaluation.
-  const auto byte_count = checked_byte_count<std::remove_cvref_t<decltype(T{}[0])>>(len_to_read);
+  //
+  // The check lives here, at the allocation, rather than at the caller — that
+  // makes read_native locally sound for every caller instead of leaving a
+  // wrapping multiply justified by a caller-side invariant.
+  const auto byte_count = checked_byte_count<typename T::value_type, ceiling>(len_to_read);
   if(!byte_count)
     return std::unexpected(byte_count.error());
 
@@ -99,9 +104,14 @@ constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) 
   return res;
 }
 
-template <buffer_like T, input_stream_like stream>
+template <std::size_t ceiling = default_max_bytes, buffer_like T, input_stream_like stream>
 constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
-  auto res = read_native(s, obj, len_to_read);
+  auto res = [&] {
+    if constexpr(variable_sized_buffer_like<T>)
+      return read_native<ceiling>(s, obj, len_to_read);
+    else
+      return read_native(s, obj, len_to_read);
+  }();
   if(res) {
     byteswap_elements(obj);
     return {};
@@ -109,16 +119,23 @@ constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -
   return res;
 }
 
-template <std::endian endianness, typename T, input_stream_like stream>
+// The ceiling is a defaulted NTTP after endianness so the existing call sites
+// keep compiling verbatim; only the resizing overload of read_native is handed
+// one, since the constant-sized overload has nothing to bound.
+template <std::endian endianness, std::size_t ceiling = default_max_bytes,
+          typename T, input_stream_like stream>
 constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
   auto constexpr byte_order = deduce_byte_order<endianness>();
   if constexpr(byte_order == cast_endianness::host) {
-    return read_native(s, obj, N); 
+    if constexpr(variable_sized_buffer_like<T>)
+      return read_native<ceiling>(s, obj, N);
+    else
+      return read_native(s, obj, N);
   } else if constexpr(byte_order == cast_endianness::foreign) {
     if constexpr(trivial<T>) {
       return read_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
-      return read_foreign_buffer(s, obj, N);
+      return read_foreign_buffer<ceiling>(s, obj, N);
     }
   }
 }

@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <gtest/gtest.h>
 #include "../../single_header/s2s.hpp"
 #include "../utils/s2s_test_utils.hpp"
@@ -10,26 +11,56 @@ using namespace s2s_literals;
 // path has to be live in a non-constexpr build too, per the project's
 // convention that stream-touching code needs both forms.
 
-// TODO(047): a length over the field's declared max_bytes is rejected with the
-// new reason, before any allocation, against a real stream.
+namespace {
+using bounded_vec =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::vec_field<"v", u16, s2s::len_from_field<"n">, s2s::max_bytes<8>>
+  >;
+
+using undeclared =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::vec_field<"v", u16, s2s::len_from_field<"n">>
+  >;
+
+auto stream_with(u32 count, std::size_t payload_bytes) -> std::stringstream {
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  stream.write(reinterpret_cast<const char*>(&count), sizeof(count));
+  const std::string payload(payload_bytes, '\0');
+  stream.write(payload.data(), static_cast<std::streamsize>(payload.size()));
+  return stream;
+}
+} /* namespace */
+
 TEST(AllocationBound, RejectsALengthOverItsDeclaredBound) {
-  GTEST_SKIP() << "TODO(047): max_bytes does not exist yet";
+  // The payload is present, so a rejection is the bound talking rather than
+  // the stream running out.
+  auto stream = stream_with(5, 10);
+
+  auto result = s2s::struct_cast_le<bounded_vec>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::excessive_length);
+  EXPECT_EQ(result.error().failed_at, "v");
 }
 
-// TODO(047): and exactly at the bound is accepted — inclusive.
 TEST(AllocationBound, AcceptsALengthExactlyAtItsDeclaredBound) {
-  GTEST_SKIP() << "TODO(047): max_bytes does not exist yet";
+  auto stream = stream_with(4, 8);
+
+  auto result = s2s::struct_cast_le<bounded_vec>(stream);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ((*result)["v"_f].size(), 4u);
 }
 
-// TODO(047): the default protects a schema that declares nothing. This is the
-// headline behaviour of the feature and the one a user gets without having
-// thought about it.
+// The headline behaviour: a schema declaring nothing is still protected.
+// 0x01000000 u16 elements is 32 MiB, over the 16 MiB default.
 TEST(AllocationBound, RejectsAnAbsurdLengthWithNothingDeclared) {
-  GTEST_SKIP() << "TODO(047): the default ceiling does not exist yet";
-}
+  auto stream = stream_with(0x01000000u, 0);
 
-// TODO(047): vector_of_records is bounded by count * sizeof(record_struct) —
-// its memory footprint, which has no relationship to its wire size.
-TEST(AllocationBound, BoundsARecordVectorByItsFootprint) {
-  GTEST_SKIP() << "TODO(047): max_bytes does not exist yet";
+  auto result = s2s::struct_cast_le<undeclared>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::excessive_length);
 }

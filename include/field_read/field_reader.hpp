@@ -47,7 +47,7 @@ struct read_field<T, F> {
   constexpr auto read(stream& s) const -> rw_result {
     constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return read_impl<endianness>(s, field.value, len_to_read);
+    return read_impl<endianness, bound_in_bytes<T::field_bound>>(s, field.value, len_to_read);
   }
 };
 
@@ -150,6 +150,14 @@ struct read_field<T, F> {
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
 
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
+    // Validate the footprint before reserving it. The product is discarded on
+    // purpose: a record's wire size is not sizeof(record), so only the
+    // predicate is shared with the buffer site, not the byte count.
+    const auto footprint =
+      checked_byte_count<typename T::field_type::value_type, bound_in_bytes<T::field_bound>>(len_to_read);
+    if(!footprint)
+      return std::unexpected(footprint.error());
+
     field.value.resize(len_to_read);
     auto reader = read_impl_t(field, field_list, len_to_read);
     auto res = reader.template read<endianness>(s);

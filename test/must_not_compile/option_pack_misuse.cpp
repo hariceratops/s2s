@@ -17,7 +17,9 @@
 
 using namespace s2s_literals;
 
+using u8 = unsigned char;
 using u16 = unsigned short;
+using u32 = unsigned int;
 
 #if CASE == 1
 // TODO(045): must NOT compile — 42 is neither a size nor a constraint. The
@@ -42,7 +44,7 @@ using duplicate_size =
 #endif
 
 #if CASE == 3
-// TODO(047): must NOT compile — a bound is meaningless on a field whose extent
+// Must NOT compile — a bound is meaningless on a field whose extent
 // is a template parameter, since nothing a stream says can change how much it
 // allocates. It must fail the per-element placeholder constraint the same way
 // an unrecognised entry does, not be silently ignored: silence would let a
@@ -54,7 +56,7 @@ using bound_on_a_fixed_size_field =
 #endif
 
 #if CASE == 4
-// TODO(047): must NOT compile — two bounds in one pack, caught by the same
+// Must NOT compile — two bounds in one pack, caught by the same
 // duplicate-count assertion pack_options already applies to sizes and
 // constraints. Without it the scan would silently take the first.
 using duplicate_bound =

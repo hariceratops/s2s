@@ -50,6 +50,13 @@ same template under a name that reads better at a length.
 is not "unknown" — it means the width is whatever the nested schema works out
 to, so there is nothing to declare. It is never written by hand.
 
+## Sizes and ceilings are different things
+
+A size says how many bytes a field occupies; a ceiling says how many it is
+allowed to occupy before the read gives up. They travel together in the same
+option pack but answer different questions, and only the container descriptors
+take a ceiling at all. See [Allocation limits](../reading.md#allocation-limits).
+
 ## Invertible sizes, and why the write path cares
 
 The distinction that matters on the write path is whether a size can be run

@@ -22,9 +22,9 @@ struct len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
-struct len_obligation<field<id, T, size, constraint>> {
+struct len_obligation<field<id, T, size, constraint, bound>> {
   static constexpr bool present = true;
   static constexpr sv target = as_sv(len_source_of<size_type_of<size>>::value);
 };
@@ -84,12 +84,12 @@ struct conditional_len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, auto size, auto constraint,
+template <fixed_string id, typename T, auto size, auto constraint, auto bound,
           typename present_only_if, typename optional>
   requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct conditional_len_obligation<
   maybe_field<
-    field<id, T, size, constraint>,
+    field<id, T, size, constraint, bound>,
     present_only_if,
     optional
   >

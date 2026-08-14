@@ -26,28 +26,63 @@ using namespace s2s_literals;
 using u8 = unsigned char;
 using u32 = unsigned int;
 
+using undeclared =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::vec_field<"v", u8, s2s::len_from_field<"n">>
+  >;
+
+// Declared above the lowered default, which the macro must not clamp.
+using declared_higher =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::vec_field<"v", u8, s2s::len_from_field<"n">, s2s::max_bytes<128>>
+  >;
+
+// Declared below it, which the macro must not raise either.
+using declared_lower =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::vec_field<"v", u8, s2s::len_from_field<"n">, s2s::max_bytes<16>>
+  >;
+
 auto main() -> int {
-  // TODO(047): lowering the macro lowers every undeclared field's ceiling. A
-  // length accepted under the 16 MiB default must be rejected here, which is
-  // what proves the default is actually read from the macro rather than baked
-  // in at some other layer.
-  //
-  // Placeholder bodies: assert nothing yet, since the macro does not exist.
+  // 100 bytes is under the 16 MiB shipped default and over this file's 64, so
+  // a rejection here can only come from the macro being read.
   "the macro sets the ceiling for a field declaring no bound"_test = [] constexpr {
-    expect(eq(true, true));
+    expect(eq(s2s::default_max_bytes, std::size_t{64}));
+
+    std::array<u8, 4> buffer{0x64, 0x00, 0x00, 0x00};
+    memstream<4> stream(buffer);
+
+    auto res = s2s::struct_cast_le<undeclared>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
   };
 
-  // TODO(047): the invariant that matters most in this file. A declared
-  // max_bytes is the author's intent; the macro is the library's guess. No
-  // build-time setting may discard the former. Declare max_bytes above the
-  // lowered default and confirm it is honoured, not clamped down to it.
+  // The invariant that matters most here. A declared max_bytes is the author's
+  // intent; the macro is the library's guess. No build-time setting discards
+  // the former — the same 100 bytes that the default rejects are read.
   "a declared bound is not clamped by the macro"_test = [] constexpr {
-    expect(eq(true, true));
+    std::array<u8, 104> buffer{0x64, 0x00, 0x00, 0x00};
+    memstream<104> stream(buffer);
+
+    auto res = s2s::struct_cast_le<declared_higher>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["v"_f].size(), std::size_t{100}));
   };
 
-  // TODO(047): and the converse — a declared bound *below* the macro is also
-  // honoured, so the two are not being max'd or min'd together by accident.
+  // And the converse, so the two are not being max'd together by accident: a
+  // declared bound below the macro still bites at its own number, not at 64.
   "a declared bound below the macro is honoured"_test = [] constexpr {
-    expect(eq(true, true));
+    std::array<u8, 24> buffer{0x14, 0x00, 0x00, 0x00};
+    memstream<24> stream(buffer);
+
+    auto res = s2s::struct_cast_le<declared_lower>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
   };
 }

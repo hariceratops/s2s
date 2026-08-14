@@ -25,6 +25,29 @@ struct byte_count {
 
 struct size_dont_care_t {};
 
+// Safety is on by default: a field that declares nothing still gets a ceiling.
+// The macro is the one global knob — raise it, or set it to SIZE_MAX to turn
+// the defaults off wholesale. It cannot reach a declared max_bytes, which is
+// the schema author's intent rather than the library's guess.
+//
+// 16 MiB: far above what fields in real binary formats carry, far below what a
+// corrupt u32 can claim, and survivable as an accidental allocation.
+#ifndef S2S_DEFAULT_MAX_BYTES
+#define S2S_DEFAULT_MAX_BYTES (16u * 1024u * 1024u)
+#endif
+
+inline constexpr std::size_t default_max_bytes = S2S_DEFAULT_MAX_BYTES;
+
+template <std::size_t N>
+struct max_byte_count_t {
+  static constexpr std::size_t count = N;
+};
+
+// "no bound declared" is its own type rather than max_byte_count_t<SIZE_MAX>,
+// so the default stays a deferral to whatever the macro says at include time
+// rather than a number baked into every field.
+struct use_default_bound_t {};
+
 template <auto callable, field_name_list req_fields>
 struct size_from_fields_t {
   static constexpr auto f = callable;
@@ -50,6 +73,11 @@ inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
 
 inline constexpr auto size_dont_care = size_dont_care_t{};
 
+template <std::size_t N>
+inline constexpr auto max_bytes = max_byte_count_t<N>{};
+
+inline constexpr auto use_default_bound = use_default_bound_t{};
+
 template <auto... sizes>
 inline constexpr auto size_choices = size_choices_t<sizes...>{};
 
@@ -70,6 +98,41 @@ template <fixed_string id>
 struct len_source_of<field_accessor<id>> {
   static constexpr auto value = id;
 };
+
+template <typename T>
+struct is_bound_option {
+  static constexpr bool res = false;
+};
+
+template <std::size_t N>
+struct is_bound_option<max_byte_count_t<N>> {
+  static constexpr bool res = true;
+};
+
+template <>
+struct is_bound_option<use_default_bound_t> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_bound_option_v = is_bound_option<T>::res;
+
+template <typename T>
+concept bound_option_like = is_bound_option_v<T>;
+
+// Resolving a declared bound, or deferring to the macro.
+template <typename B>
+struct bound_value {
+  static constexpr std::size_t value = default_max_bytes;
+};
+
+template <std::size_t N>
+struct bound_value<max_byte_count_t<N>> {
+  static constexpr std::size_t value = N;
+};
+
+template <auto bound>
+inline constexpr std::size_t bound_in_bytes = bound_value<size_type_of<bound>>::value;
 
 // Metafunctions for checking if a type is a size type
 template <typename T>
