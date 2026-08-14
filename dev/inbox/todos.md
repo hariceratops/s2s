@@ -9,7 +9,6 @@
 - [ ] Simplify union field implementation
 - [ ] Remove outdated todos
 - [ ] Refactor type deduction with fold expressions
-- [ ] Rename stream_wrapper_impl
 - [ ] **Naming sweep across the whole project — deliberately last.** Concepts,
       types, variables, internal and public alike. The value-based rewrite
       (043/044/045) surfaced it and the allocation bound (046/047) added to it,
@@ -23,12 +22,25 @@
       because the second pass never gets the same attention as the first.
 
       Do it once, at the end, against the surface that is actually shipping.
-      Known inputs so far: the two dead declarations recorded in the Review note
-      on `dev/issues/045-new-surface-and-atomic-migration.md`
-      (`size_choices_t::num_of_choices` and the `is_size_like` concept, the
-      latter needing thought because issue 027 names it), and the `compute_t` /
-      `compute` split from 045, which was forced by normalization rather than
-      chosen for its name.
+      Known inputs so far, absorbed here so they are not done piecemeal:
+
+      - The two dead declarations recorded in the Review note on
+        `dev/issues/045-new-surface-and-atomic-migration.md`:
+        `size_choices_t::num_of_choices`, and the `is_size_like` concept —
+        the latter needing thought first, because issue 027's acceptance
+        criteria name it.
+      - The `compute_t` / `compute` split from 045. That name was *forced* by
+        normalization rather than chosen, which a later reader would not guess.
+      - `stream_wrapper_impl` (was its own todo).
+      - `include/field_write/derived_value.hpp` (was its own todo): it holds
+        four obligation kinds plus both `derive_value` and
+        `verify_conditional_len`, so half the file verifies rather than
+        derives. `obligations.hpp` names it better. A file rename, so it wants
+        the same pass rather than a drive-by.
+
+      Not folded in, because it is layering rather than naming:
+      `is_computed_size_v` living in `field_size.hpp`, a header both directions
+      include, while existing purely for the write path.
 - [ ] Refactor and remove cyclic inclusions
 - [ ] Split cast_impl into cast_api and cast_impl
 
@@ -78,6 +90,3 @@ one enumerator that decision has since been reversed for
       exists anywhere in the repo.
 - [ ] `is_computed_size_v` lives in `field_size.hpp`, a header both directions
       include, but exists purely for the write path.
-- [ ] `include/field_write/derived_value.hpp` now holds four obligation kinds
-      plus both `derive_value` and `verify_conditional_len`. Half the file
-      verifies rather than derives; `obligations.hpp` would name it better.
