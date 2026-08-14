@@ -29,47 +29,47 @@ auto bpred_3 = [](auto a, auto b){ return a + b >= 60000; };
 
 using inner_1 = 
  s2s::struct_field_list<
-   s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
-   s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+   s2s::basic_field<"x", u32, 4_B>, 
+   s2s::basic_field<"y", u32, 4_B>
 >;
 using inner_2 = 
  s2s::struct_field_list<
-   s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
-   s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+   s2s::basic_field<"p", u32, 4_B>, 
+   s2s::basic_field<"q", u32, 4_B>
 >;
 
 using list_metadata =
   s2s::field_list_metadata<
-    s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+    s2s::basic_field<"a", int, 4_B>,
+    s2s::basic_field<"b", int, 4_B>,
+    s2s::basic_field<"len", std::size_t, 8_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>,
+    s2s::basic_field<"row", std::size_t, 8_B>,
+    s2s::basic_field<"col", std::size_t, 8_B>,
     s2s::vec_field<
       "flat_vec",
       u32,
-      s2s::field_size<
-        s2s::len_from_fields<size_from_rc, s2s::with_fields<"row", "col">>
-      >
+      
+        s2s::len_from_fields<size_from_rc, "row", "col">
+      
     >,
     s2s::maybe<
-      s2s::basic_field<"c", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      s2s::basic_field<"c", u32, 4_B>, 
+      s2s::parse_if<is_a_eq_deadbeef, "a">
     >,
     s2s::maybe<
       s2s::vec_field<
         "vec", 
         u32, 
-        s2s::field_size<s2s::len_from_field<"len">>
+        s2s::len_from_field<"len">
       >, 
-      s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+      s2s::parse_if<is_a_eq_deadbeef, "a">
     >,
     s2s::struct_field<
       "d",
       s2s::struct_field_list<
-         s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
-         s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+         s2s::basic_field<"p", u32, 4_B>, 
+         s2s::basic_field<"q", u32, 4_B>
       >
     >,
     s2s::variance<
@@ -89,15 +89,15 @@ using list_metadata =
         s2s::type_switch<
           s2s::match_case<
             0xcafed00d, 
-            s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+            s2s::as_trivial<float, 4_B>
           >,
           s2s::match_case<
             0xdeadbeef, 
-            s2s::as_vec<u32, s2s::field_size<s2s::len_from_field<"len">>>
+            s2s::as_vec<u32, s2s::len_from_field<"len">>
           >,
           s2s::match_case<
             0xbeefbeef, 
-            s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+            s2s::as_trivial<int, 4_B>
           >
         >
       >
@@ -105,19 +105,19 @@ using list_metadata =
     s2s::variance<
       "complex_v", 
       s2s::type<
-        s2s::compute<some_complex_calc, u32, s2s::with_fields<"a", "b">>,
+        s2s::compute<some_complex_calc, u32, "a", "b">,
         s2s::type_switch<
           s2s::match_case<
             100, 
-            s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+            s2s::as_trivial<float, 4_B>
           >,
           s2s::match_case<
             200, 
-            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+            s2s::as_trivial<u32, 4_B>
           >,
           s2s::match_case<
             300, 
-            s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+            s2s::as_trivial<int, 4_B>
           >
         >
       >
@@ -127,16 +127,16 @@ using list_metadata =
       s2s::type<
         s2s::type_if_else<
           s2s::branch<
-            s2s::predicate<bpred_1, s2s::with_fields<"a", "b">>, 
-            s2s::as_trivial<float, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<bpred_1, "a", "b">, 
+            s2s::as_trivial<float, 4_B>
           >,
           s2s::branch<
-            s2s::predicate<bpred_2, s2s::with_fields<"a", "b">>, 
-            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<bpred_2, "a", "b">, 
+            s2s::as_trivial<u32, 4_B>
           >,
           s2s::branch<
-            s2s::predicate<bpred_3, s2s::with_fields<"a", "b">>, 
-            s2s::as_trivial<int, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<bpred_3, "a", "b">, 
+            s2s::as_trivial<int, 4_B>
           >
         >
       >
@@ -145,19 +145,19 @@ using list_metadata =
 
 using legal_len_field_list = 
   s2s::field_list_metadata<
-    s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"a", int, 4_B>,
+    s2s::basic_field<"b", int, 4_B>,
+    s2s::basic_field<"len", std::size_t, 8_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>
   >;
 
 using illegal_len_field_list = 
   s2s::field_list_metadata<
-    s2s::basic_field<"a", int, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", int, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>,
-    s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>, 
-    s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>
+    s2s::basic_field<"a", int, 4_B>,
+    s2s::basic_field<"b", int, 4_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>,
+    s2s::basic_field<"p", u32, 4_B>, 
+    s2s::basic_field<"len", std::size_t, 8_B>
   >;
 
 auto main() -> int {
@@ -229,8 +229,19 @@ auto main() -> int {
   // "vec_union": derived from the union, while the optional's length is
   // verified against that derived value.
   "only invertible obligations make a field derived"_test = [] constexpr {
-    constexpr auto ids = list_metadata::derived_field_ids;
-    expect(eq(ids.size(), std::size_t{2}));
+    // Two lists rather than one, because operator[] now treats the two kinds
+    // differently: a length target has no overload at all, a discriminant
+    // keeps its const read. is_derived_field stays the OR of both, which is
+    // the question the write path asks.
+    constexpr auto len_ids = list_metadata::length_derived_field_ids;
+    constexpr auto tag_ids = list_metadata::discriminant_derived_field_ids;
+    expect(eq(len_ids.size(), std::size_t{1}));
+    expect(eq(tag_ids.size(), std::size_t{1}));
+
+    expect(eq(s2s::is_length_derived_field<meta::type_id<list_metadata>>("len"), true));
+    expect(eq(s2s::is_discriminant_derived_field<meta::type_id<list_metadata>>("len"), false));
+    expect(eq(s2s::is_discriminant_derived_field<meta::type_id<list_metadata>>("a"), true));
+    expect(eq(s2s::is_length_derived_field<meta::type_id<list_metadata>>("a"), false));
 
     expect(eq(s2s::is_derived_field<meta::type_id<list_metadata>>("len"), true));
     expect(eq(s2s::is_derived_field<meta::type_id<list_metadata>>("a"), true));

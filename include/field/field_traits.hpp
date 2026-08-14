@@ -12,7 +12,8 @@ template <typename T>
 struct is_fixed_sized_field;
 
 // Specialization for field with fixed_size_like size
-template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
+template <fixed_string id, field_containable T, auto size, auto constraint_on_value>
+  requires fixed_size_like<size_type_of<size>>
 struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -31,7 +32,7 @@ concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 template <typename T>
 struct is_array_of_record_field;
 
-template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+template <fixed_string id, field_list_like T, std::size_t N, auto size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -52,7 +53,8 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, auto size, auto constraint_on_value>
+  requires variable_size_like<size_type_of<size>>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -72,7 +74,7 @@ concept variable_sized_field_like = is_variable_sized_field_v<T>;
 template <typename T>
 struct is_vector_of_record_field;
 
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value>
 struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -92,7 +94,7 @@ template <typename T>
 struct is_struct_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value>
 struct is_struct_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -116,7 +118,7 @@ struct is_optional_field;
 // Specialization for maybe_field with a field
 template <fixed_string id, 
           typename T, 
-          typename size, 
+          auto size, 
           auto constraint, 
           typename present_only_if, 
           typename optional>

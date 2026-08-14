@@ -45,8 +45,8 @@ using u16 = unsigned short;
 using log_record =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x4c, 0x47}>,
-    s2s::basic_field<"message_length", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::str_field<"message", s2s::field_size<s2s::len_from_field<"message_length">>>
+    s2s::basic_field<"message_length", u16, 2_B>,
+    s2s::str_field<"message", s2s::len_from_field<"message_length">>
   >;
 
 auto main() -> int {
@@ -66,7 +66,7 @@ auto main() -> int {
         return s2s::struct_cast_be<log_record>(file);
       })
       .transform([](const log_record& parsed) {
-        return parsed["message_length"_f] == 16
+        return parsed["message"_f].size() == 16
             && parsed["message"_f] == "disk nearly full";
       });
 
@@ -90,38 +90,58 @@ Two kinds of field are derived:
 
 Both are invertible, which is what makes deriving them possible at all.
 
-```cpp
-log_record record{};
-record["message"_f] = std::string("disk nearly full");
-record["message_length"_f] = 16;   // does not compile
-```
+The two kinds are not hidden the same way, because they differ in whether
+anything else can answer the question.
 
-The non-const `operator[]` returns a const reference for a derived field, so the
-diagnostic is a plain assignment-to-read-only error. Reading still works through
-either subscript:
-
-```cpp
-const auto n = record["message_length"_f];                 // compiles
-const auto m = std::as_const(record)["message_length"_f];  // compiles
-```
-
-Note what those reads give: **the stored slot, not the derived value.**
-Derivation happens during the write, against the struct passed as `const`, and
-the result is never written back. On a freshly built struct the slot holds
-whatever it was default-constructed to:
+**A length target has no `operator[]` overload at all.** Naming one is a
+plain no-such-member error, on a const object as much as a mutable one:
 
 ```cpp
 log_record record{};
 record["message"_f] = std::string("disk nearly full");
-assert(record["message_length"_f] == 0);   // not 16 — nothing has been written yet
+record["message_length"_f];                 // does not compile
+std::as_const(record)["message_length"_f];  // does not compile either
 ```
 
-On a struct that came from `struct_cast` the slot holds what was parsed off the
-wire, which is usually the wanted value. When the length is needed before
-writing, the container is the place to ask: `record["message"_f].size()`.
+It is hidden rather than made read-only because a read-only accessor would
+still have been a lie. `operator[]` hands back a reference, so a length kept in
+step at assignment time would fall out of step the moment anyone wrote
+`record["message"_f].push_back(...)` — and nothing in the type system could
+catch that. The container is the only thing that knows, so the container is
+where you ask:
 
-**This is a breaking change to existing read-side code.** Code that previously
-parsed a struct and then adjusted a length field in place:
+```cpp
+const auto n = record["message"_f].size();
+```
+
+The field is still on the wire and still read into the struct when parsing; it
+is only the user's view of it that is gone. Nothing about the byte layout
+changes.
+
+**A discriminant stays readable, and returns the stored slot.** The non-const
+`operator[]` hands back a const reference, so an assignment fails as
+assign-to-read-only rather than as no-such-member:
+
+```cpp
+tagged record{};
+record["body"_f] = alt_1{};
+record["tag"_f] = 1;                        // does not compile
+const auto t = record["tag"_f];             // compiles
+const auto u = std::as_const(record)["tag"_f];  // compiles
+```
+
+What that read gives is **the stored slot, not the derived value.** Derivation
+happens during the write, against the struct passed as `const`, and the result
+is never written back — so on a freshly built struct the slot holds whatever it
+was default-constructed to, and on one that came from `struct_cast` it holds
+what was parsed off the wire.
+
+Discriminants are treated differently from length targets only because how a
+caller should reach a variance field's held alternative is still unsettled;
+hiding them waits on that.
+
+**This is a breaking change to existing read-side code.** Code that parsed a
+struct and then adjusted a length field in place:
 
 ```cpp
 auto parsed = *s2s::struct_cast_le<log_record>(stream);
@@ -131,8 +151,12 @@ parsed["message_length"_f] = 5;   // used to compile, no longer does
 should assign the container instead. The length follows:
 
 ```cpp
-parsed["message"_f] = std::string("short");   // message_length becomes 5 on the next write
+parsed["message"_f] = std::string("short");   // the written length becomes 5
 ```
+
+So does code that merely *read* one, which used to compile and no longer does.
+`parsed["message"_f].size()` is the replacement, and it cannot disagree with
+what gets written.
 
 Fields that are *not* derived stay assignable, including ones that look similar:
 the sources feeding a `len_from_fields<callable, ...>` callable, the siblings

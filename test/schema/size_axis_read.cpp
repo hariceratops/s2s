@@ -29,14 +29,14 @@ TEST(SizeAxisRead, ReadsAVectorSizedByAComputationOverTwoFields) {
   auto size_from_rc = [](auto r, auto c) { return r * c; };
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-      s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"row", std::size_t, 8_B>,
+      s2s::basic_field<"col", std::size_t, 8_B>,
       s2s::vec_field<
         "flat_vec",
         u32,
-        s2s::field_size<
-          s2s::len_from_fields<size_from_rc, s2s::with_fields<"row", "col">>
-        >
+        
+          s2s::len_from_fields<size_from_rc, "row", "col">
+        
       >
     >;
 
@@ -68,8 +68,8 @@ TEST(SizeAxisRead, AppliesTheCallableToTheNamedSiblingFields) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   std::ifstream ifs("test_input.bin", std::ios::in | std::ios::binary);
@@ -81,6 +81,31 @@ TEST(SizeAxisRead, AppliesTheCallableToTheNamedSiblingFields) {
   EXPECT_EQ(fields["b"_f], 5);
 
   auto callable = [](const u32& a, const u32& b) -> u32 { return a * b; };
-  auto comp_res = s2s::compute_impl<s2s::compute<callable, u32, s2s::with_fields<"a", "b">>>{}(fields);
+  auto comp_res = s2s::compute_impl<s2s::compute<callable, u32, "a", "b">>{}(fields);
   EXPECT_EQ(comp_res, 20);
+}
+
+// TODO(045): the run-time half of the defaulted size and the byte-count
+// literal. The compile-time cases in size_axis_read_ct.cpp cover the same
+// ground against a constexpr_memstream; this one wants a real stream, which is
+// what puts it in GoogleTest rather than ut.
+TEST(SizeAxisRead, ReadsAFieldWhoseSizeIsDefaultedToSizeofT) {
+  {
+    std::ofstream file("defaulted_size.bin", std::ios::out | std::ios::binary);
+    const u8 bytes[] = {0x22, 0x11, 0x44, 0x33};
+    file.write(reinterpret_cast<const char*>(&bytes), sizeof(bytes));
+  }
+
+  using test_field_list =
+    s2s::struct_field_list<
+      s2s::basic_field<"a", u16>,
+      s2s::basic_field<"b", u32, 2_B>
+    >;
+
+  std::ifstream ifs("defaulted_size.bin", std::ios::in | std::ios::binary);
+  auto result = s2s::struct_cast_le<test_field_list>(ifs);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ((*result)["a"_f], 0x1122u);
+  EXPECT_EQ((*result)["b"_f], 0x3344u);
 }

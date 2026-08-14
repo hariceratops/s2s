@@ -50,7 +50,7 @@ public:
 using heartbeat =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x48, 0x42}>,
-    s2s::basic_field<"sequence", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"sequence", u32, 4_B>
   >;
 
 static_assert(s2s::input_stream_like<byte_stream>);

@@ -15,8 +15,8 @@ TEST(TrivialRead, ReadsTrivialFieldsInBothByteOrders) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -48,8 +48,8 @@ TEST(TrivialRead, RejectsAFieldThatViolatesItsConstraint) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xdeadbeef)>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>, s2s::eq(0xcafed00d)>
+      s2s::basic_field<"a", u32, 4_B, s2s::eq(0xdeadbeef)>,
+      s2s::basic_field<"b", u32, 4_B, s2s::eq(0xcafed00d)>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
@@ -69,8 +69,8 @@ TEST(TrivialRead, ReportsExhaustionOnTheFieldThatRanOut) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   FIELD_LIST_LE_READ_CHECK({

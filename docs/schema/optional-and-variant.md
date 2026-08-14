@@ -9,8 +9,8 @@ looking at fields already parsed, using the machinery in
 
 ```cpp
 s2s::maybe<
-  s2s::basic_field<"name_length", u16, s2s::field_size<s2s::fixed<2>>>,
-  s2s::parse_if<has_name, s2s::with_fields<"flags">>
+  s2s::basic_field<"name_length", u16, 2_B>,
+  s2s::parse_if<has_name, "flags">
 >
 ```
 
@@ -49,12 +49,12 @@ constexpr auto has_name = [](auto flags) { return (flags & 0x08u) != 0u; };
 using gzip_header =
   s2s::struct_field_list<
     s2s::magic_byte_array<"magic", 2, std::array<u8, 2>{0x1f, 0x8b}>,
-    s2s::basic_field<"method", u8, s2s::field_size<s2s::fixed<1>>>,
-    s2s::basic_field<"flags", u8, s2s::field_size<s2s::fixed<1>>>,
-    s2s::basic_field<"mtime", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"method", u8, 1_B>,
+    s2s::basic_field<"flags", u8, 1_B>,
+    s2s::basic_field<"mtime", u32, 4_B>,
     s2s::maybe<
-      s2s::basic_field<"name_length", u16, s2s::field_size<s2s::fixed<2>>>,
-      s2s::parse_if<has_name, s2s::with_fields<"flags">>
+      s2s::basic_field<"name_length", u16, 2_B>,
+      s2s::parse_if<has_name, "flags">
     >
   >;
 
@@ -171,14 +171,14 @@ using i32 = int;
 // wire, and it says how the value should be read.
 using tlv_record =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u8, s2s::field_size<s2s::fixed<1>>>,
+    s2s::basic_field<"tag", u8, 1_B>,
     s2s::variance<
       "value",
       s2s::type<
         s2s::match_field<"tag">,
         s2s::type_switch<
-          s2s::match_case<1, s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>>,
-          s2s::match_case<2, s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>>
+          s2s::match_case<1, s2s::as_trivial<u32, 4_B>>,
+          s2s::match_case<2, s2s::as_trivial<i32, 4_B>>
         >
       >
     >
@@ -192,18 +192,18 @@ constexpr auto needs_reference = [](auto length) { return length > 4u; };
 
 using extent_record =
   s2s::struct_field_list<
-    s2s::basic_field<"length", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"length", u32, 4_B>,
     s2s::variance<
       "payload",
       s2s::type<
         s2s::type_if_else<
           s2s::branch<
-            s2s::predicate<fits_inline, s2s::with_fields<"length">>,
-            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<fits_inline, "length">,
+            s2s::as_trivial<u32, 4_B>
           >,
           s2s::branch<
-            s2s::predicate<needs_reference, s2s::with_fields<"length">>,
-            s2s::as_trivial<i32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<needs_reference, "length">,
+            s2s::as_trivial<i32, 4_B>
           >
         >
       >

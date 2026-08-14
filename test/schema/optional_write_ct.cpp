@@ -22,10 +22,10 @@ auto flag_is_set = [](auto flag) { return flag == 0xdeadbeef; };
 
 using optional_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
     s2s::maybe<
-      s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+      s2s::basic_field<"payload", u32, 4_B>,
+      s2s::parse_if<flag_is_set, "flag">
     >
   >;
 
@@ -54,11 +54,11 @@ constexpr auto write_absent_but_engaged() -> s2s::cast_result {
 // writable and is verified only when the optional is present.
 using conditional_len_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"flag", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"flag", u32, 4_B>,
+    s2s::basic_field<"len", u32, 4_B>,
     s2s::maybe<
-      s2s::vec_field<"data", u8, s2s::field_size<s2s::len_from_field<"len">>>,
-      s2s::parse_if<flag_is_set, s2s::with_fields<"flag">>
+      s2s::vec_field<"data", u8, s2s::len_from_field<"len">>,
+      s2s::parse_if<flag_is_set, "flag">
     >
   >;
 

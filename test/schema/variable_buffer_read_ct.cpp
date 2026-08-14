@@ -23,14 +23,14 @@ using u32 = unsigned int;
 
 using prefixed_vec =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"vec", u16, s2s::len_from_field<"len">>
   >;
 
 using prefixed_str =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>
   >;
 
 auto main() -> int {
@@ -42,7 +42,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed_vec>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
     expect(eq((*res)["vec"_f].size(), std::size_t{3}));
     expect(eq((*res)["vec"_f][0], u16{0x1122}));
     expect(eq((*res)["vec"_f][1], u16{0x3344}));
@@ -58,7 +57,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed_str>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
     expect(eq((*res)["str"_f].size(), std::size_t{3}));
     expect(eq(std::string_view{(*res)["str"_f]}, std::string_view{"abc"}));
   };
@@ -73,7 +71,7 @@ auto main() -> int {
     auto res = s2s::struct_cast_be<prefixed_vec>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
+    expect(eq((*res)["vec"_f].size(), std::size_t{3}));
     expect(eq((*res)["vec"_f][0], u16{0x1122}));
     expect(eq((*res)["vec"_f][2], u16{0x5566}));
   };
@@ -96,7 +94,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed_vec>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 0u));
     expect(eq((*res)["vec"_f].empty(), true));
   };
 

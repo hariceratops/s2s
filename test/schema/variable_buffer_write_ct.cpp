@@ -26,8 +26,8 @@ using u32 = unsigned int;
 
 using prefixed =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::vec_field<"vec", u16, s2s::len_from_field<"len">>
   >;
 
 constexpr auto populated() -> prefixed {
@@ -39,8 +39,8 @@ constexpr auto populated() -> prefixed {
 // One byte of length slot cannot describe 300 elements.
 using narrow_prefixed =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
-    s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 1_B>,
+    s2s::vec_field<"vec", u8, s2s::len_from_field<"len">>
   >;
 
 constexpr auto write_overlong_container() -> s2s::cast_result {
@@ -61,7 +61,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<prefixed>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
     expect(eq((*res)["vec"_f].size(), std::size_t{3}));
     expect(eq((*res)["vec"_f][0], u16{0x1122}));
     expect(eq((*res)["vec"_f][2], u16{0x5566}));
@@ -76,7 +75,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_be<prefixed>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], 3u));
     expect(eq((*res)["vec"_f].size(), std::size_t{3}));
     expect(eq((*res)["vec"_f][0], u16{0x1122}));
     expect(eq((*res)["vec"_f][2], u16{0x5566}));

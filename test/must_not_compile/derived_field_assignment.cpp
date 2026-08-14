@@ -1,4 +1,9 @@
-// Assigning to a derived field must not compile.
+// Assigning to a derived discriminant must not compile.
+//
+// The length-target half moved to hidden_length_target.cpp when 043 stopped
+// exposing those fields at all: the claim is no longer "assigning fails" but
+// "the field cannot be named", and a case asserting the old wording would go
+// on passing for the wrong reason.
 //
 // Built with -DCASE=<n>; every case here is expected to fail compilation. The
 // positive half — a derived field stays readable, its siblings assignable —
@@ -12,16 +17,16 @@ using u32 = unsigned int;
 
 using our_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::str_field<"str", s2s::len_from_field<"len">>
   >;
 
-using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>>;
-using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>>;
+using alt_1 = s2s::struct_field_list<s2s::basic_field<"x", u32, 4_B>>;
+using alt_2 = s2s::struct_field_list<s2s::basic_field<"y", u32, 4_B>>;
 
 using union_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<
@@ -39,7 +44,7 @@ using union_struct =
 // silently: writing alt_2 emits 0xcafed00d, and reading it back selects alt_1.
 using duplicate_value_struct =
   s2s::struct_field_list<
-    s2s::basic_field<"tag", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"tag", u32, 4_B>,
     s2s::variance<
       "body",
       s2s::type<
@@ -56,12 +61,7 @@ using duplicate_value_struct =
 auto main() -> int {
   our_struct obj{};
 
-#if CASE == 1
-  // Must NOT compile — "len" is a len_from_field target, so the writable
-  // operator[] is constrained away and the const-returning overload is
-  // selected, yielding an assign-to-const error.
-  obj["len"_f] = 5;
-#elif CASE == 2
+#if CASE == 2
   // Must NOT compile — a type_switch discriminant is derived from the held
   // alternative, so the schema owns its value, not the caller.
   union_struct u{};

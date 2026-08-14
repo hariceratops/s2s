@@ -22,20 +22,20 @@ using u32 = unsigned int;
 
 using inner_1 =
   s2s::struct_field_list<
-    s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"x", u32, 4_B>,
+    s2s::basic_field<"y", u32, 4_B>
   >;
 using inner_2 =
   s2s::struct_field_list<
-    s2s::basic_field<"p", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"q", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"p", u32, 4_B>,
+    s2s::basic_field<"q", u32, 4_B>
   >;
 
 // Form 1: switch on a discriminant field.
 using switched =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>,
     s2s::variance<
       "c",
       s2s::type<
@@ -54,18 +54,18 @@ auto sum_in_high_band = [](auto a, auto b) { return a + b >= 40000 && a + b < 60
 
 using laddered =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>,
     s2s::variance<
       "c",
       s2s::type<
         s2s::type_if_else<
           s2s::branch<
-            s2s::predicate<sum_in_low_band, s2s::with_fields<"a", "b">>,
-            s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>
+            s2s::predicate<sum_in_low_band, "a", "b">,
+            s2s::as_trivial<u32, 4_B>
           >,
           s2s::branch<
-            s2s::predicate<sum_in_high_band, s2s::with_fields<"a", "b">>,
+            s2s::predicate<sum_in_high_band, "a", "b">,
             s2s::as_struct<inner_1>
           >
         >
@@ -78,14 +78,14 @@ auto sum_of = [](auto a, auto b) { return a + b; };
 
 using computed =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>,
     s2s::variance<
       "c",
       s2s::type<
-        s2s::compute<sum_of, u32, s2s::with_fields<"a", "b">>,
+        s2s::compute<sum_of, u32, "a", "b">,
         s2s::type_switch<
-          s2s::match_case<200, s2s::as_trivial<u32, s2s::field_size<s2s::fixed<4>>>>,
+          s2s::match_case<200, s2s::as_trivial<u32, 4_B>>,
           s2s::match_case<300, s2s::as_struct<inner_1>>
         >
       >

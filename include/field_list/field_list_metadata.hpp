@@ -27,11 +27,19 @@ using dep_vec = static_vector<sv, max_dep_count_per_struct>;
 using field_table_t = static_map<sv, field_type_info, max_field_count>;
 using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>;
 
+// A computed size keeps its field-name list in the size value's type; deducing
+// the pack out of the argument recovers it without a metafunction.
+template <fixed_string... fs>
+constexpr auto deps_of(fixed_string_list<fs...>) -> static_vector<sv, max_dep_count_per_struct> {
+  return static_vector<sv, max_dep_count_per_struct>(as_sv(fs)...);
+}
+
 // extract dependencies metafunction
 template <typename T>
 struct extract_length_dependencies;
 
-template <fixed_string id, typename T, fixed_size_like size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires fixed_size_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
@@ -39,7 +47,8 @@ struct extract_length_dependencies<
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, size_dont_care_like size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires size_dont_care_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
@@ -47,23 +56,26 @@ struct extract_length_dependencies<
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_length_dependencies<
-  field<id, T, field_size<len_from_field<len_source>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(len_source));
+  static constexpr auto value =
+    static_vector<sv, max_dep_count_per_struct>(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
-template <fixed_string id, typename T, auto callable, auto constraint, fixed_string... req_fields>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires is_computed_size_v<size_type_of<size>>
 struct extract_length_dependencies<
-  field<id, T, field_size<len_from_fields<callable, fixed_string_list<req_fields...>>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
+  static constexpr auto value = deps_of(size_type_of<size>::req_field_list);
 };
 
-template <fixed_string id, typename T, typename size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, 
           typename present_only_if, typename optional>
 struct extract_length_dependencies<
   maybe_field<field<id, T, size, constraint>, present_only_if, optional>
@@ -112,7 +124,7 @@ inline constexpr auto extract_length_dependencies_v = extract_length_dependencie
 
 
 template <auto callable, typename R, field_name_list Fs>
-struct compute;
+struct compute_t;
 
 template <typename T>
 struct extract_parse_dependencies;
@@ -122,10 +134,10 @@ struct extract_parse_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, typename size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, 
           auto callable, fixed_string... req_fields, typename optional>
 struct extract_parse_dependencies<
-  maybe_field<field<id, T, size, constraint>, compute<callable, bool, fixed_string_list<req_fields...>>, optional>
+  maybe_field<field<id, T, size, constraint>, compute_t<callable, bool, fixed_string_list<req_fields...>>, optional>
 >
 {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
@@ -158,7 +170,7 @@ template <fixed_string id, auto callable, typename R, fixed_string... req_fields
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
+    type<compute_t<callable, R, fixed_string_list<req_fields...>>, type_switch>
   >
 > 
 {
@@ -171,7 +183,7 @@ struct extract_req_fields_from_clause;
 template <auto callable, fixed_string... req_fields, type_tag_like T>
 struct extract_req_fields_from_clause<
   branch<
-    compute<callable, bool, fixed_string_list<req_fields...>>,
+    compute_t<callable, bool, fixed_string_list<req_fields...>>,
     T
   >
 >
@@ -219,12 +231,13 @@ struct extract_unconditional_len_sources {
   static constexpr auto value = dep_vec();
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_unconditional_len_sources<
-  field<id, T, field_size<len_from_field<len_source>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = dep_vec(as_sv(len_source));
+  static constexpr auto value = dep_vec(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
 template <typename T>
@@ -285,11 +298,16 @@ struct field_list_metadata {
     );
   }
 
-  static constexpr auto generate_derived_field_ids() {
-    dep_vec sources[sizeof...(fields) * 2] = {
-      dep_vec(extract_unconditional_len_sources_v<fields>)...,
-      dep_vec(extract_switch_discriminants_v<fields>)...
-    };
+  // Kept apart rather than concatenated: the two kinds now differ in how
+  // operator[] treats them, and a field can legitimately be both, which
+  // membership in two lists expresses and a tagged single list does not.
+  static constexpr auto generate_length_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_unconditional_len_sources_v<fields>)...};
+    return remove_duplicates(flatten(sources));
+  }
+
+  static constexpr auto generate_discriminant_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_switch_discriminants_v<fields>)...};
     return remove_duplicates(flatten(sources));
   }
 
@@ -297,7 +315,8 @@ struct field_list_metadata {
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
-  static constexpr dep_vec derived_field_ids = generate_derived_field_ids();
+  static constexpr dep_vec length_derived_field_ids = generate_length_derived_field_ids();
+  static constexpr dep_vec discriminant_derived_field_ids = generate_discriminant_derived_field_ids();
 };
 
 template <auto list_metadata>
@@ -306,15 +325,31 @@ constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   return field_table[field_name];
 }
 
-// The single source of truth for "derived": both the write path and
-// operator[]'s constraint answer the question here, so the two cannot drift.
 template <auto list_metadata>
-constexpr auto is_derived_field(sv field_name) -> bool {
-  for(auto id: meta::type_of<list_metadata>::derived_field_ids) {
+constexpr auto is_length_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::length_derived_field_ids) {
     if(id == field_name)
       return true;
   }
   return false;
+}
+
+template <auto list_metadata>
+constexpr auto is_discriminant_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::discriminant_derived_field_ids) {
+    if(id == field_name)
+      return true;
+  }
+  return false;
+}
+
+// The single source of truth for "derived": the write path asks this general
+// question, so its notion of "overwritten, do not accept an assignment" cannot
+// drift from the two specific questions operator[] asks.
+template <auto list_metadata>
+constexpr auto is_derived_field(sv field_name) -> bool {
+  return is_length_derived_field<list_metadata>(field_name) ||
+         is_discriminant_derived_field<list_metadata>(field_name);
 }
 
 

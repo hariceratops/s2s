@@ -30,7 +30,7 @@ struct write_field<T, F> {
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
     if constexpr(is_derived_target_v<T, F>) {
       // The stored value is ignored, so the constraint has to be checked
@@ -73,8 +73,8 @@ struct write_field<T, F> {
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
-    if constexpr(is_computed_size_v<field_size>) {
+    constexpr auto field_size = T::field_size;
+    if constexpr(is_computed_size_v<size_type_of<field_size>>) {
       // An arbitrary N-ary callable has no inverse, so its source fields stay
       // ordinary data and the size they imply can only be checked against the
       // container, never used to repair it.
@@ -153,9 +153,9 @@ struct write_field<T, F> {
   constexpr auto write(stream& s) const -> rw_result {
     using vector_type = typename T::field_type;
     using element_t = extract_type_from_vec_t<vector_type>;
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
 
-    if constexpr(is_computed_size_v<field_size>) {
+    if constexpr(is_computed_size_v<size_type_of<field_size>>) {
       if(deduce_field_size<field_size>{}(field_list) != value.size())
         return std::unexpected(error_reason::found_contradicting_length);
     }

@@ -9,25 +9,25 @@ template <fixed_string id, integral T, fixed_size_like size_type, auto constrain
 using basic_field = field<id, T, size_type, constraint_on_value>;
 
 template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+using fixed_array_field = field<id, std::array<T, N>, byte_count{N * sizeof(T)}, constraint_of_pack<...>>;
 
 template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
+using array_of_records = field<id, std::array<T, N>, size_dont_care, constraint_on_value>;
 
 template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
-using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
+using fixed_string_field = field<id, fixed_string<N>, fixed<N + 1>, constraint_on_value>;
 
 template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<T[N]>{}>
-using c_arr_field = field<id, T[N], field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+using c_arr_field = field<id, T[N], byte_count{N * sizeof(T)}, constraint_of_pack<...>>;
 
 template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<char[N + 1]>{}>
-using c_str_field = field<id, char[N + 1], field_size<fixed<N * sizeof(char) + 1>>, constraint_on_value>;
+using c_str_field = field<id, char[N + 1], byte_count{N * sizeof(char) + 1}, constraint_of_pack<...>>;
 
 template <fixed_string id, std::size_t N, auto expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixed<N>>, eq{expected}>;
+using magic_byte_array = field<id, std::array<unsigned char, N>, byte_count{N}, eq{expected}>;
 
 template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
+using magic_string = field<id, fixed_string<expected.size()>, fixed<expected.size() + 1>, eq{expected}>;
 
 template <fixed_string id, integral T, fixed_size_like size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
@@ -42,7 +42,7 @@ template <fixed_string id, variable_size_like size, auto constraint_on_value = n
 using str_field = field<id, std::string, size, constraint_on_value>;
 
 template <fixed_string id, field_list_like T>
-using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+using struct_field = field<id, T, size_dont_care, no_constraint<T>{}>;
 
 template <no_variance_field_like base_field, typename present_only_if>
   requires is_eval_bool_from_fields_v<present_only_if>

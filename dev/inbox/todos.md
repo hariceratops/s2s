@@ -10,6 +10,13 @@
 - [ ] Remove outdated todos
 - [ ] Refactor type deduction with fold expressions
 - [ ] Rename stream_wrapper_impl
+- [ ] Naming sweep across the **whole project**, not only the size axis. The
+      value-based rewrite (043/044/045) is what surfaced it, and those slices
+      have landed, so nothing is waiting on them any more — but the scope is
+      project-wide: concepts, types and variables throughout. Raised again at
+      the close of the schema-api-verbosity review. See the Review note on
+      `dev/issues/045-new-surface-and-atomic-migration.md` for the two dead
+      declarations that sweep should also judge
 - [ ] Refactor and remove cyclic inclusions
 - [ ] Split cast_impl into cast_api and cast_impl
 

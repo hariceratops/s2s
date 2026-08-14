@@ -1,5 +1,19 @@
 # [fix] is_selectable_size_v reads is_fixed_size, so size_choices is unusable
 
+**Status: pending on `dev/specs/schema-api-verbosity.md`.** That spec's
+value-based rewrite of the size axis touches every trait `size_choices`
+participates in and may reshape `size_choices` itself, which changes what
+"fixing" this issue even means.
+
+**The one-line fix below no longer applies.** Issue 044 re-derived the whole
+size axis onto values, and `is_selectable_size_v` was rewritten from scratch
+reading `is_selectable_size<T>::res` — so the typo this issue was filed for is
+gone, and the line numbers and code quoted below describe a shape that no
+longer exists. What remains open is the half this issue's acceptance criteria
+actually turn on: whether a `size_choices` can be *declared* by a user as a
+field's size and round-trip. `size_choices_t<vals...>` is currently internal
+plumbing for `union_field` only. Re-examine against the post-045 surface.
+
 `include/field_size/field_size.hpp:133` defines
 
 ```cpp

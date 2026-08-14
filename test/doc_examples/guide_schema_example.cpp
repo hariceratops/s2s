@@ -19,10 +19,10 @@ using u32 = unsigned int;
 using telemetry_frame =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0xab, 0xcd}>,
-    s2s::basic_field<"device_id", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"revision", u8, s2s::field_size<s2s::fixed<1>>, s2s::any_of{u8{1}, u8{2}}>,
-    s2s::basic_field<"sample_count", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"samples", u16, s2s::field_size<s2s::len_from_field<"sample_count">>>
+    s2s::basic_field<"device_id", u16, 2_B>,
+    s2s::basic_field<"revision", u8, 1_B, s2s::any_of{u8{1}, u8{2}}>,
+    s2s::basic_field<"sample_count", u32, 4_B>,
+    s2s::vec_field<"samples", u16, s2s::len_from_field<"sample_count">>
   >;
 
 auto main() -> int {
@@ -46,7 +46,7 @@ auto main() -> int {
         return s2s::struct_cast_be<telemetry_frame>(file);
       })
       .transform([](const telemetry_frame& parsed) {
-        return parsed["sample_count"_f] == 4
+        return parsed["samples"_f].size() == 4
             && parsed["device_id"_f] == 0x2a
             && parsed["samples"_f][2] == 299;
       });

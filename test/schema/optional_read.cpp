@@ -20,11 +20,11 @@ TEST(OptionalRead, ReadsThePayloadWhenThePredicateHolds) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::maybe<
-        s2s::basic_field<"c", u32, s2s::field_size<s2s::fixed<4>>>, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::basic_field<"c", u32, 4_B>, 
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 
@@ -53,11 +53,11 @@ TEST(OptionalRead, SkipsThePayloadWhenThePredicateFails) {
   auto is_a_eq_1 = [](auto& a){ return a == 1; };
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::maybe<
-        s2s::basic_field<"c", u32, s2s::field_size<s2s::fixed<4>>>, 
-        s2s::parse_if<is_a_eq_1, s2s::with_fields<"a">>
+        s2s::basic_field<"c", u32, 4_B>, 
+        s2s::parse_if<is_a_eq_1, "a">
       >
     >;
 
@@ -88,16 +88,16 @@ TEST(OptionalRead, ReadsAnOptionalRecord) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   using inner = 
    s2s::struct_field_list<
-     s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>, 
-     s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+     s2s::basic_field<"x", u32, 4_B>, 
+     s2s::basic_field<"y", u32, 4_B>
   >;
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::maybe<
         s2s::struct_field<"c", inner>, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 
@@ -129,11 +129,11 @@ TEST(OptionalRead, ReadsAnOptionalFixedArray) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::maybe<
         s2s::fixed_array_field<"c", u32, 3>, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 
@@ -165,11 +165,11 @@ TEST(OptionalRead, ReadsAnOptionalFixedString) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::maybe<
         s2s::fixed_string_field<"c", 10>, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 
@@ -210,16 +210,16 @@ TEST(OptionalRead, ReadsAnOptionalLengthPrefixedArray) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::maybe<
         s2s::vec_field<
           "vec", 
           u32, 
-          s2s::field_size<s2s::len_from_field<"len">>
+          s2s::len_from_field<"len">
         >, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 
@@ -261,16 +261,16 @@ TEST(OptionalRead, ReadsAnOptionalArrayOfRecords) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   using test_struct = 
     s2s::struct_field_list <
-      s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"x", u32, 4_B>,
+      s2s::basic_field<"y", u32, 4_B>
     >;
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::maybe<
         s2s::array_of_records<"records", test_struct, 3>, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 
@@ -311,21 +311,21 @@ TEST(OptionalRead, ReadsAnOptionalVectorOfRecords) {
   auto is_a_eq_deadbeef = [](auto a){ return a == 0xdeadbeef; };
   using test_struct = 
     s2s::struct_field_list <
-      s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"x", u32, 4_B>,
+      s2s::basic_field<"y", u32, 4_B>
     >;
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>, 
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"a", u32, 4_B>, 
+      s2s::basic_field<"b", u32, 4_B>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::maybe<
         s2s::vector_of_records<
           "records", 
           test_struct, 
-          s2s::field_size<s2s::len_from_field<"len">>
+          s2s::len_from_field<"len">
         >, 
-        s2s::parse_if<is_a_eq_deadbeef, s2s::with_fields<"a">>
+        s2s::parse_if<is_a_eq_deadbeef, "a">
       >
     >;
 

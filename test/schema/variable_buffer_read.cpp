@@ -15,14 +15,13 @@ TEST(VariableBufferRead, ReadsAStringSizedByItsLengthField) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-      s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"len">>>
+      s2s::basic_field<"len", std::size_t, 8_B>,
+      s2s::str_field<"str", s2s::len_from_field<"len">>
     >;
 
   FIELD_LIST_LE_READ_CHECK({
     ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    ASSERT_EQ(fields["len"_f], 10);
     ASSERT_EQ(fields["str"_f].size(), 10);
     std::string_view expected{"foo in bar"};
     ASSERT_EQ(std::string_view{fields["str"_f]}, expected);
@@ -48,18 +47,17 @@ TEST(VariableBufferRead, ReadsAVectorSizedByItsLengthField) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::vec_field<
         "vec",
         u32,
-        s2s::field_size<s2s::len_from_field<"len">>
+        s2s::len_from_field<"len">
       >
     >;
 
   FIELD_LIST_LE_READ_CHECK({
     ASSERT_TRUE(result.has_value());
     auto fields = *result;
-    ASSERT_EQ(fields["len"_f], 10);
     ASSERT_EQ(fields["vec"_f].size(), 10);
     ASSERT_EQ(fields["vec"_f], (std::vector<u32>{0xdeadbeef, 0xcafed00d,
                                                  0xdeadbeef, 0xcafed00d,
@@ -75,9 +73,9 @@ TEST(VariableBufferRead, ReadsAVectorSizedByItsLengthField) {
 //
 //   using var_buffer_struct = 
 //     s2s::struct_field_list<
-//       s2s::basic_field<"row", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-//       s2s::basic_field<"col", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-//       s2s::vec_field<"matrix", std::vector<u32>, s2s::field_size<from_fields<size_from_rc, s2s::with_fields<"row", "col">>>>
+//       s2s::basic_field<"row", std::size_t, 8_B>,
+//       s2s::basic_field<"col", std::size_t, 8_B>,
+//       s2s::vec_field<"matrix", std::vector<u32>, from_fields<size_from_rc, "row", "col">>
 //     >;
 //
 //   constexpr std::size_t row = 5;

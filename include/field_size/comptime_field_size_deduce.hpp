@@ -6,15 +6,18 @@
 
 
 namespace s2s {
-template <typename T>
+// The one value-keyed template on the size axis: byte_count carries its width
+// in the value, so this reads the value rather than the type. The variable
+// size case lives in field_size_deduce.hpp, which this header must not pull
+// in — it would drag field_list.hpp along with it.
+template <auto size>
 struct deduce_field_size;
 
-template <std::size_t N>
-struct deduce_field_size<field_size<fixed<N>>> {
-  using field_size_type = field_size<fixed<N>>;
-
-  constexpr auto operator()() -> std::size_t {
-    return field_size_type::size_type_t::count;
+template <auto size>
+  requires fixed_size_like<size_type_of<size>>
+struct deduce_field_size<size> {
+  constexpr auto operator()() const -> std::size_t {
+    return size.count;
   }
 };
 } /* namespace s2s */

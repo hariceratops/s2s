@@ -17,9 +17,9 @@ using u32 = unsigned int;
 using bmp_header =
   s2s::struct_field_list<
     s2s::magic_byte_array<"signature", 2, std::array<u8, 2>{0x42, 0x4d}>,
-    s2s::basic_field<"file_size", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"reserved", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"pixel_offset", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"file_size", u32, 4_B>,
+    s2s::basic_field<"reserved", u32, 4_B>,
+    s2s::basic_field<"pixel_offset", u32, 4_B>
   >;
 
 // 'B' 'M', then file_size, reserved and pixel_offset, each little-endian.

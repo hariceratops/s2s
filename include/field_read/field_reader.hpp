@@ -28,7 +28,7 @@ struct read_field<T, F> {
   
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
     return read_impl<endianness>(s, field.value, size_to_read);
   }
@@ -45,7 +45,7 @@ struct read_field<T, F> {
 
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return read_impl<endianness>(s, field.value, len_to_read);
   }
@@ -62,7 +62,7 @@ struct create_field_from_array_of_records<T> {
   using array_type = typename T::field_type;
   using array_elem_type = extract_type_from_array_v<array_type>;
   static constexpr auto field_id = T::field_id;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
   static constexpr auto constraint = no_constraint<array_elem_type>{};
 
   using res = field<field_id, array_elem_type, size, constraint>;
@@ -81,7 +81,7 @@ struct create_field_from_vector_of_records<T> {
   using vector_type = typename T::field_type;
   using vector_elem_type = extract_type_from_vec_t<vector_type>;
   static constexpr auto field_id = T::field_id;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
   static constexpr auto constraint = no_constraint<vector_elem_type>{};
 
   using res = field<field_id, vector_elem_type, size, constraint>;
@@ -146,7 +146,7 @@ struct read_field<T, F> {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
 
     auto len_to_read = deduce_field_size<field_size>{}(field_list);

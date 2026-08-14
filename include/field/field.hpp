@@ -13,11 +13,11 @@
 namespace s2s {
 template <fixed_string id,
           typename T,
-          typename size_type,
+          auto size,
           auto constraint_on_value>
 struct field {
   using field_type = T;
-  using field_size = size_type;
+  static constexpr auto field_size = size;
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
@@ -27,9 +27,9 @@ struct field {
 template <typename T>
 struct to_optional_field;
 
-template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
-struct to_optional_field<field<id, T, size_type, constraint_on_value>> {
-  using res = field<id, std::optional<T>, size_type, no_constraint<std::optional<T>>{}>;
+template <fixed_string id, typename T, auto size, auto constraint_on_value>
+struct to_optional_field<field<id, T, size, constraint_on_value>> {
+  using res = field<id, std::optional<T>, size, no_constraint<std::optional<T>>{}>;
 };
 
 template <typename T>
@@ -40,8 +40,8 @@ struct no_variance_field;
 
 template <fixed_string id,
           typename T,
-          typename size_type>
-struct no_variance_field<field<id, T, size_type, no_constraint<T>{}>> {
+          auto size>
+struct no_variance_field<field<id, T, size, no_constraint<T>{}>> {
   static constexpr bool res = true;
 };
 
@@ -76,16 +76,16 @@ struct field_choice_list {};
 template <fixed_string id, typename... args>
 struct to_field_choices;
 
-template <fixed_string id, typename T, typename field_size>
+template <fixed_string id, typename T, auto size>
 struct to_field_choice {
-  using field_choice = field<id, T, field_size, no_constraint<T>{}>;
+  using field_choice = field<id, T, size, no_constraint<T>{}>;
 };
 
-template <fixed_string id, typename T, typename field_size>
-using to_field_choice_v = to_field_choice<id, T, field_size>::field_choice;
+template <fixed_string id, typename T, auto size>
+using to_field_choice_v = to_field_choice<id, T, size>::field_choice;
 
-template <fixed_string id, typename... types, typename... sizes>
-struct to_field_choices<id, std::variant<types...>, field_size<size_choices<sizes...>>> {
+template <fixed_string id, typename... types, auto... sizes>
+struct to_field_choices<id, std::variant<types...>, size_choices_t<sizes...>> {
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 

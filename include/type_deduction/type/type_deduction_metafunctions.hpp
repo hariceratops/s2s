@@ -45,7 +45,7 @@ template <
 >
 struct extract_field_choices<
   type<
-    compute<callable, R, field_name_list>, 
+    compute_t<callable, R, field_name_list>, 
     type_switch<
       match_case<match_values, type_tags>...
     >
@@ -61,7 +61,7 @@ template <
 struct extract_field_choices<
   type<
     type_if_else<
-      branch<compute<callables, bool, field_name_lists>, type_tags>...
+      branch<compute_t<callables, bool, field_name_lists>, type_tags>...
     >
   >
 >
@@ -111,7 +111,7 @@ template <
 >
 struct extract_match_values<
   type<
-    compute<callable, R, field_name_list>,
+    compute_t<callable, R, field_name_list>,
     type_switch<
       match_case<match_values, type_tags>...
     >

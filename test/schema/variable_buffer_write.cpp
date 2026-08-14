@@ -8,10 +8,10 @@ using namespace s2s_literals;
 namespace {
 using prefixed_schema =
   s2s::struct_field_list<
-    s2s::basic_field<"str_len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-    s2s::str_field<"str", s2s::field_size<s2s::len_from_field<"str_len">>>,
-    s2s::basic_field<"vec_len", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"vec_len">>>
+    s2s::basic_field<"str_len", std::size_t, 8_B>,
+    s2s::str_field<"str", s2s::len_from_field<"str_len">>,
+    s2s::basic_field<"vec_len", u32, 4_B>,
+    s2s::vec_field<"vec", u16, s2s::len_from_field<"vec_len">>
   >;
 
 auto populated() -> prefixed_schema {
@@ -22,9 +22,7 @@ auto populated() -> prefixed_schema {
 }
 
 auto expect_matches_populated(const prefixed_schema& actual) -> void {
-  EXPECT_EQ(actual["str_len"_f], 10u);
   EXPECT_EQ(actual["str"_f], std::string("foo in bar"));
-  EXPECT_EQ(actual["vec_len"_f], 3u);
   EXPECT_EQ(actual["vec"_f], (std::vector<u16>{0x1122, 0x3344, 0x5566}));
 }
 } /* namespace */
@@ -54,8 +52,8 @@ TEST(VariableBufferWrite, RoundTripsLengthPrefixedFieldsBigEndian) {
 TEST(VariableBufferWrite, IgnoresTheStoredLengthAndDerivesIt) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"len">>>
+      s2s::basic_field<"len", u32, 4_B>,
+      s2s::vec_field<"vec", u16, s2s::len_from_field<"len">>
     >;
 
   test_field_list obj{};
@@ -71,8 +69,8 @@ TEST(VariableBufferWrite, IgnoresTheStoredLengthAndDerivesIt) {
 TEST(VariableBufferWrite, EmitsDerivedLengthInDeclaredWidthAndByteOrder) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::vec_field<"vec", u16, s2s::field_size<s2s::len_from_field<"len">>>
+      s2s::basic_field<"len", u32, 4_B>,
+      s2s::vec_field<"vec", u16, s2s::len_from_field<"len">>
     >;
 
   test_field_list obj{};
@@ -91,7 +89,7 @@ TEST(VariableBufferWrite, RoundTripsEmptyContainers) {
   FIELD_LIST_LE_ROUNDTRIP_CHECK(obj, {
     ASSERT_TRUE(written.has_value());
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((*result)["str_len"_f], 0u);
+    EXPECT_TRUE((*result)["str"_f].empty());
     EXPECT_TRUE((*result)["vec"_f].empty());
   });
 }
@@ -101,8 +99,8 @@ TEST(VariableBufferWrite, RoundTripsEmptyContainers) {
 TEST(VariableBufferWrite, RejectsLengthTooWideForItsDeclaredSlot) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
-      s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
+      s2s::basic_field<"len", u32, 1_B>,
+      s2s::vec_field<"vec", u8, s2s::len_from_field<"len">>
     >;
 
   test_field_list obj{};
@@ -119,8 +117,8 @@ TEST(VariableBufferWrite, RejectsLengthTooWideForItsDeclaredSlot) {
 TEST(VariableBufferWrite, AcceptsALengthThatExactlyFillsItsSlot) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"len", u32, s2s::field_size<s2s::fixed<1>>>,
-      s2s::vec_field<"vec", u8, s2s::field_size<s2s::len_from_field<"len">>>
+      s2s::basic_field<"len", u32, 1_B>,
+      s2s::vec_field<"vec", u8, s2s::len_from_field<"len">>
     >;
 
   test_field_list obj{};

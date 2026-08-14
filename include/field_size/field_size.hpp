@@ -2,75 +2,88 @@
 #define _FIELD_SIZE_HPP_
 
 
+#include <cstddef>
+#include <type_traits>
+
 #include "../field/field_accessor.hpp"
 #include "../lib/metaprog/fixed_string_list.hpp"
-#include "../lib/metaprog/typelist.hpp"
 
 
 namespace s2s {
-template <typename size_type>
-struct field_size;
-
-template <typename size_type>
-struct field_size {
-  using size_type_t = size_type;
+// A size is a value of an empty structural type, and every classification
+// trait keys on that value's *type*. The reason is not style: a class-type
+// NTTP is a non-deduced context in a partial specialization, so
+// `field<id, T, field_accessor<len_source>{}, c>` cannot deduce `len_source`.
+// Anything a trait needs to match on therefore has to live in the type.
+//
+// byte_count is the one exception — the width lives in the value, because no
+// trait matches on a width. Only deduce_field_size reads it, and it reads the
+// value. That exception is what buys a plain non-template operator""_B.
+struct byte_count {
+  std::size_t count{};
 };
 
-struct size_dont_care {};
-
-template <std::size_t N>
-struct fixed;
-
-template <std::size_t N>
-struct fixed {
-  static constexpr auto count = N;
-};
-
-template <fixed_string id>
-using len_from_field = field_accessor<id>;
+struct size_dont_care_t {};
 
 template <auto callable, field_name_list req_fields>
-struct size_from_fields;
-
-// todo constraint for callable
-template <auto callable, field_name_list req_fields>
-struct size_from_fields {
+struct size_from_fields_t {
   static constexpr auto f = callable;
   static constexpr auto req_field_list = req_fields{};
 };
 
-template <auto callable, field_name_list ids>
-using len_from_fields = size_from_fields<callable, ids>;
-
 // todo size type for holding multiple sizes in case of union fields
-template <typename... size_type>
-struct size_choices;
+template <auto... sizes>
+struct size_choices_t {
+  static constexpr auto num_of_choices = sizeof...(sizes);
+};
 
-template <typename... size_type>
-struct size_choices {
-  using choices = typelist::list<size_type...>;
-  static auto constexpr num_of_choices = sizeof...(size_type);
+// The spellings a schema writes.
+template <fixed_string id>
+inline constexpr auto len_from_field = field_accessor<id>{};
+
+// todo constraint for callable
+template <auto callable, fixed_string... ids>
+inline constexpr auto size_from_fields = size_from_fields_t<callable, field_names_of<ids...>>{};
+
+template <auto callable, fixed_string... ids>
+inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
+
+inline constexpr auto size_dont_care = size_dont_care_t{};
+
+template <auto... sizes>
+inline constexpr auto size_choices = size_choices_t<sizes...>{};
+
+// Identity on an already-value size: 4_B is byte_count{4}.
+template <auto size>
+inline constexpr auto field_size = size;
+
+// decltype of an auto NTTP parameter is unqualified, but decltype of the
+// variable templates above is const-qualified. Strip in one place.
+template <auto size>
+using size_type_of = std::remove_cvref_t<decltype(size)>;
+
+// Recovering the parameters a trait matched on, out of the size value's type.
+template <typename S>
+struct len_source_of;
+
+template <fixed_string id>
+struct len_source_of<field_accessor<id>> {
+  static constexpr auto value = id;
 };
 
 // Metafunctions for checking if a type is a size type
-template <typename T>
-struct is_fixed_size;
-
-template <std::size_t N>
-struct is_fixed_size<field_size<fixed<N>>> {
-  static constexpr bool res = true;
-};
-
 template <typename T>
 struct is_fixed_size {
   static constexpr bool res = false;
 };
 
-template <typename T>
-inline constexpr bool is_fixed_size_v = is_fixed_size<T>::res;
+template <>
+struct is_fixed_size<byte_count> {
+  static constexpr bool res = true;
+};
 
 template <typename T>
-struct is_variable_size;
+inline constexpr bool is_fixed_size_v = is_fixed_size<T>::res;
 
 template <typename T>
 struct is_variable_size {
@@ -78,12 +91,12 @@ struct is_variable_size {
 };
 
 template <fixed_string id>
-struct is_variable_size<field_size<len_from_field<id>>> {
+struct is_variable_size<field_accessor<id>> {
   static constexpr bool res = true;
 };
 
 template <auto callable, field_name_list ids>
-struct is_variable_size<field_size<len_from_fields<callable, ids>>> {
+struct is_variable_size<size_from_fields_t<callable, ids>> {
   static constexpr bool res = true;
 };
 
@@ -99,7 +112,7 @@ struct is_computed_size {
 };
 
 template <auto callable, field_name_list ids>
-struct is_computed_size<field_size<size_from_fields<callable, ids>>> {
+struct is_computed_size<size_from_fields_t<callable, ids>> {
   static constexpr bool res = true;
 };
 
@@ -114,23 +127,21 @@ template <typename T>
 concept variable_size_like = is_variable_size_v<T>;
 
 template <typename T>
-struct is_selectable_size;
-
-template <typename T>
 concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
-
-template <atomic_size... size_type>
-struct is_selectable_size<field_size<size_choices<size_type...>>> {
-  static constexpr bool res = true;
-};
 
 template <typename T>
 struct is_selectable_size {
   static constexpr bool res = false;
 };
 
+template <auto... sizes>
+  requires (atomic_size<size_type_of<sizes>> && ...)
+struct is_selectable_size<size_choices_t<sizes...>> {
+  static constexpr bool res = true;
+};
+
 template <typename T>
-inline constexpr bool is_selectable_size_v = is_fixed_size<T>::res;
+inline constexpr bool is_selectable_size_v = is_selectable_size<T>::res;
 
 template <typename T>
 concept selectable_size_like = is_selectable_size_v<T>;
@@ -141,16 +152,13 @@ concept is_size_like = fixed_size_like<T>    ||
                        selectable_size_like<T>;
 
 template <typename T>
-struct is_size_dont_care;
-
-template <>
-struct is_size_dont_care<field_size<size_dont_care>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
 struct is_size_dont_care {
   static constexpr bool res = false;
+};
+
+template <>
+struct is_size_dont_care<size_dont_care_t> {
+  static constexpr bool res = true;
 };
 
 template <typename T>
@@ -161,5 +169,10 @@ concept size_dont_care_like = is_size_dont_care_v<T>;
 
 } /* namespace s2s */
 
+namespace s2s_literals {
+constexpr auto operator""_B(unsigned long long n) -> s2s::byte_count {
+  return s2s::byte_count{static_cast<std::size_t>(n)};
+}
+}
 
 #endif // _FIELD_SIZE_HPP_

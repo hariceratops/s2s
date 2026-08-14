@@ -9,9 +9,9 @@ namespace {
 using magic_schema =
   s2s::struct_field_list<
     s2s::magic_string<"magic_str", "GIF">,
-    s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
+    s2s::magic_number<"magic_num", u32, 4_B, 0xdeadbeef>,
     s2s::magic_byte_array<"magic_arr", 4, std::array<unsigned char, 4>{0xde, 0xad, 0xbe, 0xef}>,
-    s2s::basic_field<"payload", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"payload", u32, 4_B>
   >;
 
 auto populated() -> magic_schema {
@@ -100,9 +100,9 @@ TEST(MagicWrite, RejectsWrongMagicByteArray) {
 TEST(MagicWrite, OffendingFieldContributesNoBytes) {
   using test_field_list =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::magic_number<"magic_num", u32, s2s::field_size<s2s::fixed<4>>, 0xdeadbeef>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::magic_number<"magic_num", u32, 4_B, 0xdeadbeef>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   test_field_list obj{};

@@ -39,8 +39,9 @@ folder can be used for direct inclusion into a project
     * Magic strings
     * Magic numbers
 * Writing a struct back to a stream with the same schema, in either byte order
-* Lengths and union discriminants derived on write, and read-only at compile
-  time so they cannot drift from the data they describe
+* Lengths and union discriminants derived on write, so they cannot drift from
+  the data they describe — a length is not part of the struct's interface at
+  all, and a discriminant is read-only
 * Validation of fields in place while reading and while writing
 * Compile time endianness handling 
 * Pluggable interfaces working with custom streams
@@ -78,9 +79,9 @@ using u32 = unsigned int;
 using firmware_image =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
+    s2s::basic_field<"version", u16, 2_B>,
+    s2s::basic_field<"payload_length", u32, 4_B>,
+    s2s::vec_field<"payload", u8, s2s::len_from_field<"payload_length">>
   >;
 
 auto main() -> int {
@@ -90,7 +91,7 @@ auto main() -> int {
     s2s::struct_cast_be<firmware_image>(image)
       .transform([](const firmware_image& fields){
         std::println("version={} payload={} bytes",
-                     fields["version"_f], fields["payload_length"_f]);
+                     fields["version"_f], fields["payload"_f].size());
         return fields;
       }).transform_error([](const s2s::cast_error& err){
         std::println("failure_reason={} failed_at={}",
@@ -104,7 +105,8 @@ auto main() -> int {
 
 The same schema drives the other direction. Fields the schema can work out for
 itself — here `payload_length` — are derived during the write rather than being
-data anyone has to keep in sync:
+data anyone has to keep in sync, which is why the schema names it and the
+struct does not expose it:
 
 <!-- docs: test/doc_examples/readme_roundtrip_example.cpp -->
 ```cpp
@@ -124,9 +126,9 @@ using u32 = unsigned int;
 using firmware_image =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x46, 0x57}>,
-    s2s::basic_field<"version", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"payload_length", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::vec_field<"payload", u8, s2s::field_size<s2s::len_from_field<"payload_length">>>
+    s2s::basic_field<"version", u16, 2_B>,
+    s2s::basic_field<"payload_length", u32, 4_B>,
+    s2s::vec_field<"payload", u8, s2s::len_from_field<"payload_length">>
   >;
 
 auto main() -> int {
@@ -134,7 +136,7 @@ auto main() -> int {
   image["marker"_f] = std::array<u8, 2>{0x46, 0x57};
   image["version"_f] = u16{1};
   image["payload"_f] = std::vector<u8>{0xde, 0xad, 0xbe, 0xef};
-  // "payload_length" is never assigned. It is derived from payload.size().
+  // "payload_length" cannot be named at all. It is derived from payload.size().
 
   std::fstream file("firmware_out.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
@@ -149,7 +151,7 @@ auto main() -> int {
         return s2s::struct_cast_be<firmware_image>(file);
       })
       .transform([](const firmware_image& parsed) {
-        return parsed["payload_length"_f] == 4;
+        return parsed["payload"_f].size() == 4;
       });
 
   return round_tripped.value_or(false) ? 0 : 1;

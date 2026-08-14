@@ -27,7 +27,7 @@ struct is_invocable<callable,
       std::is_invocable_r_v<
         return_type, 
         decltype(callable),
-        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
+        decltype(field_value_of<field_accessor<req_fields>>(struct_field_list_t{}))...
       >;
 };
 
@@ -50,7 +50,7 @@ struct compute_impl;
 
 // todo: static_vector over fixed_string list?
 template <auto callable, typename R, fixed_string... req_fields>
-struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
+struct compute_impl<compute_t<callable, R, fixed_string_list<req_fields...>>>{
   template <auto metadata, typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
@@ -58,7 +58,7 @@ struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
                 struct_field_list_impl<metadata, fields...>,
                 fixed_string_list<req_fields...>>)
   constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& flist) const -> R {
-    return callable(flist[field_accessor<req_fields>{}]...);
+    return callable(field_value_of<field_accessor<req_fields>>(flist)...);
   }
 };
 } /* namespace s2s */

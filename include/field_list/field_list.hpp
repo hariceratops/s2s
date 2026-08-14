@@ -16,6 +16,18 @@ template <typename field_accessor, auto list_metadata>
 concept field_is_derived_from_other_fields =
   is_derived_field<list_metadata>(as_sv(field_accessor::field_id));
 
+// A length target is not part of the user's model of the struct: nobody
+// supplies it, and no assignment could keep it honest, since operator[] hands
+// back a reference and a container can be mutated through it without passing
+// any setter. So it has no operator[] overload at all.
+template <typename field_accessor, auto list_metadata>
+concept field_is_derived_from_a_length =
+  is_length_derived_field<list_metadata>(as_sv(field_accessor::field_id));
+
+template <typename field_accessor, auto list_metadata>
+concept field_is_derived_from_a_discriminant =
+  is_discriminant_derived_field<list_metadata>(as_sv(field_accessor::field_id));
+
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
@@ -33,30 +45,48 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
     return static_cast<field_type_ref>(*this).value;
   }
 
-  // Derived fields stay readable on a non-const object but hand back a const
+  // A discriminant stays readable on a non-const object but hands back a const
   // reference, so an attempted assignment fails as assign-to-const rather than
-  // as a wall of unsatisfied-constraint output from no viable overload.
+  // as a wall of unsatisfied-constraint output from no viable overload. How a
+  // caller should reach a variance field's held alternative is unsettled, so
+  // hiding discriminants the way length targets are hidden waits on that.
   template <
     typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
     requires (field_lookup_res.has_value) &&
-             field_is_derived_from_other_fields<field_accessor, list_metadata>
+             field_is_derived_from_a_discriminant<field_accessor, list_metadata>
   constexpr const auto& operator[](field_accessor) {
     using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 
+  // Constrained rather than unconditional: without excluding length targets
+  // here, `const auto& n = fl["len"_f]` would still reach one through a const
+  // object, and hiding it from the mutable overload alone would mean nothing.
   template <
     typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
-    requires (field_lookup_res.has_value)
+    requires (field_lookup_res.has_value) &&
+             (!field_is_derived_from_a_length<field_accessor, list_metadata>)
   constexpr const auto& operator[](field_accessor) const {
     using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 };
+
+// The lookup operator[] performs, without its visibility policy. The library's
+// own read path resolves a len_from_field size and feeds user callables by
+// reading fields, and both can name a length target — which the user cannot
+// see, but which is still on the wire and still has to be read.
+template <typename field_accessor, auto list_metadata, typename... fields>
+constexpr auto& field_value_of(const struct_field_list_impl<list_metadata, fields...>& field_list) {
+  constexpr auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+  static_assert(field_lookup_res.has_value, "no such field in this field list");
+  using field_type_cref = const meta::type_of<field_lookup_res->id>&;
+  return static_cast<field_type_cref>(field_list).value;
+}
 } /* namespace s2s */
 
 

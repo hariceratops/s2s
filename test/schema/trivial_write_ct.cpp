@@ -18,8 +18,8 @@ using u32 = unsigned int;
 
 using two_trivials =
   s2s::struct_field_list<
-    s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"b", u32, 4_B>
   >;
 
 constexpr auto populated() -> two_trivials {

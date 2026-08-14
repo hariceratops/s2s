@@ -366,9 +366,6 @@ namespace s2s {
 template <fixed_string... fs>
 struct fixed_string_list {};
 
-template <fixed_string... fs>
-using with_fields = fixed_string_list<fs...>;
-
 template <typename T>
 struct is_field_name_list;
 
@@ -378,7 +375,7 @@ struct is_field_name_list {
 };
 
 template <fixed_string... fs>
-struct is_field_name_list<with_fields<fs...>> {
+struct is_field_name_list<fixed_string_list<fs...>> {
   static constexpr bool res = true;
 };
 
@@ -457,12 +454,208 @@ using pop_t = typename pop<count, T>::type;
 
 template <typename T>
 concept field_name_list = is_field_name_list_v<T>;
+
+template <fixed_string... fs>
+inline constexpr auto with_fields = fixed_string_list<fs...>{};
+
+// A name list is spelled either as bare ids or as one with_fields value. The
+// normalization sits here, at the user-facing aliases, and never at `compute`
+// itself — every internal pattern match on compute_t<f, R, fixed_string_list<...>>
+// therefore stays untouched.
+template <auto... ids>
+struct names_of {
+  using type = fixed_string_list<ids...>;
+};
+
+template <auto list>
+  requires field_name_list<std::remove_cvref_t<decltype(list)>>
+struct names_of<list> {
+  using type = std::remove_cvref_t<decltype(list)>;
+};
+
+template <auto... ids>
+using field_names_of = typename names_of<ids...>::type;
 } /* namespace s2s */
 
 
 #endif // _FIXED_STRING_LIST_HPP_
 
 // End lib/metaprog/fixed_string_list.hpp
+
+// Begin field_size/field_size.hpp
+#ifndef _FIELD_SIZE_HPP_
+#define _FIELD_SIZE_HPP_
+ 
+ 
+namespace s2s {
+// A size is a value of an empty structural type, and every classification
+// trait keys on that value's *type*. The reason is not style: a class-type
+// NTTP is a non-deduced context in a partial specialization, so
+// `field<id, T, field_accessor<len_source>{}, c>` cannot deduce `len_source`.
+// Anything a trait needs to match on therefore has to live in the type.
+//
+// byte_count is the one exception — the width lives in the value, because no
+// trait matches on a width. Only deduce_field_size reads it, and it reads the
+// value. That exception is what buys a plain non-template operator""_B.
+struct byte_count {
+  std::size_t count{};
+};
+
+struct size_dont_care_t {};
+
+template <auto callable, field_name_list req_fields>
+struct size_from_fields_t {
+  static constexpr auto f = callable;
+  static constexpr auto req_field_list = req_fields{};
+};
+
+// todo size type for holding multiple sizes in case of union fields
+template <auto... sizes>
+struct size_choices_t {
+  static constexpr auto num_of_choices = sizeof...(sizes);
+};
+
+// The spellings a schema writes.
+template <fixed_string id>
+inline constexpr auto len_from_field = field_accessor<id>{};
+
+// todo constraint for callable
+template <auto callable, fixed_string... ids>
+inline constexpr auto size_from_fields = size_from_fields_t<callable, field_names_of<ids...>>{};
+
+template <auto callable, fixed_string... ids>
+inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
+
+inline constexpr auto size_dont_care = size_dont_care_t{};
+
+template <auto... sizes>
+inline constexpr auto size_choices = size_choices_t<sizes...>{};
+
+// Identity on an already-value size: 4_B is byte_count{4}.
+template <auto size>
+inline constexpr auto field_size = size;
+
+// decltype of an auto NTTP parameter is unqualified, but decltype of the
+// variable templates above is const-qualified. Strip in one place.
+template <auto size>
+using size_type_of = std::remove_cvref_t<decltype(size)>;
+
+// Recovering the parameters a trait matched on, out of the size value's type.
+template <typename S>
+struct len_source_of;
+
+template <fixed_string id>
+struct len_source_of<field_accessor<id>> {
+  static constexpr auto value = id;
+};
+
+// Metafunctions for checking if a type is a size type
+template <typename T>
+struct is_fixed_size {
+  static constexpr bool res = false;
+};
+
+template <>
+struct is_fixed_size<byte_count> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_size_v = is_fixed_size<T>::res;
+
+template <typename T>
+struct is_variable_size {
+  static constexpr bool res = false;
+};
+
+template <fixed_string id>
+struct is_variable_size<field_accessor<id>> {
+  static constexpr bool res = true;
+};
+
+template <auto callable, field_name_list ids>
+struct is_variable_size<size_from_fields_t<callable, ids>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
+
+// A size produced by a user callable rather than read from a single field.
+// The distinction matters only on the write path: len_from_field can be
+// inverted and derived, this cannot, so it can only be verified.
+template <typename T>
+struct is_computed_size {
+  static constexpr bool res = false;
+};
+
+template <auto callable, field_name_list ids>
+struct is_computed_size<size_from_fields_t<callable, ids>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_computed_size_v = is_computed_size<T>::res;
+
+// Concepts for checking if a type is a size type
+template <typename T>
+concept fixed_size_like = is_fixed_size_v<T>;
+
+template <typename T>
+concept variable_size_like = is_variable_size_v<T>;
+
+template <typename T>
+concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
+
+template <typename T>
+struct is_selectable_size {
+  static constexpr bool res = false;
+};
+
+template <auto... sizes>
+  requires (atomic_size<size_type_of<sizes>> && ...)
+struct is_selectable_size<size_choices_t<sizes...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_selectable_size_v = is_selectable_size<T>::res;
+
+template <typename T>
+concept selectable_size_like = is_selectable_size_v<T>;
+
+template <typename T>
+concept is_size_like = fixed_size_like<T>    ||
+                       variable_size_like<T> ||
+                       selectable_size_like<T>;
+
+template <typename T>
+struct is_size_dont_care {
+  static constexpr bool res = false;
+};
+
+template <>
+struct is_size_dont_care<size_dont_care_t> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_size_dont_care_v = is_size_dont_care<T>::res;
+
+template <typename T>
+concept size_dont_care_like = is_size_dont_care_v<T>;
+
+} /* namespace s2s */
+
+namespace s2s_literals {
+constexpr auto operator""_B(unsigned long long n) -> s2s::byte_count {
+  return s2s::byte_count{static_cast<std::size_t>(n)};
+}
+}
+
+#endif // _FIELD_SIZE_HPP_
+
+// End field_size/field_size.hpp
 
 // Begin lib/metaprog/typelist.hpp
 #ifndef _TYPELIST_HPP_
@@ -551,171 +744,6 @@ using front_t = typename front<L>::front_t;
 #endif // _TYPELIST_HPP_
 
 // End lib/metaprog/typelist.hpp
-
-// Begin field_size/field_size.hpp
-#ifndef _FIELD_SIZE_HPP_
-#define _FIELD_SIZE_HPP_
- 
- 
- 
-namespace s2s {
-template <typename size_type>
-struct field_size;
-
-template <typename size_type>
-struct field_size {
-  using size_type_t = size_type;
-};
-
-struct size_dont_care {};
-
-template <std::size_t N>
-struct fixed;
-
-template <std::size_t N>
-struct fixed {
-  static constexpr auto count = N;
-};
-
-template <fixed_string id>
-using len_from_field = field_accessor<id>;
-
-template <auto callable, field_name_list req_fields>
-struct size_from_fields;
-
-// todo constraint for callable
-template <auto callable, field_name_list req_fields>
-struct size_from_fields {
-  static constexpr auto f = callable;
-  static constexpr auto req_field_list = req_fields{};
-};
-
-template <auto callable, field_name_list ids>
-using len_from_fields = size_from_fields<callable, ids>;
-
-// todo size type for holding multiple sizes in case of union fields
-template <typename... size_type>
-struct size_choices;
-
-template <typename... size_type>
-struct size_choices {
-  using choices = typelist::list<size_type...>;
-  static auto constexpr num_of_choices = sizeof...(size_type);
-};
-
-// Metafunctions for checking if a type is a size type
-template <typename T>
-struct is_fixed_size;
-
-template <std::size_t N>
-struct is_fixed_size<field_size<fixed<N>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_fixed_size {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_fixed_size_v = is_fixed_size<T>::res;
-
-template <typename T>
-struct is_variable_size;
-
-template <typename T>
-struct is_variable_size {
-  static constexpr bool res = false;
-};
-
-template <fixed_string id>
-struct is_variable_size<field_size<len_from_field<id>>> {
-  static constexpr bool res = true;
-};
-
-template <auto callable, field_name_list ids>
-struct is_variable_size<field_size<len_from_fields<callable, ids>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
-
-// A size produced by a user callable rather than read from a single field.
-// The distinction matters only on the write path: len_from_field can be
-// inverted and derived, this cannot, so it can only be verified.
-template <typename T>
-struct is_computed_size {
-  static constexpr bool res = false;
-};
-
-template <auto callable, field_name_list ids>
-struct is_computed_size<field_size<size_from_fields<callable, ids>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-inline constexpr bool is_computed_size_v = is_computed_size<T>::res;
-
-// Concepts for checking if a type is a size type
-template <typename T>
-concept fixed_size_like = is_fixed_size_v<T>;
-
-template <typename T>
-concept variable_size_like = is_variable_size_v<T>;
-
-template <typename T>
-struct is_selectable_size;
-
-template <typename T>
-concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
-
-template <atomic_size... size_type>
-struct is_selectable_size<field_size<size_choices<size_type...>>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_selectable_size {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_selectable_size_v = is_fixed_size<T>::res;
-
-template <typename T>
-concept selectable_size_like = is_selectable_size_v<T>;
-
-template <typename T>
-concept is_size_like = fixed_size_like<T>    ||
-                       variable_size_like<T> ||
-                       selectable_size_like<T>;
-
-template <typename T>
-struct is_size_dont_care;
-
-template <>
-struct is_size_dont_care<field_size<size_dont_care>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_size_dont_care {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_size_dont_care_v = is_size_dont_care<T>::res;
-
-template <typename T>
-concept size_dont_care_like = is_size_dont_care_v<T>;
-
-} /* namespace s2s */
-
-
-#endif // _FIELD_SIZE_HPP_
-
-// End field_size/field_size.hpp
 
 // Begin field_list/field_list_base.hpp
 #ifndef _FIELD_LIST_BASE_HPP_
@@ -1209,11 +1237,11 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 namespace s2s {
 template <fixed_string id,
           typename T,
-          typename size_type,
+          auto size,
           auto constraint_on_value>
 struct field {
   using field_type = T;
-  using field_size = size_type;
+  static constexpr auto field_size = size;
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
@@ -1223,9 +1251,9 @@ struct field {
 template <typename T>
 struct to_optional_field;
 
-template <fixed_string id, typename T, typename size_type, auto constraint_on_value>
-struct to_optional_field<field<id, T, size_type, constraint_on_value>> {
-  using res = field<id, std::optional<T>, size_type, no_constraint<std::optional<T>>{}>;
+template <fixed_string id, typename T, auto size, auto constraint_on_value>
+struct to_optional_field<field<id, T, size, constraint_on_value>> {
+  using res = field<id, std::optional<T>, size, no_constraint<std::optional<T>>{}>;
 };
 
 template <typename T>
@@ -1236,8 +1264,8 @@ struct no_variance_field;
 
 template <fixed_string id,
           typename T,
-          typename size_type>
-struct no_variance_field<field<id, T, size_type, no_constraint<T>{}>> {
+          auto size>
+struct no_variance_field<field<id, T, size, no_constraint<T>{}>> {
   static constexpr bool res = true;
 };
 
@@ -1272,16 +1300,16 @@ struct field_choice_list {};
 template <fixed_string id, typename... args>
 struct to_field_choices;
 
-template <fixed_string id, typename T, typename field_size>
+template <fixed_string id, typename T, auto size>
 struct to_field_choice {
-  using field_choice = field<id, T, field_size, no_constraint<T>{}>;
+  using field_choice = field<id, T, size, no_constraint<T>{}>;
 };
 
-template <fixed_string id, typename T, typename field_size>
-using to_field_choice_v = to_field_choice<id, T, field_size>::field_choice;
+template <fixed_string id, typename T, auto size>
+using to_field_choice_v = to_field_choice<id, T, size>::field_choice;
 
-template <fixed_string id, typename... types, typename... sizes>
-struct to_field_choices<id, std::variant<types...>, field_size<size_choices<sizes...>>> {
+template <fixed_string id, typename... types, auto... sizes>
+struct to_field_choices<id, std::variant<types...>, size_choices_t<sizes...>> {
   using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
 };
 
@@ -1500,15 +1528,18 @@ constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
 #define _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
  
 namespace s2s {
-template <typename T>
+// The one value-keyed template on the size axis: byte_count carries its width
+// in the value, so this reads the value rather than the type. The variable
+// size case lives in field_size_deduce.hpp, which this header must not pull
+// in — it would drag field_list.hpp along with it.
+template <auto size>
 struct deduce_field_size;
 
-template <std::size_t N>
-struct deduce_field_size<field_size<fixed<N>>> {
-  using field_size_type = field_size<fixed<N>>;
-
-  constexpr auto operator()() -> std::size_t {
-    return field_size_type::size_type_t::count;
+template <auto size>
+  requires fixed_size_like<size_type_of<size>>
+struct deduce_field_size<size> {
+  constexpr auto operator()() const -> std::size_t {
+    return size.count;
   }
 };
 } /* namespace s2s */
@@ -1526,60 +1557,63 @@ struct deduce_field_size<field_size<fixed<N>>> {
  
  
 namespace s2s {
-template <trivial T, fixed_size_like S>
-  requires (deduce_field_size<S>{}() <= sizeof(T))
+template <trivial T, auto S>
+  requires fixed_size_like<size_type_of<S>> && (deduce_field_size<S>{}() <= sizeof(T))
 struct as_trivial {
   using type = T;
-  using size = S;
+  static constexpr auto size = S;
 };
 
 template <field_list_like T>
 struct as_struct {
   using type = T;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
 };
 
 // todo how to handle array of array
 template <trivial T, std::size_t N> 
 struct as_fixed_arr {
   using type = std::array<T, N>;
-  using size = field_size<fixed<N * sizeof(T)>>;
+  static constexpr auto size = byte_count{N * sizeof(T)};
 };
 
 template <std::size_t N> 
 struct as_fixed_string {
   using type = fixed_string<N>;
-  using size = field_size<fixed<N + 1>>;
+  static constexpr auto size = byte_count{N + 1};
 };
 
-template <trivial T, variable_size_like S> 
+template <trivial T, auto S> 
+  requires variable_size_like<size_type_of<S>>
 struct as_vec {
   using type = std::vector<T>;
-  using size = S;
+  static constexpr auto size = S;
 };
 
-template <variable_size_like S> 
+template <auto S> 
+  requires variable_size_like<size_type_of<S>>
 struct as_string {
   using type = std::string;
-  using size = S;
+  static constexpr auto size = S;
 };
 
 template <field_list_like T, std::size_t N>
 struct as_arr_of_records {
   using type = std::array<T, N>;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
 };
 
-template <field_list_like T, variable_size_like S>
+template <field_list_like T, auto S>
+  requires variable_size_like<size_type_of<S>>
 struct as_vec_of_records {
   using type = std::vector<T>;
-  using size = S;
+  static constexpr auto size = S;
 };
 
 template <typename T>
 struct is_type_tag;
 
-template <typename T, typename size>
+template <typename T, auto size>
 struct is_type_tag<as_trivial<T, size>> {
   static constexpr bool res = true;
 };
@@ -1594,12 +1628,12 @@ struct is_type_tag<as_fixed_string<size>> {
   static constexpr bool res = true;
 };
 
-template <typename T, typename size>
+template <typename T, auto size>
 struct is_type_tag<as_vec<T, size>> {
   static constexpr bool res = true;
 };
 
-template <typename size>
+template <auto size>
 struct is_type_tag<as_string<size>> {
   static constexpr bool res = true;
 };
@@ -1676,24 +1710,30 @@ concept match_case_like = is_match_case_v<T>;
 #define _COMPUTATION_FROM_FIELDS_HPP_
  
 namespace s2s {
+// compute_t keeps a field_name_list *type* so that every internal pattern
+// match on it stays a plain partial specialization; `compute` is the spelling a
+// schema writes, and normalizes bare ids into that type.
 template <auto callable, typename R, field_name_list Fs>
-struct compute;
+struct compute_t;
 
 template <auto callable, typename R, fixed_string... req_fields>
-struct compute<callable, R, fixed_string_list<req_fields...>>{
+struct compute_t<callable, R, fixed_string_list<req_fields...>>{
 };
 
-template <auto callable, field_name_list req_fields>
-using eval_bool_from_fields = compute<callable, bool, req_fields>;
+template <auto callable, typename R, fixed_string... ids>
+using compute = compute_t<callable, R, field_names_of<ids...>>;
 
-template <auto callable, field_name_list req_fields>
-using predicate = compute<callable, bool, req_fields>;
+template <auto callable, fixed_string... ids>
+using eval_bool_from_fields = compute_t<callable, bool, field_names_of<ids...>>;
 
-template <auto callable, field_name_list req_fields>
-using eval_size_from_fields = compute<callable, std::size_t, req_fields>;
+template <auto callable, fixed_string... ids>
+using predicate = compute_t<callable, bool, field_names_of<ids...>>;
 
-template <auto callable, field_name_list req_fields>
-using parse_if = eval_bool_from_fields<callable, req_fields>;
+template <auto callable, fixed_string... ids>
+using eval_size_from_fields = compute_t<callable, std::size_t, field_names_of<ids...>>;
+
+template <auto callable, fixed_string... ids>
+using parse_if = eval_bool_from_fields<callable, ids...>;
 } /* namespace s2s */
 
 #endif // _COMPUTATION_FROM_FIELDS_HPP_
@@ -1713,7 +1753,7 @@ template <typename T>
 struct is_compute_like;
 
 template <auto callable, typename R, fixed_string... req_fields>
-struct is_compute_like<compute<callable, R, with_fields<req_fields...>>> {
+struct is_compute_like<compute_t<callable, R, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 
@@ -1729,7 +1769,7 @@ template <typename T>
 struct is_eval_bool_from_fields;
 
 template <auto callable, fixed_string... req_fields>
-struct is_eval_bool_from_fields<compute<callable, bool, with_fields<req_fields...>>> {
+struct is_eval_bool_from_fields<compute_t<callable, bool, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 
@@ -1745,7 +1785,7 @@ template <typename T>
 struct is_eval_size_from_fields;
 
 template <auto callable, fixed_string... req_fields>
-struct is_eval_size_from_fields<compute<callable, std::size_t, with_fields<req_fields...>>> {
+struct is_eval_size_from_fields<compute_t<callable, std::size_t, fixed_string_list<req_fields...>>> {
   static constexpr bool res = true;
 };
 
@@ -1841,14 +1881,14 @@ struct size_from_type_condition;
 
 template <type_condition_like match_case>
 struct size_from_type_condition {
-  using size = typename match_case::type_tag::size;
+  static constexpr auto size = match_case::type_tag::size;
 };
 
 template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
 
 template <typename T>
-using size_from_type_condition_v = size_from_type_condition<T>::size;
+inline constexpr auto size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {
@@ -1860,7 +1900,7 @@ using variant_from_type_conditions_v = variant_from_type_conditions<cases...>::v
 
 template <type_condition_like... cases>
 struct size_choices_from_type_conditions {
-  using choices = field_size<size_choices<size_from_type_condition_v<cases>...>>;
+  using choices = size_choices_t<size_from_type_condition_v<cases>...>;
 };
 
 template <type_condition_like... cases>
@@ -1917,11 +1957,19 @@ using dep_vec = static_vector<sv, max_dep_count_per_struct>;
 using field_table_t = static_map<sv, field_type_info, max_field_count>;
 using dependency_table_t = static_map<sv, static_vector<sv, max_dep_count_per_struct>, max_field_count>;
 
+// A computed size keeps its field-name list in the size value's type; deducing
+// the pack out of the argument recovers it without a metafunction.
+template <fixed_string... fs>
+constexpr auto deps_of(fixed_string_list<fs...>) -> static_vector<sv, max_dep_count_per_struct> {
+  return static_vector<sv, max_dep_count_per_struct>(as_sv(fs)...);
+}
+
 // extract dependencies metafunction
 template <typename T>
 struct extract_length_dependencies;
 
-template <fixed_string id, typename T, fixed_size_like size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires fixed_size_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
@@ -1929,7 +1977,8 @@ struct extract_length_dependencies<
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, size_dont_care_like size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires size_dont_care_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint>
 >
@@ -1937,23 +1986,26 @@ struct extract_length_dependencies<
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_length_dependencies<
-  field<id, T, field_size<len_from_field<len_source>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(len_source));
+  static constexpr auto value =
+    static_vector<sv, max_dep_count_per_struct>(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
-template <fixed_string id, typename T, auto callable, auto constraint, fixed_string... req_fields>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires is_computed_size_v<size_type_of<size>>
 struct extract_length_dependencies<
-  field<id, T, field_size<len_from_fields<callable, fixed_string_list<req_fields...>>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
+  static constexpr auto value = deps_of(size_type_of<size>::req_field_list);
 };
 
-template <fixed_string id, typename T, typename size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, 
           typename present_only_if, typename optional>
 struct extract_length_dependencies<
   maybe_field<field<id, T, size, constraint>, present_only_if, optional>
@@ -2002,7 +2054,7 @@ inline constexpr auto extract_length_dependencies_v = extract_length_dependencie
 
 
 template <auto callable, typename R, field_name_list Fs>
-struct compute;
+struct compute_t;
 
 template <typename T>
 struct extract_parse_dependencies;
@@ -2012,10 +2064,10 @@ struct extract_parse_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, typename size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, 
           auto callable, fixed_string... req_fields, typename optional>
 struct extract_parse_dependencies<
-  maybe_field<field<id, T, size, constraint>, compute<callable, bool, fixed_string_list<req_fields...>>, optional>
+  maybe_field<field<id, T, size, constraint>, compute_t<callable, bool, fixed_string_list<req_fields...>>, optional>
 >
 {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
@@ -2048,7 +2100,7 @@ template <fixed_string id, auto callable, typename R, fixed_string... req_fields
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute<callable, R, fixed_string_list<req_fields...>>, type_switch>
+    type<compute_t<callable, R, fixed_string_list<req_fields...>>, type_switch>
   >
 > 
 {
@@ -2061,7 +2113,7 @@ struct extract_req_fields_from_clause;
 template <auto callable, fixed_string... req_fields, type_tag_like T>
 struct extract_req_fields_from_clause<
   branch<
-    compute<callable, bool, fixed_string_list<req_fields...>>,
+    compute_t<callable, bool, fixed_string_list<req_fields...>>,
     T
   >
 >
@@ -2109,12 +2161,13 @@ struct extract_unconditional_len_sources {
   static constexpr auto value = dep_vec();
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_unconditional_len_sources<
-  field<id, T, field_size<len_from_field<len_source>>, constraint>
+  field<id, T, size, constraint>
 >
 {
-  static constexpr auto value = dep_vec(as_sv(len_source));
+  static constexpr auto value = dep_vec(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
 template <typename T>
@@ -2175,11 +2228,16 @@ struct field_list_metadata {
     );
   }
 
-  static constexpr auto generate_derived_field_ids() {
-    dep_vec sources[sizeof...(fields) * 2] = {
-      dep_vec(extract_unconditional_len_sources_v<fields>)...,
-      dep_vec(extract_switch_discriminants_v<fields>)...
-    };
+  // Kept apart rather than concatenated: the two kinds now differ in how
+  // operator[] treats them, and a field can legitimately be both, which
+  // membership in two lists expresses and a tagged single list does not.
+  static constexpr auto generate_length_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_unconditional_len_sources_v<fields>)...};
+    return remove_duplicates(flatten(sources));
+  }
+
+  static constexpr auto generate_discriminant_derived_field_ids() {
+    dep_vec sources[sizeof...(fields)] = {dep_vec(extract_switch_discriminants_v<fields>)...};
     return remove_duplicates(flatten(sources));
   }
 
@@ -2187,7 +2245,8 @@ struct field_list_metadata {
   static constexpr dependency_table_t length_dependency_table = generate_len_dep_table();
   static constexpr dependency_table_t parse_dependency_table = generate_parse_dependency_table();
   static constexpr dependency_table_t type_deduction_dep_table = generate_type_deduction_dependency_table();
-  static constexpr dep_vec derived_field_ids = generate_derived_field_ids();
+  static constexpr dep_vec length_derived_field_ids = generate_length_derived_field_ids();
+  static constexpr dep_vec discriminant_derived_field_ids = generate_discriminant_derived_field_ids();
 };
 
 template <auto list_metadata>
@@ -2196,15 +2255,31 @@ constexpr auto lookup_field(sv field_name) -> static_optional<field_type_info> {
   return field_table[field_name];
 }
 
-// The single source of truth for "derived": both the write path and
-// operator[]'s constraint answer the question here, so the two cannot drift.
 template <auto list_metadata>
-constexpr auto is_derived_field(sv field_name) -> bool {
-  for(auto id: meta::type_of<list_metadata>::derived_field_ids) {
+constexpr auto is_length_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::length_derived_field_ids) {
     if(id == field_name)
       return true;
   }
   return false;
+}
+
+template <auto list_metadata>
+constexpr auto is_discriminant_derived_field(sv field_name) -> bool {
+  for(auto id: meta::type_of<list_metadata>::discriminant_derived_field_ids) {
+    if(id == field_name)
+      return true;
+  }
+  return false;
+}
+
+// The single source of truth for "derived": the write path asks this general
+// question, so its notion of "overwritten, do not accept an assignment" cannot
+// drift from the two specific questions operator[] asks.
+template <auto list_metadata>
+constexpr auto is_derived_field(sv field_name) -> bool {
+  return is_length_derived_field<list_metadata>(field_name) ||
+         is_discriminant_derived_field<list_metadata>(field_name);
 }
 
 
@@ -2269,6 +2344,18 @@ template <typename field_accessor, auto list_metadata>
 concept field_is_derived_from_other_fields =
   is_derived_field<list_metadata>(as_sv(field_accessor::field_id));
 
+// A length target is not part of the user's model of the struct: nobody
+// supplies it, and no assignment could keep it honest, since operator[] hands
+// back a reference and a container can be mutated through it without passing
+// any setter. So it has no operator[] overload at all.
+template <typename field_accessor, auto list_metadata>
+concept field_is_derived_from_a_length =
+  is_length_derived_field<list_metadata>(as_sv(field_accessor::field_id));
+
+template <typename field_accessor, auto list_metadata>
+concept field_is_derived_from_a_discriminant =
+  is_discriminant_derived_field<list_metadata>(as_sv(field_accessor::field_id));
+
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
@@ -2286,30 +2373,48 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
     return static_cast<field_type_ref>(*this).value;
   }
 
-  // Derived fields stay readable on a non-const object but hand back a const
+  // A discriminant stays readable on a non-const object but hands back a const
   // reference, so an attempted assignment fails as assign-to-const rather than
-  // as a wall of unsatisfied-constraint output from no viable overload.
+  // as a wall of unsatisfied-constraint output from no viable overload. How a
+  // caller should reach a variance field's held alternative is unsettled, so
+  // hiding discriminants the way length targets are hidden waits on that.
   template <
     typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
     requires (field_lookup_res.has_value) &&
-             field_is_derived_from_other_fields<field_accessor, list_metadata>
+             field_is_derived_from_a_discriminant<field_accessor, list_metadata>
   constexpr const auto& operator[](field_accessor) {
     using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 
+  // Constrained rather than unconditional: without excluding length targets
+  // here, `const auto& n = fl["len"_f]` would still reach one through a const
+  // object, and hiding it from the mutable overload alone would mean nothing.
   template <
     typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
-    requires (field_lookup_res.has_value)
+    requires (field_lookup_res.has_value) &&
+             (!field_is_derived_from_a_length<field_accessor, list_metadata>)
   constexpr const auto& operator[](field_accessor) const {
     using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;
   }
 };
+
+// The lookup operator[] performs, without its visibility policy. The library's
+// own read path resolves a len_from_field size and feeds user callables by
+// reading fields, and both can name a length target — which the user cannot
+// see, but which is still on the wire and still has to be read.
+template <typename field_accessor, auto list_metadata, typename... fields>
+constexpr auto& field_value_of(const struct_field_list_impl<list_metadata, fields...>& field_list) {
+  constexpr auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+  static_assert(field_lookup_res.has_value, "no such field in this field list");
+  using field_type_cref = const meta::type_of<field_lookup_res->id>&;
+  return static_cast<field_type_cref>(field_list).value;
+}
 } /* namespace s2s */
 
 
@@ -2340,7 +2445,7 @@ struct is_invocable<callable,
       std::is_invocable_r_v<
         return_type, 
         decltype(callable),
-        decltype(struct_field_list_t{}[field_accessor<req_fields>{}])...
+        decltype(field_value_of<field_accessor<req_fields>>(struct_field_list_t{}))...
       >;
 };
 
@@ -2363,7 +2468,7 @@ struct compute_impl;
 
 // todo: static_vector over fixed_string list?
 template <auto callable, typename R, fixed_string... req_fields>
-struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
+struct compute_impl<compute_t<callable, R, fixed_string_list<req_fields...>>>{
   template <auto metadata, typename... fields>
     requires (can_eval_R_from_fields<
                 callable, 
@@ -2371,7 +2476,7 @@ struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
                 struct_field_list_impl<metadata, fields...>,
                 fixed_string_list<req_fields...>>)
   constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& flist) const -> R {
-    return callable(flist[field_accessor<req_fields>{}]...);
+    return callable(field_value_of<field_accessor<req_fields>>(flist)...);
   }
 };
 } /* namespace s2s */
@@ -2388,25 +2493,30 @@ struct compute_impl<compute<callable, R, fixed_string_list<req_fields...>>>{
  
  
  
+ 
 namespace s2s {
-template <typename T>
-struct deduce_field_size;
-
-template <fixed_string id>
-struct deduce_field_size<field_size<field_accessor<id>>> {
-  using field_size_type = field_accessor<id>;
-  
+// Two more partial specializations of the template declared in
+// comptime_field_size_deduce.hpp, with argument lists identical to the
+// primary's and told apart only by their constraints.
+template <auto size>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
+struct deduce_field_size<size> {
   template <auto metadata, typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) -> std::size_t {
-    return struct_fields[field_size_type{}];
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) const -> std::size_t {
+    // Resolving a len_from_field size reads, by definition, a length target —
+    // the one thing operator[] no longer exposes.
+    return field_value_of<size_type_of<size>>(struct_fields);
   }
 };
 
-template <auto callable, field_name_list req_fields>
-struct deduce_field_size<field_size<size_from_fields<callable, req_fields>>> {
-  using field_size_type = compute<callable, std::size_t, req_fields>;
+template <auto size>
+  requires is_computed_size_v<size_type_of<size>>
+struct deduce_field_size<size> {
+  using field_size_type =
+    compute_t<size_type_of<size>::f, std::size_t, std::remove_cvref_t<decltype(size_type_of<size>::req_field_list)>>;
+
   template <auto metadata, typename... fields>
-  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) -> std::size_t {
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& struct_fields) const -> std::size_t {
     return compute_impl<field_size_type>{}(struct_fields);
   }
 };
@@ -2614,7 +2724,7 @@ template <
 >
 struct extract_field_choices<
   type<
-    compute<callable, R, field_name_list>, 
+    compute_t<callable, R, field_name_list>, 
     type_switch<
       match_case<match_values, type_tags>...
     >
@@ -2630,7 +2740,7 @@ template <
 struct extract_field_choices<
   type<
     type_if_else<
-      branch<compute<callables, bool, field_name_lists>, type_tags>...
+      branch<compute_t<callables, bool, field_name_lists>, type_tags>...
     >
   >
 >
@@ -2680,7 +2790,7 @@ template <
 >
 struct extract_match_values<
   type<
-    compute<callable, R, field_name_list>,
+    compute_t<callable, R, field_name_list>,
     type_switch<
       match_case<match_values, type_tags>...
     >
@@ -2722,52 +2832,153 @@ struct always_true {
   }
 };
 
-using always_present = eval_bool_from_fields<always_true{}, with_fields<>>;
+using always_present = eval_bool_from_fields<always_true{}>;
 
-template <typename size, typename field_type>
+template <auto size, typename field_type>
 concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
 
-template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
-  requires field_fits_to_underlying_type<size_type, T>
-using basic_field = field<id, T, size_type, constraint_on_value>;
+// The trailing options of a descriptor are an unordered pack: a size, a
+// constraint, either, or neither. Classification is by the option's *type*,
+// which is also why these concepts take it first — a placeholder constraint
+// `field_option_like<T> auto... opts` substitutes decltype(opt) as the first
+// argument, so a value-parameterised concept could not be used this way at all.
+template <typename S, typename T>
+concept size_option_like = fixed_size_like<S>    ||
+                           variable_size_like<S> ||
+                           size_dont_care_like<S> ||
+                           selectable_size_like<S>;
 
-template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using fixed_array_field = field<id, std::array<T, N>, field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+template <typename C, typename T>
+concept constraint_option_like = requires (const C& c, const T& v) {
+  { c(v) } -> std::same_as<bool>;
+};
 
-template <fixed_string id, field_list_like T, std::size_t N, auto constraint_on_value = no_constraint<std::array<T, N>>{}>
-using array_of_records = field<id, std::array<T, N>, field_size<size_dont_care>, constraint_on_value>;
+template <typename O, typename T>
+concept field_option_like = size_option_like<O, T> || constraint_option_like<O, T>;
 
-template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<fixed_string<N>>{}>
-using fixed_string_field = field<id, fixed_string<N>, field_size<fixed<N + 1>>, constraint_on_value>;
+// Applied per element rather than as a fold in a requires-clause: a fold names
+// the fold and dumps the whole pack, while this isolates the offending entry
+// and prints both things it could have been.
+template <typename T, auto... opts>
+inline constexpr std::size_t size_option_count =
+  (0u + ... + (size_option_like<size_type_of<opts>, T> ? 1u : 0u));
 
-template <fixed_string id, field_containable T, std::size_t N, auto constraint_on_value = no_constraint<T[N]>{}>
-using c_arr_field = field<id, T[N], field_size<fixed<N * sizeof(T)>>, constraint_on_value>;
+template <typename T, auto... opts>
+inline constexpr std::size_t constraint_option_count =
+  (0u + ... + (constraint_option_like<size_type_of<opts>, T> ? 1u : 0u));
 
-template <fixed_string id, std::size_t N, auto constraint_on_value = no_constraint<char[N + 1]>{}>
-using c_str_field = field<id, char[N + 1], field_size<fixed<N * sizeof(char) + 1>>, constraint_on_value>;
+// A concept can reject an entry it cannot classify but cannot count how many
+// classified the same way, so duplicates are the one sanctioned static_assert.
+template <typename T, auto... opts>
+struct pack_options {
+  static_assert(size_option_count<T, opts...> <= 1,
+                "a field takes at most one size option");
+  static_assert(constraint_option_count<T, opts...> <= 1,
+                "a field takes at most one constraint option");
+};
+
+template <typename T, auto... opts>
+struct size_in_pack {
+  static constexpr auto value = byte_count{sizeof(T)};
+};
+
+template <typename T, auto head, auto... tail>
+struct size_in_pack<T, head, tail...> {
+  static constexpr auto value = [] {
+    if constexpr(size_option_like<size_type_of<head>, T>)
+      return head;
+    else
+      return size_in_pack<T, tail...>::value;
+  }();
+};
+
+template <typename T, auto... opts>
+struct constraint_in_pack {
+  static constexpr auto value = no_constraint<T>{};
+};
+
+template <typename T, auto head, auto... tail>
+struct constraint_in_pack<T, head, tail...> {
+  static constexpr auto value = [] {
+    if constexpr(constraint_option_like<size_type_of<head>, T>)
+      return head;
+    else
+      return constraint_in_pack<T, tail...>::value;
+  }();
+};
+
+// Order independence is exactly this scan; nothing else is needed. Deriving
+// from pack_options is what instantiates it, so the duplicate assertions fire.
+template <typename T, auto... opts>
+struct resolved_options : pack_options<T, opts...> {
+  static constexpr auto size = size_in_pack<T, opts...>::value;
+  static constexpr auto constraint = constraint_in_pack<T, opts...>::value;
+};
+
+template <typename T, auto... opts>
+inline constexpr auto size_of_pack = resolved_options<T, opts...>::size;
+
+template <typename T, auto... opts>
+inline constexpr auto constraint_of_pack = resolved_options<T, opts...>::constraint;
+
+template <fixed_string id, integral T, field_option_like<T> auto... opts>
+  requires field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
+using basic_field = field<id, T, size_of_pack<T, opts...>, constraint_of_pack<T, opts...>>;
+
+template <fixed_string id, field_containable T, std::size_t N,
+          constraint_option_like<std::array<T, N>> auto... opts>
+using fixed_array_field =
+  field<id, std::array<T, N>, byte_count{N * sizeof(T)}, constraint_of_pack<std::array<T, N>, opts...>>;
+
+template <fixed_string id, field_list_like T, std::size_t N,
+          constraint_option_like<std::array<T, N>> auto... opts>
+using array_of_records =
+  field<id, std::array<T, N>, size_dont_care, constraint_of_pack<std::array<T, N>, opts...>>;
+
+template <fixed_string id, std::size_t N, constraint_option_like<fixed_string<N>> auto... opts>
+using fixed_string_field =
+  field<id, fixed_string<N>, byte_count{N + 1}, constraint_of_pack<fixed_string<N>, opts...>>;
+
+template <fixed_string id, field_containable T, std::size_t N,
+          constraint_option_like<T[N]> auto... opts>
+using c_arr_field = field<id, T[N], byte_count{N * sizeof(T)}, constraint_of_pack<T[N], opts...>>;
+
+template <fixed_string id, std::size_t N, constraint_option_like<char[N + 1]> auto... opts>
+using c_str_field =
+  field<id, char[N + 1], byte_count{N * sizeof(char) + 1}, constraint_of_pack<char[N + 1], opts...>>;
 
 template <fixed_string id, std::size_t N, auto expected>
-using magic_byte_array = field<id, std::array<unsigned char, N>, field_size<fixed<N>>, eq{expected}>;
+using magic_byte_array = field<id, std::array<unsigned char, N>, byte_count{N}, eq{expected}>;
 
 template <fixed_string id, fixed_string expected>
-using magic_string = field<id, fixed_string<expected.size()>, field_size<fixed<expected.size() + 1>>, eq{expected}>;
+using magic_string = field<id, fixed_string<expected.size()>, byte_count{expected.size() + 1}, eq{expected}>;
 
-template <fixed_string id, integral T, fixed_size_like size, auto expected>
+template <fixed_string id, integral T, auto size, auto expected>
+  requires fixed_size_like<size_type_of<size>>
 using magic_number = field<id, T, size, eq{expected}>;
 
 // todo how user can provide user defined vector impl or allocator
-template <fixed_string id, typename T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
-using vec_field = field<id, std::vector<T>, size, constraint_on_value>;
+template <fixed_string id, typename T, field_option_like<std::vector<T>> auto... opts>
+  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+using vec_field =
+  field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
+        constraint_of_pack<std::vector<T>, opts...>>;
 
-template <fixed_string id, field_list_like T, variable_size_like size, auto constraint_on_value = no_constraint<std::vector<T>>{}>
-using vector_of_records = field<id, std::vector<T>, size, constraint_on_value>;
+template <fixed_string id, field_list_like T, field_option_like<std::vector<T>> auto... opts>
+  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+using vector_of_records =
+  field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
+        constraint_of_pack<std::vector<T>, opts...>>;
 
 // todo check if this will work for all char types like wstring
-template <fixed_string id, variable_size_like size, auto constraint_on_value = no_constraint<std::string>{}>
-using str_field = field<id, std::string, size, constraint_on_value>;
+template <fixed_string id, field_option_like<std::string> auto... opts>
+  requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
+using str_field =
+  field<id, std::string, size_of_pack<std::string, opts...>,
+        constraint_of_pack<std::string, opts...>>;
 
-template <fixed_string id, field_list_like T>
-using struct_field = field<id, T, field_size<size_dont_care>, no_constraint<T>{}>;
+template <fixed_string id, field_list_like T, constraint_option_like<T> auto... opts>
+using struct_field = field<id, T, size_dont_care, constraint_of_pack<T, opts...>>;
 
 template <no_variance_field_like base_field, typename present_only_if>
   requires is_eval_bool_from_fields_v<present_only_if>
@@ -2796,7 +3007,8 @@ template <typename T>
 struct is_fixed_sized_field;
 
 // Specialization for field with fixed_size_like size
-template <fixed_string id, field_containable T, fixed_size_like size, auto constraint_on_value>
+template <fixed_string id, field_containable T, auto size, auto constraint_on_value>
+  requires fixed_size_like<size_type_of<size>>
 struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -2815,7 +3027,7 @@ concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 template <typename T>
 struct is_array_of_record_field;
 
-template <fixed_string id, field_list_like T, std::size_t N, typename size, auto constraint_on_value>
+template <fixed_string id, field_list_like T, std::size_t N, auto size, auto constraint_on_value>
 struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -2836,7 +3048,8 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, variable_sized_buffer_like T, variable_size_like size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, auto size, auto constraint_on_value>
+  requires variable_size_like<size_type_of<size>>
 struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -2856,7 +3069,7 @@ concept variable_sized_field_like = is_variable_sized_field_v<T>;
 template <typename T>
 struct is_vector_of_record_field;
 
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value>
 struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -2876,7 +3089,7 @@ template <typename T>
 struct is_struct_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, field_list_like T, typename size, auto constraint_on_value>
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value>
 struct is_struct_field<field<id, T, size, constraint_on_value>> {
   static constexpr bool res = true;
 };
@@ -2900,7 +3113,7 @@ struct is_optional_field;
 // Specialization for maybe_field with a field
 template <fixed_string id, 
           typename T, 
-          typename size, 
+          auto size, 
           auto constraint, 
           typename present_only_if, 
           typename optional>
@@ -3032,8 +3245,8 @@ struct not_a_field;
 template <typename T>
 struct extract_type_from_field;
 
-template <fixed_string id, typename field_type, typename size, auto constraint>
-struct extract_type_from_field<field<id, field_type, field_size<size>, constraint>> {
+template <fixed_string id, typename field_type, auto size, auto constraint>
+struct extract_type_from_field<field<id, field_type, size, constraint>> {
   using type = field_type;
 };
 
@@ -3507,7 +3720,7 @@ struct read_field<T, F> {
   
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
     return read_impl<endianness>(s, field.value, size_to_read);
   }
@@ -3524,7 +3737,7 @@ struct read_field<T, F> {
 
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return read_impl<endianness>(s, field.value, len_to_read);
   }
@@ -3541,7 +3754,7 @@ struct create_field_from_array_of_records<T> {
   using array_type = typename T::field_type;
   using array_elem_type = extract_type_from_array_v<array_type>;
   static constexpr auto field_id = T::field_id;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
   static constexpr auto constraint = no_constraint<array_elem_type>{};
 
   using res = field<field_id, array_elem_type, size, constraint>;
@@ -3560,7 +3773,7 @@ struct create_field_from_vector_of_records<T> {
   using vector_type = typename T::field_type;
   using vector_elem_type = extract_type_from_vec_t<vector_type>;
   static constexpr auto field_id = T::field_id;
-  using size = field_size<size_dont_care>;
+  static constexpr auto size = size_dont_care;
   static constexpr auto constraint = no_constraint<vector_elem_type>{};
 
   using res = field<field_id, vector_elem_type, size, constraint>;
@@ -3625,7 +3838,7 @@ struct read_field<T, F> {
   template <auto endianness, typename stream>
   constexpr auto read(stream& s) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
 
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
@@ -3872,10 +4085,11 @@ struct len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint>
-struct len_obligation<field<id, T, field_size<len_from_field<len_source>>, constraint>> {
+template <fixed_string id, typename T, auto size, auto constraint>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
+struct len_obligation<field<id, T, size, constraint>> {
   static constexpr bool present = true;
-  static constexpr sv target = as_sv(len_source);
+  static constexpr sv target = as_sv(len_source_of<size_type_of<size>>::value);
 };
 
 template <typename producer, typename target>
@@ -3933,18 +4147,19 @@ struct conditional_len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, fixed_string len_source, auto constraint,
+template <fixed_string id, typename T, auto size, auto constraint,
           typename present_only_if, typename optional>
+  requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct conditional_len_obligation<
   maybe_field<
-    field<id, T, field_size<len_from_field<len_source>>, constraint>,
+    field<id, T, size, constraint>,
     present_only_if,
     optional
   >
 >
 {
   static constexpr bool present = true;
-  static constexpr sv target = as_sv(len_source);
+  static constexpr sv target = as_sv(len_source_of<size_type_of<size>>::value);
 };
 
 template <typename producer, typename target>
@@ -4118,9 +4333,9 @@ struct derive_value<target, struct_field_list_impl<metadata, fields...>> {
 
 private:
   // The declared width, not sizeof(field_type): a u32 slot declared
-  // field_size<fixed<2>> puts two bytes on the wire, and a length needing
+  // 2_B puts two bytes on the wire, and a length needing
   // three must fail rather than reach the stream truncated.
-  static constexpr auto declared_width = deduce_field_size<typename target::field_size>{}();
+  static constexpr auto declared_width = deduce_field_size<target::field_size>{}();
 
   static constexpr auto fits_declared_width(std::size_t v) -> bool {
     if constexpr(declared_width < sizeof(std::size_t)) {
@@ -4253,7 +4468,7 @@ struct write_field<T, F> {
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
     if constexpr(is_derived_target_v<T, F>) {
       // The stored value is ignored, so the constraint has to be checked
@@ -4296,8 +4511,8 @@ struct write_field<T, F> {
 
   template <auto endianness, typename stream>
   constexpr auto write(stream& s) const -> rw_result {
-    using field_size = typename T::field_size;
-    if constexpr(is_computed_size_v<field_size>) {
+    constexpr auto field_size = T::field_size;
+    if constexpr(is_computed_size_v<size_type_of<field_size>>) {
       // An arbitrary N-ary callable has no inverse, so its source fields stay
       // ordinary data and the size they imply can only be checked against the
       // container, never used to repair it.
@@ -4376,9 +4591,9 @@ struct write_field<T, F> {
   constexpr auto write(stream& s) const -> rw_result {
     using vector_type = typename T::field_type;
     using element_t = extract_type_from_vec_t<vector_type>;
-    using field_size = typename T::field_size;
+    constexpr auto field_size = T::field_size;
 
-    if constexpr(is_computed_size_v<field_size>) {
+    if constexpr(is_computed_size_v<size_type_of<field_size>>) {
       if(deduce_field_size<field_size>{}(field_list) != value.size())
         return std::unexpected(error_reason::found_contradicting_length);
     }

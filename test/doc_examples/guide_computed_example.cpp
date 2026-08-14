@@ -19,12 +19,12 @@ constexpr auto pixel_count = [](auto width, auto height) { return width * height
 // is the product of two fields that are each meaningful on their own.
 using image_tile =
   s2s::struct_field_list<
-    s2s::basic_field<"width", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::basic_field<"height", u16, s2s::field_size<s2s::fixed<2>>>,
+    s2s::basic_field<"width", u16, 2_B>,
+    s2s::basic_field<"height", u16, 2_B>,
     s2s::vec_field<
       "pixels",
       u16,
-      s2s::field_size<s2s::len_from_fields<pixel_count, s2s::with_fields<"width", "height">>>
+      s2s::len_from_fields<pixel_count, "width", "height">
     >
   >;
 

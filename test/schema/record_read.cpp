@@ -19,13 +19,13 @@ TEST(RecordRead, ReadsANestedRecord) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>,
       s2s::struct_field<
         "c",
         s2s::struct_field_list<
-          s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-          s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+          s2s::basic_field<"x", u32, 4_B>,
+          s2s::basic_field<"y", u32, 4_B>
         >
       >
     >;
@@ -57,8 +57,8 @@ TEST(RecordRead, ReadsAnArrayOfRecords) {
 
   using test_struct =
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   FIELD_LIST_SCHEMA =
@@ -93,17 +93,17 @@ TEST(RecordRead, ReadsAVectorOfRecords) {
 
   using test_struct = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::vector_of_records<
         "records", 
         test_struct, 
-        s2s::field_size<s2s::len_from_field<"len">>
+        s2s::len_from_field<"len">
       >
     >;
 
@@ -135,17 +135,17 @@ TEST(RecordRead, ReadsAVectorOfRecordsBigEndian) {
 
   using test_struct = 
     s2s::struct_field_list<
-      s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-      s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>
+      s2s::basic_field<"a", u32, 4_B>,
+      s2s::basic_field<"b", u32, 4_B>
     >;
 
   FIELD_LIST_SCHEMA = 
     s2s::struct_field_list<
-      s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+      s2s::basic_field<"len", std::size_t, 8_B>,
       s2s::vector_of_records<
         "records", 
         test_struct, 
-        s2s::field_size<s2s::len_from_field<"len">>
+        s2s::len_from_field<"len">
       >
     >;
 

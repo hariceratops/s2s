@@ -5,28 +5,42 @@ the wire? That is not the same question as how large its C++ type is. A field
 whose type is `u32` can be declared to occupy two bytes, and reading it will
 produce a `u32` holding a value that arrived as two bytes.
 
-Sizes are written as `field_size<...>` wrapping one of six forms.
+A size is a **value**, not a type, and it is written directly as one of five
+forms. There is no wrapper around it.
 
 | Form | How the width is determined |
 |---|---|
-| `fixed<N>` | exactly `N` bytes, fixed at compile time |
+| `N_B` | exactly `N` bytes, fixed at compile time |
 | `len_from_field<"id">` | the value currently held by the field named `id` |
-| `size_from_fields<f, with_fields<...>>` | a callable applied to the named sibling fields |
-| `len_from_fields<f, ids>` | an alias for `size_from_fields` |
-| `size_choices<...>` | one of several widths, chosen per union alternative |
+| `size_from_fields<f, "a", "b">` | a callable applied to the named sibling fields |
+| `len_from_fields<f, "a", "b">` | an alias for `size_from_fields` |
 | `size_dont_care` | whatever the field's own nested schema occupies |
 
-**`fixed<N>`** is the only form a `basic_field` accepts, and it is constrained:
+**`N_B`** is the only form a `basic_field` accepts, and it is constrained:
 `field_fits_to_underlying_type` requires `N <= sizeof(T)`. Declaring a
-`basic_field<"x", u16, field_size<fixed<4>>>` is a compile error, because four
-bytes off the wire cannot be delivered into a two-byte type.
+`basic_field<"x", u16, 4_B>` is a compile error, because four bytes off the
+wire cannot be delivered into a two-byte type.
+
+**A `basic_field` that omits its size gets `sizeof(T)`**, which is what most
+fields want:
+
+```cpp
+s2s::basic_field<"version", u16>          // two bytes
+s2s::basic_field<"version", u16, 2_B>     // the same field, spelled out
+s2s::basic_field<"truncated", u32, 2_B>   // two bytes on the wire, u32 in the struct
+```
+
+The size and the constraint are an unordered pair, so either may be given, in
+either order, or neither. An entry that is neither a size nor a constraint is
+rejected by a named concept that says what was expected, and giving two of the
+same kind is a `static_assert`.
 
 **`len_from_field<"id">`** takes the width from another field's value — the
 length-prefix pattern. The named field must appear earlier in the schema, since
 reading is strictly left to right and the length has to be known before the
 field it sizes.
 
-**`size_from_fields<f, with_fields<...>>`** covers everything a single field
+**`size_from_fields<f, "a", "b">`** covers everything a single field
 lookup cannot express: a length in units other than bytes, a total minus a
 header, a width assembled from two fields. The callable and its inputs are
 described in [Computed values](computed-values.md); `len_from_fields` is the

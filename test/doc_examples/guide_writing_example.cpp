@@ -22,8 +22,8 @@ using u16 = unsigned short;
 using log_record =
   s2s::struct_field_list<
     s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x4c, 0x47}>,
-    s2s::basic_field<"message_length", u16, s2s::field_size<s2s::fixed<2>>>,
-    s2s::str_field<"message", s2s::field_size<s2s::len_from_field<"message_length">>>
+    s2s::basic_field<"message_length", u16, 2_B>,
+    s2s::str_field<"message", s2s::len_from_field<"message_length">>
   >;
 
 auto main() -> int {
@@ -43,7 +43,7 @@ auto main() -> int {
         return s2s::struct_cast_be<log_record>(file);
       })
       .transform([](const log_record& parsed) {
-        return parsed["message_length"_f] == 16
+        return parsed["message"_f].size() == 16
             && parsed["message"_f] == "disk nearly full";
       });
 

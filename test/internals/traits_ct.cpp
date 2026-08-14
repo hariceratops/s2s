@@ -18,7 +18,11 @@
 using ut::expect;
 using ut::eq;
 using ut::operator""_test;
+// Imported explicitly rather than relying on the global-scope
+// `using namespace s2s_literals` that two library headers leak into every TU.
+using namespace s2s_literals;
 
+using u16 = unsigned short;
 using u32 = unsigned int;
 namespace tl = s2s::typelist;
 
@@ -33,20 +37,25 @@ auto main() -> int {
   };
 
   "the size axis forms are told apart"_test = [] constexpr {
-    expect(eq(s2s::is_variable_size_v<s2s::field_size<s2s::len_from_field<"hello">>>, true));
-    expect(eq(s2s::is_fixed_size_v<s2s::field_size<s2s::fixed<4>>>, true));
+    // A size is a value now, so the traits are asked about its type. Passing a
+    // plain type still answers false — the classification is total, not a
+    // precondition.
+    expect(eq(s2s::is_variable_size_v<s2s::size_type_of<s2s::len_from_field<"hello">>>, true));
+    expect(eq(s2s::is_fixed_size_v<s2s::size_type_of<4_B>>, true));
     expect(eq(s2s::is_fixed_size_v<int>, false));
     expect(eq(s2s::is_variable_size_v<int>, false));
-    expect(eq(s2s::field_size<s2s::fixed<6>>::size_type_t::count, std::size_t{6}));
+    // The width lives in the value, and deduce_field_size is what reads it.
+    expect(eq(s2s::deduce_field_size<6_B>{}(), std::size_t{6}));
+    expect(eq(s2s::deduce_field_size<2_B>{}(), std::size_t{2}));
   };
 
   "an optional field is distinguishable from a plain one"_test = [] constexpr {
     using optional_f =
       s2s::maybe<
-        s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-        s2s::parse_if<is_eq_1, s2s::with_fields<"a">>
+        s2s::basic_field<"a", u32, 4_B>,
+        s2s::parse_if<is_eq_1, "a">
       >;
-    using plain_f = s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>;
+    using plain_f = s2s::basic_field<"a", u32, 4_B>;
 
     expect(eq(s2s::is_optional_field_v<optional_f>, true));
     expect(eq(s2s::is_optional_field_v<plain_f>, false));
@@ -92,10 +101,10 @@ auto main() -> int {
   };
 
   "a field's stored type is extractable, and a non-field says so"_test = [] constexpr {
-    using int_field = s2s::basic_field<"x", int, s2s::field_size<s2s::fixed<4>>>;
+    using int_field = s2s::basic_field<"x", int, 4_B>;
     // basic_field requires an integral T, so a float leaf is spelled with the
     // field template it expands to.
-    using float_field = s2s::field<"y", float, s2s::field_size<s2s::fixed<4>>,
+    using float_field = s2s::field<"y", float, 4_B,
                                    s2s::no_constraint<float>{}>;
     using inner = s2s::struct_field_list<int_field, float_field>;
 
@@ -130,5 +139,21 @@ auto main() -> int {
     expect(eq(meta::invoke<std::is_const>(meta::type_id<const int>), true));
     expect(eq(meta::invoke<std::is_const>(meta::type_id<int>), false));
     expect(eq(meta::type_id<int> == meta::invoke<std::remove_pointer>(meta::type_id<int*>), true));
+  };
+
+  // The classifier scans the pack by kind rather than reading it positionally.
+  // Without this a classifier that only happened to work in the order every
+  // other test writes its options would pass the whole suite.
+  "the option pack is order-independent"_test = [] constexpr {
+    using size_then_constraint = s2s::basic_field<"v", u16, 2_B, s2s::eq{u16{5}}>;
+    using constraint_then_size = s2s::basic_field<"v", u16, s2s::eq{u16{5}}, 2_B>;
+    expect(eq(std::is_same_v<size_then_constraint, constraint_then_size>, true));
+
+    // Either option may be omitted, and the defaults do not depend on which.
+    using size_only = s2s::basic_field<"v", u16, 2_B>;
+    using constraint_only = s2s::basic_field<"v", u16, s2s::eq{u16{5}}>;
+    using neither = s2s::basic_field<"v", u16>;
+    expect(eq(std::is_same_v<size_only, neither>, true));
+    expect(eq(std::is_same_v<constraint_only, constraint_then_size>, true));
   };
 }

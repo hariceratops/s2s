@@ -18,16 +18,16 @@ using u32 = unsigned int;
 
 using point =
   s2s::struct_field_list<
-    s2s::basic_field<"x", u32, s2s::field_size<s2s::fixed<4>>>,
-    s2s::basic_field<"y", u32, s2s::field_size<s2s::fixed<4>>>
+    s2s::basic_field<"x", u32, 4_B>,
+    s2s::basic_field<"y", u32, 4_B>
   >;
 
 auto main() -> int {
   "a nested schema reads its own leaves"_test = [] constexpr {
     using nested =
       s2s::struct_field_list<
-        s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
-        s2s::basic_field<"b", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::basic_field<"a", u32, 4_B>,
+        s2s::basic_field<"b", u32, 4_B>,
         s2s::struct_field<"c", point>
       >;
 
@@ -53,7 +53,7 @@ auto main() -> int {
   "a nested schema takes the declared byte order at every leaf"_test = [] constexpr {
     using nested =
       s2s::struct_field_list<
-        s2s::basic_field<"a", u32, s2s::field_size<s2s::fixed<4>>>,
+        s2s::basic_field<"a", u32, 4_B>,
         s2s::struct_field<"c", point>
       >;
 
@@ -75,7 +75,7 @@ auto main() -> int {
   "an array of records reads every element"_test = [] constexpr {
     using schema =
       s2s::struct_field_list<
-        s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
+        s2s::basic_field<"len", std::size_t, 8_B>,
         s2s::array_of_records<"records", point, 3>
       >;
 
@@ -119,8 +119,8 @@ auto main() -> int {
   "a vector of records takes its element count from the length field"_test = [] constexpr {
     using schema =
       s2s::struct_field_list<
-        s2s::basic_field<"len", std::size_t, s2s::field_size<s2s::fixed<8>>>,
-        s2s::vector_of_records<"records", point, s2s::field_size<s2s::len_from_field<"len">>>
+        s2s::basic_field<"len", std::size_t, 8_B>,
+        s2s::vector_of_records<"records", point, s2s::len_from_field<"len">>
       >;
 
     std::array<u8, 32> buffer{
@@ -134,7 +134,6 @@ auto main() -> int {
     auto res = s2s::struct_cast_le<schema>(stream);
 
     expect(eq(res.has_value(), true));
-    expect(eq((*res)["len"_f], std::size_t{3}));
     expect(eq((*res)["records"_f].size(), std::size_t{3}));
     for(std::size_t idx = 0; idx < 3; ++idx) {
       expect(eq((*res)["records"_f][idx]["x"_f], 0xdeadbeefu));
