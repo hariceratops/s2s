@@ -23,6 +23,10 @@ Spec: `dev/specs/unbounded-resize-from-wire-length.md`.
   producing a container with an uninitialised tail.
 - The product is computed once and reachable by the bound check 047 adds,
   rather than recomputed there.
+- The overflow case pins the ceiling at `SIZE_MAX` explicitly rather than
+  relying on the default. Once 047 lands a 16 MiB default, a wrapping length is
+  rejected by the bound long before it can overflow, so a test that leans on the
+  default becomes a test of nothing.
 - Covered at compile time and at run time, per the project's three-way
   `add_ut_test` build; `constexpr_memstream` is enough to drive it.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`

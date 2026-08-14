@@ -4,7 +4,8 @@ A variable-sized field's length comes off the wire and is handed straight to
 `resize`, so a corrupt `u32` allocates gigabytes before a byte of payload is
 read. This adds `max_bytes<N>`, a per-field ceiling the schema declares, checked
 against the allocation before it happens and rejected as a recoverable
-`cast_error`.
+`cast_error`. Safety is on by default: a field that declares nothing still gets
+a 16 MiB ceiling, and `max_bytes` raises or lowers it per field.
 
 The option is declared on the **container**, never on the length field. A single
 length can size several containers of different element widths — `fanout` in
@@ -46,9 +47,21 @@ Spec: `dev/specs/unbounded-resize-from-wire-length.md`.
 - Two `max_bytes` entries in one pack is a compile error, via the same
   duplicate-count assertion `pack_options` already applies to sizes and
   constraints.
-- The option composes with a size and a constraint in any order, and omitting it
-  leaves the field exactly as unbounded as it is today.
-- The off-by-default exposure is discoverable in the documentation, not only
-  implicit in `max_bytes`'s reference entry.
+- The option composes with a size and a constraint in any order.
+- **Omitting it does not mean unbounded.** A field that declares no `max_bytes`
+  gets `default_max_bytes`, 16 MiB, so a schema written without thinking about
+  this is still protected. Safety is on by default.
+- `S2S_DEFAULT_MAX_BYTES` is the single global knob: raising it raises every
+  default, and setting it to `SIZE_MAX` turns the defaults off wholesale. It
+  cannot reach a declared `max_bytes` — a default is the library's guess, a
+  declaration is the author's intent, and no build flag discards the latter.
+  There is no second on/off switch or profile.
+- The bound applies only where wire input drives an allocation — `vec_field`,
+  `str_field`, `vector_of_records` — and this is a promise, not an omission.
+  Fixed-size fields, `fixed_array_field`, `array_of_records` and `c_arr_field`
+  have extents fixed by template parameters that no stream can influence.
+- The default, how to raise it, and the fact that a declared bound survives the
+  global knob are discoverable in the documentation, not only implicit in
+  `max_bytes`'s reference entry.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`
   entries; `single_header/s2s.hpp` is regenerated in the same commit.
