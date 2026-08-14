@@ -401,11 +401,13 @@ were chosen out:
 
 ## 5. Decisions, stated explicitly
 
-### Safety is on by default (revises the frozen spec)
+### Safety is on by default
 
 The spec this design was first written against made the ceiling opt-in and
-recorded "safe is off by default" as deliberate. That has been reversed, and
-the reversal is what `default_max_bytes` implements.
+recorded "safe is off by default" as deliberate. That was reversed before
+implementation, and `default_max_bytes` is what the reversal implements. The
+spec has since been unfrozen and corrected, so the two now agree; this section
+records why, since the reasoning does not survive in the code.
 
 The reasoning is the failure mode, not the number. "Too low a default" fails
 *closed*: a legitimate oversized field is rejected loudly, `failed_at` names it,
@@ -578,12 +580,11 @@ since `test/must_not_compile/` and `test/shipped_header/` consume the amalgam.
 - `docs/schema/index.md`: `max_bytes` in the descriptor table / option list,
   since that table is what `test/schema/` mirrors.
 - `docs/schema/size-axis.md`: the substantive entry. This is the page that
-  explains where a length comes from, and the bound is a statement about a length,
-  so the "off by default" callout belongs here rather than in a page of its own —
-  a reader learning `len_from_field` is exactly the reader who needs to be told
-  that nothing bounds it unless they say so. Written as an admonition, in neutral
-  third person, naming the exposure plainly: a field with no `max_bytes` allocates
-  whatever the wire says.
+  explains where a length comes from, and the bound is a statement about a length.
+  A reader learning `len_from_field` is exactly the reader who needs to know a
+  ceiling exists, what it defaults to, and how to move it — including that a
+  declared bound survives the global knob, which is the part someone reaching for
+  that knob most needs to be told.
 - Any complete program shown must be backed by a `test/doc_examples/` source with
   the `<!-- docs: ... -->` / `// docs-begin` binding; prefer extending an existing
   size-axis example over adding a new one.
