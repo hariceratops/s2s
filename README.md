@@ -43,6 +43,8 @@ folder can be used for direct inclusion into a project
   the data they describe — a length is not part of the struct's interface at
   all, and a discriminant is read-only
 * Validation of fields in place while reading and while writing
+* A per-field ceiling on what a wire-supplied length may allocate, on by
+  default, so a corrupt stream cannot ask for gigabytes
 * Compile time endianness handling 
 * Pluggable interfaces working with custom streams
 

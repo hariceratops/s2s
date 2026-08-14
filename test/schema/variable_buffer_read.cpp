@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <gtest/gtest.h>
 #include "../../single_header/s2s.hpp"
 #include "../utils/s2s_test_utils.hpp"
@@ -111,3 +112,24 @@ TEST(VariableBufferRead, ReadsAVectorSizedByItsLengthField) {
 //   //                                             0xdeadbeef, 0xcafed00d});
 // };
 
+
+// The run-time half of the overflow gate. The rejection happens before the
+// stream is touched for the payload, so this is about the path being live in a
+// non-constexpr build rather than about stream behaviour.
+TEST(VariableBufferRead, RejectsALengthWhoseByteCountWouldOverflow) {
+  using test_field_list =
+    s2s::struct_field_list<
+      s2s::basic_field<"n", std::uint64_t, 8_B>,
+      s2s::vec_field<"v", std::uint64_t, s2s::len_from_field<"n">>
+    >;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  const std::uint64_t absurd = std::uint64_t{1} << 61;
+  stream.write(reinterpret_cast<const char*>(&absurd), sizeof(absurd));
+
+  auto result = s2s::struct_cast_le<test_field_list>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::excessive_length);
+  EXPECT_EQ(result.error().failed_at, "v");
+}

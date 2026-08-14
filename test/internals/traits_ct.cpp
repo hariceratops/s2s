@@ -7,7 +7,9 @@
 // the s2s constraints of the same names. Test lambdas must not capture: ut
 // skips a capturing lambda at compile time silently.
 
+#include <cstdint>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string_view>
 #include <type_traits>
@@ -139,6 +141,48 @@ auto main() -> int {
     expect(eq(meta::invoke<std::is_const>(meta::type_id<const int>), true));
     expect(eq(meta::invoke<std::is_const>(meta::type_id<int>), false));
     expect(eq(meta::type_id<int> == meta::invoke<std::remove_pointer>(meta::type_id<int*>), true));
+  };
+
+  // checked_byte_count is phrased as a division so the product is never
+  // evaluated on an unvalidated length. The ceiling is spelled out rather than
+  // defaulted: once 047 lowers the default, a wrapping length is rejected by
+  // the bound long before it can wrap, and a test leaning on the default would
+  // quietly stop covering overflow at all.
+  "a byte count that would overflow is rejected"_test = [] constexpr {
+    constexpr auto ceiling = std::numeric_limits<std::size_t>::max();
+    constexpr auto widest = ceiling / sizeof(std::uint64_t);
+
+    // Exactly at the last representable count: accepted, and the product is
+    // the real one.
+    constexpr auto ok = s2s::checked_byte_count<std::uint64_t, ceiling>(widest);
+    expect(eq(ok.has_value(), true));
+    expect(eq(*ok, widest * sizeof(std::uint64_t)));
+
+    // One more would wrap.
+    constexpr auto wrapped = s2s::checked_byte_count<std::uint64_t, ceiling>(widest + 1);
+    expect(eq(wrapped.has_value(), false));
+    expect(eq(wrapped.error(), s2s::error_reason::excessive_length));
+
+    // A byte-sized element cannot overflow at all, so nothing is rejected.
+    constexpr auto bytes = s2s::checked_byte_count<unsigned char, ceiling>(ceiling);
+    expect(eq(bytes.has_value(), true));
+    expect(eq(*bytes, ceiling));
+  };
+
+  // A ceiling below SIZE_MAX rejects on the bound rather than on the wrap, by
+  // the same comparison — this is what 047 turns on.
+  "the same gate rejects on a lowered ceiling"_test = [] constexpr {
+    constexpr auto at = s2s::checked_byte_count<std::uint32_t, 8>(2);
+    expect(eq(at.has_value(), true));
+    expect(eq(*at, std::size_t{8}));
+
+    constexpr auto over = s2s::checked_byte_count<std::uint32_t, 8>(3);
+    expect(eq(over.has_value(), false));
+
+    // A ceiling that is not a whole number of elements truncates down.
+    constexpr auto truncated = s2s::checked_byte_count<std::uint32_t, 10>(2);
+    expect(eq(truncated.has_value(), true));
+    expect(eq(s2s::checked_byte_count<std::uint32_t, 10>(3).has_value(), false));
   };
 
   // The classifier scans the pack by kind rather than reading it positionally.

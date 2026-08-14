@@ -47,3 +47,17 @@ add_ut_test(constraint_write_ct)
 add_struct_cast_test(size_axis_write)
 add_ut_test(size_axis_read_ct)
 add_ut_test(size_axis_write_ct)
+
+# The allocation ceiling (047). Its own pair rather than additions to
+# variable_buffer_read*, because it verifies an option rather than a container
+# kind — the tree is organised by what a file checks.
+add_struct_cast_test(allocation_bound_read)
+add_ut_test(allocation_bound_read_ct)
+
+# Two more translation units purely to vary S2S_DEFAULT_MAX_BYTES: the macro is
+# per-TU and header-only s2s reads it at include time, so each file #defines its
+# own ceiling before including and needs no CMake variant. ut only — the macro
+# resolves at compile time and the behaviour it selects is the same code path
+# the pair above already exercises against a real stream.
+add_ut_test(allocation_bound_default_override_ct)
+add_ut_test(allocation_bound_disabled_ct)

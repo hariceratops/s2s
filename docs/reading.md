@@ -111,6 +111,12 @@ the same buffer is usually simpler.
 | a constraint rejected the decoded value | `validation_failure` | that field |
 | a magic value did not match | `validation_failure` | the magic field |
 | no `match_case` matched and no `branch` predicate held | `type_deduction_failure` | the union field |
+| a length exceeded the field's allocation ceiling | `excessive_length` | the container field |
+
+Note the first and last rows are not the same failure. `buffer_exhaustion`
+means a read began and the stream ran dry; `excessive_length` means the read
+never began, because the length could not be allocated. A truncated file gives
+the first, a corrupt length gives the second.
 
 `found_contradicting_length`, the fourth `error_reason`, cannot arise on a read.
 It reports two parts of a struct implying different lengths for the same data,
@@ -121,3 +127,56 @@ For a failure inside a nested record, `failed_at` names the outermost record
 field rather than the inner one. A validation failure two levels down inside
 `struct_field<"header", ...>` reports `"header"`, so the name returned is always
 one that appears in the schema handed to `struct_cast`.
+
+## Allocation limits
+
+A length-prefixed field's size comes off the wire, so a corrupt or hostile
+stream can claim a length far larger than the data behind it. Reading such a
+field naively means allocating for the claim before discovering it was a lie —
+a four-byte length can ask for four gigabytes.
+
+**Every variable-sized field is bounded, whether or not the schema says so.**
+The default ceiling is 16 MiB of allocated memory per field, and a length
+exceeding it fails with `excessive_length` *before* anything is allocated. This
+is the one read error that fires ahead of the read rather than during it, which
+is the whole point of it: `buffer_exhaustion` tells you the stream ran dry,
+`excessive_length` tells you it never had a chance.
+
+Declare a different ceiling per field with `max_bytes`:
+
+```cpp
+s2s::vec_field<"payload", u8, s2s::len_from_field<"n">, s2s::max_bytes<4096>>
+```
+
+It is a trailing option like any other, so it composes with a size and a
+constraint in any order. The bound is denominated in **bytes of allocated
+memory** — `count * sizeof(element)` — which for `vector_of_records` means the
+records' in-memory footprint rather than the bytes they occupy on the wire.
+`max_bytes` is inclusive: exactly the limit is accepted.
+
+It applies only where a length off the wire drives an allocation, which is
+`vec_field`, `str_field` and `vector_of_records`. A fixed-size field, a
+`fixed_array_field` or an `array_of_records` has an extent fixed at compile
+time that no stream can influence, and declaring `max_bytes` on one is a
+compile error rather than a no-op — silently ignoring it would let you believe
+you had bounded something you had not.
+
+### Raising the default
+
+`S2S_DEFAULT_MAX_BYTES` sets the default for every field that declares nothing.
+Define it before including the header:
+
+```cpp
+#define S2S_DEFAULT_MAX_BYTES (256u * 1024u * 1024u)
+#include "s2s.hpp"
+```
+
+Setting it to `SIZE_MAX` disables the defaults entirely. **It cannot disable a
+`max_bytes` you declared** — a default is the library's guess and yours to
+overrule, but a declared limit is your own intent, and no build setting
+discards it.
+
+One gap worth knowing: a `vec` alternative inside a `variance` cannot declare
+its own ceiling, because union alternatives take a size rather than a full set
+of options. Such a field still gets the default, so it is bounded; it simply
+cannot be given a different bound short of moving the global default.

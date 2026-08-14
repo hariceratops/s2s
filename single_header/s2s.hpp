@@ -10,6 +10,7 @@
 #include <expected>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <ranges>
 #include <string>
@@ -503,6 +504,29 @@ struct byte_count {
 
 struct size_dont_care_t {};
 
+// Safety is on by default: a field that declares nothing still gets a ceiling.
+// The macro is the one global knob — raise it, or set it to SIZE_MAX to turn
+// the defaults off wholesale. It cannot reach a declared max_bytes, which is
+// the schema author's intent rather than the library's guess.
+//
+// 16 MiB: far above what fields in real binary formats carry, far below what a
+// corrupt u32 can claim, and survivable as an accidental allocation.
+#ifndef S2S_DEFAULT_MAX_BYTES
+#define S2S_DEFAULT_MAX_BYTES (16u * 1024u * 1024u)
+#endif
+
+inline constexpr std::size_t default_max_bytes = S2S_DEFAULT_MAX_BYTES;
+
+template <std::size_t N>
+struct max_byte_count_t {
+  static constexpr std::size_t count = N;
+};
+
+// "no bound declared" is its own type rather than max_byte_count_t<SIZE_MAX>,
+// so the default stays a deferral to whatever the macro says at include time
+// rather than a number baked into every field.
+struct use_default_bound_t {};
+
 template <auto callable, field_name_list req_fields>
 struct size_from_fields_t {
   static constexpr auto f = callable;
@@ -528,6 +552,11 @@ inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
 
 inline constexpr auto size_dont_care = size_dont_care_t{};
 
+template <std::size_t N>
+inline constexpr auto max_bytes = max_byte_count_t<N>{};
+
+inline constexpr auto use_default_bound = use_default_bound_t{};
+
 template <auto... sizes>
 inline constexpr auto size_choices = size_choices_t<sizes...>{};
 
@@ -548,6 +577,41 @@ template <fixed_string id>
 struct len_source_of<field_accessor<id>> {
   static constexpr auto value = id;
 };
+
+template <typename T>
+struct is_bound_option {
+  static constexpr bool res = false;
+};
+
+template <std::size_t N>
+struct is_bound_option<max_byte_count_t<N>> {
+  static constexpr bool res = true;
+};
+
+template <>
+struct is_bound_option<use_default_bound_t> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_bound_option_v = is_bound_option<T>::res;
+
+template <typename T>
+concept bound_option_like = is_bound_option_v<T>;
+
+// Resolving a declared bound, or deferring to the macro.
+template <typename B>
+struct bound_value {
+  static constexpr std::size_t value = default_max_bytes;
+};
+
+template <std::size_t N>
+struct bound_value<max_byte_count_t<N>> {
+  static constexpr std::size_t value = N;
+};
+
+template <auto bound>
+inline constexpr std::size_t bound_in_bytes = bound_value<size_type_of<bound>>::value;
 
 // Metafunctions for checking if a type is a size type
 template <typename T>
@@ -1238,10 +1302,14 @@ namespace s2s {
 template <fixed_string id,
           typename T,
           auto size,
-          auto constraint_on_value>
+          auto constraint_on_value,
+          auto max_byte_bound = use_default_bound>
 struct field {
   using field_type = T;
   static constexpr auto field_size = size;
+  // The ceiling the read path applies before allocating this field. Defaulted,
+  // so every construction site that predates bounds keeps compiling.
+  static constexpr auto field_bound = max_byte_bound;
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
@@ -1251,9 +1319,9 @@ struct field {
 template <typename T>
 struct to_optional_field;
 
-template <fixed_string id, typename T, auto size, auto constraint_on_value>
-struct to_optional_field<field<id, T, size, constraint_on_value>> {
-  using res = field<id, std::optional<T>, size, no_constraint<std::optional<T>>{}>;
+template <fixed_string id, typename T, auto size, auto constraint_on_value, auto bound>
+struct to_optional_field<field<id, T, size, constraint_on_value, bound>> {
+  using res = field<id, std::optional<T>, size, no_constraint<std::optional<T>>{}, bound>;
 };
 
 template <typename T>
@@ -1264,8 +1332,9 @@ struct no_variance_field;
 
 template <fixed_string id,
           typename T,
-          auto size>
-struct no_variance_field<field<id, T, size, no_constraint<T>{}>> {
+          auto size,
+          auto bound>
+struct no_variance_field<field<id, T, size, no_constraint<T>{}, bound>> {
   static constexpr bool res = true;
 };
 
@@ -1490,7 +1559,12 @@ enum error_reason {
   // cross-field disagreement, not a value that is wrong on its own terms.
   // Appended rather than inserted so the existing enumerators keep their
   // values.
-  found_contradicting_length
+  found_contradicting_length,
+  // A length off the wire that cannot be allocated: it would overflow the byte
+  // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
+  // which means the stream ran dry *during* a read — this one fires before any
+  // allocation happens, which is the whole point of it.
+  excessive_length
 };
 
 
@@ -1968,38 +2042,38 @@ constexpr auto deps_of(fixed_string_list<fs...>) -> static_vector<sv, max_dep_co
 template <typename T>
 struct extract_length_dependencies;
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires fixed_size_like<size_type_of<size>>
 struct extract_length_dependencies<
-  field<id, T, size, constraint>
+  field<id, T, size, constraint, bound>
 >
 {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires size_dont_care_like<size_type_of<size>>
 struct extract_length_dependencies<
-  field<id, T, size, constraint>
+  field<id, T, size, constraint, bound>
 >
 {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_length_dependencies<
-  field<id, T, size, constraint>
+  field<id, T, size, constraint, bound>
 >
 {
   static constexpr auto value =
     static_vector<sv, max_dep_count_per_struct>(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires is_computed_size_v<size_type_of<size>>
 struct extract_length_dependencies<
-  field<id, T, size, constraint>
+  field<id, T, size, constraint, bound>
 >
 {
   static constexpr auto value = deps_of(size_type_of<size>::req_field_list);
@@ -2064,10 +2138,10 @@ struct extract_parse_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, typename T, auto size, auto constraint, 
+template <fixed_string id, typename T, auto size, auto constraint, auto bound,
           auto callable, fixed_string... req_fields, typename optional>
 struct extract_parse_dependencies<
-  maybe_field<field<id, T, size, constraint>, compute_t<callable, bool, fixed_string_list<req_fields...>>, optional>
+  maybe_field<field<id, T, size, constraint, bound>, compute_t<callable, bool, fixed_string_list<req_fields...>>, optional>
 >
 {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>(as_sv(req_fields)...);
@@ -2161,10 +2235,10 @@ struct extract_unconditional_len_sources {
   static constexpr auto value = dep_vec();
 };
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct extract_unconditional_len_sources<
-  field<id, T, size, constraint>
+  field<id, T, size, constraint, bound>
 >
 {
   static constexpr auto value = dep_vec(as_sv(len_source_of<size_type_of<size>>::value));
@@ -2856,6 +2930,20 @@ concept constraint_option_like = requires (const C& c, const T& v) {
 template <typename O, typename T>
 concept field_option_like = size_option_like<O, T> || constraint_option_like<O, T>;
 
+// A bound is meaningful only where wire input drives the allocation, so only
+// the three container descriptors admit one. Everywhere else max_bytes fails
+// the per-element placeholder constraint exactly as an unrecognised entry
+// does — the relationship "a bound needs a variable size" is hoisted into
+// *which descriptor* accepts it rather than checked between two pack entries,
+// which keeps classification per-element and keeps the diagnostic readable.
+template <typename B, typename T>
+concept bound_pack_option_like = bound_option_like<B>;
+
+template <typename O, typename T>
+concept boundable_field_option_like = size_option_like<O, T>       ||
+                                      constraint_option_like<O, T> ||
+                                      bound_pack_option_like<O, T>;
+
 // Applied per element rather than as a fold in a requires-clause: a fold names
 // the fold and dumps the whole pack, while this isolates the offending entry
 // and prints both things it could have been.
@@ -2867,6 +2955,10 @@ template <typename T, auto... opts>
 inline constexpr std::size_t constraint_option_count =
   (0u + ... + (constraint_option_like<size_type_of<opts>, T> ? 1u : 0u));
 
+template <typename T, auto... opts>
+inline constexpr std::size_t bound_option_count =
+  (0u + ... + (bound_pack_option_like<size_type_of<opts>, T> ? 1u : 0u));
+
 // A concept can reject an entry it cannot classify but cannot count how many
 // classified the same way, so duplicates are the one sanctioned static_assert.
 template <typename T, auto... opts>
@@ -2875,6 +2967,8 @@ struct pack_options {
                 "a field takes at most one size option");
   static_assert(constraint_option_count<T, opts...> <= 1,
                 "a field takes at most one constraint option");
+  static_assert(bound_option_count<T, opts...> <= 1,
+                "a field takes at most one max_bytes option");
 };
 
 template <typename T, auto... opts>
@@ -2907,12 +3001,28 @@ struct constraint_in_pack<T, head, tail...> {
   }();
 };
 
+template <typename T, auto... opts>
+struct bound_in_pack {
+  static constexpr auto value = use_default_bound;
+};
+
+template <typename T, auto head, auto... tail>
+struct bound_in_pack<T, head, tail...> {
+  static constexpr auto value = [] {
+    if constexpr(bound_pack_option_like<size_type_of<head>, T>)
+      return head;
+    else
+      return bound_in_pack<T, tail...>::value;
+  }();
+};
+
 // Order independence is exactly this scan; nothing else is needed. Deriving
 // from pack_options is what instantiates it, so the duplicate assertions fire.
 template <typename T, auto... opts>
 struct resolved_options : pack_options<T, opts...> {
   static constexpr auto size = size_in_pack<T, opts...>::value;
   static constexpr auto constraint = constraint_in_pack<T, opts...>::value;
+  static constexpr auto bound = bound_in_pack<T, opts...>::value;
 };
 
 template <typename T, auto... opts>
@@ -2920,6 +3030,9 @@ inline constexpr auto size_of_pack = resolved_options<T, opts...>::size;
 
 template <typename T, auto... opts>
 inline constexpr auto constraint_of_pack = resolved_options<T, opts...>::constraint;
+
+template <typename T, auto... opts>
+inline constexpr auto bound_of_pack = resolved_options<T, opts...>::bound;
 
 template <fixed_string id, integral T, field_option_like<T> auto... opts>
   requires field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
@@ -2958,24 +3071,27 @@ template <fixed_string id, integral T, auto size, auto expected>
 using magic_number = field<id, T, size, eq{expected}>;
 
 // todo how user can provide user defined vector impl or allocator
-template <fixed_string id, typename T, field_option_like<std::vector<T>> auto... opts>
+template <fixed_string id, typename T, boundable_field_option_like<std::vector<T>> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 using vec_field =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
-        constraint_of_pack<std::vector<T>, opts...>>;
+        constraint_of_pack<std::vector<T>, opts...>,
+        bound_of_pack<std::vector<T>, opts...>>;
 
-template <fixed_string id, field_list_like T, field_option_like<std::vector<T>> auto... opts>
+template <fixed_string id, field_list_like T, boundable_field_option_like<std::vector<T>> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 using vector_of_records =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
-        constraint_of_pack<std::vector<T>, opts...>>;
+        constraint_of_pack<std::vector<T>, opts...>,
+        bound_of_pack<std::vector<T>, opts...>>;
 
 // todo check if this will work for all char types like wstring
-template <fixed_string id, field_option_like<std::string> auto... opts>
+template <fixed_string id, boundable_field_option_like<std::string> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 using str_field =
   field<id, std::string, size_of_pack<std::string, opts...>,
-        constraint_of_pack<std::string, opts...>>;
+        constraint_of_pack<std::string, opts...>,
+        bound_of_pack<std::string, opts...>>;
 
 template <fixed_string id, field_list_like T, constraint_option_like<T> auto... opts>
 using struct_field = field<id, T, size_dont_care, constraint_of_pack<T, opts...>>;
@@ -3007,9 +3123,9 @@ template <typename T>
 struct is_fixed_sized_field;
 
 // Specialization for field with fixed_size_like size
-template <fixed_string id, field_containable T, auto size, auto constraint_on_value>
+template <fixed_string id, field_containable T, auto size, auto constraint_on_value, auto bound>
   requires fixed_size_like<size_type_of<size>>
-struct is_fixed_sized_field<field<id, T, size, constraint_on_value>> {
+struct is_fixed_sized_field<field<id, T, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
 
@@ -3027,8 +3143,8 @@ concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 template <typename T>
 struct is_array_of_record_field;
 
-template <fixed_string id, field_list_like T, std::size_t N, auto size, auto constraint_on_value>
-struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value>> {
+template <fixed_string id, field_list_like T, std::size_t N, auto size, auto constraint_on_value, auto bound>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
 
@@ -3048,9 +3164,9 @@ template <typename T>
 struct is_variable_sized_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, variable_sized_buffer_like T, auto size, auto constraint_on_value>
+template <fixed_string id, variable_sized_buffer_like T, auto size, auto constraint_on_value, auto bound>
   requires variable_size_like<size_type_of<size>>
-struct is_variable_sized_field<field<id, T, size, constraint_on_value>> {
+struct is_variable_sized_field<field<id, T, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
 
@@ -3069,8 +3185,8 @@ concept variable_sized_field_like = is_variable_sized_field_v<T>;
 template <typename T>
 struct is_vector_of_record_field;
 
-template <fixed_string id, field_list_like T, auto size, auto constraint_on_value>
-struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value>> {
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
 
@@ -3089,8 +3205,8 @@ template <typename T>
 struct is_struct_field;
 
 // Specialization for field with variable_size_like size
-template <fixed_string id, field_list_like T, auto size, auto constraint_on_value>
-struct is_struct_field<field<id, T, size, constraint_on_value>> {
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+struct is_struct_field<field<id, T, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
 
@@ -3115,10 +3231,11 @@ template <fixed_string id,
           typename T, 
           auto size, 
           auto constraint, 
+          auto bound,
           typename present_only_if, 
           typename optional>
 struct is_optional_field<
-    maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+    maybe_field<field<id, T, size, constraint, bound>, present_only_if, optional>
   >
 {
   static constexpr bool res = true;
@@ -3245,8 +3362,8 @@ struct not_a_field;
 template <typename T>
 struct extract_type_from_field;
 
-template <fixed_string id, typename field_type, auto size, auto constraint>
-struct extract_type_from_field<field<id, field_type, size, constraint>> {
+template <fixed_string id, typename field_type, auto size, auto constraint, auto bound>
+struct extract_type_from_field<field<id, field_type, size, constraint, bound>> {
   using type = field_type;
 };
 
@@ -3608,7 +3725,25 @@ constexpr cast_endianness deduce_byte_order() {
  
  
  
+ 
 namespace s2s {
+// The gate every wire-driven allocation passes through.
+//
+// Phrased as a division so `len * sizeof(element)` is never evaluated on an
+// unvalidated `len` — not even to test it. `ceiling / sizeof(element)` is a
+// compile-time constant, so this costs one comparison. It also makes the
+// overflow test and the bound test the same test: at SIZE_MAX it fires exactly
+// when the product would wrap, and at a lower ceiling it fires when the product
+// would wrap or exceed that ceiling.
+//
+// No guard for a zero element size: C++ has no complete type of size zero.
+template <typename element, std::size_t ceiling = std::numeric_limits<std::size_t>::max()>
+constexpr auto checked_byte_count(std::size_t len) -> std::expected<std::size_t, error_reason> {
+  if(len > ceiling / sizeof(element))
+    return std::unexpected(error_reason::excessive_length);
+  return len * sizeof(element);
+}
+
 template <typename T, identified_as_constexpr_stream stream>
 constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
@@ -3641,8 +3776,19 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
   return read_native_impl(s, obj, size_to_read);   
 }
 
-template <variable_sized_buffer_like T, input_stream_like stream>
+template <std::size_t ceiling = default_max_bytes, variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
+  // Above the resize *and* above the constexpr branch: no allocation
+  // proportional to an unvalidated length happens in either mode, and the
+  // reject path stays reachable during constant evaluation.
+  //
+  // The check lives here, at the allocation, rather than at the caller — that
+  // makes read_native locally sound for every caller instead of leaving a
+  // wrapping multiply justified by a caller-side invariant.
+  const auto byte_count = checked_byte_count<typename T::value_type, ceiling>(len_to_read);
+  if(!byte_count)
+    return std::unexpected(byte_count.error());
+
   obj.resize(len_to_read);
   if constexpr(identified_as_constexpr_stream<stream>) {
     // Mirrors write_native: a vector cannot be bit_cast during constant
@@ -3654,7 +3800,7 @@ constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_res
     }
     return {};
   } else {
-    return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+    return read_native_impl(s, obj, *byte_count);
   }
 }
 
@@ -3669,9 +3815,14 @@ constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) 
   return res;
 }
 
-template <buffer_like T, input_stream_like stream>
+template <std::size_t ceiling = default_max_bytes, buffer_like T, input_stream_like stream>
 constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
-  auto res = read_native(s, obj, len_to_read);
+  auto res = [&] {
+    if constexpr(variable_sized_buffer_like<T>)
+      return read_native<ceiling>(s, obj, len_to_read);
+    else
+      return read_native(s, obj, len_to_read);
+  }();
   if(res) {
     byteswap_elements(obj);
     return {};
@@ -3679,16 +3830,23 @@ constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -
   return res;
 }
 
-template <std::endian endianness, typename T, input_stream_like stream>
+// The ceiling is a defaulted NTTP after endianness so the existing call sites
+// keep compiling verbatim; only the resizing overload of read_native is handed
+// one, since the constant-sized overload has nothing to bound.
+template <std::endian endianness, std::size_t ceiling = default_max_bytes,
+          typename T, input_stream_like stream>
 constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
   auto constexpr byte_order = deduce_byte_order<endianness>();
   if constexpr(byte_order == cast_endianness::host) {
-    return read_native(s, obj, N); 
+    if constexpr(variable_sized_buffer_like<T>)
+      return read_native<ceiling>(s, obj, N);
+    else
+      return read_native(s, obj, N);
   } else if constexpr(byte_order == cast_endianness::foreign) {
     if constexpr(trivial<T>) {
       return read_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
-      return read_foreign_buffer(s, obj, N);
+      return read_foreign_buffer<ceiling>(s, obj, N);
     }
   }
 }
@@ -3739,7 +3897,7 @@ struct read_field<T, F> {
   constexpr auto read(stream& s) const -> rw_result {
     constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return read_impl<endianness>(s, field.value, len_to_read);
+    return read_impl<endianness, bound_in_bytes<T::field_bound>>(s, field.value, len_to_read);
   }
 };
 
@@ -3842,6 +4000,14 @@ struct read_field<T, F> {
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
 
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
+    // Validate the footprint before reserving it. The product is discarded on
+    // purpose: a record's wire size is not sizeof(record), so only the
+    // predicate is shared with the buffer site, not the byte count.
+    const auto footprint =
+      checked_byte_count<typename T::field_type::value_type, bound_in_bytes<T::field_bound>>(len_to_read);
+    if(!footprint)
+      return std::unexpected(footprint.error());
+
     field.value.resize(len_to_read);
     auto reader = read_impl_t(field, field_list, len_to_read);
     auto res = reader.template read<endianness>(s);
@@ -4085,9 +4251,9 @@ struct len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, auto size, auto constraint>
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
-struct len_obligation<field<id, T, size, constraint>> {
+struct len_obligation<field<id, T, size, constraint, bound>> {
   static constexpr bool present = true;
   static constexpr sv target = as_sv(len_source_of<size_type_of<size>>::value);
 };
@@ -4147,12 +4313,12 @@ struct conditional_len_obligation {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename T, auto size, auto constraint,
+template <fixed_string id, typename T, auto size, auto constraint, auto bound,
           typename present_only_if, typename optional>
   requires (variable_size_like<size_type_of<size>> && !is_computed_size_v<size_type_of<size>>)
 struct conditional_len_obligation<
   maybe_field<
-    field<id, T, size, constraint>,
+    field<id, T, size, constraint, bound>,
     present_only_if,
     optional
   >

@@ -14,7 +14,12 @@ enum error_reason {
   // cross-field disagreement, not a value that is wrong on its own terms.
   // Appended rather than inserted so the existing enumerators keep their
   // values.
-  found_contradicting_length
+  found_contradicting_length,
+  // A length off the wire that cannot be allocated: it would overflow the byte
+  // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
+  // which means the stream ran dry *during* a read — this one fires before any
+  // allocation happens, which is the whole point of it.
+  excessive_length
 };
 
 

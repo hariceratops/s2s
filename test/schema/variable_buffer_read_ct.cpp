@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 #include <ut>
 
@@ -109,4 +110,26 @@ auto main() -> int {
     expect(eq(res.error().failure_reason, s2s::buffer_exhaustion));
     expect(eq(res.error().failed_at, std::string_view{"vec"}));
   };
+
+  // The gate sits above the resize, so a length whose byte count would wrap is
+  // rejected without allocating anything. Reaching it needs an element wide
+  // enough that a plausible-looking count overflows: 2^61 u64s is 2^64 bytes.
+  "a length whose byte count would overflow is rejected before allocating"_test = [] constexpr {
+    using wide_vec =
+      s2s::struct_field_list<
+        s2s::basic_field<"n", std::uint64_t, 8_B>,
+        s2s::vec_field<"v", std::uint64_t, s2s::len_from_field<"n">>
+      >;
+
+    // 0x2000'0000'0000'0000 elements * 8 bytes wraps to exactly zero.
+    std::array<u8, 8> buffer{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20};
+    memstream<8> stream(buffer);
+
+    auto res = s2s::struct_cast_le<wide_vec>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
+    expect(eq(res.error().failed_at, std::string_view{"v"}));
+  };
+
 }

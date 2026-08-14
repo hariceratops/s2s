@@ -14,10 +14,14 @@ namespace s2s {
 template <fixed_string id,
           typename T,
           auto size,
-          auto constraint_on_value>
+          auto constraint_on_value,
+          auto max_byte_bound = use_default_bound>
 struct field {
   using field_type = T;
   static constexpr auto field_size = size;
+  // The ceiling the read path applies before allocating this field. Defaulted,
+  // so every construction site that predates bounds keeps compiling.
+  static constexpr auto field_bound = max_byte_bound;
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
@@ -27,9 +31,9 @@ struct field {
 template <typename T>
 struct to_optional_field;
 
-template <fixed_string id, typename T, auto size, auto constraint_on_value>
-struct to_optional_field<field<id, T, size, constraint_on_value>> {
-  using res = field<id, std::optional<T>, size, no_constraint<std::optional<T>>{}>;
+template <fixed_string id, typename T, auto size, auto constraint_on_value, auto bound>
+struct to_optional_field<field<id, T, size, constraint_on_value, bound>> {
+  using res = field<id, std::optional<T>, size, no_constraint<std::optional<T>>{}, bound>;
 };
 
 template <typename T>
@@ -40,8 +44,9 @@ struct no_variance_field;
 
 template <fixed_string id,
           typename T,
-          auto size>
-struct no_variance_field<field<id, T, size, no_constraint<T>{}>> {
+          auto size,
+          auto bound>
+struct no_variance_field<field<id, T, size, no_constraint<T>{}, bound>> {
   static constexpr bool res = true;
 };
 

@@ -23,3 +23,6 @@ add_rejected_case(rejects_duplicate_match_values derived_field_assignment.cpp 4)
 
 add_rejected_case(rejects_unrecognised_pack_entry option_pack_misuse.cpp 1)
 add_rejected_case(rejects_duplicate_size_option option_pack_misuse.cpp 2)
+
+add_rejected_case(rejects_bound_on_fixed_size_field option_pack_misuse.cpp 3)
+add_rejected_case(rejects_duplicate_bound_option option_pack_misuse.cpp 4)
