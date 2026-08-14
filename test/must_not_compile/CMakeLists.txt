@@ -23,3 +23,11 @@ add_rejected_case(rejects_duplicate_match_values derived_field_assignment.cpp 4)
 
 add_rejected_case(rejects_unrecognised_pack_entry option_pack_misuse.cpp 1)
 add_rejected_case(rejects_duplicate_size_option option_pack_misuse.cpp 2)
+
+# Scaffolded for 047, deliberately NOT registered yet — same reason as before:
+# add_rejected_case sets WILL_FAIL, so a case naming an API that does not exist
+# fails to build and passes for the wrong reason, and would keep passing if the
+# feature were never implemented. Uncomment when max_bytes lands.
+#
+# add_rejected_case(rejects_bound_on_fixed_size_field option_pack_misuse.cpp 3)
+# add_rejected_case(rejects_duplicate_bound_option option_pack_misuse.cpp 4)

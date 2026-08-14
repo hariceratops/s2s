@@ -41,6 +41,30 @@ using duplicate_size =
   >;
 #endif
 
+#if CASE == 3
+// TODO(047): must NOT compile — a bound is meaningless on a field whose extent
+// is a template parameter, since nothing a stream says can change how much it
+// allocates. It must fail the per-element placeholder constraint the same way
+// an unrecognised entry does, not be silently ignored: silence would let a
+// schema author believe they had bounded something they had not.
+using bound_on_a_fixed_size_field =
+  s2s::struct_field_list<
+    s2s::basic_field<"version", u16, 2_B, s2s::max_bytes<4096>>
+  >;
+#endif
+
+#if CASE == 4
+// TODO(047): must NOT compile — two bounds in one pack, caught by the same
+// duplicate-count assertion pack_options already applies to sizes and
+// constraints. Without it the scan would silently take the first.
+using duplicate_bound =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::vec_field<"payload", u8, s2s::len_from_field<"n">,
+                   s2s::max_bytes<4096>, s2s::max_bytes<8192>>
+  >;
+#endif
+
 auto main() -> int {
   return 0;
 }
