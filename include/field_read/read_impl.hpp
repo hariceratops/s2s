@@ -5,6 +5,7 @@
 #include <expected>
 #include <bit>
 #include <array>
+#include <limits>
 #include <type_traits>
 
 #include "../error/cast_error.hpp"
@@ -14,6 +15,23 @@
 
 
 namespace s2s {
+// The gate every wire-driven allocation passes through.
+//
+// Phrased as a division so `len * sizeof(element)` is never evaluated on an
+// unvalidated `len` — not even to test it. `ceiling / sizeof(element)` is a
+// compile-time constant, so this costs one comparison. It also makes the
+// overflow test and the bound test the same test: at SIZE_MAX it fires exactly
+// when the product would wrap, and at a lower ceiling it fires when the product
+// would wrap or exceed that ceiling.
+//
+// No guard for a zero element size: C++ has no complete type of size zero.
+template <typename element, std::size_t ceiling = std::numeric_limits<std::size_t>::max()>
+constexpr auto checked_byte_count(std::size_t len) -> std::expected<std::size_t, error_reason> {
+  if(len > ceiling / sizeof(element))
+    return std::unexpected(error_reason::excessive_length);
+  return len * sizeof(element);
+}
+
 template <typename T, identified_as_constexpr_stream stream>
 constexpr auto read_native_impl(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto as_byte_buffer_rep = as_byte_buffer<stream>(obj);
@@ -48,6 +66,13 @@ constexpr auto read_native(stream& s, T& obj, std::size_t size_to_read) -> rw_re
 
 template <variable_sized_buffer_like T, input_stream_like stream>
 constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_result {
+  // Above the resize *and* above the constexpr branch: no allocation
+  // proportional to an unvalidated length happens in either mode, and the
+  // reject path stays reachable during constant evaluation.
+  const auto byte_count = checked_byte_count<std::remove_cvref_t<decltype(T{}[0])>>(len_to_read);
+  if(!byte_count)
+    return std::unexpected(byte_count.error());
+
   obj.resize(len_to_read);
   if constexpr(identified_as_constexpr_stream<stream>) {
     // Mirrors write_native: a vector cannot be bit_cast during constant
@@ -59,7 +84,7 @@ constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_res
     }
     return {};
   } else {
-    return read_native_impl(s, obj, len_to_read * sizeof(T{}[0]));
+    return read_native_impl(s, obj, *byte_count);
   }
 }
 
