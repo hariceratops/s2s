@@ -10,13 +10,25 @@
 - [ ] Remove outdated todos
 - [ ] Refactor type deduction with fold expressions
 - [ ] Rename stream_wrapper_impl
-- [ ] Naming sweep across the **whole project**, not only the size axis. The
-      value-based rewrite (043/044/045) is what surfaced it, and those slices
-      have landed, so nothing is waiting on them any more — but the scope is
-      project-wide: concepts, types and variables throughout. Raised again at
-      the close of the schema-api-verbosity review. See the Review note on
-      `dev/issues/045-new-surface-and-atomic-migration.md` for the two dead
-      declarations that sweep should also judge
+- [ ] **Naming sweep across the whole project — deliberately last.** Concepts,
+      types, variables, internal and public alike. The value-based rewrite
+      (043/044/045) surfaced it and the allocation bound (046/047) added to it,
+      but it is explicitly *not* scheduled after either.
+
+      It waits on three things still to come: fine-tuning of the public API and
+      the meta-API used to declare schemas, a run of user-facing features, and a
+      round of refactoring the library internals. Names should follow the shape
+      rather than precede it — renaming now would mean renaming again after the
+      refactor, and a sweep that has to be repeated is worse than one that waits,
+      because the second pass never gets the same attention as the first.
+
+      Do it once, at the end, against the surface that is actually shipping.
+      Known inputs so far: the two dead declarations recorded in the Review note
+      on `dev/issues/045-new-surface-and-atomic-migration.md`
+      (`size_choices_t::num_of_choices` and the `is_size_like` concept, the
+      latter needing thought because issue 027 names it), and the `compute_t` /
+      `compute` split from 045, which was forced by normalization rather than
+      chosen for its name.
 - [ ] Refactor and remove cyclic inclusions
 - [ ] Split cast_impl into cast_api and cast_impl
 
