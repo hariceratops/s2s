@@ -111,6 +111,12 @@ the same buffer is usually simpler.
 | a constraint rejected the decoded value | `validation_failure` | that field |
 | a magic value did not match | `validation_failure` | the magic field |
 | no `match_case` matched and no `branch` predicate held | `type_deduction_failure` | the union field |
+| a length exceeded the field's allocation ceiling | `excessive_length` | the container field |
+
+Note the first and last rows are not the same failure. `buffer_exhaustion`
+means a read began and the stream ran dry; `excessive_length` means the read
+never began, because the length could not be allocated. A truncated file gives
+the first, a corrupt length gives the second.
 
 `found_contradicting_length`, the fourth `error_reason`, cannot arise on a read.
 It reports two parts of a struct implying different lengths for the same data,

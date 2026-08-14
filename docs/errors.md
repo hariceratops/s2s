@@ -8,7 +8,8 @@ enum error_reason {
   buffer_exhaustion,
   validation_failure,
   type_deduction_failure,
-  found_contradicting_length
+  found_contradicting_length,
+  excessive_length
 };
 
 struct cast_error {
@@ -17,12 +18,23 @@ struct cast_error {
 };
 ```
 
-A read can fail in three ways: a field value fails validation, the input stream
-is exhausted, or type deduction fails while reading into a union.
+A read can fail in four ways: a field value fails validation, the input stream
+is exhausted, type deduction fails while reading into a union, or a
+length-prefixed field claims more memory than it is allowed to allocate.
 
-A write can fail in those same three ways plus `found_contradicting_length`,
+`excessive_length` is the odd one, and the difference matters when reading a
+foreign stream. Every other reason is reported *during* a read;
+`excessive_length` fires **before** one. `buffer_exhaustion` means the stream
+ran dry partway through; `excessive_length` means the length was never
+satisfiable and nothing was allocated for it. See
+[Allocation limits](reading.md#allocation-limits) for the ceiling it reports
+against and how to change it.
+
+A write can fail in the first three ways plus `found_contradicting_length`,
 which means two parts of the struct imply different lengths for the same data —
 a cross-field disagreement rather than a value that is wrong on its own terms.
+`excessive_length` is read-only: a write's container is one the caller already
+holds, so nothing is being allocated from an untrusted number.
 
 Which check produces which reason is tabulated per direction:
 [Read errors](reading.md#read-errors) and
