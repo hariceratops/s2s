@@ -55,6 +55,16 @@ using body_field = s2s::variance<
   >
 >;
 
+using defaulted_size = s2s::variance<
+  "body",
+  s2s::type<
+    s2s::match_field<"tag">,
+    s2s::type_switch<
+      s2s::match_case<0x01, s2s::as_trivial<u32>>
+    >
+  >
+>;
+
 // Spelled out rather than derived, so that a change to the pipeline shows up
 // as a mismatch here instead of propagating into both sides of the comparison.
 using expected_choices =
@@ -78,6 +88,17 @@ auto main() -> int {
   "every alternative carries the union's id"_test = [] constexpr {
     expect(eq(std::variant_size_v<typename body_field::field_type>, std::size_t{3}));
     expect(eq(body_field::variant_size, std::size_t{3}));
+  };
+
+  // New capability arriving as a side effect of the size becoming a pack
+  // entry: a tag with an empty pack takes the same default its mirror
+  // descriptor does. as_trivial<u32> was an arity error before 049.
+  "a trivial tag with no size entry defaults to sizeof"_test = [] constexpr {
+    expect(eq(std::is_same_v<
+      typename defaulted_size::field_choices,
+      s2s::field_choice_list<
+        s2s::field<"body", u32, s2s::byte_count{sizeof(u32)}, s2s::no_constraint<u32>{}>
+      >>, true));
   };
 
   // TODO(050): a constrained alternative resolves its constraint into the

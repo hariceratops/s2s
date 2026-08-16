@@ -26,3 +26,11 @@ add_rejected_case(rejects_duplicate_size_option option_pack_misuse.cpp 2)
 
 add_rejected_case(rejects_bound_on_fixed_size_field option_pack_misuse.cpp 3)
 add_rejected_case(rejects_duplicate_bound_option option_pack_misuse.cpp 4)
+
+# The tag option pack (049). Each was checked against a no-CASE control build
+# and fails on its own diagnostic: 5 on the duplicate-size assertion, 6 on
+# variable_size_like with an empty pack, 7 on field_fits_to_underlying_type —
+# which is what proves as_trivial's relocated requires-clause still constrains.
+add_rejected_case(rejects_duplicate_size_on_tag option_pack_misuse.cpp 5)
+add_rejected_case(rejects_unsized_as_string option_pack_misuse.cpp 6)
+add_rejected_case(rejects_oversized_as_trivial option_pack_misuse.cpp 7)

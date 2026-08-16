@@ -1645,6 +1645,162 @@ struct deduce_field_size<size> {
 
 // End field_size/comptime_field_size_deduce.hpp
 
+// Begin field/field_options.hpp
+#ifndef _FIELD_OPTIONS_HPP_
+#define _FIELD_OPTIONS_HPP_
+
+
+// comptime_field_size_deduce, not field_size_deduce: the latter needs
+// struct_field_list_impl, which would pull field_list.hpp underneath
+// type_tags.hpp and close a different loop than the one this header exists to
+// break. Only the compile-time size deduction is needed here.
+ 
+ 
+ 
+// Split out of api/field_descriptors.hpp so type_tags.hpp can reach it.
+// field_descriptors.hpp includes type_deduction_traits.hpp, which reaches
+// type_tags.hpp through switch_traits -> switch -> match_case, so a tag
+// including the descriptors header would close a five-header loop. With
+// #ifndef guards rather than modules that would not surface as a circular
+// include: the second inclusion is silently empty and the error lands as
+// "size_of_pack is not a member of s2s" somewhere unrelated.
+//
+// It sits in field/ rather than api/ because api/ is the user-facing surface
+// and type_deduction/ reaching up into it would invert the layering. This is
+// machinery about a descriptor's parameters, and field/ is the layer both sit
+// above.
+namespace s2s {
+template <auto size, typename field_type>
+concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
+
+// The trailing options of a descriptor are an unordered pack: a size, a
+// constraint, either, or neither. Classification is by the option's *type*,
+// which is also why these concepts take it first — a placeholder constraint
+// `field_option_like<T> auto... opts` substitutes decltype(opt) as the first
+// argument, so a value-parameterised concept could not be used this way at all.
+template <typename S, typename T>
+concept size_option_like = fixed_size_like<S>    ||
+                           variable_size_like<S> ||
+                           size_dont_care_like<S> ||
+                           selectable_size_like<S>;
+
+template <typename C, typename T>
+concept constraint_option_like = requires (const C& c, const T& v) {
+  { c(v) } -> std::same_as<bool>;
+};
+
+template <typename O, typename T>
+concept field_option_like = size_option_like<O, T> || constraint_option_like<O, T>;
+
+// A bound is meaningful only where wire input drives the allocation, so only
+// the three container descriptors admit one. Everywhere else max_bytes fails
+// the per-element placeholder constraint exactly as an unrecognised entry
+// does — the relationship "a bound needs a variable size" is hoisted into
+// *which descriptor* accepts it rather than checked between two pack entries,
+// which keeps classification per-element and keeps the diagnostic readable.
+template <typename B, typename T>
+concept bound_pack_option_like = bound_option_like<B>;
+
+template <typename O, typename T>
+concept boundable_field_option_like = size_option_like<O, T>       ||
+                                      constraint_option_like<O, T> ||
+                                      bound_pack_option_like<O, T>;
+
+// Applied per element rather than as a fold in a requires-clause: a fold names
+// the fold and dumps the whole pack, while this isolates the offending entry
+// and prints both things it could have been.
+template <typename T, auto... opts>
+inline constexpr std::size_t size_option_count =
+  (0u + ... + (size_option_like<size_type_of<opts>, T> ? 1u : 0u));
+
+template <typename T, auto... opts>
+inline constexpr std::size_t constraint_option_count =
+  (0u + ... + (constraint_option_like<size_type_of<opts>, T> ? 1u : 0u));
+
+template <typename T, auto... opts>
+inline constexpr std::size_t bound_option_count =
+  (0u + ... + (bound_pack_option_like<size_type_of<opts>, T> ? 1u : 0u));
+
+// A concept can reject an entry it cannot classify but cannot count how many
+// classified the same way, so duplicates are the one sanctioned static_assert.
+template <typename T, auto... opts>
+struct pack_options {
+  static_assert(size_option_count<T, opts...> <= 1,
+                "a field takes at most one size option");
+  static_assert(constraint_option_count<T, opts...> <= 1,
+                "a field takes at most one constraint option");
+  static_assert(bound_option_count<T, opts...> <= 1,
+                "a field takes at most one max_bytes option");
+};
+
+template <typename T, auto... opts>
+struct size_in_pack {
+  static constexpr auto value = byte_count{sizeof(T)};
+};
+
+template <typename T, auto head, auto... tail>
+struct size_in_pack<T, head, tail...> {
+  static constexpr auto value = [] {
+    if constexpr(size_option_like<size_type_of<head>, T>)
+      return head;
+    else
+      return size_in_pack<T, tail...>::value;
+  }();
+};
+
+template <typename T, auto... opts>
+struct constraint_in_pack {
+  static constexpr auto value = no_constraint<T>{};
+};
+
+template <typename T, auto head, auto... tail>
+struct constraint_in_pack<T, head, tail...> {
+  static constexpr auto value = [] {
+    if constexpr(constraint_option_like<size_type_of<head>, T>)
+      return head;
+    else
+      return constraint_in_pack<T, tail...>::value;
+  }();
+};
+
+template <typename T, auto... opts>
+struct bound_in_pack {
+  static constexpr auto value = use_default_bound;
+};
+
+template <typename T, auto head, auto... tail>
+struct bound_in_pack<T, head, tail...> {
+  static constexpr auto value = [] {
+    if constexpr(bound_pack_option_like<size_type_of<head>, T>)
+      return head;
+    else
+      return bound_in_pack<T, tail...>::value;
+  }();
+};
+
+// Order independence is exactly this scan; nothing else is needed. Deriving
+// from pack_options is what instantiates it, so the duplicate assertions fire.
+template <typename T, auto... opts>
+struct resolved_options : pack_options<T, opts...> {
+  static constexpr auto size = size_in_pack<T, opts...>::value;
+  static constexpr auto constraint = constraint_in_pack<T, opts...>::value;
+  static constexpr auto bound = bound_in_pack<T, opts...>::value;
+};
+
+template <typename T, auto... opts>
+inline constexpr auto size_of_pack = resolved_options<T, opts...>::size;
+
+template <typename T, auto... opts>
+inline constexpr auto constraint_of_pack = resolved_options<T, opts...>::constraint;
+
+template <typename T, auto... opts>
+inline constexpr auto bound_of_pack = resolved_options<T, opts...>::bound;
+} /* namespace s2s */
+
+#endif /* _FIELD_OPTIONS_HPP_ */
+
+// End field/field_options.hpp
+
 // Begin type_deduction/utils/type_tags.hpp
 #ifndef _TYPE_TAGS_
 #define _TYPE_TAGS_
@@ -1653,16 +1809,30 @@ struct deduce_field_size<size> {
  
  
  
+ 
 namespace s2s {
 // Every tag exposes the four things to_field_choices needs to build a field.
-// `constraint` and `bound` are fixed here: 048 re-points the pipeline without
-// changing what it produces, and these are exactly what to_field_choice used to
-// hardcode. 050 and 051 resolve them from the tag's option pack instead.
-template <trivial T, auto S>
-  requires fixed_size_like<size_type_of<S>> && (deduce_field_size<S>{}() <= sizeof(T))
+// `constraint` and `bound` are still fixed: the tags admit size entries only
+// until the slices that enforce a constraint and a bound land, because a tag
+// that accepted an option it silently dropped would be worse than one that
+// rejects it.
+
+// Both conjuncts, in this order, and the first is not redundant: it is what
+// makes deduce_field_size<size>{}() inside the second a well-formed expression
+// at all. With a variable size resolved out of the pack, deduce_field_size
+// names a primary template that is declared and never defined, and resting a
+// user-facing diagnostic on SFINAE through an incomplete type is not worth the
+// line it saves.
+//
+// as_trivial<u32> now compiles, defaulting to byte_count{sizeof(u32)} the way
+// basic_field<"x", u32> already does — a widening that arrives as a side effect
+// of the size becoming a pack entry.
+template <trivial T, size_option_like<T> auto... opts>
+  requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
+           field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 struct as_trivial {
   using type = T;
-  static constexpr auto size = S;
+  static constexpr auto size = size_of_pack<T, opts...>;
   static constexpr auto constraint = no_constraint<type>{};
   static constexpr auto bound = use_default_bound;
 };
@@ -1692,20 +1862,22 @@ struct as_fixed_string {
   static constexpr auto bound = use_default_bound;
 };
 
-template <trivial T, auto S>
-  requires variable_size_like<size_type_of<S>>
+// The requires-clause spells std::vector<T> rather than `type`: the clause is
+// part of the template head, where the member alias does not exist yet.
+template <trivial T, size_option_like<std::vector<T>> auto... opts>
+  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 struct as_vec {
   using type = std::vector<T>;
-  static constexpr auto size = S;
+  static constexpr auto size = size_of_pack<type, opts...>;
   static constexpr auto constraint = no_constraint<type>{};
   static constexpr auto bound = use_default_bound;
 };
 
-template <auto S>
-  requires variable_size_like<size_type_of<S>>
+template <size_option_like<std::string> auto... opts>
+  requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 struct as_string {
   using type = std::string;
-  static constexpr auto size = S;
+  static constexpr auto size = size_of_pack<type, opts...>;
   static constexpr auto constraint = no_constraint<type>{};
   static constexpr auto bound = use_default_bound;
 };
@@ -1718,11 +1890,11 @@ struct as_arr_of_records {
   static constexpr auto bound = use_default_bound;
 };
 
-template <field_list_like T, auto S>
-  requires variable_size_like<size_type_of<S>>
+template <field_list_like T, size_option_like<std::vector<T>> auto... opts>
+  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 struct as_vec_of_records {
   using type = std::vector<T>;
-  static constexpr auto size = S;
+  static constexpr auto size = size_of_pack<type, opts...>;
   static constexpr auto constraint = no_constraint<type>{};
   static constexpr auto bound = use_default_bound;
 };
@@ -1730,8 +1902,8 @@ struct as_vec_of_records {
 template <typename T>
 struct is_type_tag;
 
-template <typename T, auto size>
-struct is_type_tag<as_trivial<T, size>> {
+template <typename T, auto... opts>
+struct is_type_tag<as_trivial<T, opts...>> {
   static constexpr bool res = true;
 };
 
@@ -1745,13 +1917,13 @@ struct is_type_tag<as_fixed_string<size>> {
   static constexpr bool res = true;
 };
 
-template <typename T, auto size>
-struct is_type_tag<as_vec<T, size>> {
+template <typename T, auto... opts>
+struct is_type_tag<as_vec<T, opts...>> {
   static constexpr bool res = true;
 };
 
-template <auto size>
-struct is_type_tag<as_string<size>> {
+template <auto... opts>
+struct is_type_tag<as_string<opts...>> {
   static constexpr bool res = true;
 };
 
@@ -1770,8 +1942,8 @@ struct is_type_tag<as_arr_of_records<T, size>> {
   static constexpr bool res = true;
 };
 
-template <typename T, auto size>
-struct is_type_tag<as_vec_of_records<T, size>> {
+template <typename T, auto... opts>
+struct is_type_tag<as_vec_of_records<T, opts...>> {
   static constexpr bool res = true;
 };
 
@@ -2938,6 +3110,7 @@ constexpr bool has_unique_match_values(const s2s::static_vector<std::size_t, N>&
  
  
  
+ 
 namespace s2s {
 struct always_true {
   // const: compute_impl invokes the callable as a const NTTP, so without this
@@ -2948,132 +3121,6 @@ struct always_true {
 };
 
 using always_present = eval_bool_from_fields<always_true{}>;
-
-template <auto size, typename field_type>
-concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
-
-// The trailing options of a descriptor are an unordered pack: a size, a
-// constraint, either, or neither. Classification is by the option's *type*,
-// which is also why these concepts take it first — a placeholder constraint
-// `field_option_like<T> auto... opts` substitutes decltype(opt) as the first
-// argument, so a value-parameterised concept could not be used this way at all.
-template <typename S, typename T>
-concept size_option_like = fixed_size_like<S>    ||
-                           variable_size_like<S> ||
-                           size_dont_care_like<S> ||
-                           selectable_size_like<S>;
-
-template <typename C, typename T>
-concept constraint_option_like = requires (const C& c, const T& v) {
-  { c(v) } -> std::same_as<bool>;
-};
-
-template <typename O, typename T>
-concept field_option_like = size_option_like<O, T> || constraint_option_like<O, T>;
-
-// A bound is meaningful only where wire input drives the allocation, so only
-// the three container descriptors admit one. Everywhere else max_bytes fails
-// the per-element placeholder constraint exactly as an unrecognised entry
-// does — the relationship "a bound needs a variable size" is hoisted into
-// *which descriptor* accepts it rather than checked between two pack entries,
-// which keeps classification per-element and keeps the diagnostic readable.
-template <typename B, typename T>
-concept bound_pack_option_like = bound_option_like<B>;
-
-template <typename O, typename T>
-concept boundable_field_option_like = size_option_like<O, T>       ||
-                                      constraint_option_like<O, T> ||
-                                      bound_pack_option_like<O, T>;
-
-// Applied per element rather than as a fold in a requires-clause: a fold names
-// the fold and dumps the whole pack, while this isolates the offending entry
-// and prints both things it could have been.
-template <typename T, auto... opts>
-inline constexpr std::size_t size_option_count =
-  (0u + ... + (size_option_like<size_type_of<opts>, T> ? 1u : 0u));
-
-template <typename T, auto... opts>
-inline constexpr std::size_t constraint_option_count =
-  (0u + ... + (constraint_option_like<size_type_of<opts>, T> ? 1u : 0u));
-
-template <typename T, auto... opts>
-inline constexpr std::size_t bound_option_count =
-  (0u + ... + (bound_pack_option_like<size_type_of<opts>, T> ? 1u : 0u));
-
-// A concept can reject an entry it cannot classify but cannot count how many
-// classified the same way, so duplicates are the one sanctioned static_assert.
-template <typename T, auto... opts>
-struct pack_options {
-  static_assert(size_option_count<T, opts...> <= 1,
-                "a field takes at most one size option");
-  static_assert(constraint_option_count<T, opts...> <= 1,
-                "a field takes at most one constraint option");
-  static_assert(bound_option_count<T, opts...> <= 1,
-                "a field takes at most one max_bytes option");
-};
-
-template <typename T, auto... opts>
-struct size_in_pack {
-  static constexpr auto value = byte_count{sizeof(T)};
-};
-
-template <typename T, auto head, auto... tail>
-struct size_in_pack<T, head, tail...> {
-  static constexpr auto value = [] {
-    if constexpr(size_option_like<size_type_of<head>, T>)
-      return head;
-    else
-      return size_in_pack<T, tail...>::value;
-  }();
-};
-
-template <typename T, auto... opts>
-struct constraint_in_pack {
-  static constexpr auto value = no_constraint<T>{};
-};
-
-template <typename T, auto head, auto... tail>
-struct constraint_in_pack<T, head, tail...> {
-  static constexpr auto value = [] {
-    if constexpr(constraint_option_like<size_type_of<head>, T>)
-      return head;
-    else
-      return constraint_in_pack<T, tail...>::value;
-  }();
-};
-
-template <typename T, auto... opts>
-struct bound_in_pack {
-  static constexpr auto value = use_default_bound;
-};
-
-template <typename T, auto head, auto... tail>
-struct bound_in_pack<T, head, tail...> {
-  static constexpr auto value = [] {
-    if constexpr(bound_pack_option_like<size_type_of<head>, T>)
-      return head;
-    else
-      return bound_in_pack<T, tail...>::value;
-  }();
-};
-
-// Order independence is exactly this scan; nothing else is needed. Deriving
-// from pack_options is what instantiates it, so the duplicate assertions fire.
-template <typename T, auto... opts>
-struct resolved_options : pack_options<T, opts...> {
-  static constexpr auto size = size_in_pack<T, opts...>::value;
-  static constexpr auto constraint = constraint_in_pack<T, opts...>::value;
-  static constexpr auto bound = bound_in_pack<T, opts...>::value;
-};
-
-template <typename T, auto... opts>
-inline constexpr auto size_of_pack = resolved_options<T, opts...>::size;
-
-template <typename T, auto... opts>
-inline constexpr auto constraint_of_pack = resolved_options<T, opts...>::constraint;
-
-template <typename T, auto... opts>
-inline constexpr auto bound_of_pack = resolved_options<T, opts...>::bound;
 
 template <fixed_string id, integral T, field_option_like<T> auto... opts>
   requires field_fits_to_underlying_type<size_of_pack<T, opts...>, T>

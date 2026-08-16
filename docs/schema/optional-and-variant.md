@@ -131,14 +131,26 @@ alternative has no id of its own — it inherits the `variance`'s.
 
 | Tag | Alternative type |
 |---|---|
-| `as_trivial<T, size>` | integral `T` |
+| `as_trivial<T, opts...>` | integral `T` |
 | `as_struct<T>` | a nested schema |
 | `as_fixed_arr<T, N>` | `std::array<T, N>` |
 | `as_arr_of_records<T, N>` | `std::array<T, N>` of schemas |
-| `as_vec<T, size>` | `std::vector<T>` |
-| `as_vec_of_records<T, size>` | `std::vector<T>` of schemas |
-| `as_string<size>` | `std::string` |
+| `as_vec<T, opts...>` | `std::vector<T>` |
+| `as_vec_of_records<T, opts...>` | `std::vector<T>` of schemas |
+| `as_string<opts...>` | `std::string` |
 | `as_fixed_string<N>` | `fixed_string<N>` |
+
+A tag's trailing `opts...` is the same order-independent option pack its mirror
+descriptor takes — a size today, and nothing else yet. `as_vec<u8,
+len_from_field<"n">>` reads the same as it always did; what changed is that the
+size is a pack entry rather than a fixed second argument, which is what lets
+further options join it without a new spelling.
+
+`N` stays positional on `as_fixed_arr`, `as_fixed_string` and
+`as_arr_of_records`: it is an element count, not a size value.
+
+`as_trivial<T>` with no size entry defaults to `sizeof(T)`, exactly as
+`basic_field<"x", T>` does.
 
 !!! warning "`as_vec_of_records` cannot be written"
 
