@@ -761,6 +761,21 @@ over an `as_vec_of_records` alternative, in `union_read_ct` / `union_write_ct`
 and their GoogleTest mirrors. These are the first coverage those tags have ever
 had.
 
+**Added during scaffolding: `test/internals/union_choice_pipeline_ct.cpp`.**
+048's stated criterion is negative — "the existing suite passes unchanged" —
+and a negative criterion cannot distinguish *builds the same fields* from
+*builds different fields that happen to break no existing assertion*. The
+positive form is a `static_assert` that `variance<...>::field_choices` equals a
+spelled-out `field_choice_list`, alternative by alternative, with each one's
+id, type, size, constraint and bound. Written and passing **before** 048, so it
+is a description now and a regression gate afterwards; verified non-vacuous by
+corrupting one expected size and confirming the compile-time build fails. It
+belongs under `internals/` rather than `schema/` because it asserts a type
+rather than a round-trip, and it is where 050 and 051 should assert that a
+declared constraint and bound land in `field`'s fourth and fifth arguments —
+visible there without a stream, and for 051 that assertion *is* §7's claim that
+the bound needs no read-path plumbing.
+
 **049** — `rejects_duplicate_size_on_tag`, `rejects_unsized_as_string`,
 `rejects_oversized_as_trivial` in `test/must_not_compile/option_pack_misuse.cpp`.
 Plus a positive `ut` case that the same tag spelled with its size in a
@@ -797,6 +812,29 @@ declared, asserting each fires independently.
 `single_header/s2s.hpp` is regenerated in every one of the five commits;
 `test/must_not_compile/` and `test/shipped_header/` consume the amalgam, so a
 stale one silently tests the previous tree.
+
+### Scaffolding, and the one rule it follows
+
+Landed ahead of implementation: `test/internals/union_choice_pipeline_ct.cpp`
+(above), the `union_alternative_options_{read,write}{,_ct}.cpp` quartet
+registered in `test/schema/CMakeLists.txt`, and CASE 5-10 appended to
+`test/must_not_compile/option_pack_misuse.cpp`.
+
+The quartet's placeholders are not trivial passes. Each is a real assertion
+that an alternative carrying *no* options reads and writes correctly — the
+baseline every option case contrasts against — so a regression in plain
+variance handling surfaces there instead of being misread as an option bug.
+Read and write are separate files rather than one round-trip precisely because
+050's two constraint call sites must be shown to fail independently, and a
+round-trip stays green with either missing.
+
+**CASE 5-10 are deliberately not registered.** `add_rejected_case` sets
+`WILL_FAIL`, so a case failing for the wrong reason passes the harness while
+testing nothing — the failure this suite actually hit on CASE 4 during 047. All
+six currently fail because the tags take no pack at all, which is not the
+diagnostic any of them exists to prove. Each gets registered by the slice that
+implements it, after a no-`CASE` control build confirms the file still compiles
+clean. That control was run at scaffolding time and passes.
 
 ---
 

@@ -67,6 +67,112 @@ using duplicate_bound =
   >;
 #endif
 
+// ---------------------------------------------------------------------------
+// Cases 5-10 are scaffolded for the union option pack (049-052) and are
+// DELIBERATELY NOT REGISTERED in CMakeLists.txt yet.
+//
+// add_rejected_case sets WILL_FAIL, so a registered case that fails for the
+// wrong reason — an undeclared type, a name that does not exist yet — passes
+// the harness while testing nothing. Every case below currently fails because
+// the tag does not take a pack at all, which is not the diagnostic it is meant
+// to prove. Register each one in the slice that implements it, and check it
+// against a no-CASE control build first: the control must compile cleanly, and
+// the case must fail on its own diagnostic.
+// ---------------------------------------------------------------------------
+
+#if CASE == 5
+// TODO(049): must NOT compile — two size entries in one tag's pack. The tag
+// reuses pack_options, so this is the same duplicate-count assertion a
+// descriptor already applies, reached through a different spelling.
+using duplicate_size_on_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, 2_B>>
+      >>>
+  >;
+#endif
+
+#if CASE == 6
+// TODO(049): must NOT compile — as_string with an empty pack. This spelling is
+// newly *legal grammar* once the size joins the pack (it was an arity error
+// before), so it becomes reachable and has to be rejected on its merits: with
+// no size entry the resolved size is byte_count{sizeof(std::string)}, which is
+// not variable_size_like. It is the one spelling the change admits into the
+// grammar, which is why it earns a case of its own.
+using unsized_as_string =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_string<>>
+      >>>
+  >;
+#endif
+
+#if CASE == 7
+// TODO(049): must NOT compile — a size larger than the underlying type. This is
+// 049's "the relocated constraint must still constrain" criterion: as_trivial's
+// requires-clause moves off a named parameter onto the resolved pack size, and
+// a relocation that quietly stops constraining is the failure mode.
+using oversized_as_trivial =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u16, 4_B>>
+      >>>
+  >;
+#endif
+
+#if CASE == 8
+// TODO(050): must NOT compile — two constraint entries in one tag's pack.
+using duplicate_constraint_on_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B,
+                                              s2s::gt{1u}, s2s::lt{99u}>>
+      >>>
+  >;
+#endif
+
+#if CASE == 9
+// TODO(051): must NOT compile — a bound on an alternative with no wire-driven
+// allocation. Same promise as CASE 3 makes for descriptors, reached through the
+// tag: as_struct's extent comes from its schema, not from anything a stream
+// says.
+using inner_for_bound =
+  s2s::struct_field_list<
+    s2s::basic_field<"x", u32, 4_B>
+  >;
+
+using bound_on_a_sizeless_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_struct<inner_for_bound, s2s::max_bytes<4096>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 10
+// TODO(052): must NOT compile — a size entry on variance itself. A union's own
+// size is size_dont_care and it drives no allocation of its own, so its pack
+// admits a constraint and nothing else.
+using size_on_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+      >>, 4_B>
+  >;
+#endif
+
 auto main() -> int {
   return 0;
 }

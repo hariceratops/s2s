@@ -61,3 +61,14 @@ add_ut_test(allocation_bound_read_ct)
 # the pair above already exercises against a real stream.
 add_ut_test(allocation_bound_default_override_ct)
 add_ut_test(allocation_bound_disabled_ct)
+
+# Options declared on a union alternative (050, 051). Its own pair for the same
+# reason allocation_bound_* has one: the tree is organised by what a file
+# verifies, and this verifies an option on an alternative rather than the
+# variance construct. Read and write are separate files rather than one
+# round-trip, because 050's two constraint call sites must be shown to fail
+# independently.
+add_struct_cast_test(union_alternative_options_read)
+add_struct_cast_test(union_alternative_options_write)
+add_ut_test(union_alternative_options_read_ct)
+add_ut_test(union_alternative_options_write_ct)
