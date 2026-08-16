@@ -859,12 +859,29 @@ Any complete program shown needs a `test/doc_examples/` source with the
    gate `maybe`'s base field; it is the natural trait for §6.2's rejected
    `if constexpr` and reads wrong in both places. Candidate for the deferred
    naming sweep already tracked on this branch.
-6. **Nothing in this design was compiled.** Unlike
-   `dev/design/schema-api-verbosity.md`, no standalone prototype was built here;
-   every claim about include direction, consumer counts and pattern-match sites
-   was verified by reading the tree, and every claim about NTTP deduction rests
-   on the constructs 045 verified and this codebase already ships. The one thing
-   an implementer should confirm first, before the rest of 048, is that
-   `to_field_choices<id, type_condition_list<cases...>>` instantiates with
-   `cases::type_tag::constraint` as `field`'s fourth argument — a ten-line
-   `static_assert` prototype settles it.
+6. **Almost nothing in this design was compiled — with one exception, since
+   resolved.** Every claim about include direction, consumer counts and
+   pattern-match sites was verified by reading the tree rather than by building.
+   The one construct this section originally flagged for a prototype —
+   that `to_field_choices<id, type_condition_list<cases...>>` instantiates with
+   `cases::type_tag::constraint` as `field`'s fourth argument — **has been
+   prototyped and holds**, clean on g++-14 and clang++-19 under
+   `-Wall -Wextra -Wpedantic`:
+
+   - `std::is_same_v<built, expected>` passes for a three-alternative guide
+     mixing a constrained `as_trivial`, a bounded `as_vec`, and a bare `as_vec`
+     taking both defaults.
+   - The constraint survives as a *callable*, not merely as a template
+     argument: `first::constraint_checker(50u)` and
+     `!first::constraint_checker(200u)` are both compile-time true. This is the
+     property §6.2's call sites depend on, and it is the one a type-level
+     `is_same` check alone would not have caught.
+
+   Why the risk was lower than it looked: the new shape deduces a pack of case
+   *types* and never asks the compiler to deduce a value at all — the class-type
+   values are read off the tag by name and forwarded. That is the easy
+   direction. The rule that constrained 044 bites when a partial specialization
+   tries to match *inside* a class-type NTTP, which nothing here does.
+
+   Finding 4's MSVC caveat is unaffected: two compilers agreeing is not three,
+   and there is still no build CI.
