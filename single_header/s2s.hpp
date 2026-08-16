@@ -1293,6 +1293,27 @@ is_in_closed_range(std::array<range<T>, N>) -> is_in_closed_range<T, N>;
 
 // End field_validation/field_value_constraints.hpp
 
+// Begin type_deduction/utils/type_condition_list.hpp
+#ifndef _TYPE_CONDITION_LIST_HPP_
+#define _TYPE_CONDITION_LIST_HPP_
+
+
+namespace s2s {
+// Deliberately includes nothing and constrains nothing. field.hpp specializes
+// to_field_choices on this, and its include closure is three headers deep;
+// naming type_switch/type_if_else there instead would drag the whole
+// type_deduction subtree under the most-included header in the project. The
+// pack is unconstrained for the same reason — type_condition_like lives in
+// helper.hpp. Nothing is lost, since only type_switch and type_if_else ever
+// build one of these, and both already constrain their own packs.
+template <typename... cases>
+struct type_condition_list {};
+} /* namespace s2s */
+
+#endif // _TYPE_CONDITION_LIST_HPP_
+
+// End type_deduction/utils/type_condition_list.hpp
+
 // Begin field/field.hpp
 #ifndef _FIELD_HPP_
 #define _FIELD_HPP_
@@ -1369,17 +1390,19 @@ struct field_choice_list {};
 template <fixed_string id, typename... args>
 struct to_field_choices;
 
-template <fixed_string id, typename T, auto size>
-struct to_field_choice {
-  using field_choice = field<id, T, size, no_constraint<T>{}>;
-};
-
-template <fixed_string id, typename T, auto size>
-using to_field_choice_v = to_field_choice<id, T, size>::field_choice;
-
-template <fixed_string id, typename... types, auto... sizes>
-struct to_field_choices<id, std::variant<types...>, size_choices_t<sizes...>> {
-  using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
+// Matched on the case list rather than on a variant zipped against a parallel
+// size list: an alternative's options travel on its own tag, so there is no
+// second list to keep aligned — and no third one the next time an option is
+// added. Every alternative takes the union's id, which is why a per-alternative
+// failure reports the union in cast_error::failed_at.
+template <fixed_string id, typename... cases>
+struct to_field_choices<id, type_condition_list<cases...>> {
+  using choices = field_choice_list<
+    field<id,
+          typename cases::type_tag::type,
+          cases::type_tag::size,
+          cases::type_tag::constraint,
+          cases::type_tag::bound>...>;
 };
 
 template <fixed_string id, typename type_deducer>
@@ -1394,9 +1417,8 @@ struct union_field: public
   using type_deduction_guide = type_deducer;
   static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
   using field_choices = typename to_field_choices<
-      id, 
-      typename type_deducer::variant, 
-      typename type_deducer::sizes
+      id,
+      typename type_deducer::conditions
     >::choices;
 };
 
@@ -1521,14 +1543,14 @@ struct type<eval_expression, _switch> {
   using expression = eval_expression;
   using type_switch = _switch;
   using variant = _switch::variant;
-  using sizes = _switch::sizes;
+  using conditions = _switch::conditions;
 };
 
 template <fixed_string id, typename _switch>
 struct type<match_field<id>, _switch> {
   using type_switch = _switch;
   using variant = _switch::variant;
-  using sizes = _switch::sizes;
+  using conditions = _switch::conditions;
 };
 
 // todo constraints
@@ -1536,7 +1558,7 @@ template <typename ladder>
 struct type<ladder> {
   using type_ladder = ladder;
   using variant = ladder::variant;
-  using sizes = ladder::sizes;
+  using conditions = ladder::conditions;
 };
 } /* namespace s2s */
 
@@ -1630,51 +1652,70 @@ struct deduce_field_size<size> {
  
  
  
+ 
 namespace s2s {
+// Every tag exposes the four things to_field_choices needs to build a field.
+// `constraint` and `bound` are fixed here: 048 re-points the pipeline without
+// changing what it produces, and these are exactly what to_field_choice used to
+// hardcode. 050 and 051 resolve them from the tag's option pack instead.
 template <trivial T, auto S>
   requires fixed_size_like<size_type_of<S>> && (deduce_field_size<S>{}() <= sizeof(T))
 struct as_trivial {
   using type = T;
   static constexpr auto size = S;
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
 template <field_list_like T>
 struct as_struct {
   using type = T;
   static constexpr auto size = size_dont_care;
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
 // todo how to handle array of array
-template <trivial T, std::size_t N> 
+template <trivial T, std::size_t N>
 struct as_fixed_arr {
   using type = std::array<T, N>;
   static constexpr auto size = byte_count{N * sizeof(T)};
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
-template <std::size_t N> 
+template <std::size_t N>
 struct as_fixed_string {
   using type = fixed_string<N>;
   static constexpr auto size = byte_count{N + 1};
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
-template <trivial T, auto S> 
+template <trivial T, auto S>
   requires variable_size_like<size_type_of<S>>
 struct as_vec {
   using type = std::vector<T>;
   static constexpr auto size = S;
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
-template <auto S> 
+template <auto S>
   requires variable_size_like<size_type_of<S>>
 struct as_string {
   using type = std::string;
   static constexpr auto size = S;
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
 template <field_list_like T, std::size_t N>
 struct as_arr_of_records {
   using type = std::array<T, N>;
   static constexpr auto size = size_dont_care;
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
 template <field_list_like T, auto S>
@@ -1682,6 +1723,8 @@ template <field_list_like T, auto S>
 struct as_vec_of_records {
   using type = std::vector<T>;
   static constexpr auto size = S;
+  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto bound = use_default_bound;
 };
 
 template <typename T>
@@ -1714,6 +1757,21 @@ struct is_type_tag<as_string<size>> {
 
 template <typename T>
 struct is_type_tag<as_struct<T>> {
+  static constexpr bool res = true;
+};
+
+// These two had no specialization, so type_tag_like was false for them and
+// match_case/branch rejected them outright: both tags are documented but have
+// never been usable, and nothing in test/ covered them. Added here because 048
+// rewrites this block anyway, and because 051 cannot test that
+// as_vec_of_records admits a bound while the tag cannot be named at all.
+template <typename T, std::size_t size>
+struct is_type_tag<as_arr_of_records<T, size>> {
+  static constexpr bool res = true;
+};
+
+template <typename T, auto size>
+struct is_type_tag<as_vec_of_records<T, size>> {
   static constexpr bool res = true;
 };
 
@@ -1950,19 +2008,8 @@ struct type_from_type_condition {
   using type = typename match_case::type_tag::type;
 };
 
-template <type_condition_like match_case>
-struct size_from_type_condition;
-
-template <type_condition_like match_case>
-struct size_from_type_condition {
-  static constexpr auto size = match_case::type_tag::size;
-};
-
 template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
-
-template <typename T>
-inline constexpr auto size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {
@@ -1971,14 +2018,6 @@ struct variant_from_type_conditions {
 
 template <type_condition_like... cases>
 using variant_from_type_conditions_v = variant_from_type_conditions<cases...>::variant;
-
-template <type_condition_like... cases>
-struct size_choices_from_type_conditions {
-  using choices = size_choices_t<size_from_type_condition_v<cases>...>;
-};
-
-template <type_condition_like... cases>
-using size_choices_from_type_conditions_v = size_choices_from_type_conditions<cases...>::choices;
 } /* namespace s2s */ 
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_
@@ -1990,13 +2029,14 @@ using size_choices_from_type_conditions_v = size_choices_from_type_conditions<ca
 #define _LADDER_HPP_
  
  
+ 
 namespace s2s {
 template <branch_like... branches>
   requires (sizeof...(branches) > 0)
 struct type_if_else {
   // todo possibly unused
   using variant = variant_from_type_conditions_v<branches...>;
-  using sizes = size_choices_from_type_conditions_v<branches...>;
+  using conditions = type_condition_list<branches...>;
 };
 } /* namespace s2s */
 
@@ -2606,13 +2646,14 @@ struct deduce_field_size<size> {
 #define _SWITCH_HPP_
  
  
+ 
 namespace s2s {
 template <match_case_like... cases>
   requires (sizeof...(cases) > 0)
 struct type_switch {
   // todo possibly unused
   using variant = variant_from_type_conditions_v<cases...>;
-  using sizes = size_choices_from_type_conditions_v<cases...>;
+  using conditions = type_condition_list<cases...>;
 };
 } /* namespace s2s */
 

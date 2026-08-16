@@ -8,6 +8,7 @@
 #include "../lib/containers/fixed_string.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field_validation/field_value_constraints.hpp"
+#include "../type_deduction/utils/type_condition_list.hpp"
 
 
 namespace s2s {
@@ -81,17 +82,19 @@ struct field_choice_list {};
 template <fixed_string id, typename... args>
 struct to_field_choices;
 
-template <fixed_string id, typename T, auto size>
-struct to_field_choice {
-  using field_choice = field<id, T, size, no_constraint<T>{}>;
-};
-
-template <fixed_string id, typename T, auto size>
-using to_field_choice_v = to_field_choice<id, T, size>::field_choice;
-
-template <fixed_string id, typename... types, auto... sizes>
-struct to_field_choices<id, std::variant<types...>, size_choices_t<sizes...>> {
-  using choices = field_choice_list<to_field_choice_v<id, types, sizes>...>;
+// Matched on the case list rather than on a variant zipped against a parallel
+// size list: an alternative's options travel on its own tag, so there is no
+// second list to keep aligned — and no third one the next time an option is
+// added. Every alternative takes the union's id, which is why a per-alternative
+// failure reports the union in cast_error::failed_at.
+template <fixed_string id, typename... cases>
+struct to_field_choices<id, type_condition_list<cases...>> {
+  using choices = field_choice_list<
+    field<id,
+          typename cases::type_tag::type,
+          cases::type_tag::size,
+          cases::type_tag::constraint,
+          cases::type_tag::bound>...>;
 };
 
 template <fixed_string id, typename type_deducer>
@@ -106,9 +109,8 @@ struct union_field: public
   using type_deduction_guide = type_deducer;
   static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
   using field_choices = typename to_field_choices<
-      id, 
-      typename type_deducer::variant, 
-      typename type_deducer::sizes
+      id,
+      typename type_deducer::conditions
     >::choices;
 };
 

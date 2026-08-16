@@ -48,6 +48,38 @@ using switched =
     >
   >;
 
+// The two record tags 048 makes nameable. Their sizes work the way the
+// non-record forms do: an array's extent is a template parameter, a vector's
+// comes from a sibling length field.
+using with_record_arr =
+  s2s::struct_field_list<
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::variance<
+      "c",
+      s2s::type<
+        s2s::match_field<"a">,
+        s2s::type_switch<
+          s2s::match_case<0xcafed00d, s2s::as_arr_of_records<inner_1, 2>>
+        >
+      >
+    >
+  >;
+
+using with_record_vec =
+  s2s::struct_field_list<
+    s2s::basic_field<"a", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "c",
+      s2s::type<
+        s2s::match_field<"a">,
+        s2s::type_switch<
+          s2s::match_case<0xcafed00d, s2s::as_vec_of_records<inner_1, s2s::len_from_field<"n">>>
+        >
+      >
+    >
+  >;
+
 // Form 2: a ladder of arbitrary predicates.
 auto sum_in_low_band = [](auto a, auto b) { return a + b >= 20000 && a + b < 40000; };
 auto sum_in_high_band = [](auto a, auto b) { return a + b >= 40000 && a + b < 60000; };
@@ -246,5 +278,44 @@ auto main() -> int {
     expect(eq(res.has_value(), false));
     expect(eq(res.error().failure_reason, s2s::error_reason::type_deduction_failure));
     expect(eq(res.error().failed_at, std::string_view{"c"}));
+  };
+
+  // The first coverage as_arr_of_records and as_vec_of_records have ever had.
+  // Both were documented but had no is_type_tag specialization, so match_case
+  // rejected them and no schema could name one; 048 admits them. Admitting a
+  // tag is not the same as its working, which is what these two check.
+  "an array-of-records alternative reads"_test = [] constexpr {
+    std::array<u8, 20> buffer{
+      0x0d, 0xd0, 0xfe, 0xca,
+      0x11, 0x11, 0x11, 0x11, 0x22, 0x22, 0x22, 0x22,
+      0x33, 0x33, 0x33, 0x33, 0x44, 0x44, 0x44, 0x44
+    };
+    memstream<20> stream(buffer);
+
+    auto res = s2s::struct_cast_le<with_record_arr>(stream);
+
+    expect(eq(res.has_value(), true));
+    auto& held = std::get<std::array<inner_1, 2>>((*res)["c"_f]);
+    expect(eq(held[0]["x"_f], 0x11111111u));
+    expect(eq(held[1]["y"_f], 0x44444444u));
+  };
+
+  "a vector-of-records alternative reads"_test = [] constexpr {
+    // Two inner_1 records of eight bytes each, after the four-byte
+    // discriminant and the four-byte length.
+    std::array<u8, 24> buffer{
+      0x0d, 0xd0, 0xfe, 0xca,
+      0x02, 0x00, 0x00, 0x00,
+      0x11, 0x11, 0x11, 0x11, 0x22, 0x22, 0x22, 0x22,
+      0x33, 0x33, 0x33, 0x33, 0x44, 0x44, 0x44, 0x44
+    };
+    memstream<24> stream(buffer);
+
+    auto res = s2s::struct_cast_le<with_record_vec>(stream);
+
+    expect(eq(res.has_value(), true));
+    auto& held = std::get<std::vector<inner_1>>((*res)["c"_f]);
+    expect(eq(held.size(), std::size_t{2}));
+    expect(eq(held[0]["x"_f], 0x11111111u));
   };
 }

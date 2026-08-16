@@ -28,19 +28,8 @@ struct type_from_type_condition {
   using type = typename match_case::type_tag::type;
 };
 
-template <type_condition_like match_case>
-struct size_from_type_condition;
-
-template <type_condition_like match_case>
-struct size_from_type_condition {
-  static constexpr auto size = match_case::type_tag::size;
-};
-
 template <typename T>
 using type_from_type_condition_v = type_from_type_condition<T>::type;
-
-template <typename T>
-inline constexpr auto size_from_type_condition_v = size_from_type_condition<T>::size;
 
 template <type_condition_like... cases>
 struct variant_from_type_conditions {
@@ -49,14 +38,6 @@ struct variant_from_type_conditions {
 
 template <type_condition_like... cases>
 using variant_from_type_conditions_v = variant_from_type_conditions<cases...>::variant;
-
-template <type_condition_like... cases>
-struct size_choices_from_type_conditions {
-  using choices = size_choices_t<size_from_type_condition_v<cases>...>;
-};
-
-template <type_condition_like... cases>
-using size_choices_from_type_conditions_v = size_choices_from_type_conditions<cases...>::choices;
 } /* namespace s2s */ 
 
 #endif // _TYPE_DEDUCTION_HELPER_HPP_

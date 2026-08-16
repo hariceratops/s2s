@@ -871,8 +871,27 @@ Any complete program shown needs a `test/doc_examples/` source with the
 1. **`as_arr_of_records` and `as_vec_of_records` are documented but unusable
    today** — no `is_type_tag` specialization, so `type_tag_like` is false and
    `match_case`/`branch` reject them. Fixed in 048 (§3), with a stated deviation
-   from that slice's inertness. Whether they *work* once admitted is untested;
-   048 owes the round-trip that finds out.
+   from that slice's inertness.
+
+   **Resolved during 048, and the round-trip found one of the two broken.**
+   Reading works for both tags; writing works for `as_arr_of_records`. Writing
+   an `as_vec_of_records` alternative **fails**, with
+   `found_contradicting_length` at the length field.
+
+   The obligation machinery has the agreement half but not the derivation half.
+   `union_len_obligation::agrees` (`field_write/derived_value.hpp`) compares the
+   held vector's `size()` against the length field's value, but nothing derives
+   that value from a union-held container the way it is derived for a plain
+   `vec_field`. The length stays 0, `agrees` correctly reports the
+   disagreement, and the write is rejected. Because the length field is a
+   length target, 043 makes it non-assignable — so there is no spelling of the
+   schema that works around it.
+
+   Pre-existing and previously unreachable: the tag could not be named, so this
+   path had never run. Not widened into 048, per this section's own rule. Needs
+   its own issue. `union_read_ct.cpp` covers both reads and
+   `union_write_ct.cpp` covers the array write; the vector write is documented
+   in place as absent, with the diagnosis, rather than left as a silent gap.
 2. **`basic_field` lacks the `fixed_size_like` conjunct** that `as_trivial`
    keeps (§3). `basic_field<"x", u32, len_from_field<"n">>` relies on SFINAE
    through an incomplete `deduce_field_size` primary to produce a diagnostic.

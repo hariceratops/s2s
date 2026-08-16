@@ -140,6 +140,14 @@ alternative has no id of its own — it inherits the `variance`'s.
 | `as_string<size>` | `std::string` |
 | `as_fixed_string<N>` | `fixed_string<N>` |
 
+!!! warning "`as_vec_of_records` cannot be written"
+
+    A `as_vec_of_records` alternative reads correctly but fails to write, with
+    `found_contradicting_length` at its length field. The length is never
+    derived from the held vector, and because it is a length target it cannot be
+    assigned either, so there is no way to write one today. Reading is
+    unaffected. The other seven tags round-trip.
+
 **Which form is chosen decides whether the discriminant is data anyone
 supplies.** A `match_case` value can be run backwards — if the variant holds the
 alternative tagged `2`, the discriminant is `2` — so the library derives the
