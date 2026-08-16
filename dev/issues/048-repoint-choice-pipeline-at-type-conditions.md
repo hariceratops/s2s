@@ -49,5 +49,17 @@ Spec: `dev/specs/union-alternatives-have-no-option-pack.md`.
   Confirm rather than assume.
 - `size_choices_t` retains no consumer inside `include/` other than its own
   traits. If one survives, name it here rather than leaving it implicit.
+- `as_arr_of_records` and `as_vec_of_records` gain the `is_type_tag`
+  specializations they never had. **This is a deliberate exception to the
+  inertness criterion above**, added after the design found both tags
+  unusable: with no specialization, `type_tag_like` is false and
+  `match_case`/`branch` reject them outright, so two documented tags
+  (`docs/schema/optional-and-variant.md:137,139`) have never worked. They are
+  fixed here because the block this slice already rewrites is where the
+  specializations belong, and because 051 cannot test that
+  `as_vec_of_records` admits a bound while the tag cannot be named at all.
+- Admitting them is not the same as their working. A round-trip test covers
+  both, in both tiers — if either fails for a reason beyond the missing
+  specialization, file it rather than folding the fix in here.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`
   entries; `single_header/s2s.hpp` is regenerated in the same commit.

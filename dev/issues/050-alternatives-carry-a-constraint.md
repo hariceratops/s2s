@@ -32,6 +32,12 @@ Spec: `dev/specs/union-alternatives-have-no-option-pack.md`.
 ## Acceptance Criteria
 - Every type tag admits a constraint entry in its pack, resolved through
   `constraint_of_pack`, checked against the tag's `::type`.
+- The four tags with no size entry — `as_fixed_arr`, `as_fixed_string`,
+  `as_struct`, `as_arr_of_records` — gain their trailing pack **in this
+  slice**, having kept their current arity through 049. Moved here by the
+  design (§6.1): a pack that admits nothing is not a pack, so their arity
+  changes where the constraint that justifies it is enforced. Their migration
+  is empty for the same reason 049's is.
 - A read whose alternative payload fails its constraint is rejected with a
   `cast_error` carrying `error_reason::validation_failure` and the union
   field's id in `failed_at`. `cast_error` gains no member; which alternative

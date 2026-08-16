@@ -22,9 +22,13 @@ Spec: `dev/specs/union-alternatives-have-no-option-pack.md`.
 
 ## Acceptance Criteria
 - `as_vec`, `as_string` and `as_vec_of_records` admit a bound entry, resolved
-  through `bound_of_pack` and threaded to the same read-path check 047 put in
+  through `bound_of_pack` and reaching the same read-path check 047 put in
   place — an oversized alternative is rejected before any allocation
-  proportional to the wire length occurs, not after.
+  proportional to the wire length occurs, not after. The design (§7) found
+  this needs **no read-path change at all**: `read_field` already reads the
+  ceiling off `T::field_bound`, and once 048 passes `tag::bound` as `field`'s
+  fifth argument the bound arrives at both allocation sites unaided. If this
+  slice finds itself plumbing the read path, something upstream is wrong.
 - The rejection carries the same `error_reason` 047 introduced for an
   over-bound length. No new enumerator, no `cast_error` member.
 - The bound is `count * sizeof(element)`, inclusive, matching 047 exactly: a

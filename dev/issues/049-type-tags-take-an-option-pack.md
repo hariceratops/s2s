@@ -36,12 +36,13 @@ Spec: `dev/specs/union-alternatives-have-no-option-pack.md`.
   `as_vec_of_records<T, opts...>` take size as a pack entry, resolved through
   `field_descriptors.hpp`'s existing `size_of_pack` rather than a parallel
   mechanism.
-- `as_fixed_arr<T, N, opts...>` and `as_fixed_string<N, opts...>` keep `N`
-  positional — it is an element count, not a size value — and take a trailing
-  pack, mirroring `fixed_array_field` / `fixed_string_field`.
-- `as_struct<T, opts...>` and `as_arr_of_records<T, N, opts...>` take a
-  trailing pack with no size entry, mirroring `struct_field` /
-  `array_of_records`.
+- The four tags with no size entry — `as_fixed_arr`, `as_fixed_string`,
+  `as_struct`, `as_arr_of_records` — **keep their current arity in this
+  slice.** Amended after the design: giving them a pack here and rejecting a
+  constraint entry here (the criterion below) together specify a pack that
+  admits nothing, and there is no honest concept for that. They gain their
+  constraint-only pack in 050, next to the enforcement that makes it mean
+  something. See §6.1 of the design.
 - `as_trivial`'s `requires fixed_size_like<size_type_of<S>> &&
   (deduce_field_size<S>{}() <= sizeof(T))` is re-expressed against the size
   resolved from the pack, the same relocation `basic_field` already made. The
@@ -53,9 +54,14 @@ Spec: `dev/specs/union-alternatives-have-no-option-pack.md`.
 - Two size entries in one pack is a compile error, via the same duplicate-count
   assertion `pack_options` already applies, with a registered
   `must_not_compile` case.
-- Every union schema in `test/`, `examples/` and `docs/` is migrated in this
-  commit. No compatibility shim for the positional spelling, and no
-  deprecation period.
+- **The migration is empty, and that is the expected result — not a skipped
+  step.** Every existing spelling is already a valid one-entry pack:
+  `as_vec<u8, len_from_field<"n">>` and `as_trivial<u32, 4_B>` are
+  token-identical before and after. The evidence is `git diff --stat` showing
+  nothing outside `include/`, `docs/` and `single_header/`. If any of the 11
+  files that spell a tag does need an edit, that is a signal the pack was
+  shaped wrong — investigate before editing it. No compatibility shim and no
+  deprecation period, because nothing needs one.
 - The documentation's union and type-tag reference describes the pack
   spelling, including that entries are order-independent.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`
