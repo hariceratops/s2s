@@ -942,3 +942,12 @@ Any complete program shown needs a `test/doc_examples/` source with the
 
    Finding 4's MSVC caveat is unaffected: two compilers agreeing is not three,
    and there is still no build CI.
+7. **The constraint spelling this design and 050 both use does not compile.**
+   `s2s::range{1u, 99u}`, as 050's issue writes it, is issue 026: `range`'s
+   constructor applies `static_assert` to its own function parameters. Found
+   during 050, which uses `lte` instead. It bites 052 the same way, and the
+   more general form of it is that a constraint over a container has to be a
+   functor — `eq{std::vector<u8>{…}}` is not spellable as a template argument,
+   because `std::vector` is not a structural type. Every container-level
+   constraint in the tests and docs is therefore an empty struct with a
+   `constexpr operator()`.
