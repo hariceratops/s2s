@@ -211,7 +211,14 @@ struct write_variant_impl {
   constexpr auto write(stream& s) const -> rw_result {
     if(variant.index() != idx)
       return {};
-    return write_field<E, F>(std::get<idx>(variant), field_list).template write<endianness>(s);
+    const auto& alternative = std::get<idx>(variant);
+    // The read side's reason applies here too: the fold only ever sees the
+    // outer union_field, so the alternative's constraint has to be run
+    // explicitly. It runs before write_field so a rejected payload leaves the
+    // stream untouched — a discarded value is recoverable, half a record is not.
+    if(!E::constraint_checker(alternative))
+      return std::unexpected(error_reason::validation_failure);
+    return write_field<E, F>(alternative, field_list).template write<endianness>(s);
   }
 };
 

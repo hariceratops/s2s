@@ -132,19 +132,24 @@ alternative has no id of its own — it inherits the `variance`'s.
 | Tag | Alternative type |
 |---|---|
 | `as_trivial<T, opts...>` | integral `T` |
-| `as_struct<T>` | a nested schema |
-| `as_fixed_arr<T, N>` | `std::array<T, N>` |
-| `as_arr_of_records<T, N>` | `std::array<T, N>` of schemas |
+| `as_struct<T, opts...>` | a nested schema |
+| `as_fixed_arr<T, N, opts...>` | `std::array<T, N>` |
+| `as_arr_of_records<T, N, opts...>` | `std::array<T, N>` of schemas |
 | `as_vec<T, opts...>` | `std::vector<T>` |
 | `as_vec_of_records<T, opts...>` | `std::vector<T>` of schemas |
 | `as_string<opts...>` | `std::string` |
-| `as_fixed_string<N>` | `fixed_string<N>` |
+| `as_fixed_string<N, opts...>` | `fixed_string<N>` |
 
 A tag's trailing `opts...` is the same order-independent option pack its mirror
-descriptor takes — a size today, and nothing else yet. `as_vec<u8,
+descriptor takes — a size and a constraint today. `as_vec<u8,
 len_from_field<"n">>` reads the same as it always did; what changed is that the
 size is a pack entry rather than a fixed second argument, which is what lets
 further options join it without a new spelling.
+
+Which entries a tag admits follows from the tag. The four whose size is fixed by
+the tag itself — `as_struct`, `as_fixed_arr`, `as_arr_of_records` and
+`as_fixed_string` — take a constraint and nothing else; a size entry there is a
+compile error, not a silently ignored one.
 
 `N` stays positional on `as_fixed_arr`, `as_fixed_string` and
 `as_arr_of_records`: it is an element count, not a size value.
@@ -290,3 +295,47 @@ auto main() -> int {
 
 Two constraints are enforced on a `variance` at compile time: the alternatives
 must be distinct types, and the `match_case` values must be unique.
+
+### Constraining an alternative
+
+An alternative's payload is validated by putting a constraint in its tag's pack:
+
+```cpp
+s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>
+```
+
+A payload that violates it is `validation_failure` in both directions, exactly
+as an ordinary field's constraint is. `failed_at` names the **`variance`**, not
+the alternative: an alternative has no id of its own, so a breach inside the
+third alternative of `"body"` is reported as `"body"`. Which alternative it was
+is recoverable from the discriminant.
+
+**The constraint applies to the tag's resulting type, not its element type.** On
+`as_vec<u8, len_from_field<"n">, ...>` the constraint is checked against
+`std::vector<u8>`, so it is a predicate over the whole container rather than
+over each `u8`:
+
+```cpp
+struct even_length {
+  constexpr auto operator()(const std::vector<u8>& payload) const -> bool {
+    return payload.size() % 2 == 0;
+  }
+};
+
+s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">, even_length{}>>
+```
+
+The same holds for the rest: an `as_fixed_arr<u8, 4, ...>` constraint sees
+`std::array<u8, 4>`, and an `as_struct<inner, ...>` constraint sees `inner`.
+Constraints are values, so anything beyond the built-ins in
+[Constraints and validation](../constraints.md) is spelled as a functor like the
+one above — it must be usable as a template argument, which an empty struct is.
+
+Entries are order-independent, so the size and the constraint may be written
+either way round:
+
+```cpp
+s2s::as_trivial<u32, s2s::lte{99u}, 4_B>   // the same alternative
+```
+
+Two entries of the same kind in one pack is a compile error.

@@ -27,6 +27,7 @@ using ut::operator""_test;
 using namespace s2s_literals;
 
 using u8 = unsigned char;
+using u16 = unsigned short;
 using u32 = unsigned int;
 
 using plain =
@@ -40,6 +41,25 @@ using plain =
         s2s::type_switch<
           s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>,
           s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">>>
+        >
+      >
+    >
+  >;
+
+// 0x02 declares no constraint and is the control the write side needs just as
+// the read side does. No container alternative here: the constrained-container
+// case needs a sibling length assigned alongside the payload, which reads
+// better in the run-time file.
+using constrained =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>,
+          s2s::match_case<0x02, s2s::as_trivial<u16, 2_B>>
         >
       >
     >
@@ -64,16 +84,54 @@ auto main() -> int {
     expect(eq(buffer[8], u8{0x2a}));
   };
 
-  // TODO(050): a constrained alternative whose payload satisfies its constraint
-  // writes normally.
+  "a satisfied alternative constraint writes normally"_test = [] constexpr {
+    constrained obj{};
+    obj["body"_f] = 42u;
+
+    std::array<u8, 8> buffer{};
+    memstream<8> stream(buffer);
+
+    auto res = s2s::stream_cast_le<constrained>(stream, obj);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(buffer[0], u8{0x01}));
+    expect(eq(buffer[4], u8{0x2a}));
+  };
+
+  // NON-VACUITY, WRITE SIDE. Deleting the check in write_variant_impl must turn
+  // this red and leave union_alternative_options_read_ct green.
   //
-  // TODO(050): the same alternative whose payload violates it is rejected with
-  // error_reason::validation_failure, before any bytes reach the stream.
-  //
-  // TODO(050): NON-VACUITY, WRITE SIDE. This case must fail if the constraint
-  // check in write_variant_impl is deleted, and must stay independent of the
-  // read-side case in union_alternative_options_read_ct.cpp. Verify by deleting
-  // the check locally and confirming exactly one test goes red.
+  // The payload bytes stay zero because the check runs before write_field: a
+  // discarded value is recoverable, half a record on a stream is not.
+  "a violated alternative constraint is rejected before any payload is written"_test =
+    [] constexpr {
+      constrained obj{};
+      obj["body"_f] = 200u;
+
+      std::array<u8, 8> buffer{};
+      memstream<8> stream(buffer);
+
+      auto res = s2s::stream_cast_le<constrained>(stream, obj);
+
+      expect(eq(res.has_value(), false));
+      expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+      expect(eq(res.error().failed_at, std::string_view{"body"}));
+      expect(eq(buffer[4], u8{0x00}));
+    };
+
+  "an alternative that declared no constraint is unaffected"_test = [] constexpr {
+    constrained obj{};
+    obj["body"_f] = u16{200};
+
+    std::array<u8, 6> buffer{};
+    memstream<6> stream(buffer);
+
+    auto res = s2s::stream_cast_le<constrained>(stream, obj);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(buffer[4], u8{0xc8}));
+  };
+
   //
   // TODO(052): a union-level constraint and a per-alternative constraint both
   // declared, each firing independently — 052 names this the interaction most

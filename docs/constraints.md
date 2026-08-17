@@ -13,6 +13,9 @@ A violation is `validation_failure` either way, with `failed_at` naming the
 field. That symmetry is the point: a schema that refuses to parse a bad value
 also refuses to produce one.
 
+A union alternative takes one too, in its type tag rather than in a descriptor;
+see [Optional and variant fields](schema/optional-and-variant.md).
+
 ## The constructs
 
 | Constraint | Holds when | Value type |

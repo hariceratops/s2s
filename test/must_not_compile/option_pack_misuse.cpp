@@ -127,7 +127,10 @@ using oversized_as_trivial =
 #endif
 
 #if CASE == 8
-// TODO(050): must NOT compile — two constraint entries in one tag's pack.
+// Must NOT compile — two constraint entries in one tag's pack. Same
+// duplicate-count assertion pack_options applies to a descriptor, reached
+// through the tag; nothing about the grammar stops a second one being written,
+// because the classifier scans rather than reading positionally.
 using duplicate_constraint_on_tag =
   s2s::struct_field_list<
     s2s::basic_field<"tag", u32, 4_B>,

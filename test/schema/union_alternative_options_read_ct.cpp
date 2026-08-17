@@ -30,6 +30,7 @@ using ut::operator""_test;
 using namespace s2s_literals;
 
 using u8 = unsigned char;
+using u16 = unsigned short;
 using u32 = unsigned int;
 
 using plain =
@@ -43,6 +44,55 @@ using plain =
         s2s::type_switch<
           s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>,
           s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">>>
+        >
+      >
+    >
+  >;
+
+// A constraint on an as_vec alternative is checked against std::vector<u8>, the
+// tag's resulting type, not against u8 — which is why it can be a predicate
+// over the whole container. Spelled as a functor because the constraint is an
+// NTTP and none of the built-in ones takes a vector value.
+struct even_length {
+  constexpr auto operator()(const std::vector<u8>& payload) const -> bool {
+    return payload.size() % 2 == 0;
+  }
+};
+
+// 0x03 declares nothing, so it is the control: the same byte pattern that
+// violates 0x01's constraint is accepted here. It is a u16 rather than a second
+// u32 because two alternatives of the same C++ type are rejected by
+// has_unique_field_choices.
+using constrained =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>,
+          s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">, even_length{}>>,
+          s2s::match_case<0x03, s2s::as_trivial<u16, 2_B>>
+        >
+      >
+    >
+  >;
+
+// The same two-entry packs written the other way round.
+using constrained_reversed =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_trivial<u32, s2s::lte{99u}, 4_B>>,
+          s2s::match_case<0x02, s2s::as_vec<u8, even_length{}, s2s::len_from_field<"n">>>,
+          s2s::match_case<0x03, s2s::as_trivial<u16, 2_B>>
         >
       >
     >
@@ -73,23 +123,80 @@ auto main() -> int {
     expect(eq(std::get<std::vector<u8>>((*res)["body"_f]).size(), std::size_t{3}));
   };
 
-  // TODO(050): a constrained alternative whose payload satisfies its constraint
-  // reads normally.
+  "a satisfied alternative constraint reads normally"_test = [] constexpr {
+    std::array<u8, 12> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x00, 0x00, 0x00, 0x00,
+                              0x2a, 0x00, 0x00, 0x00};
+    memstream<12> stream(buffer);
+
+    auto res = s2s::struct_cast_le<constrained>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(std::get<u32>((*res)["body"_f]), 42u));
+  };
+
+  // NON-VACUITY, READ SIDE. Deleting the check in read_variant_impl must turn
+  // this red and leave the write-side file green — which is why the two live in
+  // separate files rather than in one round-trip.
   //
-  // TODO(050): the same alternative whose payload violates it is rejected with
-  // error_reason::validation_failure and failed_at == "body" — the union's id,
-  // not the alternative's, because to_field_choices gives every choice the
-  // union's id. union_choice_pipeline_ct asserts that at the type level.
-  //
-  // TODO(050): NON-VACUITY, READ SIDE. This case must fail if the constraint
-  // check in read_variant_impl is deleted, and must be a *separate test* from
-  // the write-side one in union_alternative_options_write_ct.cpp. One test
-  // spanning both paths passes with either call site missing, which is the
-  // whole failure this pair exists to rule out. Verify by deleting the check
-  // locally and confirming exactly one test goes red.
-  //
-  // TODO(050): a constraint entry and a size entry on the same tag, spelled in
-  // both orders, produce the same result — order-independence is the claim.
+  // failed_at is the union's id, not the alternative's: to_field_choices gives
+  // every choice the union's id, and union_choice_pipeline_ct asserts that at
+  // the type level.
+  "a violated alternative constraint is rejected"_test = [] constexpr {
+    std::array<u8, 12> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x00, 0x00, 0x00, 0x00,
+                              0xc8, 0x00, 0x00, 0x00};
+    memstream<12> stream(buffer);
+
+    auto res = s2s::struct_cast_le<constrained>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+    expect(eq(res.error().failed_at, std::string_view{"body"}));
+  };
+
+  // The same 200 that alternative 0x01 refuses, through an alternative that
+  // declared no constraint. A check leaking across alternatives would show up
+  // here and nowhere else.
+  "an alternative that declared no constraint is unaffected"_test = [] constexpr {
+    std::array<u8, 10> buffer{0x03, 0x00, 0x00, 0x00,
+                              0x00, 0x00, 0x00, 0x00,
+                              0xc8, 0x00};
+    memstream<10> stream(buffer);
+
+    auto res = s2s::struct_cast_le<constrained>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(std::get<u16>((*res)["body"_f]), u16{200}));
+  };
+
+  // The constraint applies to the tag's resulting type: even_length is a
+  // predicate over std::vector<u8>, so it can see a length no per-element
+  // predicate could.
+  "a container alternative's constraint sees the whole container"_test = [] constexpr {
+    std::array<u8, 11> buffer{0x02, 0x00, 0x00, 0x00,
+                              0x03, 0x00, 0x00, 0x00,
+                              0xaa, 0xbb, 0xcc};
+    memstream<11> stream(buffer);
+
+    auto res = s2s::struct_cast_le<constrained>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+  };
+
+  "pack entries are order-independent"_test = [] constexpr {
+    std::array<u8, 12> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x00, 0x00, 0x00, 0x00,
+                              0xc8, 0x00, 0x00, 0x00};
+    memstream<12> stream(buffer);
+
+    auto res = s2s::struct_cast_le<constrained_reversed>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+  };
+
   //
   // TODO(051): below-bound accepted, at-bound accepted (inclusive), over-bound
   // rejected with error_reason::excessive_length, for as_vec, as_string and

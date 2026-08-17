@@ -110,6 +110,7 @@ the same buffer is usually simpler.
 | the stream ran out mid-field | `buffer_exhaustion` | the field being read |
 | a constraint rejected the decoded value | `validation_failure` | that field |
 | a magic value did not match | `validation_failure` | the magic field |
+| a constraint on a union alternative rejected its payload | `validation_failure` | the union field |
 | no `match_case` matched and no `branch` predicate held | `type_deduction_failure` | the union field |
 | a length exceeded the field's allocation ceiling | `excessive_length` | the container field |
 
@@ -177,6 +178,6 @@ overrule, but a declared limit is your own intent, and no build setting
 discards it.
 
 One gap worth knowing: a `vec` alternative inside a `variance` cannot declare
-its own ceiling, because union alternatives take a size rather than a full set
-of options. Such a field still gets the default, so it is bounded; it simply
-cannot be given a different bound short of moving the global default.
+its own ceiling. A type tag's option pack admits a size and a constraint, but
+not `max_bytes`. Such a field still gets the default, so it is bounded; it
+simply cannot be given a different bound short of moving the global default.

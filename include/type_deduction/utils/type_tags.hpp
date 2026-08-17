@@ -11,10 +11,20 @@
 
 namespace s2s {
 // Every tag exposes the four things to_field_choices needs to build a field.
-// `constraint` and `bound` are still fixed: the tags admit size entries only
-// until the slices that enforce a constraint and a bound land, because a tag
-// that accepted an option it silently dropped would be worse than one that
-// rejects it.
+// `bound` is still fixed: the tags admit sizes and constraints only until the
+// slice that enforces a bound lands, because a tag that accepted an option it
+// silently dropped would be worse than one that rejects it.
+//
+// A tag's pack carries the narrowest option concept its kind admits — the same
+// concept its mirror descriptor alias in field_descriptors.hpp carries. That is
+// the whole of how a tag admits a different option set per kind while keeping
+// the per-element placeholder idiom: no new mechanism, the same concept on the
+// same kind of parameter one layer up. The four tags whose size is fixed by the
+// tag itself admit a constraint and nothing else.
+//
+// Every constraint resolves against the tag's `type` — std::vector<T> for
+// as_vec, not T — which is also the type constraint_checker is invoked on, so
+// the three agree by construction rather than by convention.
 
 // Both conjuncts, in this order, and the first is not redundant: it is what
 // makes deduce_field_size<size>{}() inside the second a well-formed expression
@@ -26,75 +36,77 @@ namespace s2s {
 // as_trivial<u32> now compiles, defaulting to byte_count{sizeof(u32)} the way
 // basic_field<"x", u32> already does — a widening that arrives as a side effect
 // of the size becoming a pack entry.
-template <trivial T, size_option_like<T> auto... opts>
+template <trivial T, field_option_like<T> auto... opts>
   requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
            field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 struct as_trivial {
   using type = T;
   static constexpr auto size = size_of_pack<T, opts...>;
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<T, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
-template <field_list_like T>
+template <field_list_like T, constraint_option_like<T> auto... opts>
 struct as_struct {
   using type = T;
   static constexpr auto size = size_dont_care;
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<T, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
 // todo how to handle array of array
-template <trivial T, std::size_t N>
+template <trivial T, std::size_t N,
+          constraint_option_like<std::array<T, N>> auto... opts>
 struct as_fixed_arr {
   using type = std::array<T, N>;
   static constexpr auto size = byte_count{N * sizeof(T)};
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<type, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
-template <std::size_t N>
+template <std::size_t N, constraint_option_like<fixed_string<N>> auto... opts>
 struct as_fixed_string {
   using type = fixed_string<N>;
   static constexpr auto size = byte_count{N + 1};
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<type, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
 // The requires-clause spells std::vector<T> rather than `type`: the clause is
 // part of the template head, where the member alias does not exist yet.
-template <trivial T, size_option_like<std::vector<T>> auto... opts>
+template <trivial T, field_option_like<std::vector<T>> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 struct as_vec {
   using type = std::vector<T>;
   static constexpr auto size = size_of_pack<type, opts...>;
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<type, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
-template <size_option_like<std::string> auto... opts>
+template <field_option_like<std::string> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 struct as_string {
   using type = std::string;
   static constexpr auto size = size_of_pack<type, opts...>;
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<type, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
-template <field_list_like T, std::size_t N>
+template <field_list_like T, std::size_t N,
+          constraint_option_like<std::array<T, N>> auto... opts>
 struct as_arr_of_records {
   using type = std::array<T, N>;
   static constexpr auto size = size_dont_care;
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<type, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
-template <field_list_like T, size_option_like<std::vector<T>> auto... opts>
+template <field_list_like T, field_option_like<std::vector<T>> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 struct as_vec_of_records {
   using type = std::vector<T>;
   static constexpr auto size = size_of_pack<type, opts...>;
-  static constexpr auto constraint = no_constraint<type>{};
+  static constexpr auto constraint = constraint_of_pack<type, opts...>;
   static constexpr auto bound = use_default_bound;
 };
 
@@ -106,13 +118,13 @@ struct is_type_tag<as_trivial<T, opts...>> {
   static constexpr bool res = true;
 };
 
-template <typename T, std::size_t size>
-struct is_type_tag<as_fixed_arr<T, size>> {
+template <typename T, std::size_t size, auto... opts>
+struct is_type_tag<as_fixed_arr<T, size, opts...>> {
   static constexpr bool res = true;
 };
 
-template <std::size_t size>
-struct is_type_tag<as_fixed_string<size>> {
+template <std::size_t size, auto... opts>
+struct is_type_tag<as_fixed_string<size, opts...>> {
   static constexpr bool res = true;
 };
 
@@ -126,8 +138,8 @@ struct is_type_tag<as_string<opts...>> {
   static constexpr bool res = true;
 };
 
-template <typename T>
-struct is_type_tag<as_struct<T>> {
+template <typename T, auto... opts>
+struct is_type_tag<as_struct<T, opts...>> {
   static constexpr bool res = true;
 };
 
@@ -136,8 +148,8 @@ struct is_type_tag<as_struct<T>> {
 // never been usable, and nothing in test/ covered them. Added here because 048
 // rewrites this block anyway, and because 051 cannot test that
 // as_vec_of_records admits a bound while the tag cannot be named at all.
-template <typename T, std::size_t size>
-struct is_type_tag<as_arr_of_records<T, size>> {
+template <typename T, std::size_t size, auto... opts>
+struct is_type_tag<as_arr_of_records<T, size, opts...>> {
   static constexpr bool res = true;
 };
 

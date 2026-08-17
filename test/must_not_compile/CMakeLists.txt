@@ -34,3 +34,7 @@ add_rejected_case(rejects_duplicate_bound_option option_pack_misuse.cpp 4)
 add_rejected_case(rejects_duplicate_size_on_tag option_pack_misuse.cpp 5)
 add_rejected_case(rejects_unsized_as_string option_pack_misuse.cpp 6)
 add_rejected_case(rejects_oversized_as_trivial option_pack_misuse.cpp 7)
+
+# The per-alternative constraint (050). Checked against a no-CASE control build:
+# 8 fails on the duplicate-constraint assertion, not on the tag's arity.
+add_rejected_case(rejects_duplicate_constraint_on_tag option_pack_misuse.cpp 8)
