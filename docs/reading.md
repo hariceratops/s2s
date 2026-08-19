@@ -111,6 +111,7 @@ the same buffer is usually simpler.
 | a constraint rejected the decoded value | `validation_failure` | that field |
 | a magic value did not match | `validation_failure` | the magic field |
 | a constraint on a union alternative rejected its payload | `validation_failure` | the union field |
+| a constraint on a `variance` rejected the resolved variant | `validation_failure` | the union field |
 | no `match_case` matched and no `branch` predicate held | `type_deduction_failure` | the union field |
 | a length exceeded the field's allocation ceiling | `excessive_length` | the container field |
 

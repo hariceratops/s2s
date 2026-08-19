@@ -68,16 +68,13 @@ using duplicate_bound =
 #endif
 
 // ---------------------------------------------------------------------------
-// Cases 5-10 are scaffolded for the union option pack (049-052) and are
-// DELIBERATELY NOT REGISTERED in CMakeLists.txt yet.
+// Cases 5 onward cover the union option pack (049-052).
 //
-// add_rejected_case sets WILL_FAIL, so a registered case that fails for the
-// wrong reason — an undeclared type, a name that does not exist yet — passes
-// the harness while testing nothing. Every case below currently fails because
-// the tag does not take a pack at all, which is not the diagnostic it is meant
-// to prove. Register each one in the slice that implements it, and check it
-// against a no-CASE control build first: the control must compile cleanly, and
-// the case must fail on its own diagnostic.
+// add_rejected_case sets WILL_FAIL, so a case that fails for the wrong reason —
+// an undeclared type, a name that does not exist yet — passes the harness while
+// testing nothing. Each was checked against a no-CASE control build before
+// being registered: the control compiles cleanly, and the case fails on its own
+// diagnostic.
 // ---------------------------------------------------------------------------
 
 #if CASE == 5
@@ -163,9 +160,9 @@ using bound_on_a_sizeless_tag =
 #endif
 
 #if CASE == 10
-// TODO(052): must NOT compile — a size entry on variance itself. A union's own
-// size is size_dont_care and it drives no allocation of its own, so its pack
-// admits a constraint and nothing else.
+// Must NOT compile — a size entry on variance itself. A union's own size is
+// size_dont_care and it drives no allocation of its own, so its pack admits a
+// constraint and nothing else.
 using size_on_variance =
   s2s::struct_field_list<
     s2s::basic_field<"tag", u32, 4_B>,
@@ -216,6 +213,44 @@ using duplicate_bound_on_tag =
         s2s::match_case<0x01, s2s::as_vec<u8, s2s::len_from_field<"n">,
                                           s2s::max_bytes<4096>, s2s::max_bytes<8192>>>
       >>>
+  >;
+#endif
+
+#if CASE == 14
+// Must NOT compile — a bound on variance itself. Same promise CASE 3 makes for
+// a descriptor and CASE 9 for a tag: a union allocates nothing of its own, only
+// its alternatives do, so a ceiling here would guard nothing while reading as
+// though it guarded everything.
+using bound_on_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+      >>, s2s::max_bytes<4096>>
+  >;
+#endif
+
+#if CASE == 15
+// Must NOT compile — two constraint entries on variance, caught by the same
+// duplicate-count assertion CASE 8 reaches through a tag. A union's pack admits
+// only constraints, which is exactly why a second one is spellable and has to
+// be rejected by the count rather than by classification.
+struct any_body_1 {
+  constexpr auto operator()(const std::variant<u32>&) const -> bool { return true; }
+};
+
+struct any_body_2 {
+  constexpr auto operator()(const std::variant<u32>&) const -> bool { return true; }
+};
+
+using duplicate_constraint_on_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+      >>, any_body_1{}, any_body_2{}>
   >;
 #endif
 

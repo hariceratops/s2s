@@ -148,6 +148,28 @@ using expected_bounded_choices =
                s2s::no_constraint<std::vector<u32>>{}, s2s::use_default_bound>
   >;
 
+// 052's constraint sits on the union_field's own base rather than travelling
+// through to_field_choices, so the two constraints are separable here, before
+// any stream is involved: `body_field` above declares one on an alternative and
+// none on the union, this declares one on the union and none on any
+// alternative, and neither may show up on the other's side.
+struct even_body {
+  constexpr auto operator()(const std::variant<u32>& body) const -> bool {
+    return std::get<u32>(body) % 2 == 0;
+  }
+};
+
+using constrained_union = s2s::variance<
+  "body",
+  s2s::type<
+    s2s::match_field<"tag">,
+    s2s::type_switch<
+      s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+    >
+  >,
+  even_body{}
+>;
+
 using defaulted_size = s2s::variance<
   "body",
   s2s::type<
@@ -220,6 +242,24 @@ auto main() -> int {
   "the tags with no size entry carry a constraint too"_test = [] constexpr {
     expect(eq(std::is_same_v<typename sizeless_tags::field_choices,
                              expected_sizeless_choices>, true));
+  };
+
+  // The interaction 052 names as most likely to be got wrong, at the level
+  // where getting it wrong would be silent: a constraint declared on one of the
+  // two must not appear on the other. A union-level constraint that leaked onto
+  // its alternatives would still pass every read and write test in the schema
+  // tier, because both run and both would reject the same values.
+  "the union's constraint and its alternatives' stay apart"_test = [] constexpr {
+    expect(eq(constrained_union::constraint_checker(std::variant<u32>{42u}), true));
+    expect(eq(constrained_union::constraint_checker(std::variant<u32>{43u}), false));
+
+    using only_alternative = first_choice_of<typename constrained_union::field_choices>;
+    expect(eq(std::is_same_v<decltype(only_alternative::constraint_checker),
+                             const s2s::no_constraint<u32>>, true));
+
+    expect(eq(std::is_same_v<decltype(body_field::constraint_checker),
+                             const s2s::no_constraint<typename body_field::field_type>>,
+              true));
   };
 
   "the entries of one pack are order-independent"_test = [] constexpr {

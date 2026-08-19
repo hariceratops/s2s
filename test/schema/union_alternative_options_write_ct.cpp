@@ -65,6 +65,33 @@ using constrained =
     >
   >;
 
+// The interaction 052 calls out as the one most likely to be got wrong. Same
+// alternatives as `constrained`, with a constraint on the variance as well:
+// 0x01 must be at most 99 *and* the resolved body must be even, and neither
+// implies the other. Spelled as a functor because a std::variant is not a
+// structural type and cannot be a template argument to eq{}.
+struct even_body {
+  constexpr auto operator()(const std::variant<u32, u16>& body) const -> bool {
+    return std::visit([](auto value) { return value % 2 == 0; }, body);
+  }
+};
+
+using both_constrained =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>,
+          s2s::match_case<0x02, s2s::as_trivial<u16, 2_B>>
+        >
+      >,
+      even_body{}
+    >
+  >;
+
 auto main() -> int {
   // Only "body" is assigned: "tag" is the discriminant and "n" the length
   // target, both derived from the held alternative rather than stored, and 043
@@ -132,11 +159,50 @@ auto main() -> int {
     expect(eq(buffer[4], u8{0xc8}));
   };
 
-  //
-  // TODO(052): a union-level constraint and a per-alternative constraint both
-  // declared, each firing independently — 052 names this the interaction most
-  // likely to be got wrong. Lives here rather than in a 052-specific file
-  // because it is precisely the *combination* that is under test.
+  "both constraints hold and the write succeeds"_test = [] constexpr {
+    both_constrained obj{};
+    obj["body"_f] = 42u;
+
+    std::array<u8, 8> buffer{};
+    memstream<8> stream(buffer);
+
+    auto res = s2s::stream_cast_le<both_constrained>(stream, obj);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(buffer[4], u8{0x2a}));
+  };
+
+  // The two rejections below are indistinguishable by their error — every
+  // alternative takes the union's id, so both report validation_failure at
+  // "body". What separates them is the value: 43 satisfies lte{99u} and only
+  // the union constraint can reject it, 200 is even and only the alternative's
+  // can. Each therefore proves one check fired with the other passing.
+  "the union constraint rejects a value its alternative accepts"_test = [] constexpr {
+    both_constrained obj{};
+    obj["body"_f] = 43u;
+
+    std::array<u8, 8> buffer{};
+    memstream<8> stream(buffer);
+
+    auto res = s2s::stream_cast_le<both_constrained>(stream, obj);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+  };
+
+  "the alternative constraint rejects a value the union accepts"_test = [] constexpr {
+    both_constrained obj{};
+    obj["body"_f] = 200u;
+
+    std::array<u8, 8> buffer{};
+    memstream<8> stream(buffer);
+
+    auto res = s2s::stream_cast_le<both_constrained>(stream, obj);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+  };
+
   //
   // Note for 051: there is deliberately no write-side bound case. A bound
   // guards an allocation driven by a wire length; the write path serialises a

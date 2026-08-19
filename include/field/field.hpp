@@ -97,14 +97,20 @@ struct to_field_choices<id, type_condition_list<cases...>> {
           cases::type_tag::bound>...>;
 };
 
-template <fixed_string id, typename type_deducer>
-struct union_field: public 
+// The constraint is over the resolved variant, not over an alternative's
+// payload: an alternative states its own on its tag. Defaulted, so every
+// construction site that predates the union-level one keeps its meaning — and
+// the default may name type_deducer because it is an earlier parameter.
+template <fixed_string id,
+          typename type_deducer,
+          auto constraint_on_variant = no_constraint<typename type_deducer::variant>{}>
+struct union_field: public
     field<
-      id, 
-      typename type_deducer::variant, 
-      size_dont_care, 
-      no_constraint<typename type_deducer::variant>{}
-    > 
+      id,
+      typename type_deducer::variant,
+      size_dont_care,
+      constraint_on_variant
+    >
 {
   using type_deduction_guide = type_deducer;
   static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;

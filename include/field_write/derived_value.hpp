@@ -47,14 +47,15 @@ struct discriminant_obligation {
 };
 
 template <
-  fixed_string id, fixed_string matched_id,
+  fixed_string id, fixed_string matched_id, auto constraint_on_variant,
   template<typename...> typename type_switch,
   auto... match_values, typename... type_tags
 >
 struct discriminant_obligation<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>
+    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>,
+    constraint_on_variant
   >
 >
 {
@@ -137,9 +138,9 @@ struct union_len_obligation_of {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename type_deducer, typename target>
-struct union_len_obligation_of<union_field<id, type_deducer>, target> {
-  using field = union_field<id, type_deducer>;
+template <fixed_string id, typename type_deducer, auto constraint_on_variant, typename target>
+struct union_len_obligation_of<union_field<id, type_deducer, constraint_on_variant>, target> {
+  using field = union_field<id, type_deducer, constraint_on_variant>;
   using resolved = union_len_obligation<
     typename field::field_choices,
     target,

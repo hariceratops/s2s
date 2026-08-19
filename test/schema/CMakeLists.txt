@@ -78,3 +78,13 @@ add_ut_test(union_alternative_options_write_ct)
 # allocation_bound_default_override_ct, and separate from it because a tag
 # reaches field_bound through to_field_choices rather than directly.
 add_ut_test(union_alternative_bound_default_override_ct)
+
+# A constraint declared on the variance itself (052). Apart from the pair above
+# because the two constraints are different things: an alternative's constrains
+# one alternative's payload, this one constrains the resolved variant. The case
+# where both are declared stays in union_alternative_options_*, where the
+# combination is what is under test.
+add_struct_cast_test(union_constraint_read)
+add_struct_cast_test(union_constraint_write)
+add_ut_test(union_constraint_read_ct)
+add_ut_test(union_constraint_write_ct)

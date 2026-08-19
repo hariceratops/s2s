@@ -1405,14 +1405,20 @@ struct to_field_choices<id, type_condition_list<cases...>> {
           cases::type_tag::bound>...>;
 };
 
-template <fixed_string id, typename type_deducer>
-struct union_field: public 
+// The constraint is over the resolved variant, not over an alternative's
+// payload: an alternative states its own on its tag. Defaulted, so every
+// construction site that predates the union-level one keeps its meaning — and
+// the default may name type_deducer because it is an earlier parameter.
+template <fixed_string id,
+          typename type_deducer,
+          auto constraint_on_variant = no_constraint<typename type_deducer::variant>{}>
+struct union_field: public
     field<
-      id, 
-      typename type_deducer::variant, 
-      size_dont_care, 
-      no_constraint<typename type_deducer::variant>{}
-    > 
+      id,
+      typename type_deducer::variant,
+      size_dont_care,
+      constraint_on_variant
+    >
 {
   using type_deduction_guide = type_deducer;
   static constexpr auto variant_size = std::variant_size_v<typename type_deducer::variant>;
@@ -2342,12 +2348,12 @@ struct extract_length_dependencies_from_field_choices<field_choice_list<Ts...>>{
 template <typename... Ts>
 inline constexpr auto extract_length_dependencies_from_field_choices_v = extract_length_dependencies_from_field_choices<Ts...>::value;
 
-template <fixed_string id, typename type_deducer>
+template <fixed_string id, typename type_deducer, auto constraint_on_variant>
 struct extract_length_dependencies<
-  union_field<id, type_deducer>
-> 
+  union_field<id, type_deducer, constraint_on_variant>
+>
 {
-  using field = union_field<id, type_deducer>;
+  using field = union_field<id, type_deducer, constraint_on_variant>;
   using field_choices = typename field::field_choices;
   static constexpr auto value = extract_length_dependencies_from_field_choices_v<field_choices>;
 };
@@ -2389,24 +2395,28 @@ struct extract_type_deduction_dependencies {
   static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
-template <fixed_string id, fixed_string matched_id, typename type_switch>
+template <fixed_string id, fixed_string matched_id, typename type_switch,
+          auto constraint_on_variant>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch>
+    type<match_field<matched_id>, type_switch>,
+    constraint_on_variant
   >
-> 
+>
 {
   static constexpr auto value = dep_vec(as_sv(matched_id));
 };
 
-template <fixed_string id, auto callable, typename R, fixed_string... req_fields, typename type_switch>
+template <fixed_string id, auto callable, typename R, auto constraint_on_variant,
+          typename type_switch, fixed_string... req_fields>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<compute_t<callable, R, fixed_string_list<req_fields...>>, type_switch>
+    type<compute_t<callable, R, fixed_string_list<req_fields...>>, type_switch>,
+    constraint_on_variant
   >
-> 
+>
 {
   static constexpr auto value = dep_vec(as_sv(req_fields)...);
 };
@@ -2438,13 +2448,14 @@ constexpr auto remove_duplicates(const dep_vec& vec) -> dep_vec {
 }
 
 // template<typename...>... typename clauses?
-template <fixed_string id, typename... clauses>
+template <fixed_string id, auto constraint_on_variant, typename... clauses>
 struct extract_type_deduction_dependencies<
   union_field<
     id,
-    type<type_if_else<clauses...>>
+    type<type_if_else<clauses...>>,
+    constraint_on_variant
   >
-> 
+>
 {
   static constexpr dep_vec deps[64] = {dep_vec(extract_req_fields_from_clause_v<clauses>)...};
   static constexpr auto flat_values = flatten(deps);
@@ -2486,9 +2497,10 @@ struct extract_switch_discriminants {
   static constexpr auto value = dep_vec();
 };
 
-template <fixed_string id, fixed_string matched_id, typename type_switch>
+template <fixed_string id, fixed_string matched_id, typename type_switch,
+          auto constraint_on_variant>
 struct extract_switch_discriminants<
-  union_field<id, type<match_field<matched_id>, type_switch>>
+  union_field<id, type<match_field<matched_id>, type_switch>, constraint_on_variant>
 >
 {
   static constexpr auto value = dep_vec(as_sv(matched_id));
@@ -3207,10 +3219,16 @@ template <no_variance_field_like base_field, typename present_only_if>
 using maybe = maybe_field<base_field, present_only_if>;
 
 
-template <fixed_string id, type_deduction_like type_deducer>
+// Constraint-only, and per-element: a union's own size is size_dont_care and it
+// drives no allocation of its own, so a size or a bound entry here has nothing
+// to act on and fails the placeholder constraint.
+template <fixed_string id, type_deduction_like type_deducer,
+          constraint_option_like<typename type_deducer::variant> auto... opts>
   requires (has_unique_field_choices(extract_field_choices<type_deducer>::value)) &&
            (has_unique_match_values(extract_match_values<type_deducer>::value))
-using variance = union_field<id, type_deducer>;
+using variance =
+  union_field<id, type_deducer,
+              constraint_of_pack<typename type_deducer::variant, opts...>>;
 
 } /* namespace s2s */
 
@@ -3363,10 +3381,10 @@ concept optional_field_like = is_optional_field_v<T>;
 template <typename T>
 struct is_union_field;
 
-template <fixed_string id, typename type_deducer>
+template <fixed_string id, typename type_deducer, auto constraint_on_variant>
 struct is_union_field<
-    union_field<id, type_deducer>
-  > 
+    union_field<id, type_deducer, constraint_on_variant>
+  >
 {
   static constexpr bool res = true;
 };
@@ -4389,14 +4407,15 @@ struct discriminant_obligation {
 };
 
 template <
-  fixed_string id, fixed_string matched_id,
+  fixed_string id, fixed_string matched_id, auto constraint_on_variant,
   template<typename...> typename type_switch,
   auto... match_values, typename... type_tags
 >
 struct discriminant_obligation<
   union_field<
     id,
-    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>
+    type<match_field<matched_id>, type_switch<match_case<match_values, type_tags>...>>,
+    constraint_on_variant
   >
 >
 {
@@ -4479,9 +4498,9 @@ struct union_len_obligation_of {
   static constexpr bool present = false;
 };
 
-template <fixed_string id, typename type_deducer, typename target>
-struct union_len_obligation_of<union_field<id, type_deducer>, target> {
-  using field = union_field<id, type_deducer>;
+template <fixed_string id, typename type_deducer, auto constraint_on_variant, typename target>
+struct union_len_obligation_of<union_field<id, type_deducer, constraint_on_variant>, target> {
+  using field = union_field<id, type_deducer, constraint_on_variant>;
   using resolved = union_len_obligation<
     typename field::field_choices,
     target,

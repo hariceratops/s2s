@@ -295,8 +295,8 @@ auto main() -> int {
 }
 ```
 
-Two constraints are enforced on a `variance` at compile time: the alternatives
-must be distinct types, and the `match_case` values must be unique.
+Two rules are enforced on a `variance` at compile time: the alternatives must be
+distinct types, and the `match_case` values must be unique.
 
 ### Constraining an alternative
 
@@ -341,6 +341,41 @@ s2s::as_trivial<u32, s2s::lte{99u}, 4_B>   // the same alternative
 ```
 
 Two entries of the same kind in one pack is a compile error.
+
+### Constraining the resolved variant
+
+A `variance` takes a constraint of its own, after the deducer:
+
+```cpp
+struct even_body {
+  constexpr auto operator()(const std::variant<u32, u16>& body) const -> bool {
+    return std::visit([](auto value) { return value % 2 == 0; }, body);
+  }
+};
+
+s2s::variance<"body", guide, even_body{}>
+```
+
+This is a different thing from the section above, and the difference is what it
+sees. An alternative's constraint is handed one alternative's payload and runs
+only when that alternative is the one selected. A `variance`'s constraint is
+handed the resolved `std::variant` and runs whichever alternative was selected —
+so it is where a rule that holds across the whole union belongs, rather than
+being repeated on every tag.
+
+Both may be declared, and both then apply: the alternative's runs against the
+payload, the union's against the variant that payload was moved into. Neither
+implies the other, and either can reject on its own.
+
+Because the value is a `std::variant`, the constraint is always a functor: a
+variant is not a structural type, so it cannot be a template argument to `eq{}`
+and the built-in comparisons are unspellable here.
+
+The union's pack admits a constraint and nothing else. A union's own size is
+`size_dont_care` and it drives no allocation of its own — only its alternatives
+do — so a size or a `max_bytes` entry here is a compile error rather than an
+entry that would quietly do nothing. Two constraints is a compile error too, for
+the same reason it is on any other pack.
 
 ### Bounding an alternative
 

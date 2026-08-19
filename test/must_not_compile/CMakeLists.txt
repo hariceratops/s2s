@@ -47,3 +47,10 @@ add_rejected_case(rejects_bound_on_as_struct option_pack_misuse.cpp 9)
 add_rejected_case(rejects_bound_on_as_trivial option_pack_misuse.cpp 11)
 add_rejected_case(rejects_bound_on_as_fixed_arr option_pack_misuse.cpp 12)
 add_rejected_case(rejects_duplicate_bound_on_tag option_pack_misuse.cpp 13)
+
+# The union-level constraint (052). variance takes a constraint-only pack, so
+# 10 and 14 fail on the per-element placeholder constraint and 15 on the
+# duplicate-count assertion. Each checked against a no-CASE control build.
+add_rejected_case(rejects_size_on_variance option_pack_misuse.cpp 10)
+add_rejected_case(rejects_bound_on_variance option_pack_misuse.cpp 14)
+add_rejected_case(rejects_duplicate_constraint_on_variance option_pack_misuse.cpp 15)

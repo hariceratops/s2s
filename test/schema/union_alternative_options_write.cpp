@@ -51,6 +51,32 @@ using constrained =
       >
     >
   >;
+
+// The interaction 052 calls out as the one most likely to be got wrong: 0x01
+// must be at most 99 *and* the resolved body must be even, and neither implies
+// the other. Spelled as a functor because a std::variant is not a structural
+// type and cannot be a template argument to eq{}.
+struct even_body {
+  constexpr auto operator()(const std::variant<u32, u16>& body) const -> bool {
+    return std::visit([](auto value) { return value % 2 == 0; }, body);
+  }
+};
+
+using both_constrained =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>,
+          s2s::match_case<0x02, s2s::as_trivial<u16, 2_B>>
+        >
+      >,
+      even_body{}
+    >
+  >;
 } /* namespace */
 
 TEST(UnionAlternativeOptionsWrite, WritesAnAlternativeCarryingNoOptions) {
@@ -120,9 +146,47 @@ TEST(UnionAlternativeOptionsWrite, ChecksAContainerConstraintAgainstTheWholeCont
   EXPECT_TRUE(s2s::stream_cast_le<constrained>(ok_stream, accepted).has_value());
 }
 
-//
-// TODO(052): a union-level constraint and a per-alternative constraint both
-// declared, each firing independently.
+TEST(UnionAlternativeOptionsWrite, WritesWhenBothConstraintsHold) {
+  both_constrained obj{};
+  obj["body"_f] = 42u;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  ASSERT_TRUE(s2s::stream_cast_le<both_constrained>(stream, obj).has_value());
+  EXPECT_EQ(stream.str(), std::string("\x01\x00\x00\x00\x2a\x00\x00\x00", 8));
+}
+
+// The two rejections below are indistinguishable by their error, and by the
+// bytes on the stream — every alternative takes the union's id, so both report
+// validation_failure at "body", and both stop after the discriminant. What
+// separates them is the value: 43 satisfies lte{99u} and only the union
+// constraint can reject it, 200 is even and only the alternative's can. Each
+// therefore proves one check fired with the other passing.
+TEST(UnionAlternativeOptionsWrite, RejectsOnTheUnionConstraintWhenTheAlternativeAccepts) {
+  both_constrained obj{};
+  obj["body"_f] = 43u;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  auto written = s2s::stream_cast_le<both_constrained>(stream, obj);
+
+  ASSERT_FALSE(written.has_value());
+  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
+  EXPECT_EQ(written.error().failed_at, "body");
+  EXPECT_EQ(stream.str().size(), 4u);
+}
+
+TEST(UnionAlternativeOptionsWrite, RejectsOnTheAlternativeConstraintWhenTheUnionAccepts) {
+  both_constrained obj{};
+  obj["body"_f] = 200u;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  auto written = s2s::stream_cast_le<both_constrained>(stream, obj);
+
+  ASSERT_FALSE(written.has_value());
+  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
+  EXPECT_EQ(written.error().failed_at, "body");
+  EXPECT_EQ(stream.str().size(), 4u);
+}
+
 //
 // No write-side bound cases: a bound guards an allocation driven by a wire
 // length, and the write path serialises a container the caller already owns.

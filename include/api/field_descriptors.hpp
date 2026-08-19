@@ -91,10 +91,16 @@ template <no_variance_field_like base_field, typename present_only_if>
 using maybe = maybe_field<base_field, present_only_if>;
 
 
-template <fixed_string id, type_deduction_like type_deducer>
+// Constraint-only, and per-element: a union's own size is size_dont_care and it
+// drives no allocation of its own, so a size or a bound entry here has nothing
+// to act on and fails the placeholder constraint.
+template <fixed_string id, type_deduction_like type_deducer,
+          constraint_option_like<typename type_deducer::variant> auto... opts>
   requires (has_unique_field_choices(extract_field_choices<type_deducer>::value)) &&
            (has_unique_match_values(extract_match_values<type_deducer>::value))
-using variance = union_field<id, type_deducer>;
+using variance =
+  union_field<id, type_deducer,
+              constraint_of_pack<typename type_deducer::variant, opts...>>;
 
 } /* namespace s2s */
 

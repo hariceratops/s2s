@@ -79,6 +79,40 @@ using bounded =
     >
   >;
 
+// The read half of the interaction 052 calls out as most likely to be got
+// wrong: 0x01 must be at most 99 *and* the resolved body must be even, and
+// neither implies the other. Spelled as a functor because a std::variant is not
+// a structural type and cannot be a template argument to eq{}.
+struct even_body {
+  constexpr auto operator()(const std::variant<u32, u16>& body) const -> bool {
+    return std::visit([](auto value) { return value % 2 == 0; }, body);
+  }
+};
+
+using both_constrained =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>,
+          s2s::match_case<0x02, s2s::as_trivial<u16, 2_B>>
+        >
+      >,
+      even_body{}
+    >
+  >;
+
+auto tagged_stream_with(u32 tag, const std::vector<u8>& payload) -> std::stringstream {
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  stream.write(reinterpret_cast<const char*>(&tag), sizeof(tag));
+  stream.write(reinterpret_cast<const char*>(payload.data()),
+               static_cast<std::streamsize>(payload.size()));
+  return stream;
+}
+
 auto stream_with(u32 tag, u32 n, const std::vector<u8>& payload) -> std::stringstream {
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
   stream.write(reinterpret_cast<const char*>(&tag), sizeof(tag));
@@ -179,4 +213,38 @@ TEST(UnionAlternativeOptions, StillDefaultsTheCeilingOfAnAlternativeDeclaringNoB
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().failure_reason, s2s::error_reason::excessive_length);
+}
+
+TEST(UnionAlternativeOptions, ReadsWhenBothConstraintsHold) {
+  auto stream = tagged_stream_with(0x01, {0x2a, 0x00, 0x00, 0x00});
+
+  auto result = s2s::struct_cast_le<both_constrained>(stream);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(std::get<u32>((*result)["body"_f]), 42u);
+}
+
+// The two rejections below are indistinguishable by their error — every
+// alternative takes the union's id, so both report validation_failure at
+// "body". What separates them is the value: 43 satisfies lte{99u} and only the
+// union constraint can reject it, 200 is even and only the alternative's can.
+// Each therefore proves one check fired with the other passing.
+TEST(UnionAlternativeOptions, RejectsOnTheUnionConstraintWhenTheAlternativeAccepts) {
+  auto stream = tagged_stream_with(0x01, {0x2b, 0x00, 0x00, 0x00});
+
+  auto result = s2s::struct_cast_le<both_constrained>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::validation_failure);
+  EXPECT_EQ(result.error().failed_at, "body");
+}
+
+TEST(UnionAlternativeOptions, RejectsOnTheAlternativeConstraintWhenTheUnionAccepts) {
+  auto stream = tagged_stream_with(0x01, {0xc8, 0x00, 0x00, 0x00});
+
+  auto result = s2s::struct_cast_le<both_constrained>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::validation_failure);
+  EXPECT_EQ(result.error().failed_at, "body");
 }
