@@ -38,3 +38,12 @@ add_rejected_case(rejects_oversized_as_trivial option_pack_misuse.cpp 7)
 # The per-alternative constraint (050). Checked against a no-CASE control build:
 # 8 fails on the duplicate-constraint assertion, not on the tag's arity.
 add_rejected_case(rejects_duplicate_constraint_on_tag option_pack_misuse.cpp 8)
+
+# The per-alternative bound (051). Each checked against a no-CASE control build:
+# 9, 11 and 12 fail on the per-element placeholder constraint, which is where
+# "a bound needs a variable size" is enforced; 13 on the duplicate-count
+# assertion.
+add_rejected_case(rejects_bound_on_as_struct option_pack_misuse.cpp 9)
+add_rejected_case(rejects_bound_on_as_trivial option_pack_misuse.cpp 11)
+add_rejected_case(rejects_bound_on_as_fixed_arr option_pack_misuse.cpp 12)
+add_rejected_case(rejects_duplicate_bound_on_tag option_pack_misuse.cpp 13)

@@ -177,7 +177,6 @@ Setting it to `SIZE_MAX` disables the defaults entirely. **It cannot disable a
 overrule, but a declared limit is your own intent, and no build setting
 discards it.
 
-One gap worth knowing: a `vec` alternative inside a `variance` cannot declare
-its own ceiling. A type tag's option pack admits a size and a constraint, but
-not `max_bytes`. Such a field still gets the default, so it is bounded; it
-simply cannot be given a different bound short of moving the global default.
+A container alternative inside a `variance` declares its ceiling the same way,
+in its type tag's option pack; see
+[optional and variant fields](schema/optional-and-variant.md#bounding-an-alternative).

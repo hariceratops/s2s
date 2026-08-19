@@ -11,16 +11,22 @@
 
 namespace s2s {
 // Every tag exposes the four things to_field_choices needs to build a field.
-// `bound` is still fixed: the tags admit sizes and constraints only until the
-// slice that enforces a bound lands, because a tag that accepted an option it
-// silently dropped would be worse than one that rejects it.
 //
 // A tag's pack carries the narrowest option concept its kind admits — the same
 // concept its mirror descriptor alias in field_descriptors.hpp carries. That is
 // the whole of how a tag admits a different option set per kind while keeping
 // the per-element placeholder idiom: no new mechanism, the same concept on the
 // same kind of parameter one layer up. The four tags whose size is fixed by the
-// tag itself admit a constraint and nothing else.
+// tag itself admit a constraint and nothing else; the three whose extent comes
+// off the wire admit a bound as well.
+//
+// "A bound needs a variable size" is hoisted into which tag accepts one, the
+// same way 047 hoisted it into which descriptor accepts one. The three
+// container tags require a variable_size_like size, so a fixed size is
+// unspellable inside them and accepting a bound is unconditionally right; the
+// other five have their size fixed by the tag, so a bound there is
+// unconditionally wrong and fails the per-element placeholder constraint as an
+// entry that classifies as nothing the tag admits.
 //
 // Every constraint resolves against the tag's `type` — std::vector<T> for
 // as_vec, not T — which is also the type constraint_checker is invoked on, so
@@ -74,22 +80,22 @@ struct as_fixed_string {
 
 // The requires-clause spells std::vector<T> rather than `type`: the clause is
 // part of the template head, where the member alias does not exist yet.
-template <trivial T, field_option_like<std::vector<T>> auto... opts>
+template <trivial T, boundable_field_option_like<std::vector<T>> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 struct as_vec {
   using type = std::vector<T>;
   static constexpr auto size = size_of_pack<type, opts...>;
   static constexpr auto constraint = constraint_of_pack<type, opts...>;
-  static constexpr auto bound = use_default_bound;
+  static constexpr auto bound = bound_of_pack<type, opts...>;
 };
 
-template <field_option_like<std::string> auto... opts>
+template <boundable_field_option_like<std::string> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 struct as_string {
   using type = std::string;
   static constexpr auto size = size_of_pack<type, opts...>;
   static constexpr auto constraint = constraint_of_pack<type, opts...>;
-  static constexpr auto bound = use_default_bound;
+  static constexpr auto bound = bound_of_pack<type, opts...>;
 };
 
 template <field_list_like T, std::size_t N,
@@ -101,13 +107,13 @@ struct as_arr_of_records {
   static constexpr auto bound = use_default_bound;
 };
 
-template <field_list_like T, field_option_like<std::vector<T>> auto... opts>
+template <field_list_like T, boundable_field_option_like<std::vector<T>> auto... opts>
   requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 struct as_vec_of_records {
   using type = std::vector<T>;
   static constexpr auto size = size_of_pack<type, opts...>;
   static constexpr auto constraint = constraint_of_pack<type, opts...>;
-  static constexpr auto bound = use_default_bound;
+  static constexpr auto bound = bound_of_pack<type, opts...>;
 };
 
 template <typename T>

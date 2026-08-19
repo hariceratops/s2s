@@ -141,15 +141,17 @@ alternative has no id of its own — it inherits the `variance`'s.
 | `as_fixed_string<N, opts...>` | `fixed_string<N>` |
 
 A tag's trailing `opts...` is the same order-independent option pack its mirror
-descriptor takes — a size and a constraint today. `as_vec<u8,
+descriptor takes — a size, a constraint and an allocation bound. `as_vec<u8,
 len_from_field<"n">>` reads the same as it always did; what changed is that the
 size is a pack entry rather than a fixed second argument, which is what lets
 further options join it without a new spelling.
 
 Which entries a tag admits follows from the tag. The four whose size is fixed by
 the tag itself — `as_struct`, `as_fixed_arr`, `as_arr_of_records` and
-`as_fixed_string` — take a constraint and nothing else; a size entry there is a
-compile error, not a silently ignored one.
+`as_fixed_string` — take a constraint and nothing else. The three whose extent
+comes off the wire — `as_vec`, `as_string` and `as_vec_of_records` — take a
+bound as well. An entry a tag does not admit is a compile error, not a silently
+ignored one.
 
 `N` stays positional on `as_fixed_arr`, `as_fixed_string` and
 `as_arr_of_records`: it is an element count, not a size value.
@@ -339,3 +341,32 @@ s2s::as_trivial<u32, s2s::lte{99u}, 4_B>   // the same alternative
 ```
 
 Two entries of the same kind in one pack is a compile error.
+
+### Bounding an alternative
+
+A container alternative's length comes off the wire, so it carries the same
+`max_bytes` ceiling every other wire-sized container does — see
+[allocation limits](../reading.md#allocation-limits):
+
+```cpp
+s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">,
+                                      s2s::max_bytes<4096>>>
+```
+
+The rules are the ones that already apply to `vec_field` and `str_field`. The
+ceiling is `count * sizeof(element)` and inclusive; an alternative that declares
+nothing still gets `S2S_DEFAULT_MAX_BYTES` rather than being unbounded; and a
+declared bound is the author's intent, so no build setting clamps it in either
+direction. An over-long alternative is `excessive_length`, reported against the
+`variance`.
+
+Only `as_vec`, `as_string` and `as_vec_of_records` take one. On the other five
+the extent is fixed by the tag, so nothing a stream says can change how much is
+allocated and there is nothing for a ceiling to guard — a `max_bytes` there is a
+compile error rather than an entry that would quietly do nothing.
+
+All three kinds of entry compose, in any order:
+
+```cpp
+s2s::as_vec<u8, even_length{}, s2s::max_bytes<4096>, s2s::len_from_field<"n">>
+```

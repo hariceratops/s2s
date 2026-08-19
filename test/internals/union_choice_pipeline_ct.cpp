@@ -124,6 +124,30 @@ using expected_sizeless_choices =
     s2s::field<"body", std::array<inner, 2>, s2s::size_dont_care, first_record_nonzero{}>
   >;
 
+// A declared bound and an undeclared sibling. This is §7's claim in its
+// checkable form: the bound reaches `field`'s fifth argument through
+// to_field_choices alone, and read_field reads its ceiling off that member — so
+// showing it arrives here is showing the read path needs no plumbing.
+using bounded_alternatives = s2s::variance<
+  "body",
+  s2s::type<
+    s2s::match_field<"tag">,
+    s2s::type_switch<
+      s2s::match_case<0x01, s2s::as_vec<u8, s2s::len_from_field<"n">,
+                                        s2s::max_bytes<4096>>>,
+      s2s::match_case<0x02, s2s::as_vec<u32, s2s::len_from_field<"n">>>
+    >
+  >
+>;
+
+using expected_bounded_choices =
+  s2s::field_choice_list<
+    s2s::field<"body", std::vector<u8>, s2s::len_from_field<"n">,
+               s2s::no_constraint<std::vector<u8>>{}, s2s::max_bytes<4096>>,
+    s2s::field<"body", std::vector<u32>, s2s::len_from_field<"n">,
+               s2s::no_constraint<std::vector<u32>>{}, s2s::use_default_bound>
+  >;
+
 using defaulted_size = s2s::variance<
   "body",
   s2s::type<
@@ -203,10 +227,11 @@ auto main() -> int {
                              expected_choices>, true));
   };
 
-  // TODO(051): a bounded alternative resolves its bound into the fifth
-  // argument, and an unbounded sibling keeps use_default_bound. This is the
-  // assertion that shows the bound reaches `field` without any read-path
-  // plumbing, per the design's §7.
+  "a declared bound reaches the field, and an undeclared one defaults"_test =
+    [] constexpr {
+      expect(eq(std::is_same_v<typename bounded_alternatives::field_choices,
+                               expected_bounded_choices>, true));
+    };
 
   // A union whose alternatives are reachable at all: as_arr_of_records and
   // as_vec_of_records have no is_type_tag specialization today, so naming one

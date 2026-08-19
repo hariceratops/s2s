@@ -72,3 +72,9 @@ add_struct_cast_test(union_alternative_options_read)
 add_struct_cast_test(union_alternative_options_write)
 add_ut_test(union_alternative_options_read_ct)
 add_ut_test(union_alternative_options_write_ct)
+
+# S2S_DEFAULT_MAX_BYTES is #ifndef-guarded, so a file that varies it cannot
+# share a translation unit with one that does not. Same arrangement as
+# allocation_bound_default_override_ct, and separate from it because a tag
+# reaches field_bound through to_field_choices rather than directly.
+add_ut_test(union_alternative_bound_default_override_ct)

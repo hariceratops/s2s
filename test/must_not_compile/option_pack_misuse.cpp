@@ -143,7 +143,7 @@ using duplicate_constraint_on_tag =
 #endif
 
 #if CASE == 9
-// TODO(051): must NOT compile — a bound on an alternative with no wire-driven
+// Must NOT compile — a bound on an alternative with no wire-driven
 // allocation. Same promise as CASE 3 makes for descriptors, reached through the
 // tag: as_struct's extent comes from its schema, not from anything a stream
 // says.
@@ -173,6 +173,49 @@ using size_on_variance =
       s2s::type_switch<
         s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
       >>, 4_B>
+  >;
+#endif
+
+#if CASE == 11
+// Must NOT compile — a bound on a trivial alternative. Its width is the size
+// entry in its own pack, so nothing a stream says can change how much it
+// allocates, and there is nothing for a ceiling to guard.
+using bound_on_a_trivial_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::max_bytes<4096>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 12
+// Must NOT compile — a bound on a fixed array alternative. N is an element
+// count fixed by the tag, not a length read off the wire.
+using bound_on_a_fixed_arr_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_fixed_arr<u8, 4, s2s::max_bytes<4096>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 13
+// Must NOT compile — two bounds in one tag's pack, caught by the same
+// duplicate-count assertion CASE 4 reaches through a descriptor. Without it the
+// scan would silently take the first.
+using duplicate_bound_on_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_vec<u8, s2s::len_from_field<"n">,
+                                          s2s::max_bytes<4096>, s2s::max_bytes<8192>>>
+      >>>
   >;
 #endif
 

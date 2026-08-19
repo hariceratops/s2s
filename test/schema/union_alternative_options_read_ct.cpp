@@ -80,6 +80,71 @@ using constrained =
     >
   >;
 
+// max_bytes<8> over a u16 element admits four elements and no more; the string
+// ceiling is in bytes outright. The record vector is bounded by sizeof(point),
+// its in-memory footprint, which is unrelated to its two bytes on the wire.
+// Each has an unbounded sibling of the same kind, so the ceiling under test is
+// the declared one and not the default.
+using point = s2s::struct_field_list<s2s::basic_field<"x", u16, 2_B>>;
+
+using bounded =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_vec<u16, s2s::len_from_field<"n">,
+                                            s2s::max_bytes<8>>>,
+          s2s::match_case<0x02, s2s::as_string<s2s::len_from_field<"n">,
+                                               s2s::max_bytes<4>>>,
+          s2s::match_case<0x03, s2s::as_vec_of_records<point, s2s::len_from_field<"n">,
+                                                       s2s::max_bytes<64>>>,
+          s2s::match_case<0x04, s2s::as_vec<u8, s2s::len_from_field<"n">>>
+        >
+      >
+    >
+  >;
+
+// Ten bytes is not a whole number of u32s. The gate is an integer division, so
+// the ceiling truncates down to two elements rather than admitting two and a
+// half — a rounding direction worth pinning rather than inferring.
+using ragged_bound =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_vec<u32, s2s::len_from_field<"n">,
+                                            s2s::max_bytes<10>>>
+        >
+      >
+    >
+  >;
+
+// A bound beside a size and a constraint, in an order that puts none of the
+// three where a positional reading would expect it.
+using bounded_and_constrained =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_vec<u8, even_length{}, s2s::max_bytes<8>,
+                                            s2s::len_from_field<"n">>>
+        >
+      >
+    >
+  >;
+
 // The same two-entry packs written the other way round.
 using constrained_reversed =
   s2s::struct_field_list<
@@ -197,17 +262,140 @@ auto main() -> int {
     expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
   };
 
-  //
-  // TODO(051): below-bound accepted, at-bound accepted (inclusive), over-bound
-  // rejected with error_reason::excessive_length, for as_vec, as_string and
-  // as_vec_of_records alternatives.
-  //
-  // TODO(051): a bound that is not a whole multiple of sizeof(element) — the
-  // gate is phrased as an integer division, so the rounding direction is
-  // observable and has to be pinned.
-  //
-  // TODO(051): a declared alternative bound is not clamped by
-  // S2S_DEFAULT_MAX_BYTES in either direction. Needs its own translation unit
-  // to vary the macro; allocation_bound_default_override_ct.cpp and
-  // allocation_bound_disabled_ct.cpp are the models.
+  "a vector alternative under its declared bound is read"_test = [] constexpr {
+    std::array<u8, 12> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x02, 0x00, 0x00, 0x00,
+                              0x22, 0x11, 0x44, 0x33};
+    memstream<12> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(std::get<std::vector<u16>>((*res)["body"_f]).size(), std::size_t{2}));
+  };
+
+  // Inclusive, matching 047 exactly. Getting this backwards is the likeliest
+  // silent error in the feature, which is why at-bound is its own case.
+  "a vector alternative exactly at its declared bound is read"_test = [] constexpr {
+    std::array<u8, 16> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x04, 0x00, 0x00, 0x00,
+                              0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77};
+    memstream<16> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(std::get<std::vector<u16>>((*res)["body"_f]).size(), std::size_t{4}));
+  };
+
+  // One element past the ceiling, with a stream long enough to satisfy it — so
+  // the rejection is the bound talking, not the buffer running out.
+  "a vector alternative over its declared bound is rejected"_test = [] constexpr {
+    std::array<u8, 18> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x05, 0x00, 0x00, 0x00,
+                              0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77, 0x00, 0x00};
+    memstream<18> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
+    expect(eq(res.error().failed_at, std::string_view{"body"}));
+  };
+
+  "a string alternative is bounded by the same ceiling"_test = [] constexpr {
+    std::array<u8, 12> buffer{0x02, 0x00, 0x00, 0x00,
+                              0x04, 0x00, 0x00, 0x00,
+                              'h', 'e', 'l', 'l'};
+    memstream<12> at_bound(buffer);
+    expect(eq(s2s::struct_cast_le<bounded>(at_bound).has_value(), true));
+
+    std::array<u8, 13> longer{0x02, 0x00, 0x00, 0x00,
+                              0x05, 0x00, 0x00, 0x00,
+                              'h', 'e', 'l', 'l', 'o'};
+    memstream<13> over_bound(longer);
+    auto res = s2s::struct_cast_le<bounded>(over_bound);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
+  };
+
+  // The denominator is the record's in-memory footprint, which has no
+  // relationship to how many bytes those records occupy on the wire.
+  "a record vector alternative is bounded by its footprint"_test = [] constexpr {
+    std::array<u8, 10> buffer{0x03, 0x00, 0x00, 0x00,
+                              0x01, 0x00, 0x00, 0x00,
+                              0x22, 0x11};
+    memstream<10> stream(buffer);
+    expect(eq(s2s::struct_cast_le<bounded>(stream).has_value(), true));
+
+    std::array<u8, 10> absurd{0x03, 0x00, 0x00, 0x00,
+                              0xff, 0xff, 0x00, 0x00,
+                              0x00, 0x00};
+    memstream<10> absurd_stream(absurd);
+    auto res = s2s::struct_cast_le<bounded>(absurd_stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
+  };
+
+  // Omission is not "unbounded": the sibling that declared nothing still has
+  // the default standing behind it. 0x01000000 u8 elements is 16 MiB + 0, one
+  // past the shipped default.
+  "an alternative declaring no bound still gets the default"_test = [] constexpr {
+    std::array<u8, 8> buffer{0x04, 0x00, 0x00, 0x00,
+                             0x01, 0x00, 0x00, 0x01};
+    memstream<8> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
+  };
+
+  "a bound that is not a multiple of the element size truncates down"_test = [] constexpr {
+    std::array<u8, 16> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x02, 0x00, 0x00, 0x00,
+                              0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe, 0xca};
+    memstream<16> stream(buffer);
+    expect(eq(s2s::struct_cast_le<ragged_bound>(stream).has_value(), true));
+
+    std::array<u8, 20> wider{0x01, 0x00, 0x00, 0x00,
+                             0x03, 0x00, 0x00, 0x00,
+                             0xef, 0xbe, 0xad, 0xde, 0x0d, 0xd0, 0xfe, 0xca,
+                             0x00, 0x00, 0x00, 0x00};
+    memstream<20> wider_stream(wider);
+    auto res = s2s::struct_cast_le<ragged_bound>(wider_stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::excessive_length));
+  };
+
+  // All three kinds of entry in one pack, in an order no positional reading
+  // would produce. Each still has to bite on its own terms.
+  "a bound composes with a size and a constraint in any order"_test = [] constexpr {
+    std::array<u8, 12> buffer{0x01, 0x00, 0x00, 0x00,
+                              0x04, 0x00, 0x00, 0x00,
+                              0xaa, 0xbb, 0xcc, 0xdd};
+    memstream<12> stream(buffer);
+    expect(eq(s2s::struct_cast_le<bounded_and_constrained>(stream).has_value(), true));
+
+    std::array<u8, 11> odd{0x01, 0x00, 0x00, 0x00,
+                           0x03, 0x00, 0x00, 0x00,
+                           0xaa, 0xbb, 0xcc};
+    memstream<11> odd_stream(odd);
+    auto violates_constraint = s2s::struct_cast_le<bounded_and_constrained>(odd_stream);
+    expect(eq(violates_constraint.has_value(), false));
+    expect(eq(violates_constraint.error().failure_reason,
+              s2s::error_reason::validation_failure));
+
+    std::array<u8, 18> over{0x01, 0x00, 0x00, 0x00,
+                            0x0a, 0x00, 0x00, 0x00,
+                            0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33};
+    memstream<18> over_stream(over);
+    auto violates_bound = s2s::struct_cast_le<bounded_and_constrained>(over_stream);
+    expect(eq(violates_bound.has_value(), false));
+    expect(eq(violates_bound.error().failure_reason,
+              s2s::error_reason::excessive_length));
+  };
 }

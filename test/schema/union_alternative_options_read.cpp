@@ -59,6 +59,26 @@ using constrained =
     >
   >;
 
+// max_bytes<8> over a u16 element admits four elements and no more. 0x02
+// declares nothing and stands behind the default, so the ceiling under test is
+// the declared one.
+using bounded =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::variance<
+      "body",
+      s2s::type<
+        s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<0x01, s2s::as_vec<u16, s2s::len_from_field<"n">,
+                                            s2s::max_bytes<8>>>,
+          s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">>>
+        >
+      >
+    >
+  >;
+
 auto stream_with(u32 tag, u32 n, const std::vector<u8>& payload) -> std::stringstream {
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
   stream.write(reinterpret_cast<const char*>(&tag), sizeof(tag));
@@ -133,7 +153,30 @@ TEST(UnionAlternativeOptions, ChecksAContainerConstraintAgainstTheWholeContainer
 }
 
 //
-// TODO(051): below-bound / at-bound / over-bound for as_vec, as_string and
-// as_vec_of_records, asserting excessive_length on the last.
-//
-// TODO(051): a bound that is not a whole multiple of sizeof(element).
+TEST(UnionAlternativeOptions, BoundsAnAlternativeAtItsDeclaredCeiling) {
+  auto under = stream_with(0x01, 2, {0x22, 0x11, 0x44, 0x33});
+  EXPECT_TRUE(s2s::struct_cast_le<bounded>(under).has_value());
+
+  // Inclusive, matching 047.
+  auto at = stream_with(0x01, 4, {0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77});
+  EXPECT_TRUE(s2s::struct_cast_le<bounded>(at).has_value());
+
+  // The stream carries the bytes, so the rejection is the bound and not the
+  // buffer running out.
+  auto over = stream_with(0x01, 5,
+    {0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77, 0x00, 0x00});
+  auto result = s2s::struct_cast_le<bounded>(over);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::excessive_length);
+  EXPECT_EQ(result.error().failed_at, "body");
+}
+
+TEST(UnionAlternativeOptions, StillDefaultsTheCeilingOfAnAlternativeDeclaringNoBound) {
+  auto absurd = stream_with(0x02, 0x01000001, {});
+
+  auto result = s2s::struct_cast_le<bounded>(absurd);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::excessive_length);
+}
