@@ -146,10 +146,10 @@ concept optional_field_like = is_optional_field_v<T>;
 template <typename T>
 struct is_union_field;
 
-template <fixed_string id, typename type_deducer>
+template <fixed_string id, typename type_deducer, auto constraint_on_variant>
 struct is_union_field<
-    union_field<id, type_deducer>
-  > 
+    union_field<id, type_deducer, constraint_on_variant>
+  >
 {
   static constexpr bool res = true;
 };

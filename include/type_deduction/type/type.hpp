@@ -19,14 +19,14 @@ struct type<eval_expression, _switch> {
   using expression = eval_expression;
   using type_switch = _switch;
   using variant = _switch::variant;
-  using sizes = _switch::sizes;
+  using conditions = _switch::conditions;
 };
 
 template <fixed_string id, typename _switch>
 struct type<match_field<id>, _switch> {
   using type_switch = _switch;
   using variant = _switch::variant;
-  using sizes = _switch::sizes;
+  using conditions = _switch::conditions;
 };
 
 // todo constraints
@@ -34,7 +34,7 @@ template <typename ladder>
 struct type<ladder> {
   using type_ladder = ladder;
   using variant = ladder::variant;
-  using sizes = ladder::sizes;
+  using conditions = ladder::conditions;
 };
 } /* namespace s2s */
 

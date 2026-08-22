@@ -67,6 +67,193 @@ using duplicate_bound =
   >;
 #endif
 
+// ---------------------------------------------------------------------------
+// Cases 5 onward cover the union option pack (049-052).
+//
+// add_rejected_case sets WILL_FAIL, so a case that fails for the wrong reason —
+// an undeclared type, a name that does not exist yet — passes the harness while
+// testing nothing. Each was checked against a no-CASE control build before
+// being registered: the control compiles cleanly, and the case fails on its own
+// diagnostic.
+// ---------------------------------------------------------------------------
+
+#if CASE == 5
+// TODO(049): must NOT compile — two size entries in one tag's pack. The tag
+// reuses pack_options, so this is the same duplicate-count assertion a
+// descriptor already applies, reached through a different spelling.
+using duplicate_size_on_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, 2_B>>
+      >>>
+  >;
+#endif
+
+#if CASE == 6
+// TODO(049): must NOT compile — as_string with an empty pack. This spelling is
+// newly *legal grammar* once the size joins the pack (it was an arity error
+// before), so it becomes reachable and has to be rejected on its merits: with
+// no size entry the resolved size is byte_count{sizeof(std::string)}, which is
+// not variable_size_like. It is the one spelling the change admits into the
+// grammar, which is why it earns a case of its own.
+using unsized_as_string =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_string<>>
+      >>>
+  >;
+#endif
+
+#if CASE == 7
+// TODO(049): must NOT compile — a size larger than the underlying type. This is
+// 049's "the relocated constraint must still constrain" criterion: as_trivial's
+// requires-clause moves off a named parameter onto the resolved pack size, and
+// a relocation that quietly stops constraining is the failure mode.
+using oversized_as_trivial =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u16, 4_B>>
+      >>>
+  >;
+#endif
+
+#if CASE == 8
+// Must NOT compile — two constraint entries in one tag's pack. Same
+// duplicate-count assertion pack_options applies to a descriptor, reached
+// through the tag; nothing about the grammar stops a second one being written,
+// because the classifier scans rather than reading positionally.
+using duplicate_constraint_on_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B,
+                                              s2s::gt{1u}, s2s::lt{99u}>>
+      >>>
+  >;
+#endif
+
+#if CASE == 9
+// Must NOT compile — a bound on an alternative with no wire-driven
+// allocation. Same promise as CASE 3 makes for descriptors, reached through the
+// tag: as_struct's extent comes from its schema, not from anything a stream
+// says.
+using inner_for_bound =
+  s2s::struct_field_list<
+    s2s::basic_field<"x", u32, 4_B>
+  >;
+
+using bound_on_a_sizeless_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_struct<inner_for_bound, s2s::max_bytes<4096>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 10
+// Must NOT compile — a size entry on variance itself. A union's own size is
+// size_dont_care and it drives no allocation of its own, so its pack admits a
+// constraint and nothing else.
+using size_on_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+      >>, 4_B>
+  >;
+#endif
+
+#if CASE == 11
+// Must NOT compile — a bound on a trivial alternative. Its width is the size
+// entry in its own pack, so nothing a stream says can change how much it
+// allocates, and there is nothing for a ceiling to guard.
+using bound_on_a_trivial_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::max_bytes<4096>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 12
+// Must NOT compile — a bound on a fixed array alternative. N is an element
+// count fixed by the tag, not a length read off the wire.
+using bound_on_a_fixed_arr_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_fixed_arr<u8, 4, s2s::max_bytes<4096>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 13
+// Must NOT compile — two bounds in one tag's pack, caught by the same
+// duplicate-count assertion CASE 4 reaches through a descriptor. Without it the
+// scan would silently take the first.
+using duplicate_bound_on_tag =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u32, 4_B>,
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_vec<u8, s2s::len_from_field<"n">,
+                                          s2s::max_bytes<4096>, s2s::max_bytes<8192>>>
+      >>>
+  >;
+#endif
+
+#if CASE == 14
+// Must NOT compile — a bound on variance itself. Same promise CASE 3 makes for
+// a descriptor and CASE 9 for a tag: a union allocates nothing of its own, only
+// its alternatives do, so a ceiling here would guard nothing while reading as
+// though it guarded everything.
+using bound_on_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+      >>, s2s::max_bytes<4096>>
+  >;
+#endif
+
+#if CASE == 15
+// Must NOT compile — two constraint entries on variance, caught by the same
+// duplicate-count assertion CASE 8 reaches through a tag. A union's pack admits
+// only constraints, which is exactly why a second one is spellable and has to
+// be rejected by the count rather than by classification.
+struct any_body_1 {
+  constexpr auto operator()(const std::variant<u32>&) const -> bool { return true; }
+};
+
+struct any_body_2 {
+  constexpr auto operator()(const std::variant<u32>&) const -> bool { return true; }
+};
+
+using duplicate_constraint_on_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body", s2s::type<s2s::match_field<"tag">,
+      s2s::type_switch<
+        s2s::match_case<0x01, s2s::as_trivial<u32, 4_B>>
+      >>, any_body_1{}, any_body_2{}>
+  >;
+#endif
+
 auto main() -> int {
   return 0;
 }

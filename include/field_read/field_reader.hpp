@@ -241,6 +241,13 @@ struct read_variant_impl {
     auto res = reader.template read<endianness, stream>(s);
     if(!res)
       return std::unexpected(res.error());
+    // The struct-level fold runs constraint_checker over the fields of a
+    // struct_field_list, and for a union the field it sees is the outer
+    // union_field — the alternative's own field never passes through it. So
+    // this is the only place an alternative's constraint reaches its value.
+    // maybe_field has the same problem and solves it the same way.
+    if(!T::constraint_checker(field.value))
+      return std::unexpected(error_reason::validation_failure);
     variant = std::move(field.value);
     return {};
   }

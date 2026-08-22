@@ -3,6 +3,7 @@
 
 #include "match_case_traits.hpp"
 #include "../utils/helper.hpp"
+#include "../utils/type_condition_list.hpp"
 
 
 namespace s2s {
@@ -11,7 +12,7 @@ template <match_case_like... cases>
 struct type_switch {
   // todo possibly unused
   using variant = variant_from_type_conditions_v<cases...>;
-  using sizes = size_choices_from_type_conditions_v<cases...>;
+  using conditions = type_condition_list<cases...>;
 };
 } /* namespace s2s */
 

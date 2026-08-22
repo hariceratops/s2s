@@ -26,3 +26,31 @@ add_rejected_case(rejects_duplicate_size_option option_pack_misuse.cpp 2)
 
 add_rejected_case(rejects_bound_on_fixed_size_field option_pack_misuse.cpp 3)
 add_rejected_case(rejects_duplicate_bound_option option_pack_misuse.cpp 4)
+
+# The tag option pack (049). Each was checked against a no-CASE control build
+# and fails on its own diagnostic: 5 on the duplicate-size assertion, 6 on
+# variable_size_like with an empty pack, 7 on field_fits_to_underlying_type —
+# which is what proves as_trivial's relocated requires-clause still constrains.
+add_rejected_case(rejects_duplicate_size_on_tag option_pack_misuse.cpp 5)
+add_rejected_case(rejects_unsized_as_string option_pack_misuse.cpp 6)
+add_rejected_case(rejects_oversized_as_trivial option_pack_misuse.cpp 7)
+
+# The per-alternative constraint (050). Checked against a no-CASE control build:
+# 8 fails on the duplicate-constraint assertion, not on the tag's arity.
+add_rejected_case(rejects_duplicate_constraint_on_tag option_pack_misuse.cpp 8)
+
+# The per-alternative bound (051). Each checked against a no-CASE control build:
+# 9, 11 and 12 fail on the per-element placeholder constraint, which is where
+# "a bound needs a variable size" is enforced; 13 on the duplicate-count
+# assertion.
+add_rejected_case(rejects_bound_on_as_struct option_pack_misuse.cpp 9)
+add_rejected_case(rejects_bound_on_as_trivial option_pack_misuse.cpp 11)
+add_rejected_case(rejects_bound_on_as_fixed_arr option_pack_misuse.cpp 12)
+add_rejected_case(rejects_duplicate_bound_on_tag option_pack_misuse.cpp 13)
+
+# The union-level constraint (052). variance takes a constraint-only pack, so
+# 10 and 14 fail on the per-element placeholder constraint and 15 on the
+# duplicate-count assertion. Each checked against a no-CASE control build.
+add_rejected_case(rejects_size_on_variance option_pack_misuse.cpp 10)
+add_rejected_case(rejects_bound_on_variance option_pack_misuse.cpp 14)
+add_rejected_case(rejects_duplicate_constraint_on_variance option_pack_misuse.cpp 15)

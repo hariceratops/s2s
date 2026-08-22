@@ -179,6 +179,8 @@ offending field's first byte is emitted.
 |---|---|---|
 | a constraint rejects the value, including a wrong magic value | `validation_failure` | that field |
 | a `parse_if` predicate disagrees with the optional's `has_value()` | `validation_failure` | the optional field |
+| a constraint on a union alternative rejects its payload | `validation_failure` | the union field |
+| a constraint on a `variance` rejects the resolved variant | `validation_failure` | the union field |
 | a `type_if_else` or computed switch selects an alternative other than the one held | `validation_failure` | the union field |
 | no branch and no `match_case` matches at all | `type_deduction_failure` | the union field |
 | a derived or verified length does not fit its declared width | `validation_failure` | the length field |

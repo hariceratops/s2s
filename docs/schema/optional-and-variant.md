@@ -131,14 +131,41 @@ alternative has no id of its own — it inherits the `variance`'s.
 
 | Tag | Alternative type |
 |---|---|
-| `as_trivial<T, size>` | integral `T` |
-| `as_struct<T>` | a nested schema |
-| `as_fixed_arr<T, N>` | `std::array<T, N>` |
-| `as_arr_of_records<T, N>` | `std::array<T, N>` of schemas |
-| `as_vec<T, size>` | `std::vector<T>` |
-| `as_vec_of_records<T, size>` | `std::vector<T>` of schemas |
-| `as_string<size>` | `std::string` |
-| `as_fixed_string<N>` | `fixed_string<N>` |
+| `as_trivial<T, opts...>` | integral `T` |
+| `as_struct<T, opts...>` | a nested schema |
+| `as_fixed_arr<T, N, opts...>` | `std::array<T, N>` |
+| `as_arr_of_records<T, N, opts...>` | `std::array<T, N>` of schemas |
+| `as_vec<T, opts...>` | `std::vector<T>` |
+| `as_vec_of_records<T, opts...>` | `std::vector<T>` of schemas |
+| `as_string<opts...>` | `std::string` |
+| `as_fixed_string<N, opts...>` | `fixed_string<N>` |
+
+A tag's trailing `opts...` is the same order-independent option pack its mirror
+descriptor takes — a size, a constraint and an allocation bound. `as_vec<u8,
+len_from_field<"n">>` reads the same as it always did; what changed is that the
+size is a pack entry rather than a fixed second argument, which is what lets
+further options join it without a new spelling.
+
+Which entries a tag admits follows from the tag. The four whose size is fixed by
+the tag itself — `as_struct`, `as_fixed_arr`, `as_arr_of_records` and
+`as_fixed_string` — take a constraint and nothing else. The three whose extent
+comes off the wire — `as_vec`, `as_string` and `as_vec_of_records` — take a
+bound as well. An entry a tag does not admit is a compile error, not a silently
+ignored one.
+
+`N` stays positional on `as_fixed_arr`, `as_fixed_string` and
+`as_arr_of_records`: it is an element count, not a size value.
+
+`as_trivial<T>` with no size entry defaults to `sizeof(T)`, exactly as
+`basic_field<"x", T>` does.
+
+!!! warning "`as_vec_of_records` cannot be written"
+
+    A `as_vec_of_records` alternative reads correctly but fails to write, with
+    `found_contradicting_length` at its length field. The length is never
+    derived from the held vector, and because it is a length target it cannot be
+    assigned either, so there is no way to write one today. Reading is
+    unaffected. The other seven tags round-trip.
 
 **Which form is chosen decides whether the discriminant is data anyone
 supplies.** A `match_case` value can be run backwards — if the variant holds the
@@ -268,5 +295,113 @@ auto main() -> int {
 }
 ```
 
-Two constraints are enforced on a `variance` at compile time: the alternatives
-must be distinct types, and the `match_case` values must be unique.
+Two rules are enforced on a `variance` at compile time: the alternatives must be
+distinct types, and the `match_case` values must be unique.
+
+### Constraining an alternative
+
+An alternative's payload is validated by putting a constraint in its tag's pack:
+
+```cpp
+s2s::match_case<0x01, s2s::as_trivial<u32, 4_B, s2s::lte{99u}>>
+```
+
+A payload that violates it is `validation_failure` in both directions, exactly
+as an ordinary field's constraint is. `failed_at` names the **`variance`**, not
+the alternative: an alternative has no id of its own, so a breach inside the
+third alternative of `"body"` is reported as `"body"`. Which alternative it was
+is recoverable from the discriminant.
+
+**The constraint applies to the tag's resulting type, not its element type.** On
+`as_vec<u8, len_from_field<"n">, ...>` the constraint is checked against
+`std::vector<u8>`, so it is a predicate over the whole container rather than
+over each `u8`:
+
+```cpp
+struct even_length {
+  constexpr auto operator()(const std::vector<u8>& payload) const -> bool {
+    return payload.size() % 2 == 0;
+  }
+};
+
+s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">, even_length{}>>
+```
+
+The same holds for the rest: an `as_fixed_arr<u8, 4, ...>` constraint sees
+`std::array<u8, 4>`, and an `as_struct<inner, ...>` constraint sees `inner`.
+Constraints are values, so anything beyond the built-ins in
+[Constraints and validation](../constraints.md) is spelled as a functor like the
+one above — it must be usable as a template argument, which an empty struct is.
+
+Entries are order-independent, so the size and the constraint may be written
+either way round:
+
+```cpp
+s2s::as_trivial<u32, s2s::lte{99u}, 4_B>   // the same alternative
+```
+
+Two entries of the same kind in one pack is a compile error.
+
+### Constraining the resolved variant
+
+A `variance` takes a constraint of its own, after the deducer:
+
+```cpp
+struct even_body {
+  constexpr auto operator()(const std::variant<u32, u16>& body) const -> bool {
+    return std::visit([](auto value) { return value % 2 == 0; }, body);
+  }
+};
+
+s2s::variance<"body", guide, even_body{}>
+```
+
+This is a different thing from the section above, and the difference is what it
+sees. An alternative's constraint is handed one alternative's payload and runs
+only when that alternative is the one selected. A `variance`'s constraint is
+handed the resolved `std::variant` and runs whichever alternative was selected —
+so it is where a rule that holds across the whole union belongs, rather than
+being repeated on every tag.
+
+Both may be declared, and both then apply: the alternative's runs against the
+payload, the union's against the variant that payload was moved into. Neither
+implies the other, and either can reject on its own.
+
+Because the value is a `std::variant`, the constraint is always a functor: a
+variant is not a structural type, so it cannot be a template argument to `eq{}`
+and the built-in comparisons are unspellable here.
+
+The union's pack admits a constraint and nothing else. A union's own size is
+`size_dont_care` and it drives no allocation of its own — only its alternatives
+do — so a size or a `max_bytes` entry here is a compile error rather than an
+entry that would quietly do nothing. Two constraints is a compile error too, for
+the same reason it is on any other pack.
+
+### Bounding an alternative
+
+A container alternative's length comes off the wire, so it carries the same
+`max_bytes` ceiling every other wire-sized container does — see
+[allocation limits](../reading.md#allocation-limits):
+
+```cpp
+s2s::match_case<0x02, s2s::as_vec<u8, s2s::len_from_field<"n">,
+                                      s2s::max_bytes<4096>>>
+```
+
+The rules are the ones that already apply to `vec_field` and `str_field`. The
+ceiling is `count * sizeof(element)` and inclusive; an alternative that declares
+nothing still gets `S2S_DEFAULT_MAX_BYTES` rather than being unbounded; and a
+declared bound is the author's intent, so no build setting clamps it in either
+direction. An over-long alternative is `excessive_length`, reported against the
+`variance`.
+
+Only `as_vec`, `as_string` and `as_vec_of_records` take one. On the other five
+the extent is fixed by the tag, so nothing a stream says can change how much is
+allocated and there is nothing for a ceiling to guard — a `max_bytes` there is a
+compile error rather than an entry that would quietly do nothing.
+
+All three kinds of entry compose, in any order:
+
+```cpp
+s2s::as_vec<u8, even_length{}, s2s::max_bytes<4096>, s2s::len_from_field<"n">>
+```

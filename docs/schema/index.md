@@ -120,7 +120,7 @@ consumes off the wire, and where that count comes from.
 | `magic_string<id, expected>` | magic string | `fixed_string<expected.size()>` | `size() + 1`, and the value is checked |
 | `magic_number<id, T, size, expected>` | magic number | integral `T` | its declared size, and the value is checked |
 | `maybe<field, present_only_if>` | optional | whatever it wraps | zero, or the wrapped field's |
-| `variance<id, deducer>` | union | `std::variant` of the alternatives | the selected alternative's |
+| `variance<id, deducer, c>` | union | `std::variant` of the alternatives | the selected alternative's |
 
 Four things in that table are easy to misread.
 
