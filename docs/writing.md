@@ -51,9 +51,9 @@ using log_record =
 
 auto main() -> int {
   log_record record{};
-  record["marker"_f] = std::array<u8, 2>{0x4c, 0x47};
   record["message"_f] = std::string("disk nearly full");
-  // "message_length" is never assigned. It is derived from message.size().
+  // Neither "marker" nor "message_length" is assigned. The marker's value is
+  // fixed by its constraint; the length is derived from message.size().
 
   std::fstream file("log_record.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
@@ -170,6 +170,50 @@ The rule behind that list is
 a construct the library can run backwards is derived and made read-only, and one
 it cannot is left alone and checked.
 
+## Fields frozen by a constraint are read-only too
+
+A field constrained to `eq{v}` has one legal value, and the schema already
+states it. Rather than requiring the caller to state it a second time, the
+write path takes the value off the constraint and puts it on the wire. Such a
+field is read-only for the same reason a discriminant is, and behaves the same
+way — readable, not assignable:
+
+```cpp
+using chunk =
+  s2s::struct_field_list<
+    s2s::magic_byte_array<"marker", 2, std::array<u8, 2>{0x4c, 0x47}>,
+    s2s::basic_field<"version", u16, 2_B, s2s::eq{u16{1}}>,
+    s2s::basic_field<"payload", u32, 4_B>
+  >;
+
+chunk c{};
+c["payload"_f] = 0xcafed00d;
+c["marker"_f] = std::array<u8, 2>{0x4c, 0x47};  // does not compile
+const auto parsed_marker = c["marker"_f];       // compiles
+```
+
+This covers `magic_string`, `magic_number` and `magic_byte_array`, since
+[each is an ordinary descriptor with `eq` already filled in](constraints.md#the-magic-descriptors-are-constraints),
+and equally a hand-spelled `eq` on any fixed-size field. It is the constraint
+that decides, not the descriptor's name.
+
+Only fixed-size fields are frozen. `eq` on a variable-sized field would make
+its length slot statically known and collide with length derivation, so such a
+field keeps the ordinary checked-on-write behaviour. So does a union
+alternative pinned to `eq`: there is no setter to remove — the caller supplies
+the whole variant — and silently replacing a payload they chose is worse than
+rejecting it, so an alternative's `eq` is still checked and can still fail.
+
+As with a discriminant, a read gives the stored slot rather than the value that
+will be written: default-constructed on a fresh struct, and what was parsed on
+one that came from `struct_cast`.
+
+**This too is a breaking change.** Code that assigned a magic value before
+writing should delete the assignment; the value it was supplying is the one the
+library now supplies itself. A write can no longer fail because a magic value
+was wrong — but a *read* still rejects wrong magic bytes exactly as before,
+which is where that check was always doing the real work.
+
 ## What is checked at write time
 
 Everything the library can check without a second pass is checked *before* the
@@ -177,7 +221,7 @@ offending field's first byte is emitted.
 
 | Inconsistency | `failure_reason` | `failed_at` |
 |---|---|---|
-| a constraint rejects the value, including a wrong magic value | `validation_failure` | that field |
+| a constraint rejects the value | `validation_failure` | that field |
 | a `parse_if` predicate disagrees with the optional's `has_value()` | `validation_failure` | the optional field |
 | a constraint on a union alternative rejects its payload | `validation_failure` | the union field |
 | a constraint on a `variance` rejects the resolved variant | `validation_failure` | the union field |

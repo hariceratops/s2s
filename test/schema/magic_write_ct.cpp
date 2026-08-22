@@ -23,24 +23,18 @@ using magic_schema =
     s2s::magic_byte_array<"magic_arr", 2, std::array<unsigned char, 2>{0xbe, 0xef}>
   >;
 
+// Nothing to populate: a magic field has no setter, and the write path takes
+// its value from the constraint. The name is kept so the round-trip cases below
+// still read as writing a struct rather than a default-constructed placeholder.
 constexpr auto populated() -> magic_schema {
-  magic_schema obj{};
-  obj["magic_str"_f] = s2s::fixed_string<3>("GIF");
-  obj["magic_num"_f] = 0xdeadbeef;
-  obj["magic_arr"_f] = std::array<unsigned char, 2>{0xbe, 0xef};
-  return obj;
+  return magic_schema{};
 }
 
-template <bool big_endian>
-constexpr auto write_wrong_magic() -> s2s::cast_result {
+constexpr auto write_untouched() -> std::array<u8, 10> {
   std::array<u8, 10> buffer{};
   memstream<10> stream(buffer);
-  auto obj = populated();
-  obj["magic_num"_f] = 0xbeefbeef;
-  if constexpr(big_endian)
-    return s2s::stream_cast_be<magic_schema>(stream, obj);
-  else
-    return s2s::stream_cast_le<magic_schema>(stream, obj);
+  auto res = s2s::stream_cast_be<magic_schema>(stream, magic_schema{});
+  return res.has_value() ? buffer : std::array<u8, 10>{};
 }
 
 auto main() -> int {
@@ -70,13 +64,21 @@ auto main() -> int {
     expect(eq((*res)["magic_num"_f], 0xdeadbeefu));
   };
 
-  // The check is on the value the caller supplied, so it fires before any
-  // byte order is applied and must fail identically in both.
-  "a wrong magic value is rejected in both byte orders"_test = [] constexpr {
-    expect(eq(write_wrong_magic<false>().has_value(), false));
-    expect(eq(write_wrong_magic<true>().has_value(), false));
-    expect(eq(write_wrong_magic<false>().error().failure_reason,
-              s2s::error_reason::validation_failure));
-    expect(eq(write_wrong_magic<true>().error().failed_at, std::string_view{"magic_num"}));
+  // A struct nobody assigned to still carries the declared magic onto the
+  // wire — the value comes off the constraint, not out of the object.
+  "an untouched struct writes the declared magic bytes"_test = [] constexpr {
+    // Byte by byte rather than array against array: ut formats a failing
+    // operand with operator<<, which std::array does not have.
+    constexpr auto bytes = write_untouched();
+    expect(eq(bytes[0], u8{'G'}));
+    expect(eq(bytes[1], u8{'I'}));
+    expect(eq(bytes[2], u8{'F'}));
+    expect(eq(bytes[3], u8{'\0'}));
+    expect(eq(bytes[4], u8{0xde}));
+    expect(eq(bytes[5], u8{0xad}));
+    expect(eq(bytes[6], u8{0xbe}));
+    expect(eq(bytes[7], u8{0xef}));
+    expect(eq(bytes[8], u8{0xbe}));
+    expect(eq(bytes[9], u8{0xef}));
   };
 }

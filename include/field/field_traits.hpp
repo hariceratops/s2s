@@ -29,6 +29,31 @@ inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
 template <typename T>
 concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
 
+// A field the schema pins to one value: constrained to eq, so there is nothing
+// for the user to decide and the write path supplies the value itself. Keyed
+// off the constraint rather than off the descriptor alias, so magic_string,
+// magic_number, magic_byte_array and a hand-spelled eq{} are all one case.
+//
+// Fixed-size only. A frozen std::string would make its own length slot
+// statically known and collide with the derived-length machinery, and a frozen
+// record is not a use case anyone has. The convertibility test excludes the
+// remaining oddity, a c-array field: eq<char[N]> is a formable type but its
+// value cannot be cast back to the array, so such a field keeps the ordinary
+// validate-the-stored-value path rather than failing to compile here.
+template <typename T>
+concept frozen_field_like =
+  fixed_sized_field_like<T> &&
+  is_eq_constraint_v<std::remove_cvref_t<decltype(T::constraint_checker)>> &&
+  std::is_convertible_v<decltype(T::constraint_checker.v), typename T::field_type>;
+
+// Deliberately not sizeof(field_type): the same widening the write path applies,
+// so a magic_number<"m", u64, 8_B, 0xdead> — whose eq holds an int, because the
+// descriptor takes `auto expected` and eq deduces from the literal — reaches the
+// stream as the field's own type.
+template <frozen_field_like T>
+inline constexpr auto frozen_value_of =
+  static_cast<typename T::field_type>(T::constraint_checker.v);
+
 template <typename T>
 struct is_array_of_record_field;
 

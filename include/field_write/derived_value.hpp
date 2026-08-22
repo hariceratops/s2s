@@ -227,6 +227,27 @@ template <typename target, typename F>
 inline constexpr bool is_derived_target_v = is_derived_target<target, F>::value;
 
 
+// The same question is_derived_target asks — does the write path ignore the
+// stored value — for the other reason it might. Parameterised on the field list
+// because being frozen is not enough on its own: a union alternative is a field
+// too, and to_field_choices gives it the union's id, so it is never a member of
+// the list that holds it. Freezing an alternative would silently discard a
+// payload the caller put in the variant, where today it is rejected; membership
+// is what separates the two, and it is also exactly the set operator[] offers.
+template <typename target, typename F>
+struct is_frozen_target {
+  static constexpr bool value = false;
+};
+
+template <frozen_field_like target, auto metadata, typename... fields>
+struct is_frozen_target<target, struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool value = (... || std::is_same_v<target, fields>);
+};
+
+template <typename target, typename F>
+inline constexpr bool is_frozen_target_v = is_frozen_target<target, F>::value;
+
+
 template <typename target, typename F>
 struct derive_value;
 

@@ -14,11 +14,10 @@ using magic_schema =
     s2s::basic_field<"payload", u32, 4_B>
   >;
 
+// The three magic fields are never assigned — they have no setter. Their
+// values are on their constraints, and the write path takes them from there.
 auto populated() -> magic_schema {
   magic_schema obj{};
-  obj["magic_str"_f] = s2s::fixed_string<3>("GIF");
-  obj["magic_num"_f] = 0xdeadbeef;
-  obj["magic_arr"_f] = std::array<unsigned char, 4>{0xde, 0xad, 0xbe, 0xef};
   obj["payload"_f] = 0xcafed00d;
   return obj;
 }
@@ -51,63 +50,36 @@ TEST(MagicWrite, RoundTripsMagicFieldsBigEndian) {
   });
 }
 
-TEST(MagicWrite, RejectsWrongMagicString) {
+// The bytes, not just the round trip: a struct nobody touched must still put
+// the declared magic on the wire, or the round trip above would pass on a
+// stream that agrees with itself and with nothing else.
+TEST(MagicWrite, WritesTheDeclaredBytesFromAnUntouchedStruct) {
   using test_field_list = magic_schema;
-
-  auto obj = populated();
-  obj["magic_str"_f] = s2s::fixed_string<3>("NAH");
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
-  ASSERT_FALSE(written.has_value());
-  EXPECT_EQ(written.error().failure_reason, s2s::error_reason::validation_failure);
-  EXPECT_EQ(written.error().failed_at, "magic_str");
-}
-
-TEST(MagicWrite, RejectsWrongMagicNumberInBothByteOrders) {
-  using test_field_list = magic_schema;
-
-  auto obj = populated();
-  obj["magic_num"_f] = 0xbeefbeef;
-
-  std::stringstream le(std::ios::in | std::ios::out | std::ios::binary);
-  auto le_written = s2s::stream_cast_le<test_field_list>(le, obj);
-  ASSERT_FALSE(le_written.has_value());
-  EXPECT_EQ(le_written.error().failure_reason, s2s::error_reason::validation_failure);
-  EXPECT_EQ(le_written.error().failed_at, "magic_num");
-
-  std::stringstream be(std::ios::in | std::ios::out | std::ios::binary);
-  auto be_written = s2s::stream_cast_be<test_field_list>(be, obj);
-  ASSERT_FALSE(be_written.has_value());
-  EXPECT_EQ(be_written.error().failure_reason, s2s::error_reason::validation_failure);
-  EXPECT_EQ(be_written.error().failed_at, "magic_num");
-}
-
-TEST(MagicWrite, RejectsWrongMagicByteArray) {
-  using test_field_list = magic_schema;
-
-  auto obj = populated();
-  obj["magic_arr"_f] = std::array<unsigned char, 4>{0x00, 0x00, 0x00, 0x00};
-
-  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
-  auto written = s2s::stream_cast_le<test_field_list>(stream, obj);
-  ASSERT_FALSE(written.has_value());
-  EXPECT_EQ(written.error().failed_at, "magic_arr");
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(stream, magic_schema{}).has_value());
+  EXPECT_EQ(stream.str(),
+            std::string("GIF\0"
+                        "\xde\xad\xbe\xef"
+                        "\xde\xad\xbe\xef"
+                        "\0\0\0\0", 16));
 }
 
 // Fail-fast, not rollback: fields already written stay on the stream, but the
-// offending field must contribute nothing.
+// offending field must contribute nothing. A magic field can no longer be the
+// one that offends, so the trigger is an ordinary constraint the caller can
+// still violate.
 TEST(MagicWrite, OffendingFieldContributesNoBytes) {
   using test_field_list =
     s2s::struct_field_list<
       s2s::basic_field<"a", u32, 4_B>,
-      s2s::magic_number<"magic_num", u32, 4_B, 0xdeadbeef>,
+      s2s::basic_field<"small", u32, 4_B, s2s::lt{10u}>,
       s2s::basic_field<"b", u32, 4_B>
     >;
 
   test_field_list obj{};
   obj["a"_f] = 0x11223344;
-  obj["magic_num"_f] = 0xbeefbeef;
+  obj["small"_f] = 0xbeefbeef;
   obj["b"_f] = 0x55667788;
 
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);

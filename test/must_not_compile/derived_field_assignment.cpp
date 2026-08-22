@@ -58,6 +58,12 @@ using duplicate_value_struct =
   >;
 #endif
 
+using frozen_struct =
+  s2s::struct_field_list<
+    s2s::magic_number<"magic", u32, 4_B, 0xdeadbeef>,
+    s2s::basic_field<"payload", u32, 4_B>
+  >;
+
 auto main() -> int {
   our_struct obj{};
 
@@ -70,6 +76,17 @@ auto main() -> int {
   // The schema above is the failure; nothing to do here.
   duplicate_value_struct dup{};
   (void)dup;
+#elif CASE == 5
+  // Must NOT compile — a field constrained to eq has one legal value, which
+  // the write path takes off the constraint. Reading it back is still allowed,
+  // so this fails as assign-to-const rather than as no viable overload.
+  frozen_struct f{};
+  f["magic"_f] = 0xdeadbeef;
+#elif CASE == 6
+  // Must NOT compile — the same claim for a hand-spelled eq, which is what
+  // shows the rule follows the constraint rather than the magic_* aliases.
+  s2s::struct_field_list<s2s::basic_field<"tag", u32, 4_B, s2s::eq{7u}>> t{};
+  t["tag"_f] = 7u;
 #endif
 
   return 0;

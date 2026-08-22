@@ -51,6 +51,13 @@ add_rejected_case(rejects_duplicate_bound_on_tag option_pack_misuse.cpp 13)
 # The union-level constraint (052). variance takes a constraint-only pack, so
 # 10 and 14 fail on the per-element placeholder constraint and 15 on the
 # duplicate-count assertion. Each checked against a no-CASE control build.
+# A field frozen by an eq constraint. Both checked against a no-CASE control
+# build: each fails as assign-to-const on the read-only overload, which is what
+# proves the field stays readable rather than disappearing the way a length
+# target does.
+add_rejected_case(rejects_assigning_a_frozen_magic_field derived_field_assignment.cpp 5)
+add_rejected_case(rejects_assigning_a_frozen_eq_field derived_field_assignment.cpp 6)
+
 add_rejected_case(rejects_size_on_variance option_pack_misuse.cpp 10)
 add_rejected_case(rejects_bound_on_variance option_pack_misuse.cpp 14)
 add_rejected_case(rejects_duplicate_constraint_on_variance option_pack_misuse.cpp 15)

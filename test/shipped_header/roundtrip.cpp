@@ -45,7 +45,6 @@ auto populated() -> schema {
   inner["x"_f] = 0x5566;
 
   schema obj{};
-  obj["magic"_f] = s2s::fixed_string<3>("S2S");
   obj["data"_f] = std::vector<u16>{0x1122, 0x3344};
   obj["pair"_f] = std::array<u16, 2>{0x7788, 0x99aa};
   obj["nested"_f] = inner;

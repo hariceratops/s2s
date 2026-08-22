@@ -28,9 +28,9 @@ using log_record =
 
 auto main() -> int {
   log_record record{};
-  record["marker"_f] = std::array<u8, 2>{0x4c, 0x47};
   record["message"_f] = std::string("disk nearly full");
-  // "message_length" is never assigned. It is derived from message.size().
+  // Neither "marker" nor "message_length" is assigned. The marker's value is
+  // fixed by its constraint; the length is derived from message.size().
 
   std::fstream file("log_record.bin",
                     std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);

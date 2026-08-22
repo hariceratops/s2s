@@ -104,7 +104,6 @@ static_assert(s2s::output_stream_like<byte_stream>);
 
 auto main() -> int {
   heartbeat beat{};
-  beat["marker"_f] = std::array<u8, 2>{0x48, 0x42};
   beat["sequence"_f] = 0xdeadbeefu;
 
   byte_stream stream;

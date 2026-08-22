@@ -60,7 +60,6 @@ using gzip_header =
 
 auto round_trip(u8 flags, bool with_name, const char* path) -> bool {
   gzip_header header{};
-  header["magic"_f] = std::array<u8, 2>{0x1f, 0x8b};
   header["method"_f] = u8{8};
   header["flags"_f] = flags;
   header["mtime"_f] = 0x5f000000u;
@@ -92,7 +91,6 @@ auto main() -> int {
 
   // Disagreement is caught: the flag promises a name length, the header has none.
   gzip_header bad{};
-  bad["magic"_f] = std::array<u8, 2>{0x1f, 0x8b};
   bad["flags"_f] = u8{0x08};
   std::fstream discard("gzip_bad.bin",
                        std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);

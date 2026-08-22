@@ -95,9 +95,12 @@ TEST(RecordWrite, PreservesDeclarationOrderAtEveryNestingLevel) {
 }
 
 TEST(RecordWrite, RunsConstraintCheckersInsideNestedRecords) {
+  // Triggered by an ordinary constraint rather than a magic field: a field
+  // pinned to eq takes its value from the constraint, so it can no longer
+  // carry a wrong one.
   using tagged =
     s2s::struct_field_list<
-      s2s::magic_number<"tag", u32, 4_B, 0xdeadbeef>,
+      s2s::basic_field<"tag", u32, 4_B, s2s::lt{100u}>,
       s2s::basic_field<"payload", u32, 4_B>
     >;
   using test_field_list =
@@ -123,7 +126,7 @@ TEST(RecordWrite, RunsConstraintCheckersInsideNestedRecords) {
 TEST(RecordWrite, RunsConstraintCheckersInsideVectorOfRecords) {
   using tagged =
     s2s::struct_field_list<
-      s2s::magic_number<"tag", u32, 4_B, 0xdeadbeef>
+      s2s::basic_field<"tag", u32, 4_B, s2s::lt{100u}>
     >;
   using test_field_list =
     s2s::struct_field_list<
@@ -132,9 +135,9 @@ TEST(RecordWrite, RunsConstraintCheckersInsideVectorOfRecords) {
     >;
 
   tagged good{};
-  good["tag"_f] = 0xdeadbeef;
+  good["tag"_f] = 42u;
   tagged bad{};
-  bad["tag"_f] = 0x0;
+  bad["tag"_f] = 0xdeadbeef;
 
   test_field_list obj{};
   obj["items"_f] = std::vector<tagged>{good, bad};
@@ -177,4 +180,31 @@ TEST(RecordWrite, DerivesNestedLengthsFromTheirOwnElement) {
     EXPECT_EQ((*result)["records"_f][0]["data"_f], (std::vector<u8>{0xaa}));
     EXPECT_EQ((*result)["records"_f][1]["data"_f], (std::vector<u8>{0xbb, 0xcc, 0xdd}));
   });
+}
+
+// The freeze reaches a nested record's own fields: write_nested runs
+// stream_cast_impl on the inner list, where the magic field is a member of
+// that list and so is frozen there in its own right.
+TEST(RecordWrite, WritesAFrozenFieldInsideANestedRecord) {
+  using tagged =
+    s2s::struct_field_list<
+      s2s::magic_number<"tag", u32, 4_B, 0xdeadbeef>,
+      s2s::basic_field<"payload", u32, 4_B>
+    >;
+  using test_field_list =
+    s2s::struct_field_list<
+      s2s::basic_field<"lead", u32, 4_B>,
+      s2s::struct_field<"inner", tagged>
+    >;
+
+  test_field_list obj{};
+  obj["lead"_f] = 0x11223344;
+  obj["inner"_f]["payload"_f] = 0x55667788;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  ASSERT_TRUE(s2s::stream_cast_be<test_field_list>(stream, obj).has_value());
+  EXPECT_EQ(stream.str(),
+            std::string("\x11\x22\x33\x44"
+                        "\xde\xad\xbe\xef"
+                        "\x55\x66\x77\x88", 12));
 }
