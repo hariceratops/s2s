@@ -41,6 +41,15 @@ struct write_field<T, F> {
       if(!T::constraint_checker(*derived))
         return std::unexpected(error_reason::validation_failure);
       return verify_then_write<endianness>(s, *derived, size_to_write);
+    } else if constexpr(is_frozen_target_v<T, F>) {
+      // Ordered after the derived branch, not before it: a frozen field can
+      // also be some other field's length target, and there the derived value
+      // is the one that has to reach the stream — checked against this very
+      // constraint above, which is the stricter of the two paths.
+      //
+      // No constraint check of its own. The value is the constraint's, so it
+      // satisfies it by construction.
+      return verify_then_write<endianness>(s, frozen_value_of<T>, size_to_write);
     } else {
       return verify_then_write<endianness>(s, value, size_to_write);
     }

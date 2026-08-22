@@ -47,7 +47,6 @@ using telemetry_frame =
 
 auto main() -> int {
   telemetry_frame frame{};
-  frame["marker"_f] = std::array<u8, 2>{0xab, 0xcd};
   frame["device_id"_f] = u16{0x2a};
   frame["revision"_f] = u8{2};
   frame["samples"_f] = std::vector<u16>{300, 301, 299, 302};
@@ -93,7 +92,10 @@ occupy two bytes. The axis has six forms and enough depth to warrant
 **`constraint`** narrows which values are legal. It is checked in both
 directions — while reading, before the value is stored; while writing, before
 the field's first byte is emitted — and a violation is a `validation_failure`
-either way. See [Constraints and validation](../constraints.md).
+either way. The exception is `eq` on a fixed-size field, which narrows to a
+single value and so is
+[supplied rather than checked](../writing.md#fields-frozen-by-a-constraint-are-read-only-too)
+on the way out. See [Constraints and validation](../constraints.md).
 
 ## The descriptors
 
@@ -116,9 +118,9 @@ consumes off the wire, and where that count comes from.
 | `vec_field<id, T, size, c>` | length-prefixed vector of trivials | `std::vector<T>` | element count from the size axis |
 | `vector_of_records<id, T, size, c>` | length-prefixed vector of records | `std::vector<T>`, `T` a schema | element count from the size axis |
 | `struct_field<id, T>` | nested record | `T`, a schema | whatever the nested schema occupies |
-| `magic_byte_array<id, N, expected>` | magic bytes | `std::array<unsigned char, N>` | `N`, and the value is checked |
-| `magic_string<id, expected>` | magic string | `fixed_string<expected.size()>` | `size() + 1`, and the value is checked |
-| `magic_number<id, T, size, expected>` | magic number | integral `T` | its declared size, and the value is checked |
+| `magic_byte_array<id, N, expected>` | magic bytes | `std::array<unsigned char, N>` | `N`; the value is checked on read and supplied on write |
+| `magic_string<id, expected>` | magic string | `fixed_string<expected.size()>` | `size() + 1`; the value is checked on read and supplied on write |
+| `magic_number<id, T, size, expected>` | magic number | integral `T` | its declared size; the value is checked on read and supplied on write |
 | `maybe<field, present_only_if>` | optional | whatever it wraps | zero, or the wrapped field's |
 | `variance<id, deducer, c>` | union | `std::variant` of the alternatives | the selected alternative's |
 
@@ -135,7 +137,9 @@ occupy, which is why it is never written by hand.
 
 The magic descriptors are not a separate mechanism. Each is an ordinary
 descriptor with an `eq` constraint already applied, which is why they take an
-`expected` value where the others take a constraint.
+`expected` value where the others take a constraint — and why, like any other
+`eq`-constrained fixed-size field, they are
+[read-only and written from the constraint](../writing.md#fields-frozen-by-a-constraint-are-read-only-too).
 
 Only two entries consume a variable number of bytes from one read to the next
 rather than from one schema to the next: `maybe` consumes nothing when its
@@ -151,11 +155,17 @@ select among the descriptors above, and are covered in
 
 `fixed_string<N>` is part of the supported surface, not an internal detail. It
 is unavoidable: `magic_string` and `fixed_string_field` use it as their field
-type, so assigning to one means constructing one.
+type, so reaching either one means handling one.
 
 ```cpp
-header["magic"_f] = s2s::fixed_string<3>("PKT");
+header["name"_f] = s2s::fixed_string<3>("PKT");
 ```
+
+That assignment is `fixed_string_field`. A `magic_string` takes no assignment at
+all — its value is fixed by the `eq` constraint the descriptor applies, and the
+write path
+[supplies it](../writing.md#fields-frozen-by-a-constraint-are-read-only-too) —
+but reading one back still hands out a `fixed_string<N>`.
 
 `N` is the length in characters, excluding the terminator, so the argument is a
 four-character string literal. It offers `data()`, `size()`, `to_sv()`, and

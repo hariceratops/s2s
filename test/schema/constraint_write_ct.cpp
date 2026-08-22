@@ -34,14 +34,24 @@ constexpr auto write(u32 value) -> s2s::cast_result {
 }
 
 auto main() -> int {
-  // The read side checks after taking bytes off the wire; the write side has
-  // to check before putting any on. Same forms, opposite order.
-  "a write consults eq"_test = [] constexpr {
-    constexpr auto c = s2s::eq(42u);
-    expect(eq(write<c>(42u).has_value(), true));
-    expect(eq(write<c>(43u).has_value(), false));
+  // eq is absent from this harness on purpose. Every other form narrows a set
+  // of legal values and so has a value that violates it; eq names one value,
+  // which the write path supplies itself. There is nothing for the caller to
+  // get wrong, and no setter to get it wrong through — see the case below.
+  "a field constrained to eq writes its value unassigned"_test = [] constexpr {
+    using frozen = s2s::struct_field_list<s2s::basic_field<"a", u32, 4_B, s2s::eq(42u)>>;
+
+    std::array<u8, 4> buffer{};
+    memstream<4> stream(buffer);
+    expect(eq(s2s::stream_cast_le<frozen>(stream, frozen{}).has_value(), true));
+    expect(eq(buffer[0], u8{42}));
+    expect(eq(buffer[1], u8{0}));
+    expect(eq(buffer[2], u8{0}));
+    expect(eq(buffer[3], u8{0}));
   };
 
+  // The read side checks after taking bytes off the wire; the write side has
+  // to check before putting any on. Same forms, opposite order.
   "a write consults neq"_test = [] constexpr {
     constexpr auto c = s2s::neq(42u);
     expect(eq(write<c>(43u).has_value(), true));

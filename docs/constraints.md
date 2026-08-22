@@ -71,8 +71,17 @@ field<"magic", fixed_string<3>, 4_B, eq{fixed_string<3>("S2S")}>
 ```
 
 which is why they take an `expected` value where other descriptors take a
-constraint, and why a wrong magic value reports `validation_failure` like any
-other constraint breach rather than an error of its own.
+constraint, and why a wrong magic value coming off the wire reports
+`validation_failure` like any other constraint breach rather than an error of
+its own.
+
+Because they are `eq`, they are also
+[frozen on write](writing.md#fields-frozen-by-a-constraint-are-read-only-too):
+the value is supplied from the constraint rather than by the caller, and the
+field takes no assignment. The same applies to a hand-spelled `eq` on any
+fixed-size field — `eq` is the only constraint in the table above that names a
+single value rather than narrowing a set, which is what makes it the only one
+the write path can satisfy on the caller's behalf.
 
 <!-- docs: test/doc_examples/guide_constraints_example.cpp -->
 ```cpp
@@ -111,10 +120,10 @@ using wav_format_unchecked =
   >;
 
 auto main() -> int {
+  // "chunk_id", "chunk_size" and "audio_format" are not assigned. Each is
+  // constrained to eq, so the schema already fixes the value and the write
+  // path takes it from there.
   wav_format fmt{};
-  fmt["chunk_id"_f] = std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20};
-  fmt["chunk_size"_f] = 16u;
-  fmt["audio_format"_f] = u16{1};
   fmt["channels"_f] = u16{2};
   fmt["sample_rate"_f] = 44100u;
   fmt["bits_per_sample"_f] = u16{16};
@@ -149,7 +158,6 @@ auto main() -> int {
   // The bytes have to exist first, so they are written through the unchecked
   // layout and parsed back through the checked one.
   wav_format_unchecked loose{};
-  loose["chunk_id"_f] = std::array<u8, 4>{0x66, 0x6d, 0x74, 0x20};
   loose["chunk_size"_f] = 16u;
   loose["audio_format"_f] = u16{1};
   loose["channels"_f] = u16{6};

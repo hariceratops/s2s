@@ -48,6 +48,21 @@ struct eq {
   constexpr bool operator()(const T& actual_v) const { return actual_v == v; }
 };
 
+// The one constraint that names a single legal value rather than a set of
+// them, which is what lets the write path supply it instead of the user.
+template <typename T>
+struct is_eq_constraint {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+struct is_eq_constraint<eq<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_eq_constraint_v = is_eq_constraint<T>::res;
+
 template <equality_comparable T>
 struct neq {
   T v;

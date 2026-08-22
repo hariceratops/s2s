@@ -20,277 +20,6 @@
 #include <variant>
 #include <vector>
 
-// Begin lib/containers/static_vector.hpp
-#ifndef _STATIC_VECTOR_HPP_
-#define _STATIC_VECTOR_HPP_
- 
-namespace s2s {
-template <typename T, std::size_t N>
-class static_vector {
-public:
-  constexpr static_vector() = default;
-  template <typename... Args>
-  constexpr static_vector(Args&&... entries) {
-    (push_back(entries), ...);
-  }
-  constexpr auto push_back(const T& value) { 
-    values[vec_size] = value; 
-    vec_size++;
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
-    return values[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
-  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
-  [[nodiscard]] constexpr auto size() const { return vec_size; }
-  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  T values[N]{};
-  std::size_t vec_size{0};
-};
-}
-
-#endif /* _STATIC_VECTOR_HPP_ */
-
-// End lib/containers/static_vector.hpp
-
-// Begin lib/algorithms/algorithms.hpp
-#ifndef _ALGORITHMS_HPP_
-#define _ALGORITHMS_HPP_
- 
-// todo namespace algorithms
-constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    if(ts[i] == t) {
-      return i;
-    }
-  }
-
-  return ts.size();
-}
-
-constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    if(predicate(ts[i])) {
-      return i;
-    }
-  }
-
-  return ts.size();
-}
-
-constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
-  if(xs.size() != ys.size()) return false;
-
-  for(auto i = 0u; i < xs.size(); ++i) {
-    if(xs[i] != ys[i])
-      return false;
-  }
-
-  return true;
-}
-
-template <typename T>
-constexpr void swap_objects(T& a, T& b) {
-  T temp = a;
-  a = b;
-  b = temp;
-}
-
-constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
-  for(auto i = 0u; i < ts.size(); ++i) {
-    for(auto j = 0u; j < ts.size() - 1; ++j) {
-      if(predicate(ts[j + 1], ts[j])) {
-        swap_objects(ts[j], ts[j + 1]);
-      }
-    }
-  }
-}
-
-
-#endif /* _ALGORITHMS_HPP_ */
-
-// End lib/algorithms/algorithms.hpp
-
-// Begin lib/containers/static_map.hpp
-#ifndef _STATIC_MAP_HPP_
-#define _STATIC_MAP_HPP_
- 
- 
- 
- 
-namespace s2s {
-template <typename Key, typename Value>
-class Node {
-public:
-  std::pair<Key, Value> element;
-
-  constexpr Node() = default;
-  constexpr Node(Key&& key, Value&& value): element(key, value) {}
-  constexpr Node(const Key& key, const Value& value): element(key, value) {}
-  constexpr Node(const Node& other): element(other.element) {}
-  constexpr Node& operator=(const Node& other) {
-    element.first = other.element.first;
-    element.second = other.element.second;
-    return *this;
-  }
-
-  constexpr bool operator<(const Node& rhs) const noexcept {
-    return element.first < rhs.element.first;
-  }
-
-  constexpr const auto& operator*() const noexcept {
-    return element;
-  }
-
-  constexpr const auto* operator->() const noexcept {
-    return &element;
-  }
-};
-
-
-template <typename Key, typename Value, std::size_t N /*, compare? */>
-class static_map {
-public:
-  constexpr static_map() = default;
-  constexpr static_map(const std::pair<Key, Value> (&entries)[N]): 
-    map(generate_map<N>(entries, std::make_index_sequence<N>{})) {}
-  constexpr auto operator[](const Key& key) const  -> std::optional<Value> {
-    auto key_index = find_index_if(map, [&key](auto t){ return t.element.first == key; });
-    if(key_index != map.size())
-      return map[key_index].element.second;
-    return std::nullopt;
-  }
-  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
-  [[nodiscard]] constexpr auto end() const { return map.end(); }
-  [[nodiscard]] constexpr auto size() const { return map.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<Node<Key, Value>, N> map{};
-  template <std::size_t C, std::size_t... Is>
-  constexpr auto generate_map(const std::pair<Key, Value> (&entries)[C], std::index_sequence<Is...>) {
-    static_vector<Node<Key, Value>, N> m{};
-    ([&]() {
-      auto key = entries[Is].first;
-      auto key_index = find_index_if(m, [&key](auto t){ return t.element.first == key; });
-      if(key_index == m.size()) {
-        m.push_back(Node(entries[Is].first, entries[Is].second));
-        return;
-      }
-      m[key_index].element.second = entries[Is].second;
-    }(), ...);
-    sort_ranges(m, std::less<>{});
-    return m;
-  }
-};
-}
-
-#endif /* _STATIC_MAP_HPP_ */
-
-// End lib/containers/static_map.hpp
-
-// Begin lib/containers/static_set.hpp
-#ifndef _STATIC_SET_HPP_
-#define _STATIC_SET_HPP_
- 
- 
-namespace s2s {
-template <typename T, std::size_t N>
-class static_set {
-public:
-  constexpr static_set() = default;
-  template <typename... Args>
-  constexpr static_set(Args&&... entries) {
-    (insert(entries), ...);
-  }
-  constexpr static_set(const static_vector<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr static_set(const std::array<T, N>& vec) {
-    for(auto value: vec) { insert(value); }
-  }
-  constexpr auto insert(const T& value) { 
-    if(find_index(*this, value) == set.size()) {
-      set.push_back(value);
-    }
-  }
-  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
-    return set[i]; 
-  }
-  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
-    return set[i]; 
-  }
-  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
-  [[nodiscard]] constexpr auto end() const { return set.end(); }
-  [[nodiscard]] constexpr auto size() const { return set.size(); }
-  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
-  [[nodiscard]] constexpr auto capacity() const { return N; }
-
-private:
-  static_vector<T, N> set{};
-};
-}
-
-#endif /* _STATIC_SET_HPP_ */
-
-// End lib/containers/static_set.hpp
-
-// Begin lib/containers/static_optional.hpp
-#ifndef _STATIC_OPTIONAL_HPP_
-#define _STATIC_OPTIONAL_HPP_
- 
-namespace s2s {
-
-struct static_nullopt_t {};
-inline constexpr static_nullopt_t nullopt;
-
-template <typename T>
-struct static_optional {
-  T value{};
-  bool has_value{false};
-
-  // Constructors
-  constexpr static_optional() = default;
-  constexpr static_optional(static_nullopt_t): has_value{false} {};
-  constexpr static_optional(const static_nullopt_t&): has_value{false} {};
-  constexpr static_optional(const T& val)
-    : value(val), has_value(true) {}
-  constexpr static_optional(const std::optional<T>& std_opt) {
-    if(std_opt) {
-      has_value = true;
-      value = *std_opt;
-    }
-  }
-  // constexpr static_optional(T&& val)
-  //   : value(std::move(val)), has_value(true) {}
-
-  [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
-  [[nodiscard]] constexpr const T& get() const { return value; }
-  [[nodiscard]] constexpr operator bool() const noexcept { return has_value; }
-  [[nodiscard]] constexpr const T& operator*() const { return value; }
-  [[nodiscard]] constexpr T& operator*() { return value; }
-  [[nodiscard]] constexpr const T* operator->() const { return &value; }
-  [[nodiscard]] constexpr T* operator->() { return &value; }
-  [[nodiscard]] constexpr auto operator<=>(const static_optional&) const = default;
-  [[nodiscard]] constexpr bool operator==(static_nullopt_t&&) const { 
-    if(has_value) 
-      return true;
-    return false; 
-  };
-};
-}
-
-#endif /* _STATIC_OPTIONAL_HPP_ */
-
-// End lib/containers/static_optional.hpp
-
 // Begin lib/containers/fixed_string.hpp
 #ifndef _FIXED_STRING_HPP_
 #define _FIXED_STRING_HPP_
@@ -1139,6 +868,21 @@ struct eq {
   constexpr bool operator()(const T& actual_v) const { return actual_v == v; }
 };
 
+// The one constraint that names a single legal value rather than a set of
+// them, which is what lets the write path supply it instead of the user.
+template <typename T>
+struct is_eq_constraint {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+struct is_eq_constraint<eq<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_eq_constraint_v = is_eq_constraint<T>::res;
+
 template <equality_comparable T>
 struct neq {
   T v;
@@ -1433,6 +1177,480 @@ struct union_field: public
 #endif // _FIELD_HPP_
 
 // End field/field.hpp
+
+// Begin field/field_traits.hpp
+#ifndef _FIELD_TRAITS_HPP_
+#define _FIELD_TRAITS_HPP_
+ 
+ 
+ 
+namespace s2s {
+template <typename T>
+struct is_fixed_sized_field;
+
+// Specialization for field with fixed_size_like size
+template <fixed_string id, field_containable T, auto size, auto constraint_on_value, auto bound>
+  requires fixed_size_like<size_type_of<size>>
+struct is_fixed_sized_field<field<id, T, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_fixed_sized_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
+
+template <typename T>
+concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
+
+// A field the schema pins to one value: constrained to eq, so there is nothing
+// for the user to decide and the write path supplies the value itself. Keyed
+// off the constraint rather than off the descriptor alias, so magic_string,
+// magic_number, magic_byte_array and a hand-spelled eq{} are all one case.
+//
+// Fixed-size only. A frozen std::string would make its own length slot
+// statically known and collide with the derived-length machinery, and a frozen
+// record is not a use case anyone has. The convertibility test excludes the
+// remaining oddity, a c-array field: eq<char[N]> is a formable type but its
+// value cannot be cast back to the array, so such a field keeps the ordinary
+// validate-the-stored-value path rather than failing to compile here.
+template <typename T>
+concept frozen_field_like =
+  fixed_sized_field_like<T> &&
+  is_eq_constraint_v<std::remove_cvref_t<decltype(T::constraint_checker)>> &&
+  std::is_convertible_v<decltype(T::constraint_checker.v), typename T::field_type>;
+
+// Deliberately not sizeof(field_type): the same widening the write path applies,
+// so a magic_number<"m", u64, 8_B, 0xdead> — whose eq holds an int, because the
+// descriptor takes `auto expected` and eq deduces from the literal — reaches the
+// stream as the field's own type.
+template <frozen_field_like T>
+inline constexpr auto frozen_value_of =
+  static_cast<typename T::field_type>(T::constraint_checker.v);
+
+template <typename T>
+struct is_array_of_record_field;
+
+template <fixed_string id, field_list_like T, std::size_t N, auto size, auto constraint_on_value, auto bound>
+struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_array_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
+
+template <typename T>
+concept array_of_record_field_like = is_array_of_record_field_v<T>;
+
+
+template <typename T>
+struct is_variable_sized_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, variable_sized_buffer_like T, auto size, auto constraint_on_value, auto bound>
+  requires variable_size_like<size_type_of<size>>
+struct is_variable_sized_field<field<id, T, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_variable_sized_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept variable_sized_field_like = is_variable_sized_field_v<T>;
+
+template <typename T>
+struct is_vector_of_record_field;
+
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_vector_of_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
+
+template <typename T>
+concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
+
+template <typename T>
+struct is_struct_field;
+
+// Specialization for field with variable_size_like size
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+struct is_struct_field<field<id, T, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_struct_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
+
+// Concept for variable_sized_field_like
+template <typename T>
+concept struct_field_like = is_struct_field_v<T>;
+
+
+template <typename T>
+struct is_optional_field;
+
+// Specialization for maybe_field with a field
+template <fixed_string id, 
+          typename T, 
+          auto size, 
+          auto constraint, 
+          auto bound,
+          typename present_only_if, 
+          typename optional>
+struct is_optional_field<
+    maybe_field<field<id, T, size, constraint, bound>, present_only_if, optional>
+  >
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_optional_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
+
+// Concept for optional_field_like
+template <typename T>
+concept optional_field_like = is_optional_field_v<T>;
+
+
+template <typename T>
+struct is_union_field;
+
+template <fixed_string id, typename type_deducer, auto constraint_on_variant>
+struct is_union_field<
+    union_field<id, type_deducer, constraint_on_variant>
+  >
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_union_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_union_field_v = is_union_field<T>::res;
+
+template <typename T>
+concept union_field_like = is_union_field_v<T>;
+
+template <typename T>
+concept field_like = fixed_sized_field_like<T> || 
+                     variable_sized_field_like<T> ||
+                     array_of_record_field_like<T> ||
+                     vector_of_record_field_like<T> ||
+                     struct_field_like<T> || 
+                     optional_field_like<T> || 
+                     union_field_like<T>;
+} /* namespace s2s */
+
+#endif /*_FIELD_TRAITS_HPP_*/
+
+// End field/field_traits.hpp
+
+// Begin lib/containers/static_vector.hpp
+#ifndef _STATIC_VECTOR_HPP_
+#define _STATIC_VECTOR_HPP_
+ 
+namespace s2s {
+template <typename T, std::size_t N>
+class static_vector {
+public:
+  constexpr static_vector() = default;
+  template <typename... Args>
+  constexpr static_vector(Args&&... entries) {
+    (push_back(entries), ...);
+  }
+  constexpr auto push_back(const T& value) { 
+    values[vec_size] = value; 
+    vec_size++;
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return values[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return &values[0]; }
+  [[nodiscard]] constexpr auto end() const { return &values[0] + vec_size; }
+  [[nodiscard]] constexpr auto size() const { return vec_size; }
+  [[nodiscard]] constexpr auto empty() const { return not vec_size; }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  T values[N]{};
+  std::size_t vec_size{0};
+};
+}
+
+#endif /* _STATIC_VECTOR_HPP_ */
+
+// End lib/containers/static_vector.hpp
+
+// Begin lib/algorithms/algorithms.hpp
+#ifndef _ALGORITHMS_HPP_
+#define _ALGORITHMS_HPP_
+ 
+// todo namespace algorithms
+constexpr auto find_index(const std::ranges::range auto& ts, auto& t) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(ts[i] == t) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto find_index_if(const std::ranges::range auto& ts, auto predicate) -> std::size_t {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    if(predicate(ts[i])) {
+      return i;
+    }
+  }
+
+  return ts.size();
+}
+
+constexpr auto equal_ranges(const std::ranges::range auto& xs, const std::ranges::range auto& ys) -> bool {
+  if(xs.size() != ys.size()) return false;
+
+  for(auto i = 0u; i < xs.size(); ++i) {
+    if(xs[i] != ys[i])
+      return false;
+  }
+
+  return true;
+}
+
+template <typename T>
+constexpr void swap_objects(T& a, T& b) {
+  T temp = a;
+  a = b;
+  b = temp;
+}
+
+constexpr auto sort_ranges(std::ranges::range auto& ts, auto predicate) {
+  for(auto i = 0u; i < ts.size(); ++i) {
+    for(auto j = 0u; j < ts.size() - 1; ++j) {
+      if(predicate(ts[j + 1], ts[j])) {
+        swap_objects(ts[j], ts[j + 1]);
+      }
+    }
+  }
+}
+
+
+#endif /* _ALGORITHMS_HPP_ */
+
+// End lib/algorithms/algorithms.hpp
+
+// Begin lib/containers/static_map.hpp
+#ifndef _STATIC_MAP_HPP_
+#define _STATIC_MAP_HPP_
+ 
+ 
+ 
+ 
+namespace s2s {
+template <typename Key, typename Value>
+class Node {
+public:
+  std::pair<Key, Value> element;
+
+  constexpr Node() = default;
+  constexpr Node(Key&& key, Value&& value): element(key, value) {}
+  constexpr Node(const Key& key, const Value& value): element(key, value) {}
+  constexpr Node(const Node& other): element(other.element) {}
+  constexpr Node& operator=(const Node& other) {
+    element.first = other.element.first;
+    element.second = other.element.second;
+    return *this;
+  }
+
+  constexpr bool operator<(const Node& rhs) const noexcept {
+    return element.first < rhs.element.first;
+  }
+
+  constexpr const auto& operator*() const noexcept {
+    return element;
+  }
+
+  constexpr const auto* operator->() const noexcept {
+    return &element;
+  }
+};
+
+
+template <typename Key, typename Value, std::size_t N /*, compare? */>
+class static_map {
+public:
+  constexpr static_map() = default;
+  constexpr static_map(const std::pair<Key, Value> (&entries)[N]): 
+    map(generate_map<N>(entries, std::make_index_sequence<N>{})) {}
+  constexpr auto operator[](const Key& key) const  -> std::optional<Value> {
+    auto key_index = find_index_if(map, [&key](auto t){ return t.element.first == key; });
+    if(key_index != map.size())
+      return map[key_index].element.second;
+    return std::nullopt;
+  }
+  [[nodiscard]] constexpr auto begin() const { return map.begin(); }
+  [[nodiscard]] constexpr auto end() const { return map.end(); }
+  [[nodiscard]] constexpr auto size() const { return map.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not map.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<Node<Key, Value>, N> map{};
+  template <std::size_t C, std::size_t... Is>
+  constexpr auto generate_map(const std::pair<Key, Value> (&entries)[C], std::index_sequence<Is...>) {
+    static_vector<Node<Key, Value>, N> m{};
+    ([&]() {
+      auto key = entries[Is].first;
+      auto key_index = find_index_if(m, [&key](auto t){ return t.element.first == key; });
+      if(key_index == m.size()) {
+        m.push_back(Node(entries[Is].first, entries[Is].second));
+        return;
+      }
+      m[key_index].element.second = entries[Is].second;
+    }(), ...);
+    sort_ranges(m, std::less<>{});
+    return m;
+  }
+};
+}
+
+#endif /* _STATIC_MAP_HPP_ */
+
+// End lib/containers/static_map.hpp
+
+// Begin lib/containers/static_set.hpp
+#ifndef _STATIC_SET_HPP_
+#define _STATIC_SET_HPP_
+ 
+ 
+namespace s2s {
+template <typename T, std::size_t N>
+class static_set {
+public:
+  constexpr static_set() = default;
+  template <typename... Args>
+  constexpr static_set(Args&&... entries) {
+    (insert(entries), ...);
+  }
+  constexpr static_set(const static_vector<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr static_set(const std::array<T, N>& vec) {
+    for(auto value: vec) { insert(value); }
+  }
+  constexpr auto insert(const T& value) { 
+    if(find_index(*this, value) == set.size()) {
+      set.push_back(value);
+    }
+  }
+  [[nodiscard]] constexpr const auto& operator[](std::size_t i) const { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto& operator[](std::size_t i) { 
+    return set[i]; 
+  }
+  [[nodiscard]] constexpr auto begin() const { return set.begin(); }
+  [[nodiscard]] constexpr auto end() const { return set.end(); }
+  [[nodiscard]] constexpr auto size() const { return set.size(); }
+  [[nodiscard]] constexpr auto empty() const { return not set.size(); }
+  [[nodiscard]] constexpr auto capacity() const { return N; }
+
+private:
+  static_vector<T, N> set{};
+};
+}
+
+#endif /* _STATIC_SET_HPP_ */
+
+// End lib/containers/static_set.hpp
+
+// Begin lib/containers/static_optional.hpp
+#ifndef _STATIC_OPTIONAL_HPP_
+#define _STATIC_OPTIONAL_HPP_
+ 
+namespace s2s {
+
+struct static_nullopt_t {};
+inline constexpr static_nullopt_t nullopt;
+
+template <typename T>
+struct static_optional {
+  T value{};
+  bool has_value{false};
+
+  // Constructors
+  constexpr static_optional() = default;
+  constexpr static_optional(static_nullopt_t): has_value{false} {};
+  constexpr static_optional(const static_nullopt_t&): has_value{false} {};
+  constexpr static_optional(const T& val)
+    : value(val), has_value(true) {}
+  constexpr static_optional(const std::optional<T>& std_opt) {
+    if(std_opt) {
+      has_value = true;
+      value = *std_opt;
+    }
+  }
+  // constexpr static_optional(T&& val)
+  //   : value(std::move(val)), has_value(true) {}
+
+  [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& get() const { return value; }
+  [[nodiscard]] constexpr operator bool() const noexcept { return has_value; }
+  [[nodiscard]] constexpr const T& operator*() const { return value; }
+  [[nodiscard]] constexpr T& operator*() { return value; }
+  [[nodiscard]] constexpr const T* operator->() const { return &value; }
+  [[nodiscard]] constexpr T* operator->() { return &value; }
+  [[nodiscard]] constexpr auto operator<=>(const static_optional&) const = default;
+  [[nodiscard]] constexpr bool operator==(static_nullopt_t&&) const { 
+    if(has_value) 
+      return true;
+    return false; 
+  };
+};
+}
+
+#endif /* _STATIC_OPTIONAL_HPP_ */
+
+// End lib/containers/static_optional.hpp
 
 // Begin lib/metaprog/mp.hpp
 #ifndef _MP_HPP_
@@ -2652,6 +2870,7 @@ constexpr bool type_deduction_dependencies_resolved() {
  
  
  
+ 
 namespace s2s {
 
 // A field whose value the write path derives from other fields. The name
@@ -2672,6 +2891,30 @@ template <typename field_accessor, auto list_metadata>
 concept field_is_derived_from_a_discriminant =
   is_discriminant_derived_field<list_metadata>(as_sv(field_accessor::field_id));
 
+// Unlike the two above, this is a property of the field alone rather than of
+// what the rest of the list does with it, so it is answered from the looked-up
+// type instead of from a list built over the whole pack.
+template <auto list_metadata, typename field_accessor>
+constexpr auto is_frozen_field() -> bool {
+  constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+  if constexpr(res.has_value)
+    return frozen_field_like<meta::type_of<res->id>>;
+  else
+    return false;
+}
+
+template <typename field_accessor, auto list_metadata>
+concept field_is_frozen_by_its_constraint = is_frozen_field<list_metadata, field_accessor>();
+
+// The two kinds that stay visible but refuse assignment. A length target is
+// excluded even when it qualifies: it has no overload at all, and admitting one
+// here would undo that.
+template <typename field_accessor, auto list_metadata>
+concept field_is_readable_but_not_assignable =
+  (field_is_derived_from_a_discriminant<field_accessor, list_metadata> ||
+   field_is_frozen_by_its_constraint<field_accessor, list_metadata>) &&
+  (!field_is_derived_from_a_length<field_accessor, list_metadata>);
+
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
@@ -2683,23 +2926,27 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
     requires (field_lookup_res.has_value) &&
-             (!field_is_derived_from_other_fields<field_accessor, list_metadata>)
+             (!field_is_derived_from_other_fields<field_accessor, list_metadata>) &&
+             (!field_is_frozen_by_its_constraint<field_accessor, list_metadata>)
   constexpr auto& operator[](field_accessor)  {
     using field_type_ref = meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_ref>(*this).value;
   }
 
-  // A discriminant stays readable on a non-const object but hands back a const
-  // reference, so an attempted assignment fails as assign-to-const rather than
-  // as a wall of unsatisfied-constraint output from no viable overload. How a
-  // caller should reach a variance field's held alternative is unsettled, so
-  // hiding discriminants the way length targets are hidden waits on that.
+  // A discriminant or a frozen field stays readable on a non-const object but
+  // hands back a const reference, so an attempted assignment fails as
+  // assign-to-const rather than as a wall of unsatisfied-constraint output from
+  // no viable overload. Neither can be hidden outright the way a length target
+  // is: a discriminant because how a caller should reach a variance field's
+  // held alternative is unsettled, and a frozen field because what was parsed
+  // off the wire is worth reading back even though it could only ever have been
+  // the one value.
   template <
     typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
     requires (field_lookup_res.has_value) &&
-             field_is_derived_from_a_discriminant<field_accessor, list_metadata>
+             field_is_readable_but_not_assignable<field_accessor, list_metadata>
   constexpr const auto& operator[](field_accessor) {
     using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;
@@ -3235,184 +3482,6 @@ using variance =
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
 
 // End api/field_descriptors.hpp
-
-// Begin field/field_traits.hpp
-#ifndef _FIELD_TRAITS_HPP_
-#define _FIELD_TRAITS_HPP_
- 
- 
- 
-namespace s2s {
-template <typename T>
-struct is_fixed_sized_field;
-
-// Specialization for field with fixed_size_like size
-template <fixed_string id, field_containable T, auto size, auto constraint_on_value, auto bound>
-  requires fixed_size_like<size_type_of<size>>
-struct is_fixed_sized_field<field<id, T, size, constraint_on_value, bound>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_fixed_sized_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_fixed_sized_field_v = is_fixed_sized_field<T>::res;
-
-template <typename T>
-concept fixed_sized_field_like = is_fixed_sized_field_v<T>;
-
-template <typename T>
-struct is_array_of_record_field;
-
-template <fixed_string id, field_list_like T, std::size_t N, auto size, auto constraint_on_value, auto bound>
-struct is_array_of_record_field<field<id, std::array<T, N>, size, constraint_on_value, bound>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_array_of_record_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_array_of_record_field_v = is_array_of_record_field<T>::res;
-
-template <typename T>
-concept array_of_record_field_like = is_array_of_record_field_v<T>;
-
-
-template <typename T>
-struct is_variable_sized_field;
-
-// Specialization for field with variable_size_like size
-template <fixed_string id, variable_sized_buffer_like T, auto size, auto constraint_on_value, auto bound>
-  requires variable_size_like<size_type_of<size>>
-struct is_variable_sized_field<field<id, T, size, constraint_on_value, bound>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_variable_sized_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_variable_sized_field_v = is_variable_sized_field<T>::res;
-
-// Concept for variable_sized_field_like
-template <typename T>
-concept variable_sized_field_like = is_variable_sized_field_v<T>;
-
-template <typename T>
-struct is_vector_of_record_field;
-
-template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
-struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_vector_of_record_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>::res;
-
-template <typename T>
-concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
-
-template <typename T>
-struct is_struct_field;
-
-// Specialization for field with variable_size_like size
-template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
-struct is_struct_field<field<id, T, size, constraint_on_value, bound>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_struct_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_struct_field_v = is_struct_field<T>::res;
-
-// Concept for variable_sized_field_like
-template <typename T>
-concept struct_field_like = is_struct_field_v<T>;
-
-
-template <typename T>
-struct is_optional_field;
-
-// Specialization for maybe_field with a field
-template <fixed_string id, 
-          typename T, 
-          auto size, 
-          auto constraint, 
-          auto bound,
-          typename present_only_if, 
-          typename optional>
-struct is_optional_field<
-    maybe_field<field<id, T, size, constraint, bound>, present_only_if, optional>
-  >
-{
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_optional_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_optional_field_v = is_optional_field<T>::res;
-
-// Concept for optional_field_like
-template <typename T>
-concept optional_field_like = is_optional_field_v<T>;
-
-
-template <typename T>
-struct is_union_field;
-
-template <fixed_string id, typename type_deducer, auto constraint_on_variant>
-struct is_union_field<
-    union_field<id, type_deducer, constraint_on_variant>
-  >
-{
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_union_field {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_union_field_v = is_union_field<T>::res;
-
-template <typename T>
-concept union_field_like = is_union_field_v<T>;
-
-template <typename T>
-concept field_like = fixed_sized_field_like<T> || 
-                     variable_sized_field_like<T> ||
-                     array_of_record_field_like<T> ||
-                     vector_of_record_field_like<T> ||
-                     struct_field_like<T> || 
-                     optional_field_like<T> || 
-                     union_field_like<T>;
-} /* namespace s2s */
-
-#endif /*_FIELD_TRAITS_HPP_*/
-
-// End field/field_traits.hpp
 
 // Begin api/struct_field_list.hpp
 #ifndef _STRUCT_FIELD_LIST_HPP_
@@ -4587,6 +4656,27 @@ template <typename target, typename F>
 inline constexpr bool is_derived_target_v = is_derived_target<target, F>::value;
 
 
+// The same question is_derived_target asks — does the write path ignore the
+// stored value — for the other reason it might. Parameterised on the field list
+// because being frozen is not enough on its own: a union alternative is a field
+// too, and to_field_choices gives it the union's id, so it is never a member of
+// the list that holds it. Freezing an alternative would silently discard a
+// payload the caller put in the variant, where today it is rejected; membership
+// is what separates the two, and it is also exactly the set operator[] offers.
+template <typename target, typename F>
+struct is_frozen_target {
+  static constexpr bool value = false;
+};
+
+template <frozen_field_like target, auto metadata, typename... fields>
+struct is_frozen_target<target, struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool value = (... || std::is_same_v<target, fields>);
+};
+
+template <typename target, typename F>
+inline constexpr bool is_frozen_target_v = is_frozen_target<target, F>::value;
+
+
 template <typename target, typename F>
 struct derive_value;
 
@@ -4777,6 +4867,15 @@ struct write_field<T, F> {
       if(!T::constraint_checker(*derived))
         return std::unexpected(error_reason::validation_failure);
       return verify_then_write<endianness>(s, *derived, size_to_write);
+    } else if constexpr(is_frozen_target_v<T, F>) {
+      // Ordered after the derived branch, not before it: a frozen field can
+      // also be some other field's length target, and there the derived value
+      // is the one that has to reach the stream — checked against this very
+      // constraint above, which is the stricter of the two paths.
+      //
+      // No constraint check of its own. The value is the constraint's, so it
+      // satisfies it by construction.
+      return verify_then_write<endianness>(s, frozen_value_of<T>, size_to_write);
     } else {
       return verify_then_write<endianness>(s, value, size_to_write);
     }
@@ -5038,9 +5137,12 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
         const auto& field = static_cast<const fields&>(field_list);
         // Validated before writing, not after: a struct that fails its own
         // constraint would otherwise emit bytes that cannot be read back.
-        // Derived fields are the exception — their stored value is ignored,
-        // so write_field checks the constraint against the derived one.
-        if constexpr(!is_derived_target_v<fields, S>) {
+        // Fields whose stored value the write path ignores are the exception —
+        // a derived one has its constraint checked against the derived value
+        // instead, and a frozen one takes its value from the constraint and so
+        // cannot fail it. Neither is ever assigned, so the stored value here is
+        // whatever default construction left behind.
+        if constexpr(!is_derived_target_v<fields, S> && !is_frozen_target_v<fields, S>) {
           if(!fields::constraint_checker(field.value)) {
             auto field_name = std::string_view{fields::field_id.data()};
             return std::unexpected(cast_error{error_reason::validation_failure, field_name});

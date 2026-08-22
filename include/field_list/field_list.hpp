@@ -3,6 +3,7 @@
 
 
 #include "../field/field_type_info.hpp"
+#include "../field/field_traits.hpp"
 #include "field_list_base.hpp"
 #include "field_list_metadata.hpp"
 #include "../lib/metaprog/mp.hpp"
@@ -28,6 +29,30 @@ template <typename field_accessor, auto list_metadata>
 concept field_is_derived_from_a_discriminant =
   is_discriminant_derived_field<list_metadata>(as_sv(field_accessor::field_id));
 
+// Unlike the two above, this is a property of the field alone rather than of
+// what the rest of the list does with it, so it is answered from the looked-up
+// type instead of from a list built over the whole pack.
+template <auto list_metadata, typename field_accessor>
+constexpr auto is_frozen_field() -> bool {
+  constexpr auto res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+  if constexpr(res.has_value)
+    return frozen_field_like<meta::type_of<res->id>>;
+  else
+    return false;
+}
+
+template <typename field_accessor, auto list_metadata>
+concept field_is_frozen_by_its_constraint = is_frozen_field<list_metadata, field_accessor>();
+
+// The two kinds that stay visible but refuse assignment. A length target is
+// excluded even when it qualifies: it has no overload at all, and admitting one
+// here would undo that.
+template <typename field_accessor, auto list_metadata>
+concept field_is_readable_but_not_assignable =
+  (field_is_derived_from_a_discriminant<field_accessor, list_metadata> ||
+   field_is_frozen_by_its_constraint<field_accessor, list_metadata>) &&
+  (!field_is_derived_from_a_length<field_accessor, list_metadata>);
+
 template <auto list_metadata, typename... fields>
 struct struct_field_list_impl : struct_field_list_base, fields... {
 
@@ -39,23 +64,27 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
     requires (field_lookup_res.has_value) &&
-             (!field_is_derived_from_other_fields<field_accessor, list_metadata>)
+             (!field_is_derived_from_other_fields<field_accessor, list_metadata>) &&
+             (!field_is_frozen_by_its_constraint<field_accessor, list_metadata>)
   constexpr auto& operator[](field_accessor)  {
     using field_type_ref = meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_ref>(*this).value;
   }
 
-  // A discriminant stays readable on a non-const object but hands back a const
-  // reference, so an attempted assignment fails as assign-to-const rather than
-  // as a wall of unsatisfied-constraint output from no viable overload. How a
-  // caller should reach a variance field's held alternative is unsettled, so
-  // hiding discriminants the way length targets are hidden waits on that.
+  // A discriminant or a frozen field stays readable on a non-const object but
+  // hands back a const reference, so an attempted assignment fails as
+  // assign-to-const rather than as a wall of unsatisfied-constraint output from
+  // no viable overload. Neither can be hidden outright the way a length target
+  // is: a discriminant because how a caller should reach a variance field's
+  // held alternative is unsettled, and a frozen field because what was parsed
+  // off the wire is worth reading back even though it could only ever have been
+  // the one value.
   template <
     typename field_accessor,
     auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id))
   >
     requires (field_lookup_res.has_value) &&
-             field_is_derived_from_a_discriminant<field_accessor, list_metadata>
+             field_is_readable_but_not_assignable<field_accessor, list_metadata>
   constexpr const auto& operator[](field_accessor) {
     using field_type_cref = const meta::type_of<field_lookup_res->id>&;
     return static_cast<field_type_cref>(*this).value;

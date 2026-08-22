@@ -47,7 +47,6 @@ using tagged =
 
 auto main() -> int {
   log_record record{};
-  record["marker"_f] = std::array<u8, 2>{0x4c, 0x47};
   record["message"_f] = std::string("disk nearly full");
 
   // The guide states the container is where to ask for a length, since the

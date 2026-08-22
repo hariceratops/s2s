@@ -27,7 +27,6 @@ using telemetry_frame =
 
 auto main() -> int {
   telemetry_frame frame{};
-  frame["marker"_f] = std::array<u8, 2>{0xab, 0xcd};
   frame["device_id"_f] = u16{0x2a};
   frame["revision"_f] = u8{2};
   frame["samples"_f] = std::vector<u16>{300, 301, 299, 302};

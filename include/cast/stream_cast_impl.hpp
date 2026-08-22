@@ -26,9 +26,12 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
         const auto& field = static_cast<const fields&>(field_list);
         // Validated before writing, not after: a struct that fails its own
         // constraint would otherwise emit bytes that cannot be read back.
-        // Derived fields are the exception — their stored value is ignored,
-        // so write_field checks the constraint against the derived one.
-        if constexpr(!is_derived_target_v<fields, S>) {
+        // Fields whose stored value the write path ignores are the exception —
+        // a derived one has its constraint checked against the derived value
+        // instead, and a frozen one takes its value from the constraint and so
+        // cannot fail it. Neither is ever assigned, so the stored value here is
+        // whatever default construction left behind.
+        if constexpr(!is_derived_target_v<fields, S> && !is_frozen_target_v<fields, S>) {
           if(!fields::constraint_checker(field.value)) {
             auto field_name = std::string_view{fields::field_id.data()};
             return std::unexpected(cast_error{error_reason::validation_failure, field_name});
