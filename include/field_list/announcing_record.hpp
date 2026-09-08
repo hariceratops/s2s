@@ -253,6 +253,10 @@ constexpr auto census_of_field() -> announcement_census {
 // static_asserts, following dependency_check, so the failure arrives as a
 // sentence as well as an unsatisfied constraint.
 //
+// One pair serves both directions rather than four structs differing only in
+// wording — the rule is the same rule, so each message names the read call and
+// the write call together.
+//
 // A count of two or more never reaches either: announcing_record_check rejects
 // it at schema declaration, which is strictly earlier and names a better
 // problem.
@@ -261,10 +265,11 @@ struct self_announcing_check {
   static constexpr auto count = census_of_list_v<T>.on_spine;
 
   static_assert(count != 0,
-    "struct_cast is for a schema that declares a byte-order-announcing record — "
-    "one whose bytes decide the order, like TIFF's II/MM. This schema declares "
-    "none, so its byte order is a fixed fact about the format: call "
-    "struct_cast_le or struct_cast_be instead");
+    "struct_cast and stream_cast are for a schema that declares a "
+    "byte-order-announcing record — one whose bytes decide the order, like "
+    "TIFF's II/MM. This schema declares none, so its byte order is a fixed "
+    "fact about the format: call struct_cast_le or struct_cast_be to read it, "
+    "or stream_cast_le or stream_cast_be to write it");
 
   static constexpr bool res = (count == 1);
 };
@@ -277,10 +282,11 @@ struct fixed_order_check {
   static constexpr auto count = census_of_list_v<T>.on_spine;
 
   static_assert(count == 0,
-    "struct_cast_le and struct_cast_be are for a schema whose byte order is "
-    "fixed by the format. This schema declares a byte-order-announcing record, "
-    "so the file decides its own order: call struct_cast instead. There is "
-    "deliberately no way to force a fixed order over a self-announcing schema");
+    "struct_cast_le, struct_cast_be, stream_cast_le and stream_cast_be are for "
+    "a schema whose byte order is fixed by the format. This schema declares a "
+    "byte-order-announcing record, so the file decides its own order: call "
+    "struct_cast to read it, or stream_cast to write it. There is deliberately "
+    "no way to force a fixed order over a self-announcing schema");
 
   static constexpr bool res = (count == 0);
 };

@@ -59,6 +59,17 @@
     code; \
   } while(0)
 
+// The byte-order axis: neither direction takes an order, so this one has no
+// _le/_be variant either. `written` is the write result, `result` the read-back.
+#define FIELD_LIST_ROUNDTRIP_CHECK(obj, code) \
+  do { \
+    std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary); \
+    auto written = s2s::stream_cast<test_field_list>(stream, obj); \
+    auto bytes = stream.str(); \
+    auto result = s2s::struct_cast<test_field_list>(stream); \
+    code; \
+  } while(0)
+
 // For the rejection-path tests: assert the write failed with a given reason
 // and that the struct never reached the stream.
 #define FIELD_LIST_LE_WRITE_REJECTED(obj, reason) \

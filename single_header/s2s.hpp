@@ -1070,6 +1070,24 @@ struct type_condition_list {};
  
  
 namespace s2s {
+// Whether a constraint pins this field to a value the field can actually hold.
+// Kept as a trait rather than written inline in field's initializer: the
+// convertibility test names eq's own member, which does not exist on any other
+// constraint, and an unevaluated operand still has to be well-formed.
+template <typename constraint_t, typename field_type>
+struct is_seedable_eq {
+  static constexpr bool res = false;
+};
+
+template <typename T, typename field_type>
+struct is_seedable_eq<eq<T>, field_type> {
+  static constexpr bool res = std::is_convertible_v<T, field_type>;
+};
+
+template <typename constraint_t, typename field_type>
+inline constexpr bool is_seedable_eq_v = is_seedable_eq<constraint_t, field_type>::res;
+
+
 template <fixed_string id,
           typename T,
           auto size,
@@ -1084,6 +1102,24 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
+
+  // A frozen field's stored value is the value it writes. Without this it is
+  // whatever default construction left behind, and every write-side computation
+  // that reads such a field — a byte-order announcement's marker, a maybe's
+  // presence predicate, a computed size, a ladder branch — sees a zero the
+  // field can never actually hold.
+  //
+  // Seeded in the constructor rather than in a default member initializer: a
+  // c-array field type cannot be returned from a function or copy-initialized
+  // from one, and the assignment form lets the array case discard the branch
+  // instead of failing to declare it. Such a field is never seeded anyway —
+  // eq over a C array fails the convertibility test, the same oddity
+  // frozen_field_like's own comment documents.
+  constexpr field() {
+    if constexpr(is_seedable_eq_v<std::remove_cvref_t<decltype(constraint_on_value)>, field_type>)
+      value = static_cast<field_type>(constraint_on_value.v);
+  }
+
   field_type value{};
 };
 
@@ -4018,6 +4054,10 @@ constexpr auto census_of_field() -> announcement_census {
 // static_asserts, following dependency_check, so the failure arrives as a
 // sentence as well as an unsatisfied constraint.
 //
+// One pair serves both directions rather than four structs differing only in
+// wording — the rule is the same rule, so each message names the read call and
+// the write call together.
+//
 // A count of two or more never reaches either: announcing_record_check rejects
 // it at schema declaration, which is strictly earlier and names a better
 // problem.
@@ -4026,10 +4066,11 @@ struct self_announcing_check {
   static constexpr auto count = census_of_list_v<T>.on_spine;
 
   static_assert(count != 0,
-    "struct_cast is for a schema that declares a byte-order-announcing record — "
-    "one whose bytes decide the order, like TIFF's II/MM. This schema declares "
-    "none, so its byte order is a fixed fact about the format: call "
-    "struct_cast_le or struct_cast_be instead");
+    "struct_cast and stream_cast are for a schema that declares a "
+    "byte-order-announcing record — one whose bytes decide the order, like "
+    "TIFF's II/MM. This schema declares none, so its byte order is a fixed "
+    "fact about the format: call struct_cast_le or struct_cast_be to read it, "
+    "or stream_cast_le or stream_cast_be to write it");
 
   static constexpr bool res = (count == 1);
 };
@@ -4042,10 +4083,11 @@ struct fixed_order_check {
   static constexpr auto count = census_of_list_v<T>.on_spine;
 
   static_assert(count == 0,
-    "struct_cast_le and struct_cast_be are for a schema whose byte order is "
-    "fixed by the format. This schema declares a byte-order-announcing record, "
-    "so the file decides its own order: call struct_cast instead. There is "
-    "deliberately no way to force a fixed order over a self-announcing schema");
+    "struct_cast_le, struct_cast_be, stream_cast_le and stream_cast_be are for "
+    "a schema whose byte order is fixed by the format. This schema declares a "
+    "byte-order-announcing record, so the file decides its own order: call "
+    "struct_cast to read it, or stream_cast to write it. There is deliberately "
+    "no way to force a fixed order over a self-announcing schema");
 
   static constexpr bool res = (count == 0);
 };
@@ -5771,6 +5813,43 @@ struct write_field<T, F> {
   }
 };
 
+// Line for line the read side's announcing reader, with write for read: the
+// record goes out first, then the order it names takes effect. `value` is the
+// inner field list — field_type is inherited from the base — so the same
+// deduce_order instantiation serves both directions, and there is one rule
+// rather than two that could drift.
+//
+// Deliberately resolved here rather than up front, though on write the marker's
+// value is available before any byte is emitted. Resolving up front would need
+// a depth-first search for the announcing field plus a second rule about when
+// the order starts applying; the announcing record's own fields are
+// order-agnostic, so the bytes are identical either way and the only question
+// is which rule the code states.
+template <order_announcing_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
+    using field_base_type_t = typename T::field_base_type;
+    auto writer = write_field<field_base_type_t, F>(value, field_list);
+    auto res = writer.write(s, order);
+    if(!res)
+      return res;
+
+    auto resolved = deduce_order<typename T::byte_order_deduction>{}(value);
+    if(!resolved)
+      return std::unexpected(resolved.error());
+    order = deduce_byte_order(*resolved);
+    return {};
+  }
+};
+
+
 template <optional_field_like T, field_list_like F>
 struct write_field<T, F> {
   const typename T::field_type& value;
@@ -5939,15 +6018,26 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
 #define _STREAM_CAST_HPP_
  
 namespace s2s {
-template <field_list_like T, output_stream_like stream>
+template <fixed_order_schema T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_le(stream& s, const T& obj) -> cast_result {
   auto order = deduce_byte_order<std::endian::little>();
   return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 
-template <field_list_like T, output_stream_like stream>
+template <fixed_order_schema T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_be(stream& s, const T& obj) -> cast_result {
   auto order = deduce_byte_order<std::endian::big>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
+}
+
+// No order argument, for the same reason struct_cast takes none: the struct's
+// own marker decides. Whatever it holds — from a prior parse, or set by the
+// caller — is the order everything after it is written in. There is no
+// requested order to derive the marker from and none to check it against; the
+// stored value is authoritative because there is nothing else.
+template <self_announcing_schema T, output_stream_like stream>
+[[nodiscard]] constexpr auto stream_cast(stream& s, const T& obj) -> cast_result {
+  auto order = cast_endianness::host;
   return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 } /* namespace s2s */

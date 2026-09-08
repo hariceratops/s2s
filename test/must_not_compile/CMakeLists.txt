@@ -103,6 +103,14 @@ add_rejected_case(rejects_repeatedly_reached_announcement byte_order_misuse.cpp 
 # wanted, so both are matched against that sentence rather than merely expected
 # to fail.
 add_rejected_case_matching(rejects_struct_cast_on_a_fixed_order_schema
-  byte_order_misuse.cpp 1 "call struct_cast_le or struct_cast_be instead")
+  byte_order_misuse.cpp 1 "call struct_cast_le or struct_cast_be to read it")
 add_rejected_case_matching(rejects_struct_cast_le_on_a_self_announcing_schema
-  byte_order_misuse.cpp 2 "call struct_cast instead")
+  byte_order_misuse.cpp 2 "call struct_cast to read it, or stream_cast to write it")
+
+# The write entry points (059), mirroring 1 and 2. stream_cast_le on a
+# self-announcing schema is the one that matters: it would emit bytes in an
+# order the marker sitting in the same struct contradicts.
+add_rejected_case_matching(rejects_stream_cast_on_a_fixed_order_schema
+  byte_order_misuse.cpp 8 "or stream_cast_le or stream_cast_be to write it")
+add_rejected_case_matching(rejects_stream_cast_le_on_a_self_announcing_schema
+  byte_order_misuse.cpp 9 "or stream_cast to write it")

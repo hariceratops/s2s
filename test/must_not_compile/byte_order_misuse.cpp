@@ -33,6 +33,7 @@
 // CASE 7 (055): a match_field naming a field the announcing record lacks.
 // CASE 8 (059): stream_cast on a schema with no announcement.
 // CASE 9 (059): stream_cast_le on a self-announcing schema.
+//               Registered with add_rejected_case_matching, like 1 and 2.
 
 #include <array>
 #include <bit>
@@ -46,7 +47,7 @@ using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
 
-#if CASE == 1 || CASE == 2
+#if CASE == 1 || CASE == 2 || CASE == 8 || CASE == 9
 using entry_point_marker =
   s2s::struct_field_list<
     s2s::fixed_array_field<"marker", u8, 2>
@@ -83,6 +84,24 @@ auto read_a_fixed_order_schema_with_struct_cast(std::ifstream& file) {
 // deliberately no way to force a fixed order over a self-announcing schema.
 auto read_a_self_announcing_schema_with_struct_cast_le(std::ifstream& file) {
   return s2s::struct_cast_le<self_announcing>(file);
+}
+#endif
+
+#if CASE == 8
+// Must NOT compile — the write-side mirror of CASE 1. stream_cast takes the
+// order from the struct's marker, and this schema has none to take it from.
+auto write_a_fixed_order_schema_with_stream_cast(std::ofstream& file, const fixed_order& obj) {
+  return s2s::stream_cast<fixed_order>(file, obj);
+}
+#endif
+
+#if CASE == 9
+// Must NOT compile — the mirror of CASE 2, and the reason the write pair gets
+// the same treatment as the read pair: this call would emit bytes in an order
+// the marker sitting in the same struct contradicts.
+auto write_a_self_announcing_schema_with_stream_cast_le(std::ofstream& file,
+                                                        const self_announcing& obj) {
+  return s2s::stream_cast_le<self_announcing>(file, obj);
 }
 #endif
 

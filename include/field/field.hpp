@@ -12,6 +12,24 @@
 
 
 namespace s2s {
+// Whether a constraint pins this field to a value the field can actually hold.
+// Kept as a trait rather than written inline in field's initializer: the
+// convertibility test names eq's own member, which does not exist on any other
+// constraint, and an unevaluated operand still has to be well-formed.
+template <typename constraint_t, typename field_type>
+struct is_seedable_eq {
+  static constexpr bool res = false;
+};
+
+template <typename T, typename field_type>
+struct is_seedable_eq<eq<T>, field_type> {
+  static constexpr bool res = std::is_convertible_v<T, field_type>;
+};
+
+template <typename constraint_t, typename field_type>
+inline constexpr bool is_seedable_eq_v = is_seedable_eq<constraint_t, field_type>::res;
+
+
 template <fixed_string id,
           typename T,
           auto size,
@@ -26,6 +44,24 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
+
+  // A frozen field's stored value is the value it writes. Without this it is
+  // whatever default construction left behind, and every write-side computation
+  // that reads such a field — a byte-order announcement's marker, a maybe's
+  // presence predicate, a computed size, a ladder branch — sees a zero the
+  // field can never actually hold.
+  //
+  // Seeded in the constructor rather than in a default member initializer: a
+  // c-array field type cannot be returned from a function or copy-initialized
+  // from one, and the assignment form lets the array case discard the branch
+  // instead of failing to declare it. Such a field is never seeded anyway —
+  // eq over a C array fails the convertibility test, the same oddity
+  // frozen_field_like's own comment documents.
+  constexpr field() {
+    if constexpr(is_seedable_eq_v<std::remove_cvref_t<decltype(constraint_on_value)>, field_type>)
+      value = static_cast<field_type>(constraint_on_value.v);
+  }
+
   field_type value{};
 };
 

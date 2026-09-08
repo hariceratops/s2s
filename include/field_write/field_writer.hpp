@@ -11,6 +11,7 @@
 #include "../field_size/comptime_field_size_deduce.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../field_compute/computation_from_fields_impl.hpp"
+#include "../order_deduction/order_deduction_impl.hpp"
 #include "../error/cast_error.hpp"
 #include "derived_value.hpp"
 #include "write_impl.hpp"
@@ -176,6 +177,43 @@ struct write_field<T, F> {
     return {};
   }
 };
+
+// Line for line the read side's announcing reader, with write for read: the
+// record goes out first, then the order it names takes effect. `value` is the
+// inner field list — field_type is inherited from the base — so the same
+// deduce_order instantiation serves both directions, and there is one rule
+// rather than two that could drift.
+//
+// Deliberately resolved here rather than up front, though on write the marker's
+// value is available before any byte is emitted. Resolving up front would need
+// a depth-first search for the announcing field plus a second rule about when
+// the order starts applying; the announcing record's own fields are
+// order-agnostic, so the bytes are identical either way and the only question
+// is which rule the code states.
+template <order_announcing_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
+    using field_base_type_t = typename T::field_base_type;
+    auto writer = write_field<field_base_type_t, F>(value, field_list);
+    auto res = writer.write(s, order);
+    if(!res)
+      return res;
+
+    auto resolved = deduce_order<typename T::byte_order_deduction>{}(value);
+    if(!resolved)
+      return std::unexpected(resolved.error());
+    order = deduce_byte_order(*resolved);
+    return {};
+  }
+};
+
 
 template <optional_field_like T, field_list_like F>
 struct write_field<T, F> {
