@@ -116,6 +116,40 @@ using utf16_text_laddered =
     s2s::fixed_array_field<"units", u16, 2>
   >;
 
+// The over-reach guard's schema: everything after the announcement is
+// order-dependent, and none of it is the check's business. If the walk reached
+// past the announcing record this would not compile.
+using tiff_with_order_dependent_siblings =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::magic_number<"magic", u16, 2_B, 42>,
+    s2s::basic_field<"ifd_offset", u32>,
+    s2s::fixed_array_field<"resolution", u16, 2>
+  >;
+
+// Every order-agnostic spelling of a marker the check has to accept: a magic
+// declared as bytes rather than as an integer, a fixed string, and a plain u8.
+using spelled_out_marker =
+  s2s::struct_field_list<
+    s2s::magic_byte_array<"magic_bytes", 2, std::array<u8, 2>{'I', 'I'}>,
+    s2s::fixed_string_field<"tag", 2>,
+    s2s::basic_field<"flags", u8, 1_B>
+  >;
+
+using marker_spellings =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", spelled_out_marker,
+      s2s::order_from<s2s::match_field<"magic_bytes">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"ifd_offset", u32>
+  >;
+
 auto main() -> int {
   // The whole claim of the feature: two different byte sequences, one schema,
   // one entry point taking no order, and the same values out of both.
@@ -318,11 +352,48 @@ auto main() -> int {
     expect(eq(res.error().failed_at, std::string_view{"bom"}));
   };
 
-  // TODO(056): the over-reach guard — an order-dependent LATER sibling of the
-  // containing record, asserted to read correctly. This matters more than the
-  // negative cases: it proves the check does not extend past its boundary.
-  // TODO(056): a magic_byte_array marker and a fixed_string marker are both
-  // accepted.
+  // The half that matters more than the rejections: the restriction stops at
+  // the announcing record. Everything after it is read once the order is known,
+  // so it carries no restriction at all — and this schema, which is nothing but
+  // order-dependent fields after the announcement, has to both compile and
+  // read.
+  "the restriction does not reach past the announcing record"_test = [] constexpr {
+    std::array<u8, 12> buffer{
+      'M', 'M',
+      0x00, 0x2a,
+      0xca, 0xfe, 0xd0, 0x0d,
+      0x01, 0x2c, 0x01, 0x2c
+    };
+    memstream<12> stream(buffer);
+
+    auto res = s2s::struct_cast<tiff_with_order_dependent_siblings>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["magic"_f], u16{42}));
+    expect(eq((*res)["ifd_offset"_f], 0xcafed00du));
+    expect(eq((*res)["resolution"_f][0], u16{300}));
+    expect(eq((*res)["resolution"_f][1], u16{300}));
+  };
+
+  // A marker spelled as bytes, as a fixed string, or as a single byte is
+  // order-agnostic and accepted. A magic_number over a u16 is not, and is
+  // rejected at compile time — must_not_compile CASE 3.
+  "byte, string and single-byte markers are all accepted"_test = [] constexpr {
+    std::array<u8, 10> buffer{
+      'I', 'I',
+      'o', 'k', 0x00,
+      0x01,
+      0x0d, 0xd0, 0xfe, 0xca
+    };
+    memstream<10> stream(buffer);
+
+    auto res = s2s::struct_cast<marker_spellings>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["byte_order"_f]["flags"_f], u8{1}));
+    expect(eq((*res)["ifd_offset"_f], 0xcafed00du));
+  };
+
   // TODO(057): announcing record one level deep, then two. Assert on a later
   // sibling OF THE CONTAINER and on a record after the container closes as
   // SEPARATE cases — one test covering both passes with the reference

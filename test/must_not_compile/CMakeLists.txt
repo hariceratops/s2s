@@ -66,3 +66,10 @@ add_rejected_case(rejects_duplicate_constraint_on_variance option_pack_misuse.cp
 # fails on announcing_record_check's name-resolution assertion, not on the
 # guide's arity or on order_deduction_like.
 add_rejected_case(rejects_unknown_announcement_field_name byte_order_misuse.cpp 7)
+
+# The order-agnostic restriction (056). Both checked against a no-CASE control
+# build and both fail on the order-agnostic assertion: 3 on a u16 declared
+# directly in the announcing record, 4 on the same u16 one record deeper, which
+# is what proves the walk descends rather than reading one flat pack.
+add_rejected_case(rejects_order_dependent_field_in_announcing_record byte_order_misuse.cpp 3)
+add_rejected_case(rejects_order_dependent_field_nested_deeper byte_order_misuse.cpp 4)

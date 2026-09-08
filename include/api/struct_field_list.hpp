@@ -60,7 +60,17 @@ struct announcing_record_check {
     "have; names resolve inside the announcing record's own field list, not in "
     "the record that contains it");
 
-  static constexpr bool res = names_ok;
+  static constexpr bool fields_order_agnostic =
+    (record_of_announcement_is_order_agnostic_v<fields> && ...);
+
+  static_assert(fields_order_agnostic,
+    "a byte-order-announcing record is parsed before its own deduction runs, so "
+    "every field in it must read the same under either byte order; this one "
+    "declares a field that does not. Spell the marker as bytes — a "
+    "fixed_array_field or magic_byte_array of a one-byte type, or a string — "
+    "rather than as a multi-byte integer");
+
+  static constexpr bool res = names_ok && fields_order_agnostic;
 };
 
 template <typename... fields>

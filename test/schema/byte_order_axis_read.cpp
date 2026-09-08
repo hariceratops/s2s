@@ -70,6 +70,21 @@ using utf16_text =
     s2s::fixed_array_field<"units", u16, 2>
   >;
 
+// The over-reach guard's schema: everything after the announcement is
+// order-dependent, and none of it is the check's business. If the walk reached
+// past the announcing record this would not compile.
+using tiff_with_order_dependent_siblings =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::magic_number<"magic", u16, 2_B, 42>,
+    s2s::basic_field<"ifd_offset", u32>,
+    s2s::fixed_array_field<"resolution", u16, 2>
+  >;
+
 // Written a byte at a time rather than through an integer: the point of the
 // test is which byte lands where, and reinterpreting an int would make the file
 // depend on the host's own order.
@@ -174,5 +189,26 @@ TEST(ByteOrderAxisRead, TheSameTwoFieldsTheOtherWayRoundGiveTheOtherOrder) {
   });
 }
 
-// TODO(056): the over-reach guard against a real stream.
+// The half that matters more than the rejections: the restriction stops at the
+// announcing record. Everything after it is read once the order is known, so it
+// carries no restriction — and this schema, which is nothing but
+// order-dependent fields after the announcement, has to both compile and read.
+TEST(ByteOrderAxisRead, TheRestrictionDoesNotReachPastTheAnnouncingRecord) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 12>{'M', 'M', 0x00, 0x2a, 0xca, 0xfe, 0xd0, 0x0d,
+                                         0x01, 0x2c, 0x01, 0x2c});
+  });
+
+  FIELD_LIST_SCHEMA = tiff_with_order_dependent_siblings;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_EQ(fields["magic"_f], 42);
+    EXPECT_EQ(fields["ifd_offset"_f], 0xcafed00du);
+    EXPECT_EQ(fields["resolution"_f][0], 300);
+    EXPECT_EQ(fields["resolution"_f][1], 300);
+  });
+}
+
 // TODO(057): nesting one and two levels deep, as separate cases.

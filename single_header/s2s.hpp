@@ -3736,9 +3736,40 @@ using announces_byte_order =
 
 // End api/field_descriptors.hpp
 
+// Begin field/field_metafunctions.hpp
+#ifndef _FIELD_METAFUNCTIONS_HPP_
+#define _FIELD_METAFUNCTIONS_HPP_
+ 
+ 
+ 
+namespace s2s {
+struct not_a_field;
+
+template <typename T>
+struct extract_type_from_field;
+
+template <fixed_string id, typename field_type, auto size, auto constraint, auto bound>
+struct extract_type_from_field<field<id, field_type, size, constraint, bound>> {
+  using type = field_type;
+};
+
+template <typename T>
+struct extract_type_from_field {
+  using type = not_a_field;
+};
+
+template <typename T>
+using extract_type_from_field_v = typename extract_type_from_field<T>::type;
+} /* namespace s2s */
+
+#endif // _FIELD_METAFUNCTIONS_HPP_
+
+// End field/field_metafunctions.hpp
+
 // Begin field_list/announcing_record.hpp
 #ifndef _ANNOUNCING_RECORD_HPP_
 #define _ANNOUNCING_RECORD_HPP_
+ 
  
  
  
@@ -3818,6 +3849,168 @@ struct announcement_names_resolve<
 
 template <typename T>
 inline constexpr bool announcement_names_resolve_v = announcement_names_resolve<T>::res;
+
+// A field is order-agnostic when reading it yields the same value whichever
+// state the order cell is in. Every field of an announcing record is read
+// before its own deduction runs, so this predicate is what makes the seed the
+// entry point supplies unobservable — and what forces a marker to be spelled as
+// bytes rather than as a multi-byte integer.
+//
+// A variable-length field's length lives in a different field of the same
+// record and is judged on its own, which is the right answer: a str_field whose
+// length comes from a u16 is agnostic in its payload, and that u16 is not, so
+// the record is rejected — correctly, since the u16 is read before the order is
+// known.
+template <typename T>
+constexpr auto is_order_agnostic_field() -> bool;
+
+template <typename T>
+struct is_order_agnostic_list;
+
+template <auto metadata, typename... fields>
+struct is_order_agnostic_list<struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool res = (is_order_agnostic_field<fields>() && ...);
+};
+
+template <typename T>
+inline constexpr bool is_order_agnostic_list_v = is_order_agnostic_list<T>::res;
+
+template <typename T>
+constexpr auto is_order_agnostic_value() -> bool {
+  if constexpr(trivial<T>)
+    return sizeof(T) == 1;
+  // byteswap_elements returns immediately on a fixed_string, and the write path
+  // routes it to write_native, so it reads the same either way. A std::string is
+  // chars.
+  else if constexpr(fixed_string_like<T> || string_like<T>)
+    return true;
+  else if constexpr(fixed_array_like<T>)
+    return is_order_agnostic_value<extract_type_from_array_v<T>>();
+  else if constexpr(is_c_array_v<T>)
+    return is_order_agnostic_value<std::remove_extent_t<T>>();
+  else if constexpr(vector_like<T>)
+    return is_order_agnostic_value<extract_type_from_vec_t<T>>();
+  else if constexpr(field_list_like<T>)
+    return is_order_agnostic_list_v<T>;
+  else
+    static_assert(dependent_false<T>,
+      "the byte-order agnosticism of this field type is unknown to the check "
+      "that guards an announcing record's fields");
+}
+
+
+template <typename T>
+struct order_agnostic_choices;
+
+template <typename... choices>
+struct order_agnostic_choices<field_choice_list<choices...>> {
+  static constexpr bool res = (is_order_agnostic_field<choices>() && ...);
+};
+
+// The wrapper kinds reduce to what they wrap; everything else reduces to its
+// value type. An order_announcing_field needs no arm of its own: its inherited
+// field_type is the announced record, so the last branch descends into it.
+template <typename T>
+constexpr auto is_order_agnostic_field() -> bool {
+  if constexpr(struct_field_like<T>)
+    return is_order_agnostic_list_v<extract_type_from_field_v<T>>;
+  else if constexpr(array_of_record_field_like<T>)
+    return is_order_agnostic_list_v<extract_type_from_array_v<typename T::field_type>>;
+  else if constexpr(vector_of_record_field_like<T>)
+    return is_order_agnostic_list_v<extract_type_from_vec_t<typename T::field_type>>;
+  else if constexpr(optional_field_like<T>)
+    return is_order_agnostic_field<typename T::field_base_type>();
+  else if constexpr(union_field_like<T>)
+    return order_agnostic_choices<typename T::field_choices>::res;
+  else
+    return is_order_agnostic_value<typename T::field_type>();
+}
+
+
+template <typename T>
+struct record_of_announcement_is_order_agnostic {
+  static constexpr bool res = true;
+};
+
+template <fixed_string id, field_list_like T, auto size, auto constraint, auto bound,
+          typename guide>
+struct record_of_announcement_is_order_agnostic<
+  order_announcing_field<field<id, T, size, constraint, bound>, guide>
+>
+{
+  static constexpr bool res = is_order_agnostic_list_v<T>;
+};
+
+template <typename T>
+inline constexpr bool record_of_announcement_is_order_agnostic_v =
+  record_of_announcement_is_order_agnostic<T>::res;
+
+
+// One depth-first census, three consumers: 056's local checks read it to find
+// the announcement a list declares, 057 rejects an off-spine one, and 060
+// rejects a second one anywhere. Two counts rather than one, because an
+// announcement reached conditionally (a maybe, a union alternative) or
+// repeatedly (an array or vector of records) is a different rejection from a
+// second one on the spine.
+struct announcement_census {
+  std::size_t on_spine;
+  std::size_t off_spine;
+};
+
+constexpr auto operator+(announcement_census a, announcement_census b) -> announcement_census {
+  return {a.on_spine + b.on_spine, a.off_spine + b.off_spine};
+}
+
+constexpr auto folded_off_spine(announcement_census c) -> announcement_census {
+  return {0, c.on_spine + c.off_spine};
+}
+
+template <typename T>
+constexpr auto census_of_field() -> announcement_census;
+
+template <typename... fields>
+struct census_of_fields {
+  static constexpr auto value = (announcement_census{0, 0} + ... + census_of_field<fields>());
+};
+
+template <typename T>
+struct census_of_list;
+
+template <auto metadata, typename... fields>
+struct census_of_list<struct_field_list_impl<metadata, fields...>> {
+  static constexpr auto value = census_of_fields<fields...>::value;
+};
+
+template <typename T>
+inline constexpr auto census_of_list_v = census_of_list<T>::value;
+
+template <typename... choices>
+struct census_of_choices;
+
+template <typename... choices>
+struct census_of_choices<field_choice_list<choices...>> {
+  static constexpr auto value = (announcement_census{0, 0} + ... + census_of_field<choices>());
+};
+
+template <typename T>
+constexpr auto census_of_field() -> announcement_census {
+  // Descends into the announced record too, so a second announcement declared
+  // inside one is counted rather than hidden by the field that carries it.
+  if constexpr(order_announcing_field_like<T>)
+    return announcement_census{1, 0} + census_of_list_v<typename T::field_type>;
+  else if constexpr(struct_field_like<T>)
+    return census_of_list_v<extract_type_from_field_v<T>>;
+  else if constexpr(array_of_record_field_like<T>)
+    return folded_off_spine(census_of_list_v<extract_type_from_array_v<typename T::field_type>>);
+  else if constexpr(vector_of_record_field_like<T>)
+    return folded_off_spine(census_of_list_v<extract_type_from_vec_t<typename T::field_type>>);
+  else if constexpr(optional_field_like<T>)
+    return folded_off_spine(census_of_field<typename T::field_base_type>());
+  else if constexpr(union_field_like<T>)
+    return folded_off_spine(census_of_choices<typename T::field_choices>::value);
+  else
+    return announcement_census{0, 0};
+}
 } /* namespace s2s */
 
 
@@ -3878,7 +4071,17 @@ struct announcing_record_check {
     "have; names resolve inside the announcing record's own field list, not in "
     "the record that contains it");
 
-  static constexpr bool res = names_ok;
+  static constexpr bool fields_order_agnostic =
+    (record_of_announcement_is_order_agnostic_v<fields> && ...);
+
+  static_assert(fields_order_agnostic,
+    "a byte-order-announcing record is parsed before its own deduction runs, so "
+    "every field in it must read the same under either byte order; this one "
+    "declares a field that does not. Spell the marker as bytes — a "
+    "fixed_array_field or magic_byte_array of a one-byte type, or a string — "
+    "rather than as a multi-byte integer");
+
+  static constexpr bool res = names_ok && fields_order_agnostic;
 };
 
 template <typename... fields>
@@ -3903,36 +4106,6 @@ using struct_field_list = create_struct_field_list<fields...>::value;
 
 
 // End api/struct_field_list.hpp
-
-// Begin field/field_metafunctions.hpp
-#ifndef _FIELD_METAFUNCTIONS_HPP_
-#define _FIELD_METAFUNCTIONS_HPP_
- 
- 
- 
-namespace s2s {
-struct not_a_field;
-
-template <typename T>
-struct extract_type_from_field;
-
-template <fixed_string id, typename field_type, auto size, auto constraint, auto bound>
-struct extract_type_from_field<field<id, field_type, size, constraint, bound>> {
-  using type = field_type;
-};
-
-template <typename T>
-struct extract_type_from_field {
-  using type = not_a_field;
-};
-
-template <typename T>
-using extract_type_from_field_v = typename extract_type_from_field<T>::type;
-} /* namespace s2s */
-
-#endif // _FIELD_METAFUNCTIONS_HPP_
-
-// End field/field_metafunctions.hpp
 
 // Begin type_deduction/if_else_ladder/ladder_impl.hpp
 #ifndef _LADDER_IMPL_HPP_
