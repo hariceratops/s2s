@@ -46,6 +46,76 @@ using tiff_header =
     s2s::basic_field<"ifd_offset", u32>
   >;
 
+// The same announcement written the other two ways. `type_deduction` supports
+// three input forms and so does this axis; these two exist so a reader can see
+// they resolve the same order over the same bytes.
+constexpr auto first_marker_byte = [](std::array<u8, 2> marker) { return marker[0]; };
+
+using tiff_header_computed =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<s2s::compute<first_marker_byte, u8, "marker">,
+        s2s::order_switch<
+          s2s::order_case<u8{'I'}, std::endian::little>,
+          s2s::order_case<u8{'M'}, std::endian::big>>>>,
+    s2s::magic_number<"magic", u16, 2_B, 42>,
+    s2s::basic_field<"ifd_offset", u32>
+  >;
+
+constexpr auto marker_is_ii = [](std::array<u8, 2> m) { return m[0] == 'I' && m[1] == 'I'; };
+constexpr auto marker_is_mm = [](std::array<u8, 2> m) { return m[0] == 'M' && m[1] == 'M'; };
+
+using tiff_header_laddered =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<
+        s2s::order_if_else<
+          s2s::order_branch<s2s::predicate<marker_is_ii, "marker">, std::endian::little>,
+          s2s::order_branch<s2s::predicate<marker_is_mm, "marker">, std::endian::big>>>>,
+    s2s::magic_number<"magic", u16, 2_B, 42>,
+    s2s::basic_field<"ifd_offset", u32>
+  >;
+
+
+// A UTF-16 byte order mark, read as its two bytes rather than as one u16 —
+// which it has to be, since a u16 marker would itself be order-dependent. The
+// order follows from both fields together, so no single match_field can express
+// it: this is the case that justifies marking the record rather than a field.
+using byte_order_mark =
+  s2s::struct_field_list<
+    s2s::basic_field<"first", u8, 1_B>,
+    s2s::basic_field<"second", u8, 1_B>
+  >;
+
+constexpr auto bom_order = [](u8 first, u8 second) -> unsigned {
+  if(first == 0xff && second == 0xfe) return 0u;
+  if(first == 0xfe && second == 0xff) return 1u;
+  return 2u;
+};
+
+using utf16_text =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"bom", byte_order_mark,
+      s2s::order_from<s2s::compute<bom_order, unsigned, "first", "second">,
+        s2s::order_switch<
+          s2s::order_case<0u, std::endian::little>,
+          s2s::order_case<1u, std::endian::big>>>>,
+    s2s::fixed_array_field<"units", u16, 2>
+  >;
+
+constexpr auto bom_is_le = [](u8 first, u8 second) { return first == 0xff && second == 0xfe; };
+constexpr auto bom_is_be = [](u8 first, u8 second) { return first == 0xfe && second == 0xff; };
+
+using utf16_text_laddered =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"bom", byte_order_mark,
+      s2s::order_from<
+        s2s::order_if_else<
+          s2s::order_branch<s2s::predicate<bom_is_le, "first", "second">, std::endian::little>,
+          s2s::order_branch<s2s::predicate<bom_is_be, "first", "second">, std::endian::big>>>>,
+    s2s::fixed_array_field<"units", u16, 2>
+  >;
+
 auto main() -> int {
   // The whole claim of the feature: two different byte sequences, one schema,
   // one entry point taking no order, and the same values out of both.
@@ -138,10 +208,116 @@ auto main() -> int {
     expect(eq((*res)["ifd_offset"_f], 0xcafed00du));
   };
 
-  // TODO(055): the ladder form; a compute_t form over TWO fields of the
-  // announcing record (the case a single match_field cannot express, and
-  // therefore the one that justifies marking the record rather than the
-  // field); and a three-way equivalence over the same bytes.
+  "a ladder resolves the order from an announcing record"_test = [] constexpr {
+    std::array<u8, 8> buffer{
+      'M', 'M',
+      0x00, 0x2a,
+      0xca, 0xfe, 0xd0, 0x0d
+    };
+    memstream<8> stream(buffer);
+
+    auto res = s2s::struct_cast<tiff_header_laddered>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["magic"_f], u16{42}));
+    expect(eq((*res)["ifd_offset"_f], 0xcafed00du));
+  };
+
+  // Two fields, one order. 0xff 0xfe and 0xfe 0xff are the same two bytes in
+  // the other order, so neither field decides anything on its own.
+  "a callable resolves the order from two fields of the record"_test = [] constexpr {
+    std::array<u8, 6> buffer{
+      0xff, 0xfe,
+      0x41, 0x00, 0x42, 0x00
+    };
+    memstream<6> stream(buffer);
+
+    auto res = s2s::struct_cast<utf16_text>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["units"_f][0], u16{0x41}));
+    expect(eq((*res)["units"_f][1], u16{0x42}));
+  };
+
+  "the same two fields the other way round give the other order"_test = [] constexpr {
+    std::array<u8, 6> buffer{
+      0xfe, 0xff,
+      0x00, 0x41, 0x00, 0x42
+    };
+    memstream<6> stream(buffer);
+
+    auto res = s2s::struct_cast<utf16_text>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["units"_f][0], u16{0x41}));
+    expect(eq((*res)["units"_f][1], u16{0x42}));
+  };
+
+  "a ladder over two fields resolves what a single match cannot"_test = [] constexpr {
+    std::array<u8, 6> buffer{
+      0xfe, 0xff,
+      0x00, 0x41, 0x00, 0x42
+    };
+    memstream<6> stream(buffer);
+
+    auto res = s2s::struct_cast<utf16_text_laddered>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["units"_f][0], u16{0x41}));
+    expect(eq((*res)["units"_f][1], u16{0x42}));
+  };
+
+  // The three forms are interchangeable where they express the same thing, and
+  // this is the assertion that says so: one file, three schemas, identical
+  // output. Both markers, because a form could agree on one and not the other.
+  "all three forms produce identical reads"_test = [] constexpr {
+    std::array<u8, 8> ii{'I', 'I', 0x2a, 0x00, 0x0d, 0xd0, 0xfe, 0xca};
+    std::array<u8, 8> mm{'M', 'M', 0x00, 0x2a, 0xca, 0xfe, 0xd0, 0x0d};
+
+    memstream<8> ii_matched(ii);
+    memstream<8> ii_computed(ii);
+    memstream<8> ii_laddered(ii);
+    memstream<8> mm_matched(mm);
+    memstream<8> mm_computed(mm);
+    memstream<8> mm_laddered(mm);
+
+    auto by_match_ii = s2s::struct_cast<tiff_header>(ii_matched);
+    auto by_compute_ii = s2s::struct_cast<tiff_header_computed>(ii_computed);
+    auto by_ladder_ii = s2s::struct_cast<tiff_header_laddered>(ii_laddered);
+    auto by_match_mm = s2s::struct_cast<tiff_header>(mm_matched);
+    auto by_compute_mm = s2s::struct_cast<tiff_header_computed>(mm_computed);
+    auto by_ladder_mm = s2s::struct_cast<tiff_header_laddered>(mm_laddered);
+
+    expect(eq(by_match_ii.has_value(), true));
+    expect(eq((*by_compute_ii)["magic"_f], (*by_match_ii)["magic"_f]));
+    expect(eq((*by_ladder_ii)["magic"_f], (*by_match_ii)["magic"_f]));
+    expect(eq((*by_compute_ii)["ifd_offset"_f], (*by_match_ii)["ifd_offset"_f]));
+    expect(eq((*by_ladder_ii)["ifd_offset"_f], (*by_match_ii)["ifd_offset"_f]));
+
+    expect(eq(by_match_mm.has_value(), true));
+    expect(eq((*by_compute_mm)["magic"_f], (*by_match_mm)["magic"_f]));
+    expect(eq((*by_ladder_mm)["magic"_f], (*by_match_mm)["magic"_f]));
+    expect(eq((*by_compute_mm)["ifd_offset"_f], (*by_match_mm)["ifd_offset"_f]));
+    expect(eq((*by_ladder_mm)["ifd_offset"_f], (*by_match_mm)["ifd_offset"_f]));
+  };
+
+  // A BOM matching neither orientation fails the same way a marker matching no
+  // case does, whichever form declared it — the ladder falling off its end and
+  // the switch matching nothing are one outcome.
+  "a ladder that matches no branch fails as a validation failure"_test = [] constexpr {
+    std::array<u8, 6> buffer{
+      0xff, 0xff,
+      0x41, 0x00, 0x42, 0x00
+    };
+    memstream<6> stream(buffer);
+
+    auto res = s2s::struct_cast<utf16_text_laddered>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::validation_failure));
+    expect(eq(res.error().failed_at, std::string_view{"bom"}));
+  };
+
   // TODO(056): the over-reach guard — an order-dependent LATER sibling of the
   // containing record, asserted to read correctly. This matters more than the
   // negative cases: it proves the check does not extend past its boundary.

@@ -29,17 +29,53 @@ using tiff_header =
     s2s::basic_field<"ifd_offset", u32>
   >;
 
+// The same announcement in its ladder form, over the same marker.
+constexpr auto marker_is_ii = [](std::array<u8, 2> m) { return m[0] == 'I' && m[1] == 'I'; };
+constexpr auto marker_is_mm = [](std::array<u8, 2> m) { return m[0] == 'M' && m[1] == 'M'; };
+
+using tiff_header_laddered =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<
+        s2s::order_if_else<
+          s2s::order_branch<s2s::predicate<marker_is_ii, "marker">, std::endian::little>,
+          s2s::order_branch<s2s::predicate<marker_is_mm, "marker">, std::endian::big>>>>,
+    s2s::magic_number<"magic", u16, 2_B, 42>,
+    s2s::basic_field<"ifd_offset", u32>
+  >;
+
+// A UTF-16 byte order mark, read as its two bytes rather than as one u16 —
+// which it has to be, since a u16 marker would itself be order-dependent. The
+// order follows from both fields together, which no single match_field can
+// express.
+using byte_order_mark =
+  s2s::struct_field_list<
+    s2s::basic_field<"first", u8, 1_B>,
+    s2s::basic_field<"second", u8, 1_B>
+  >;
+
+constexpr auto bom_order = [](u8 first, u8 second) -> unsigned {
+  if(first == 0xff && second == 0xfe) return 0u;
+  if(first == 0xfe && second == 0xff) return 1u;
+  return 2u;
+};
+
+using utf16_text =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"bom", byte_order_mark,
+      s2s::order_from<s2s::compute<bom_order, unsigned, "first", "second">,
+        s2s::order_switch<
+          s2s::order_case<0u, std::endian::little>,
+          s2s::order_case<1u, std::endian::big>>>>,
+    s2s::fixed_array_field<"units", u16, 2>
+  >;
+
 // Written a byte at a time rather than through an integer: the point of the
 // test is which byte lands where, and reinterpreting an int would make the file
 // depend on the host's own order.
-auto write_header(std::ofstream& file, const char (&marker)[3],
-                  u8 magic_hi, u8 magic_lo, const u8 (&offset)[4]) -> void {
-  const u8 bytes[] = {
-    static_cast<u8>(marker[0]), static_cast<u8>(marker[1]),
-    magic_hi, magic_lo,
-    offset[0], offset[1], offset[2], offset[3]
-  };
-  file.write(reinterpret_cast<const char*>(bytes), sizeof(bytes));
+template <std::size_t N>
+auto write_bytes(std::ofstream& file, const std::array<u8, N>& bytes) -> void {
+  file.write(reinterpret_cast<const char*>(bytes.data()), N);
 }
 } /* namespace */
 
@@ -47,7 +83,7 @@ auto write_header(std::ofstream& file, const char (&marker)[3],
 // entry point taking no order, and the same values out of both.
 TEST(ByteOrderAxisRead, AnIIHeaderMakesTheRestOfTheFileLittleEndian) {
   PREPARE_INPUT_FILE({
-    write_header(file, "II", 0x2a, 0x00, {0x0d, 0xd0, 0xfe, 0xca});
+    write_bytes(file, std::array<u8, 8>{'I', 'I', 0x2a, 0x00, 0x0d, 0xd0, 0xfe, 0xca});
   });
 
   FIELD_LIST_SCHEMA = tiff_header;
@@ -62,7 +98,7 @@ TEST(ByteOrderAxisRead, AnIIHeaderMakesTheRestOfTheFileLittleEndian) {
 
 TEST(ByteOrderAxisRead, AnMMHeaderMakesTheRestOfTheFileBigEndian) {
   PREPARE_INPUT_FILE({
-    write_header(file, "MM", 0x00, 0x2a, {0xca, 0xfe, 0xd0, 0x0d});
+    write_bytes(file, std::array<u8, 8>{'M', 'M', 0x00, 0x2a, 0xca, 0xfe, 0xd0, 0x0d});
   });
 
   FIELD_LIST_SCHEMA = tiff_header;
@@ -79,7 +115,7 @@ TEST(ByteOrderAxisRead, AnMMHeaderMakesTheRestOfTheFileBigEndian) {
 // mismatch, reported as one, against the announcing field's id.
 TEST(ByteOrderAxisRead, AMarkerMatchingNoCaseFailsAsAValidationFailure) {
   PREPARE_INPUT_FILE({
-    write_header(file, "XX", 0x2a, 0x00, {0x0d, 0xd0, 0xfe, 0xca});
+    write_bytes(file, std::array<u8, 8>{'X', 'X', 0x2a, 0x00, 0x0d, 0xd0, 0xfe, 0xca});
   });
 
   FIELD_LIST_SCHEMA = tiff_header;
@@ -88,6 +124,53 @@ TEST(ByteOrderAxisRead, AMarkerMatchingNoCaseFailsAsAValidationFailure) {
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error().failure_reason, s2s::error_reason::validation_failure);
     EXPECT_EQ(result.error().failed_at, "byte_order");
+  });
+}
+
+TEST(ByteOrderAxisRead, ALadderResolvesTheOrder) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 8>{'M', 'M', 0x00, 0x2a, 0xca, 0xfe, 0xd0, 0x0d});
+  });
+
+  FIELD_LIST_SCHEMA = tiff_header_laddered;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_EQ(fields["magic"_f], 42);
+    EXPECT_EQ(fields["ifd_offset"_f], 0xcafed00du);
+  });
+}
+
+// Two fields, one order: 0xff 0xfe and 0xfe 0xff are the same two bytes the
+// other way round, so neither decides anything on its own.
+TEST(ByteOrderAxisRead, ACallableResolvesTheOrderFromTwoFields) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 6>{0xff, 0xfe, 0x41, 0x00, 0x42, 0x00});
+  });
+
+  FIELD_LIST_SCHEMA = utf16_text;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_EQ(fields["units"_f][0], 0x41);
+    EXPECT_EQ(fields["units"_f][1], 0x42);
+  });
+}
+
+TEST(ByteOrderAxisRead, TheSameTwoFieldsTheOtherWayRoundGiveTheOtherOrder) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 6>{0xfe, 0xff, 0x00, 0x41, 0x00, 0x42});
+  });
+
+  FIELD_LIST_SCHEMA = utf16_text;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_EQ(fields["units"_f][0], 0x41);
+    EXPECT_EQ(fields["units"_f][1], 0x42);
   });
 }
 

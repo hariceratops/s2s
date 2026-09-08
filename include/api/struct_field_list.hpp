@@ -6,6 +6,7 @@
 #include "../lib/algorithms/algorithms.hpp"
 #include "../lib/containers/static_set.hpp"
 #include "../field/field_traits.hpp"
+#include "../field_list/announcing_record.hpp"
 #include "../field_list/field_list_metadata.hpp"
 #include "../field_list/field_list.hpp"
 
@@ -47,8 +48,27 @@ struct dependency_check {
 template <typename metadata>
 concept all_dependencies_resolved = dependency_check<metadata>::all_dependencies_ok;
 
+// Beside dependency_check and shaped like it: a struct of static_asserts whose
+// res a concept reads, so a bad schema fails as a sentence and as an
+// unsatisfied constraint rather than as one or the other.
 template <typename... fields>
-  requires (all_dependencies_resolved<field_list_metadata<fields...>>)
+struct announcing_record_check {
+  static constexpr bool names_ok = (announcement_names_resolve_v<fields> && ...);
+
+  static_assert(names_ok,
+    "the byte-order announcement names a field the announcing record does not "
+    "have; names resolve inside the announcing record's own field list, not in "
+    "the record that contains it");
+
+  static constexpr bool res = names_ok;
+};
+
+template <typename... fields>
+concept announcing_records_well_formed = announcing_record_check<fields...>::res;
+
+template <typename... fields>
+  requires (all_dependencies_resolved<field_list_metadata<fields...>>) &&
+           (announcing_records_well_formed<fields...>)
 struct create_struct_field_list {
   using metadata = field_list_metadata<fields...>;
   static constexpr auto metadata_v = meta::type_id<metadata>;

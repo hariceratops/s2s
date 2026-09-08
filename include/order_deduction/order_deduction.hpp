@@ -4,6 +4,7 @@
 
 #include <bit>
 
+#include "../type_deduction/if_else_ladder/clause.hpp"
 #include "../type_deduction/type/type.hpp"
 
 
@@ -69,6 +70,59 @@ template <typename T>
 concept order_switch_like = is_order_switch_v<T>;
 
 
+// A ladder branch, mirroring `branch`. The expression is the same
+// eval_bool_from_fields the type axis takes, which is what lets
+// evaluate_ladder_helper fold either kind.
+template <evaluates_to_bool eval, std::endian order>
+struct order_branch {
+  using expression = eval;
+  static constexpr auto byte_order = order;
+};
+
+template <typename T>
+struct is_order_branch;
+
+template <typename eval, std::endian order>
+struct is_order_branch<order_branch<eval, order>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_branch {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_branch_v = is_order_branch<T>::res;
+
+template <typename T>
+concept order_branch_like = is_order_branch_v<T>;
+
+
+template <order_branch_like... branches>
+  requires (sizeof...(branches) > 0)
+struct order_if_else {};
+
+template <typename T>
+struct is_order_if_else;
+
+template <order_branch_like... branches>
+struct is_order_if_else<order_if_else<branches...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_if_else {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_if_else_v = is_order_if_else<T>::res;
+
+template <typename T>
+concept order_if_else_like = is_order_if_else_v<T>;
+
+
 // Mirrors `type`: the same input forms feeding the same case list, with a
 // byte order as the outcome instead of a variant alternative. Names inside it
 // resolve in the announcing record's own field table, one level below the list
@@ -76,15 +130,33 @@ concept order_switch_like = is_order_switch_v<T>;
 template <typename... Args>
 struct order_from;
 
+template <typename eval_expression, typename _switch>
+struct order_from<eval_expression, _switch> {};
+
 template <fixed_string id, typename _switch>
 struct order_from<match_field<id>, _switch> {};
+
+template <typename ladder>
+struct order_from<ladder> {};
 
 template <typename T>
 struct is_order_deduction;
 
+template <typename eval_expression, typename _switch>
+struct is_order_deduction<order_from<eval_expression, _switch>> {
+  static constexpr bool res =
+    is_compute_like_v<eval_expression> &&
+    order_switch_like<_switch>;
+};
+
 template <fixed_string id, typename _switch>
 struct is_order_deduction<order_from<match_field<id>, _switch>> {
   static constexpr bool res = order_switch_like<_switch>;
+};
+
+template <typename ladder>
+struct is_order_deduction<order_from<ladder>> {
+  static constexpr bool res = order_if_else_like<ladder>;
 };
 
 template <typename T>

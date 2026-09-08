@@ -8,7 +8,9 @@
 
 #include "../error/cast_error.hpp"
 #include "../field/field_accessor.hpp"
+#include "../field_compute/computation_from_fields_impl.hpp"
 #include "../field_list/field_list.hpp"
+#include "../type_deduction/if_else_ladder/ladder_impl.hpp"
 #include "../type_deduction/switch/switch_impl.hpp"
 #include "order_deduction.hpp"
 
@@ -40,8 +42,43 @@ struct evaluate_order_switch<order_switch<cases...>> {
 };
 
 
+// evaluate_ladder_helper reads only ::expression off each branch, so it folds
+// an order ladder as it stands too. The mapping out of the index is the only
+// thing this axis supplies.
+template <typename ladder>
+struct evaluate_order_ladder;
+
+template <typename... branches>
+struct evaluate_order_ladder<order_if_else<branches...>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    auto res =
+      evaluate_ladder_helper<branches...>{}(
+        sfl, std::make_index_sequence<sizeof...(branches)>{}
+      );
+    if(!res)
+      return std::unexpected(error_reason::validation_failure);
+    constexpr auto orders = std::array{branches::byte_order...};
+    return orders[*res];
+  }
+};
+
+
 template <typename guide>
 struct deduce_order;
+
+// The callable form is the one that justifies marking the record rather than
+// the field: it reads several of the record's fields, which no single
+// match_field can express.
+template <typename eval_expression, typename _switch>
+struct deduce_order<order_from<eval_expression, _switch>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    return evaluate_order_switch<_switch>{}(compute_impl<eval_expression>{}(sfl));
+  }
+};
 
 template <fixed_string id, typename _switch>
 struct deduce_order<order_from<match_field<id>, _switch>> {
@@ -49,6 +86,15 @@ struct deduce_order<order_from<match_field<id>, _switch>> {
   constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
     -> std::expected<std::endian, error_reason> {
     return evaluate_order_switch<_switch>{}(sfl[field_accessor<id>{}]);
+  }
+};
+
+template <typename ladder>
+struct deduce_order<order_from<ladder>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    return evaluate_order_ladder<ladder>{}(sfl);
   }
 };
 } /* namespace s2s */

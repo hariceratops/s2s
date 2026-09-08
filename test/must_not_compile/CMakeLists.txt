@@ -61,3 +61,8 @@ add_rejected_case(rejects_assigning_a_frozen_eq_field derived_field_assignment.c
 add_rejected_case(rejects_size_on_variance option_pack_misuse.cpp 10)
 add_rejected_case(rejects_bound_on_variance option_pack_misuse.cpp 14)
 add_rejected_case(rejects_duplicate_constraint_on_variance option_pack_misuse.cpp 15)
+
+# The byte-order axis (053-060). Checked against a no-CASE control build: 7
+# fails on announcing_record_check's name-resolution assertion, not on the
+# guide's arity or on order_deduction_like.
+add_rejected_case(rejects_unknown_announcement_field_name byte_order_misuse.cpp 7)

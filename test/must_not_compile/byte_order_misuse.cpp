@@ -28,6 +28,9 @@
 // CASE 8 (059): stream_cast on a schema with no announcement.
 // CASE 9 (059): stream_cast_le on a self-announcing schema.
 
+#include <array>
+#include <bit>
+
 #include "../../single_header/s2s.hpp"
 
 using namespace s2s_literals;
@@ -35,5 +38,27 @@ using namespace s2s_literals;
 using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
+
+#if CASE == 7
+// Must NOT compile — the announcement names "markr", and the announcing record
+// has "marker". Names resolve inside that record's own field table, so the
+// misspelling is not a name from an enclosing scope either; it is nothing.
+// Rejected by announcing_record_check's static_assert, which also reaches the
+// caller as an unsatisfied constraint on create_struct_field_list.
+using order_marker =
+  s2s::struct_field_list<
+    s2s::fixed_array_field<"marker", u8, 2>
+  >;
+
+using misspelled_announcement_name =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<s2s::match_field<"markr">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"magic", u16, 2_B>
+  >;
+#endif
 
 auto main() -> int {}
