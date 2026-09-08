@@ -10,6 +10,7 @@
 #include "../field_size/field_size_deduce.hpp"
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
+#include "../order_deduction/order_deduction_impl.hpp"
 #include "../type_deduction/type/type_impl.hpp"
 #include "read_impl.hpp"
 
@@ -213,6 +214,38 @@ struct read_field<T, F> {
     if(!res)
       return std::unexpected(res.error());
     field.value = base_field.value;
+    return {};
+  }
+};
+
+
+// Resolution happens here rather than in the fold, because here is exactly the
+// stream position the rule names: the base reader returns the moment the
+// announcing record's last field leaves the stream, and the next statement
+// writes the cell. `order` is a reference to a cell the entry point owns, so a
+// write at any depth is seen by every enclosing fold's remaining fields — the
+// "escapes to the rest of the file" semantics is what a borrowed cell already
+// does, not a rule the folds have to remember.
+template <order_announcing_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
+
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
+    using field_base_type_t = typename T::field_base_type;
+    auto reader = read_field<field_base_type_t, F>(field, field_list);
+    auto res = reader.read(s, order);
+    if(!res)
+      return std::unexpected(res.error());
+
+    auto resolved = deduce_order<typename T::byte_order_deduction>{}(field.value);
+    if(!resolved)
+      return std::unexpected(resolved.error());
+    order = deduce_byte_order(*resolved);
     return {};
   }
 };

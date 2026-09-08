@@ -76,6 +76,18 @@ public:
 };
 
 
+// A record whose bytes decide the byte order of everything read after it.
+// Shaped like maybe_field — public inheritance from the base field plus two
+// member aliases — so every trait, the field table and both folds go on seeing
+// the base field. The guide stays an opaque typename here, which is what keeps
+// this header's include closure to the three it already has.
+template <typename base_field, typename order_deduction>
+struct order_announcing_field : base_field {
+  using field_base_type = base_field;
+  using byte_order_deduction = order_deduction;
+};
+
+
 template <typename... choices>
 struct field_choice_list {};
 

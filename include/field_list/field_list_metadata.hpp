@@ -85,6 +85,19 @@ struct extract_length_dependencies<
   static constexpr auto value = extract_length_dependencies<f>::value;
 };
 
+// extract_length_dependencies has no primary definition, so a wrapper that
+// reaches no specialization is a hard error rather than a silently empty
+// answer. The base is a size_dont_care record, so the answer is the empty
+// vector; this exists to say so.
+template <fixed_string id, typename T, auto size, auto constraint, typename guide>
+struct extract_length_dependencies<
+  order_announcing_field<field<id, T, size, constraint>, guide>
+>
+{
+  using f = field<id, T, size, constraint>;
+  static constexpr auto value = extract_length_dependencies<f>::value;
+};
+
 template <std::size_t N>
 constexpr auto flatten(const dep_vec (&vecs)[N]) -> dep_vec {
   dep_vec vec;

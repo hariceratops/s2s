@@ -30,6 +30,15 @@
     code; \
   } while(0)
 
+// The byte-order axis: the schema decides its own order, so this one has no
+// _le/_be variant — there is no order for the caller to pass.
+#define FIELD_LIST_READ_CHECK(code) \
+  do { \
+    std::ifstream file("test_input.bin", std::ios::in | std::ios::binary); \
+    auto result = s2s::struct_cast<test_field_list>(file); \
+    code; \
+  } while(0)
+
 // Round-trip: write a populated struct to an in-memory stream, read it back,
 // and expose both `written` (the write result) and `result` (the read-back
 // result) to the checking code. std::stringstream satisfies both

@@ -8,6 +8,7 @@
 #include "error/cast_error.hpp"
 #include "api/field_descriptors.hpp"
 #include "api/struct_field_list.hpp"
+#include "order_deduction/order_deduction.hpp"
 #include "type_deduction/type/type.hpp"
 #include "type_deduction/switch/switch.hpp"
 #include "type_deduction/if_else_ladder/ladder.hpp"

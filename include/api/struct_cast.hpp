@@ -22,6 +22,16 @@ template <field_list_like T, input_stream_like stream>
   auto order = deduce_byte_order<std::endian::big>();
   return struct_cast_impl<T, stream>{}(s, order);
 }
+
+// The entry point for a schema that decides its own byte order: it takes none,
+// because the file supplies it. The seed only governs the announcing record's
+// own fields, which are read before resolution and are required to be
+// order-agnostic.
+template <field_list_like T, input_stream_like stream>
+[[nodiscard]] constexpr auto struct_cast(stream& s) -> std::expected<T, cast_error> {
+  auto order = cast_endianness::host;
+  return struct_cast_impl<T, stream>{}(s, order);
+}
 } /* namespace s2s */
 
 #endif // _STRUCT_CAST_HPP_

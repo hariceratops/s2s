@@ -9,6 +9,7 @@
 #include "../field_size/field_size.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
+#include "../order_deduction/order_deduction.hpp"
 #include "../type_deduction/type/type_deduction_traits.hpp"
 #include "../type_deduction/type/type_deduction_metafunctions.hpp"
 
@@ -102,6 +103,15 @@ using variance =
   union_field<id, type_deducer,
               constraint_of_pack<typename type_deducer::variant, opts...>>;
 
+
+// The record whose bytes decide the byte order of everything read after it.
+// Constraint-only, like struct_field: the record's own size is size_dont_care
+// and it drives no allocation of its own.
+template <fixed_string id, field_list_like T, order_deduction_like guide,
+          constraint_option_like<T> auto... opts>
+using announces_byte_order =
+  order_announcing_field<field<id, T, size_dont_care, constraint_of_pack<T, opts...>>,
+                         guide>;
 } /* namespace s2s */
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
