@@ -49,6 +49,7 @@ nav:
       - The size axis: schema/size-axis.md
       - Computed values: schema/computed-values.md
       - Optional and variant fields: schema/optional-and-variant.md
+      - The byte-order axis: schema/byte-order-axis.md
   - Constraints and validation: constraints.md
   - Reading: reading.md
   - Writing: writing.md

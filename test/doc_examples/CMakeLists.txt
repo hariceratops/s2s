@@ -51,6 +51,14 @@ target_compile_options(guide_variance_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_variance_example COMMAND guide_variance_example)
 
+# docs/schema/byte-order-axis.md: the TIFF example.
+add_executable(guide_byte_order_example guide_byte_order_example.cpp)
+add_dependencies(guide_byte_order_example generate_single_header)
+target_include_directories(guide_byte_order_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_byte_order_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME guide_byte_order_example COMMAND guide_byte_order_example)
+
 # docs/constraints.md.
 add_executable(guide_constraints_example guide_constraints_example.cpp)
 add_dependencies(guide_constraints_example generate_single_header)
