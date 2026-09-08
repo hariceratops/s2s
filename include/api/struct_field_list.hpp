@@ -70,7 +70,19 @@ struct announcing_record_check {
     "fixed_array_field or magic_byte_array of a one-byte type, or a string — "
     "rather than as a multi-byte integer");
 
-  static constexpr bool res = names_ok && fields_order_agnostic;
+  // Cumulative rather than local, and therefore checked at every level: the
+  // announcement may sit several records below the one that puts it off the
+  // unconditional path, and only a walk from here sees both.
+  static constexpr auto census = census_of_fields<fields...>::value;
+
+  static_assert(census.off_spine == 0,
+    "a byte-order-announcing record must be read exactly once, "
+    "unconditionally. This one sits inside an optional, an array or vector of "
+    "records, or a union alternative, so a cast could finish without ever "
+    "resolving an order, or could resolve one repeatedly. Move the "
+    "announcement onto the unconditional path");
+
+  static constexpr bool res = names_ok && fields_order_agnostic && (census.off_spine == 0);
 };
 
 template <typename... fields>

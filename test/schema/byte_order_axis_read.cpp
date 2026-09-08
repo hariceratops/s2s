@@ -85,6 +85,32 @@ using tiff_with_order_dependent_siblings =
     s2s::fixed_array_field<"resolution", u16, 2>
   >;
 
+// Nesting. The announcement sits inside a container, so the resolved order has
+// to reach three places that are easy to get wrong independently: the
+// container's own later fields, the fields after the container closes, and the
+// same again one level further down.
+using tiff_ifd =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"entry_count", u16, 2_B>
+  >;
+
+using nested_once =
+  s2s::struct_field_list<
+    s2s::struct_field<"ifd", tiff_ifd>,
+    s2s::basic_field<"next_ifd", u32>
+  >;
+
+using nested_twice =
+  s2s::struct_field_list<
+    s2s::struct_field<"first", nested_once>,
+    s2s::basic_field<"trailer", u32>
+  >;
+
 // Written a byte at a time rather than through an integer: the point of the
 // test is which byte lands where, and reinterpreting an int would make the file
 // depend on the host's own order.
@@ -211,4 +237,49 @@ TEST(ByteOrderAxisRead, TheRestrictionDoesNotReachPastTheAnnouncingRecord) {
   });
 }
 
-// TODO(057): nesting one and two levels deep, as separate cases.
+// Split from the case below deliberately: one test asserting both passes with
+// the order reference threaded only halfway, and this is the half that breaks
+// first — entry_count is read by the *inner* fold, after the announcement's
+// reader has written a cell the outer fold owns.
+TEST(ByteOrderAxisRead, ANestedAnnouncementGovernsTheContainersLaterSiblings) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 8>{'M', 'M', 0x01, 0x2c, 0xca, 0xfe, 0xd0, 0x0d});
+  });
+
+  FIELD_LIST_SCHEMA = nested_once;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["ifd"_f]["entry_count"_f], 300);
+  });
+}
+
+TEST(ByteOrderAxisRead, ANestedAnnouncementGovernsWhatFollowsTheContainer) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 8>{'M', 'M', 0x01, 0x2c, 0xca, 0xfe, 0xd0, 0x0d});
+  });
+
+  FIELD_LIST_SCHEMA = nested_once;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["next_ifd"_f], 0xcafed00du);
+  });
+}
+
+TEST(ByteOrderAxisRead, AnAnnouncementTwoRecordsDeepResolvesTheSameWay) {
+  PREPARE_INPUT_FILE({
+    write_bytes(file, std::array<u8, 12>{'M', 'M', 0x01, 0x2c, 0xca, 0xfe, 0xd0, 0x0d,
+                                         0xde, 0xad, 0xbe, 0xef});
+  });
+
+  FIELD_LIST_SCHEMA = nested_twice;
+
+  FIELD_LIST_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_EQ(fields["first"_f]["ifd"_f]["entry_count"_f], 300);
+    EXPECT_EQ(fields["first"_f]["next_ifd"_f], 0xcafed00du);
+    EXPECT_EQ(fields["trailer"_f], 0xdeadbeefu);
+  });
+}

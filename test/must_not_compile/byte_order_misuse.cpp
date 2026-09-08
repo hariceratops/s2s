@@ -22,8 +22,10 @@
 // CASE 4 (056): the same, nested one record deeper — proves the walk descends.
 // CASE 5 (060): two announcements in disjoint subtrees — also proves the
 //               census is cumulative rather than per-level.
-// CASE 6 (057): an off-spine announcement (behind a maybe, or inside an array)
-//               — design §5.2.
+// CASE 6 (057): an announcement behind a maybe — reached conditionally, so a
+//               cast can finish without ever resolving. Design §5.2.
+// CASE 10 (057): an announcement inside an array of records — reached
+//               repeatedly, so the last element would silently win.
 // CASE 7 (055): a match_field naming a field the announcing record lacks.
 // CASE 8 (059): stream_cast on a schema with no announcement.
 // CASE 9 (059): stream_cast_le on a self-announcing schema.
@@ -83,6 +85,48 @@ using order_dependent_field_nested_deeper =
   s2s::struct_field_list<
     s2s::announces_byte_order<"byte_order", deeply_order_dependent_marker, order_guide>,
     s2s::basic_field<"magic", u32>
+  >;
+#endif
+
+#if CASE == 6 || CASE == 10
+using nested_marker =
+  s2s::struct_field_list<
+    s2s::fixed_array_field<"marker", u8, 2>
+  >;
+
+using announcing_header =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", nested_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"magic", u32>
+  >;
+#endif
+
+#if CASE == 6
+// Must NOT compile — an announcement reached conditionally. The cast can finish
+// without the header ever being read, and everything after it would then be
+// decoded at the seed order. Rejected by the census's off-spine count.
+using conditionally_announced =
+  s2s::struct_field_list<
+    s2s::basic_field<"present", u8, 1_B>,
+    s2s::maybe<
+      s2s::struct_field<"header", announcing_header>,
+      s2s::parse_if<[](u8 present) { return present != 0; }, "present">
+    >,
+    s2s::basic_field<"payload", u32>
+  >;
+#endif
+
+#if CASE == 10
+// Must NOT compile — an announcement reached repeatedly. Each element would
+// resolve an order and the last one would silently win.
+using repeatedly_announced =
+  s2s::struct_field_list<
+    s2s::array_of_records<"headers", announcing_header, 3>,
+    s2s::basic_field<"payload", u32>
   >;
 #endif
 

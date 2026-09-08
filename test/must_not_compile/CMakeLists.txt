@@ -73,3 +73,10 @@ add_rejected_case(rejects_unknown_announcement_field_name byte_order_misuse.cpp 
 # is what proves the walk descends rather than reading one flat pack.
 add_rejected_case(rejects_order_dependent_field_in_announcing_record byte_order_misuse.cpp 3)
 add_rejected_case(rejects_order_dependent_field_nested_deeper byte_order_misuse.cpp 4)
+
+# The exactly-once rejections (057). Both checked against a no-CASE control
+# build and both fail on the census's off-spine assertion rather than on the
+# maybe's or the array's own constraints: 6 is an announcement reached
+# conditionally, 10 one reached repeatedly.
+add_rejected_case(rejects_conditionally_reached_announcement byte_order_misuse.cpp 6)
+add_rejected_case(rejects_repeatedly_reached_announcement byte_order_misuse.cpp 10)

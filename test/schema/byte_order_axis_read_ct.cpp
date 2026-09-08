@@ -150,6 +150,32 @@ using marker_spellings =
     s2s::basic_field<"ifd_offset", u32>
   >;
 
+// Nesting. The announcement sits inside a container, so the resolved order has
+// to reach three places that are easy to get wrong independently: the
+// container's own later fields, the fields after the container closes, and the
+// same again one level further down.
+using tiff_ifd =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", order_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"entry_count", u16, 2_B>
+  >;
+
+using nested_once =
+  s2s::struct_field_list<
+    s2s::struct_field<"ifd", tiff_ifd>,
+    s2s::basic_field<"next_ifd", u32>
+  >;
+
+using nested_twice =
+  s2s::struct_field_list<
+    s2s::struct_field<"first", nested_once>,
+    s2s::basic_field<"trailer", u32>
+  >;
+
 auto main() -> int {
   // The whole claim of the feature: two different byte sequences, one schema,
   // one entry point taking no order, and the same values out of both.
@@ -394,8 +420,55 @@ auto main() -> int {
     expect(eq((*res)["ifd_offset"_f], 0xcafed00du));
   };
 
-  // TODO(057): announcing record one level deep, then two. Assert on a later
-  // sibling OF THE CONTAINER and on a record after the container closes as
-  // SEPARATE cases — one test covering both passes with the reference
-  // threading half-broken.
+  // Split from the case below deliberately: one test asserting both passes with
+  // the order reference threaded only halfway, and this is the half that breaks
+  // first — entry_count is read by the *inner* fold, after the announcement's
+  // reader has written a cell the outer fold owns.
+  "a nested announcement governs the container's later siblings"_test = [] constexpr {
+    std::array<u8, 8> buffer{
+      'M', 'M',
+      0x01, 0x2c,
+      0xca, 0xfe, 0xd0, 0x0d
+    };
+    memstream<8> stream(buffer);
+
+    auto res = s2s::struct_cast<nested_once>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["ifd"_f]["entry_count"_f], u16{300}));
+  };
+
+  "a nested announcement governs what follows the container"_test = [] constexpr {
+    std::array<u8, 8> buffer{
+      'M', 'M',
+      0x01, 0x2c,
+      0xca, 0xfe, 0xd0, 0x0d
+    };
+    memstream<8> stream(buffer);
+
+    auto res = s2s::struct_cast<nested_once>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["next_ifd"_f], 0xcafed00du));
+  };
+
+  // Depth is not a code path of its own — the same reference goes down every
+  // level — but the claim is worth an assertion rather than an argument.
+  "an announcement two records deep resolves the same way"_test = [] constexpr {
+    std::array<u8, 12> buffer{
+      'M', 'M',
+      0x01, 0x2c,
+      0xca, 0xfe, 0xd0, 0x0d,
+      0xde, 0xad, 0xbe, 0xef
+    };
+    memstream<12> stream(buffer);
+
+    auto res = s2s::struct_cast<nested_twice>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["first"_f]["ifd"_f]["entry_count"_f], u16{300}));
+    expect(eq((*res)["first"_f]["next_ifd"_f], 0xcafed00du));
+    expect(eq((*res)["trailer"_f], 0xdeadbeefu));
+  };
+
 }
