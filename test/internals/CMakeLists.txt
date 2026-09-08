@@ -7,3 +7,8 @@ add_ut_test(containers_ct)
 # the tag-to-field pipeline actually builds for a union's alternatives. Lives
 # here rather than under schema/ because it asserts a type, not a round-trip.
 add_ut_test(union_choice_pipeline_ct)
+
+# The positive form of the announcement census (056, 058, 060), whose own
+# criteria are all negative. Here rather than under schema/ because it asserts
+# a type-level computation, not a round-trip.
+add_ut_test(announcement_census_ct)
