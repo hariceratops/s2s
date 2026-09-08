@@ -27,8 +27,12 @@ Spec: `dev/specs/byte-order-is-data-not-a-template-parameter.md`.
 ## Acceptance Criteria
 - `stream_cast` on a self-announcing schema writes in whatever order the
   struct's marker field holds, with no order argument anywhere in the call.
-- The outer host/foreign branch in `write_impl` is a runtime `if/else` with a
-  total foreign arm; inner `if constexpr`s unchanged.
+- ~~The outer host/foreign branch in `write_impl` is a runtime `if/else` with a
+  total foreign arm; inner `if constexpr`s unchanged.~~ **Landed early, in 053**
+  (`35b5371`). The shared `byteswap_elements` change was forced by that slice's
+  float fix, and threading the runtime order through `write_impl`,
+  `field_writer` and `stream_cast_impl` was done with it rather than leaving 059
+  carrying an unrelated mechanical refactor. Verify it rather than re-doing it.
 - Write-side resolution takes effect at the point the announcing field is
   written, mirroring read, including when the announcing record is nested.
 - A TIFF-header-shaped schema round-trips through `struct_cast` and
