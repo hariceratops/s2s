@@ -6,18 +6,19 @@
 #include <expected>
 #include <bit>
 #include "../error/cast_error.hpp"
+#include "../field_list/announcing_record.hpp"
 #include "../stream/stream_traits.hpp"
 #include "../cast/struct_cast_impl.hpp"
 
 
 namespace s2s {
-template <field_list_like T, input_stream_like stream>
+template <fixed_order_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   auto order = deduce_byte_order<std::endian::little>();
   return struct_cast_impl<T, stream>{}(s, order);
 }
 
-template <field_list_like T, input_stream_like stream>
+template <fixed_order_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   auto order = deduce_byte_order<std::endian::big>();
   return struct_cast_impl<T, stream>{}(s, order);
@@ -27,7 +28,7 @@ template <field_list_like T, input_stream_like stream>
 // because the file supplies it. The seed only governs the announcing record's
 // own fields, which are read before resolution and are required to be
 // order-agnostic.
-template <field_list_like T, input_stream_like stream>
+template <self_announcing_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast(stream& s) -> std::expected<T, cast_error> {
   auto order = cast_endianness::host;
   return struct_cast_impl<T, stream>{}(s, order);

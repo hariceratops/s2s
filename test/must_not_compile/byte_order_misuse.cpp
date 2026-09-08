@@ -18,6 +18,10 @@
 //
 // CASE 1 (058): struct_cast on a schema with no announcement.
 // CASE 2 (058): struct_cast_le on a self-announcing schema.
+//               Both are registered with add_rejected_case_matching rather than
+//               add_rejected_case: the diagnostic is our own static_assert
+//               text, so the build has to fail *for that reason* rather than
+//               merely fail.
 // CASE 3 (056): an order-dependent u16 directly in the announcing record.
 // CASE 4 (056): the same, nested one record deeper — proves the walk descends.
 // CASE 5 (060): two announcements in disjoint subtrees — also proves the
@@ -32,6 +36,7 @@
 
 #include <array>
 #include <bit>
+#include <fstream>
 
 #include "../../single_header/s2s.hpp"
 
@@ -40,6 +45,46 @@ using namespace s2s_literals;
 using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
+
+#if CASE == 1 || CASE == 2
+using entry_point_marker =
+  s2s::struct_field_list<
+    s2s::fixed_array_field<"marker", u8, 2>
+  >;
+
+using self_announcing =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", entry_point_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"magic", u32>
+  >;
+
+using fixed_order =
+  s2s::struct_field_list<
+    s2s::basic_field<"magic", u32>
+  >;
+#endif
+
+#if CASE == 1
+// Must NOT compile — struct_cast says the file decides its own byte order, and
+// this schema declares nothing that could. Calling it here would be a claim
+// about the format that is not true.
+auto read_a_fixed_order_schema_with_struct_cast(std::ifstream& file) {
+  return s2s::struct_cast<fixed_order>(file);
+}
+#endif
+
+#if CASE == 2
+// Must NOT compile — the other direction, and the one with teeth: the file
+// carries its own order and the caller is naming a different one. There is
+// deliberately no way to force a fixed order over a self-announcing schema.
+auto read_a_self_announcing_schema_with_struct_cast_le(std::ifstream& file) {
+  return s2s::struct_cast_le<self_announcing>(file);
+}
+#endif
 
 #if CASE == 3 || CASE == 4
 using order_guide =

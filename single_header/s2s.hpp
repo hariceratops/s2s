@@ -4011,6 +4011,47 @@ constexpr auto census_of_field() -> announcement_census {
   else
     return announcement_census{0, 0};
 }
+
+// Which entry point a schema takes is a property of the schema, so the two
+// concepts are the shape of it: one for a format whose order is fixed by the
+// format, one for a format whose bytes decide. Each is backed by a struct of
+// static_asserts, following dependency_check, so the failure arrives as a
+// sentence as well as an unsatisfied constraint.
+//
+// A count of two or more never reaches either: announcing_record_check rejects
+// it at schema declaration, which is strictly earlier and names a better
+// problem.
+template <typename T>
+struct self_announcing_check {
+  static constexpr auto count = census_of_list_v<T>.on_spine;
+
+  static_assert(count != 0,
+    "struct_cast is for a schema that declares a byte-order-announcing record — "
+    "one whose bytes decide the order, like TIFF's II/MM. This schema declares "
+    "none, so its byte order is a fixed fact about the format: call "
+    "struct_cast_le or struct_cast_be instead");
+
+  static constexpr bool res = (count == 1);
+};
+
+template <typename T>
+concept self_announcing_schema = field_list_like<T> && self_announcing_check<T>::res;
+
+template <typename T>
+struct fixed_order_check {
+  static constexpr auto count = census_of_list_v<T>.on_spine;
+
+  static_assert(count == 0,
+    "struct_cast_le and struct_cast_be are for a schema whose byte order is "
+    "fixed by the format. This schema declares a byte-order-announcing record, "
+    "so the file decides its own order: call struct_cast instead. There is "
+    "deliberately no way to force a fixed order over a self-announcing schema");
+
+  static constexpr bool res = (count == 0);
+};
+
+template <typename T>
+concept fixed_order_schema = field_list_like<T> && fixed_order_check<T>::res;
 } /* namespace s2s */
 
 
@@ -5136,13 +5177,13 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
  
  
 namespace s2s {
-template <field_list_like T, input_stream_like stream>
+template <fixed_order_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
   auto order = deduce_byte_order<std::endian::little>();
   return struct_cast_impl<T, stream>{}(s, order);
 }
 
-template <field_list_like T, input_stream_like stream>
+template <fixed_order_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
   auto order = deduce_byte_order<std::endian::big>();
   return struct_cast_impl<T, stream>{}(s, order);
@@ -5152,7 +5193,7 @@ template <field_list_like T, input_stream_like stream>
 // because the file supplies it. The seed only governs the announcing record's
 // own fields, which are read before resolution and are required to be
 // order-agnostic.
-template <field_list_like T, input_stream_like stream>
+template <self_announcing_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast(stream& s) -> std::expected<T, cast_error> {
   auto order = cast_endianness::host;
   return struct_cast_impl<T, stream>{}(s, order);

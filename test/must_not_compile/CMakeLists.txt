@@ -17,6 +17,24 @@ function(add_rejected_case name source case_id)
   set_tests_properties(${name} PROPERTIES WILL_FAIL TRUE)
 endfunction()
 
+# A rejected case that must fail for a stated reason. The diagnostic matched is
+# our own static_assert text rather than the compiler's concept wording, so
+# matching it stays portable in the way matching a substitution failure would
+# not. PASS_REGULAR_EXPRESSION replaces WILL_FAIL: the build still has to fail,
+# since nothing in these cases compiles, but a failure for an unrelated reason
+# no longer passes — which is the hole WILL_FAIL alone leaves.
+function(add_rejected_case_matching name source case_id regex)
+  add_executable(${name} ${source})
+  set_target_properties(${name} PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD TRUE)
+  target_compile_definitions(${name} PRIVATE CASE=${case_id})
+  add_dependencies(${name} generate_single_header)
+  add_test(NAME ${name}
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${name} --config $<CONFIG>)
+  set_tests_properties(${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
+endfunction()
+
 add_rejected_case(rejects_assigning_a_derived_discriminant derived_field_assignment.cpp 2)
 add_rejected_case(rejects_reading_a_hidden_length_target hidden_length_target.cpp 1)
 add_rejected_case(rejects_duplicate_match_values derived_field_assignment.cpp 4)
@@ -80,3 +98,11 @@ add_rejected_case(rejects_order_dependent_field_nested_deeper byte_order_misuse.
 # conditionally, 10 one reached repeatedly.
 add_rejected_case(rejects_conditionally_reached_announcement byte_order_misuse.cpp 6)
 add_rejected_case(rejects_repeatedly_reached_announcement byte_order_misuse.cpp 10)
+
+# The entry points (058). Each names the mismatch and the call the caller
+# wanted, so both are matched against that sentence rather than merely expected
+# to fail.
+add_rejected_case_matching(rejects_struct_cast_on_a_fixed_order_schema
+  byte_order_misuse.cpp 1 "call struct_cast_le or struct_cast_be instead")
+add_rejected_case_matching(rejects_struct_cast_le_on_a_self_announcing_schema
+  byte_order_misuse.cpp 2 "call struct_cast instead")
