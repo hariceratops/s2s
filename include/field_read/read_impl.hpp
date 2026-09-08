@@ -98,7 +98,7 @@ constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) 
   auto res = read_native_impl(s, obj, size_to_read);
   if(res) {
     // todo rollout byteswap if freestanding compiler doesnt provide one
-    obj = std::byteswap(obj);
+    obj = byteswapped(obj);
     return {};
   }
   return res;
@@ -119,23 +119,25 @@ constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -
   return res;
 }
 
-// The ceiling is a defaulted NTTP after endianness so the existing call sites
-// keep compiling verbatim; only the resizing overload of read_native is handed
-// one, since the constant-sized overload has nothing to bound.
-template <std::endian endianness, std::size_t ceiling = default_max_bytes,
-          typename T, input_stream_like stream>
-constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
-  auto constexpr byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
+// `ceiling` is the only template parameter with a default now that
+// `endianness` is gone from the front of the list; `byte_order` arrives as a
+// runtime value because it is one — a byte-order-announcing record decides it
+// from stream contents, not from the type being instantiated.
+template <std::size_t ceiling = default_max_bytes, typename T, input_stream_like stream>
+constexpr auto read_impl(stream& s, T& obj, std::size_t N, cast_endianness byte_order) -> rw_result {
+  if(byte_order == cast_endianness::host) {
     if constexpr(variable_sized_buffer_like<T>)
       return read_native<ceiling>(s, obj, N);
     else
       return read_native(s, obj, N);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
+  } else {
     if constexpr(trivial<T>) {
       return read_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
       return read_foreign_buffer<ceiling>(s, obj, N);
+    } else {
+      static_assert(dependent_false<T>,
+                    "read_impl has no foreign-order reading strategy for this type");
     }
   }
 }

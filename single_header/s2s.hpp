@@ -817,6 +817,12 @@ concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
 
 template <typename T>
 concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
+
+// For a static_assert inside an `if constexpr` chain's otherwise-unreachable
+// branch: `static_assert(false, ...)` is ill-formed even when the branch is
+// discarded, because it does not depend on a template parameter. This does.
+template <typename T>
+inline constexpr bool dependent_false = false;
 } /* namespace s2s */
 
 #endif // _S2S_TYPE_TRAITS_HPP_
@@ -3874,7 +3880,36 @@ constexpr auto as_byte_buffer(const T& obj) -> std::array<char, size> {
 #ifndef _BYTE_ORDER_HPP_
 #define _BYTE_ORDER_HPP_
  
+ 
 namespace s2s {
+// std::byteswap admits only integral types, and `trivial` admits floats too.
+// A float/double is swapped through the unsigned integer of the same width —
+// bit_cast there, byteswap, bit_cast back — since there is no portable way to
+// flip the bytes of a floating-point object directly. `long double`'s
+// extended representation has no such width and no portable wire form, so it
+// is rejected at compile time rather than silently mis-swapped.
+template <std::size_t N>
+struct uint_of_size;
+template <> struct uint_of_size<2> { using type = std::uint16_t; };
+template <> struct uint_of_size<4> { using type = std::uint32_t; };
+template <> struct uint_of_size<8> { using type = std::uint64_t; };
+template <std::size_t N>
+using uint_of_size_t = typename uint_of_size<N>::type;
+
+template <trivial T>
+constexpr auto byteswapped(T v) -> T {
+  if constexpr(std::is_integral_v<T>) {
+    return std::byteswap(v);
+  } else {
+    static_assert(sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8,
+                  "a floating-point field is byte-swapped through an unsigned "
+                  "integer of the same width; this type has no such width and "
+                  "no portable wire form");
+    using rep = uint_of_size_t<sizeof(T)>;
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<rep>(v)));
+  }
+}
+
 // Single-byte elements have no byte order, and fixed_string exposes no
 // iterators, so both fall through untouched. Shared by the read and write
 // directions, which is why it lives here rather than beside either one.
@@ -3886,7 +3921,7 @@ constexpr auto byteswap_elements(T& obj) -> void {
       if constexpr(buffer_like<std::remove_reference_t<decltype(elem)>>)
         byteswap_elements(elem);
       else if constexpr(sizeof(elem) > 1)
-        elem = std::byteswap(elem);
+        elem = byteswapped(elem);
     }
   }
 }
@@ -3904,6 +3939,15 @@ constexpr cast_endianness deduce_byte_order() {
     return cast_endianness::host;
   else if constexpr(std::endian::native != endianness)
     return cast_endianness::foreign;
+}
+
+// The runtime counterpart: a resolved order is a runtime value by
+// construction (a byte-order-announcing record decides it from stream
+// contents), so the collapse from the schema's std::endian vocabulary to the
+// engine's cast_endianness needs a form that does not require a compile-time
+// constant.
+constexpr auto deduce_byte_order(std::endian endianness) -> cast_endianness {
+  return std::endian::native == endianness ? cast_endianness::host : cast_endianness::foreign;
 }
 } /* namespace s2s */
 
@@ -4002,7 +4046,7 @@ constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) 
   auto res = read_native_impl(s, obj, size_to_read);
   if(res) {
     // todo rollout byteswap if freestanding compiler doesnt provide one
-    obj = std::byteswap(obj);
+    obj = byteswapped(obj);
     return {};
   }
   return res;
@@ -4023,23 +4067,25 @@ constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -
   return res;
 }
 
-// The ceiling is a defaulted NTTP after endianness so the existing call sites
-// keep compiling verbatim; only the resizing overload of read_native is handed
-// one, since the constant-sized overload has nothing to bound.
-template <std::endian endianness, std::size_t ceiling = default_max_bytes,
-          typename T, input_stream_like stream>
-constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
-  auto constexpr byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
+// `ceiling` is the only template parameter with a default now that
+// `endianness` is gone from the front of the list; `byte_order` arrives as a
+// runtime value because it is one — a byte-order-announcing record decides it
+// from stream contents, not from the type being instantiated.
+template <std::size_t ceiling = default_max_bytes, typename T, input_stream_like stream>
+constexpr auto read_impl(stream& s, T& obj, std::size_t N, cast_endianness byte_order) -> rw_result {
+  if(byte_order == cast_endianness::host) {
     if constexpr(variable_sized_buffer_like<T>)
       return read_native<ceiling>(s, obj, N);
     else
       return read_native(s, obj, N);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
+  } else {
     if constexpr(trivial<T>) {
       return read_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
       return read_foreign_buffer<ceiling>(s, obj, N);
+    } else {
+      static_assert(dependent_false<T>,
+                    "read_impl has no foreign-order reading strategy for this type");
     }
   }
 }
@@ -4069,11 +4115,11 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list) {}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
-    return read_impl<endianness>(s, field.value, size_to_read);
+    return read_impl(s, field.value, size_to_read, order);
   }
 };
 
@@ -4086,11 +4132,11 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return read_impl<endianness, bound_in_bytes<T::field_bound>>(s, field.value, len_to_read);
+    return read_impl<bound_in_bytes<T::field_bound>>(s, field.value, len_to_read, order);
   }
 };
 
@@ -4142,13 +4188,13 @@ struct read_buffer_of_records {
   constexpr read_buffer_of_records(T& field, F& field_list, std::size_t len_to_read)
     : field(field), field_list(field_list), len_to_read(len_to_read) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
-      auto res = reader.template read<endianness, stream>(s);
-      if(!res) 
+      auto res = reader.read(s, order);
+      if(!res)
         return std::unexpected(res.error());
       field.value[count] = std::move(elem.value);
     }
@@ -4164,15 +4210,15 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using array_type = typename T::field_type;
     using array_element_field = create_field_from_array_of_records_v<T>;
     using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
 
     constexpr auto array_len = extract_size_from_array_v<array_type>;
     auto reader = read_impl_t(field, field_list, array_len);
-    auto res = reader.template read<endianness>(s);
+    auto res = reader.read(s, order);
     return res;
   }
 };
@@ -4186,8 +4232,8 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     constexpr auto field_size = T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
@@ -4203,27 +4249,27 @@ struct read_field<T, F> {
 
     field.value.resize(len_to_read);
     auto reader = read_impl_t(field, field_list, len_to_read);
-    auto res = reader.template read<endianness>(s);
+    auto res = reader.read(s, order);
     return res;
   }
 };
 
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct struct_cast_impl;
 
 template <struct_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
   F& field_list;
-  
+
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    auto res = struct_cast_impl<field_list_t, stream, endianness>{}(s);
+    auto res = struct_cast_impl<field_list_t, stream>{}(s, order);
     if(!res) {
       auto err = res.error();
       return std::unexpected(err.failure_reason);
@@ -4243,8 +4289,8 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list): 
     field(field), field_list(field_list){}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     if(!compute_impl<typename T::field_presence_checker>{}(field_list)) {
       field.value = std::nullopt;
       return {};
@@ -4252,8 +4298,8 @@ struct read_field<T, F> {
     using field_base_type_t = typename T::field_base_type;
     field_base_type_t base_field{};
     read_field<field_base_type_t, F> reader(base_field, field_list);
-    auto res = reader.template read<endianness>(s);
-    if(!res) 
+    auto res = reader.read(s, order);
+    if(!res)
       return std::unexpected(res.error());
     field.value = base_field.value;
     return {};
@@ -4274,14 +4320,14 @@ struct read_variant_impl {
     std::size_t idx_r) :
       variant(variant), field_list(field_list), idx_r(idx_r) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
-    if (idx_r != idx) 
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
+    if (idx_r != idx)
       return {};
 
     T field;
     auto reader = read_field<T, F>(field, field_list);
-    auto res = reader.template read<endianness, stream>(s);
+    auto res = reader.read(s, order);
     if(!res)
       return std::unexpected(res.error());
     // The struct-level fold runs constraint_checker over the fields of a
@@ -4308,15 +4354,15 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
   constexpr read_variant_helper(T& field, F& field_list, std::size_t idx_r) 
     : field(field), field_list(field_list), idx_r(idx_r) {}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     rw_result pipeline_seed{};
     return (
       pipeline_seed |
-      ... | 
+      ... |
       [&]() {
         auto reader_impl = read_variant_impl<idx, fields, F, typename T::field_type>(field.value, field_list, idx_r);
-        return reader_impl.template read<endianness>(s);
+        return reader_impl.read(s, order);
       }
     );
   }
@@ -4331,27 +4377,27 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list): 
     field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
 
     auto type_index_deducer = deduce_type<type_deduction_guide>();
-    auto type_index_result = type_index_deducer(field_list); 
+    auto type_index_result = type_index_deducer(field_list);
     if(!type_index_result)
       return std::unexpected(type_index_result.error());
 
     auto idx_r = *type_index_result;
-    using read_helper_t = 
+    using read_helper_t =
       read_variant_helper<
-        T, 
-        F, 
-        field_choices, 
+        T,
+        F,
+        field_choices,
         std::make_index_sequence<max_type_index>
       >;
     auto field_reader = read_helper_t(field, field_list, idx_r);
-    auto field_read_res = field_reader.template read<endianness, stream>(s);
+    auto field_read_res = field_reader.read(s, order);
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};
@@ -4369,15 +4415,15 @@ struct read_field<T, F> {
  
 namespace s2s {
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct struct_cast_impl;
 
-template <auto metadata, typename... fields, typename stream, auto endianness>
-struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+template <auto metadata, typename... fields, typename stream>
+struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
   using S = struct_field_list_impl<metadata, fields...>;
   using R = std::expected<S, cast_error>;
 
-  constexpr auto operator()(stream& s) -> R {
+  constexpr auto operator()(stream& s, cast_endianness& order) -> R {
     S field_list;
     cast_result pipeline_seed{};
     auto res = (
@@ -4386,7 +4432,7 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
       [&]() -> cast_result {
         auto& field = static_cast<fields&>(field_list);
         auto reader = read_field<fields, S>(field, field_list);
-        auto read_res = reader.template read<endianness>(s);
+        auto read_res = reader.read(s, order);
         // Short circuit the remaining pipeline since read failed for current field
         if(!read_res) {
           auto field_name = std::string_view{fields::field_id.data()};
@@ -4425,12 +4471,14 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
 namespace s2s {
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::little>{}(s);
+  auto order = deduce_byte_order<std::endian::little>();
+  return struct_cast_impl<T, stream>{}(s, order);
 }
 
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::big>{}(s);
+  auto order = deduce_byte_order<std::endian::big>();
+  return struct_cast_impl<T, stream>{}(s, order);
 }
 } /* namespace s2s */
 
@@ -4787,7 +4835,7 @@ template <trivial T, output_stream_like stream>
 constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
   // The source is const and belongs to the caller, so the swap lands in a
   // stack temporary rather than mutating it in place as the read path does.
-  T swapped = std::byteswap(obj);
+  T swapped = byteswapped(obj);
   return write_native_impl(s, swapped, size_to_write);
 }
 
@@ -4817,16 +4865,18 @@ constexpr auto write_foreign_buffer(stream& s, const T& obj, std::size_t len_to_
   }
 }
 
-template <std::endian endianness, typename T, output_stream_like stream>
-constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
-  auto constexpr byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
+template <typename T, output_stream_like stream>
+constexpr auto write_impl(stream& s, const T& obj, std::size_t N, cast_endianness byte_order) -> rw_result {
+  if(byte_order == cast_endianness::host) {
     return write_native(s, obj, N);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
+  } else {
     if constexpr(trivial<T>) {
       return write_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
       return write_foreign_buffer(s, obj, N);
+    } else {
+      static_assert(dependent_false<T>,
+                    "write_impl has no foreign-order writing strategy for this type");
     }
   }
 }
@@ -4854,8 +4904,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
     if constexpr(is_derived_target_v<T, F>) {
@@ -4866,7 +4916,7 @@ struct write_field<T, F> {
         return std::unexpected(derived.error());
       if(!T::constraint_checker(*derived))
         return std::unexpected(error_reason::validation_failure);
-      return verify_then_write<endianness>(s, *derived, size_to_write);
+      return verify_then_write(s, *derived, size_to_write, order);
     } else if constexpr(is_frozen_target_v<T, F>) {
       // Ordered after the derived branch, not before it: a frozen field can
       // also be some other field's length target, and there the derived value
@@ -4875,9 +4925,9 @@ struct write_field<T, F> {
       //
       // No constraint check of its own. The value is the constraint's, so it
       // satisfies it by construction.
-      return verify_then_write<endianness>(s, frozen_value_of<T>, size_to_write);
+      return verify_then_write(s, frozen_value_of<T>, size_to_write, order);
     } else {
-      return verify_then_write<endianness>(s, value, size_to_write);
+      return verify_then_write(s, value, size_to_write, order);
     }
   }
 
@@ -4885,16 +4935,16 @@ private:
   // Conditional producers cannot make this field derived, so whatever value
   // reaches this point — derived or stored — still has to satisfy every
   // obligation that is currently active.
-  template <auto endianness, typename stream>
+  template <typename stream>
   constexpr auto verify_then_write(
-    stream& s, const typename T::field_type& v, std::size_t size_to_write) const -> rw_result
+    stream& s, const typename T::field_type& v, std::size_t size_to_write, cast_endianness& order) const -> rw_result
   {
     if constexpr(has_conditional_len_obligation_v<T, F>) {
       auto res = verify_conditional_len<T, F>{}(field_list, static_cast<std::size_t>(v));
       if(!res)
         return res;
     }
-    return write_impl<endianness>(s, v, size_to_write);
+    return write_impl(s, v, size_to_write, order);
   }
 };
 
@@ -4906,8 +4956,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     if constexpr(is_computed_size_v<size_type_of<field_size>>) {
       // An arbitrary N-ary callable has no inverse, so its source fields stay
@@ -4918,21 +4968,21 @@ struct write_field<T, F> {
     }
     // For a len_from_field size there is nothing to check: the length slot was
     // derived from this very container, so the container is the authority.
-    return write_impl<endianness>(s, value, value.size());
+    return write_impl(s, value, value.size(), order);
   }
 };
 
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct stream_cast_impl;
 
 // The one seam where the error representation narrows. A nested list names
 // its own failing field, but rw_result carries no name and the outer fold
 // re-attaches the outer field's id, so failed_at ends up naming the outermost
 // record field. read_field<struct_field_like> does exactly the same.
-template <field_list_like L, auto endianness, typename stream>
-constexpr auto write_nested(stream& s, const L& nested) -> rw_result {
-  auto res = stream_cast_impl<L, stream, endianness>{}(s, nested);
+template <field_list_like L, typename stream>
+constexpr auto write_nested(stream& s, const L& nested, cast_endianness& order) -> rw_result {
+  auto res = stream_cast_impl<L, stream>{}(s, nested, order);
   if(!res)
     return std::unexpected(res.error().failure_reason);
   return {};
@@ -4946,10 +4996,10 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    return write_nested<field_list_t, endianness>(s, value);
+    return write_nested<field_list_t>(s, value, order);
   }
 };
 
@@ -4961,14 +5011,14 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using array_type = typename T::field_type;
     using element_t = extract_type_from_array_v<array_type>;
     constexpr auto array_len = extract_size_from_array_v<array_type>;
 
     for(std::size_t count = 0; count < array_len; ++count) {
-      auto res = write_nested<element_t, endianness>(s, value[count]);
+      auto res = write_nested<element_t>(s, value[count], order);
       if(!res)
         return res;
     }
@@ -4984,8 +5034,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using vector_type = typename T::field_type;
     using element_t = extract_type_from_vec_t<vector_type>;
     constexpr auto field_size = T::field_size;
@@ -4995,7 +5045,7 @@ struct write_field<T, F> {
         return std::unexpected(error_reason::found_contradicting_length);
     }
     for(const auto& record: value) {
-      auto res = write_nested<element_t, endianness>(s, record);
+      auto res = write_nested<element_t>(s, record, order);
       if(!res)
         return res;
     }
@@ -5011,8 +5061,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     // Presence is a predicate over siblings, not a stored flag, so there is
     // nothing to derive here — only to check that the struct agrees with what
     // the reader will conclude from the very same sibling bytes.
@@ -5029,7 +5079,7 @@ struct write_field<T, F> {
     // reaches the engaged value.
     if(!base_t::constraint_checker(*value))
       return std::unexpected(error_reason::validation_failure);
-    return write_field<base_t, F>(*value, field_list).template write<endianness>(s);
+    return write_field<base_t, F>(*value, field_list).write(s, order);
   }
 };
 
@@ -5042,8 +5092,8 @@ struct write_variant_impl {
   constexpr write_variant_impl(const V& variant, const F& field_list)
     : variant(variant), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     if(variant.index() != idx)
       return {};
     const auto& alternative = std::get<idx>(variant);
@@ -5053,7 +5103,7 @@ struct write_variant_impl {
     // stream untouched — a discarded value is recoverable, half a record is not.
     if(!E::constraint_checker(alternative))
       return std::unexpected(error_reason::validation_failure);
-    return write_field<E, F>(alternative, field_list).template write<endianness>(s);
+    return write_field<E, F>(alternative, field_list).write(s, order);
   }
 };
 
@@ -5062,15 +5112,15 @@ struct write_variant_helper;
 
 template <typename F, typename... choices, std::size_t... idx>
 struct write_variant_helper<F, field_choice_list<choices...>, std::index_sequence<idx...>> {
-  template <auto endianness, typename stream, typename V>
-  static constexpr auto write(stream& s, const V& variant, const F& field_list) -> rw_result {
+  template <typename stream, typename V>
+  static constexpr auto write(stream& s, const V& variant, const F& field_list, cast_endianness& order) -> rw_result {
     rw_result pipeline_seed{};
     return (
       pipeline_seed |
       ... |
       [&]() {
         return write_variant_impl<idx, choices, F, V>(variant, field_list)
-                 .template write<endianness>(s);
+                 .write(s, order);
       }
     );
   }
@@ -5084,8 +5134,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using guide = typename T::type_deduction_guide;
 
     // Exactly the unions whose discriminant is derivable need no check here:
@@ -5106,7 +5156,7 @@ struct write_field<T, F> {
       typename T::field_choices,
       std::make_index_sequence<T::variant_size>
     >;
-    return helper::template write<endianness>(s, value, field_list);
+    return helper::write(s, value, field_list, order);
   }
 };
 } /* namespace s2s */
@@ -5121,14 +5171,14 @@ struct write_field<T, F> {
  
 namespace s2s {
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct stream_cast_impl;
 
-template <auto metadata, typename... fields, typename stream, auto endianness>
-struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+template <auto metadata, typename... fields, typename stream>
+struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
   using S = struct_field_list_impl<metadata, fields...>;
 
-  constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
+  constexpr auto operator()(stream& s, const S& field_list, cast_endianness& order) -> cast_result {
     cast_result pipeline_seed{};
     return (
       pipeline_seed |
@@ -5149,7 +5199,7 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
           }
         }
         auto writer = write_field<fields, S>(field.value, field_list);
-        auto write_res = writer.template write<endianness>(s);
+        auto write_res = writer.write(s, order);
         if(!write_res) {
           auto field_name = std::string_view{fields::field_id.data()};
           return std::unexpected(cast_error{write_res.error(), field_name});
@@ -5173,12 +5223,14 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
 namespace s2s {
 template <field_list_like T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_le(stream& s, const T& obj) -> cast_result {
-  return stream_cast_impl<T, stream, std::endian::little>{}(s, obj);
+  auto order = deduce_byte_order<std::endian::little>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 
 template <field_list_like T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_be(stream& s, const T& obj) -> cast_result {
-  return stream_cast_impl<T, stream, std::endian::big>{}(s, obj);
+  auto order = deduce_byte_order<std::endian::big>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 } /* namespace s2s */
 

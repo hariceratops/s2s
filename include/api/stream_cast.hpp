@@ -10,12 +10,14 @@
 namespace s2s {
 template <field_list_like T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_le(stream& s, const T& obj) -> cast_result {
-  return stream_cast_impl<T, stream, std::endian::little>{}(s, obj);
+  auto order = deduce_byte_order<std::endian::little>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 
 template <field_list_like T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_be(stream& s, const T& obj) -> cast_result {
-  return stream_cast_impl<T, stream, std::endian::big>{}(s, obj);
+  auto order = deduce_byte_order<std::endian::big>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 } /* namespace s2s */
 

@@ -54,7 +54,7 @@ template <trivial T, output_stream_like stream>
 constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
   // The source is const and belongs to the caller, so the swap lands in a
   // stack temporary rather than mutating it in place as the read path does.
-  T swapped = std::byteswap(obj);
+  T swapped = byteswapped(obj);
   return write_native_impl(s, swapped, size_to_write);
 }
 
@@ -84,16 +84,18 @@ constexpr auto write_foreign_buffer(stream& s, const T& obj, std::size_t len_to_
   }
 }
 
-template <std::endian endianness, typename T, output_stream_like stream>
-constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
-  auto constexpr byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
+template <typename T, output_stream_like stream>
+constexpr auto write_impl(stream& s, const T& obj, std::size_t N, cast_endianness byte_order) -> rw_result {
+  if(byte_order == cast_endianness::host) {
     return write_native(s, obj, N);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
+  } else {
     if constexpr(trivial<T>) {
       return write_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
       return write_foreign_buffer(s, obj, N);
+    } else {
+      static_assert(dependent_false<T>,
+                    "write_impl has no foreign-order writing strategy for this type");
     }
   }
 }

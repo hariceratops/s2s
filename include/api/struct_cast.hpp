@@ -13,12 +13,14 @@
 namespace s2s {
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::little>{}(s);
+  auto order = deduce_byte_order<std::endian::little>();
+  return struct_cast_impl<T, stream>{}(s, order);
 }
 
 template <field_list_like T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::big>{}(s);
+  auto order = deduce_byte_order<std::endian::big>();
+  return struct_cast_impl<T, stream>{}(s, order);
 }
 } /* namespace s2s */
 

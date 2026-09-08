@@ -10,15 +10,15 @@
 
 namespace s2s {
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct struct_cast_impl;
 
-template <auto metadata, typename... fields, typename stream, auto endianness>
-struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+template <auto metadata, typename... fields, typename stream>
+struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
   using S = struct_field_list_impl<metadata, fields...>;
   using R = std::expected<S, cast_error>;
 
-  constexpr auto operator()(stream& s) -> R {
+  constexpr auto operator()(stream& s, cast_endianness& order) -> R {
     S field_list;
     cast_result pipeline_seed{};
     auto res = (
@@ -27,7 +27,7 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
       [&]() -> cast_result {
         auto& field = static_cast<fields&>(field_list);
         auto reader = read_field<fields, S>(field, field_list);
-        auto read_res = reader.template read<endianness>(s);
+        auto read_res = reader.read(s, order);
         // Short circuit the remaining pipeline since read failed for current field
         if(!read_res) {
           auto field_name = std::string_view{fields::field_id.data()};
