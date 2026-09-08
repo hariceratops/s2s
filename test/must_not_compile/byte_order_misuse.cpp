@@ -152,6 +152,35 @@ using order_dependent_field_nested_deeper =
   >;
 #endif
 
+#if CASE == 5
+// Must NOT compile — two announcements in disjoint subtrees. Neither level
+// below the top sees both, so this also proves the census is cumulative rather
+// than per-level. Rejected as a limitation rather than as a conflict: a second
+// announcement taking over from the first follows from the same
+// stream-position rule, and is left undecided only until a real format settles
+// what it should mean.
+using disjoint_marker =
+  s2s::struct_field_list<
+    s2s::fixed_array_field<"marker", u8, 2>
+  >;
+
+using announcing_region =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", disjoint_marker,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"magic", u32>
+  >;
+
+using two_announcements =
+  s2s::struct_field_list<
+    s2s::struct_field<"first", announcing_region>,
+    s2s::struct_field<"second", announcing_region>
+  >;
+#endif
+
 #if CASE == 6 || CASE == 10
 using nested_marker =
   s2s::struct_field_list<

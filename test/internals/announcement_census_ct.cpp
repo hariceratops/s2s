@@ -69,6 +69,20 @@ using announcing_one_deep =
     s2s::struct_field<"header", announcing>
   >;
 
+// The over-firing guard for 060's at-most-one assertion, and it is the
+// declarations rather than the assertions that do the work: each of these is a
+// struct_field_list, so announcing_record_check ran over it, and a check that
+// counted one announcement as two would have stopped this file compiling. Three
+// depths, because the census folds a level at a time.
+using announcing_two_deep =
+  s2s::struct_field_list<
+    s2s::struct_field<"outer", announcing_one_deep>
+  >;
+
+static_assert(s2s::census_of_list_v<announcing_two_deep>.on_spine == 1);
+static_assert(s2s::census_of_list_v<announcing_two_deep>.off_spine == 0);
+
+
 // The counts, asserted directly. A schema declares at most one announcement, so
 // every count above one below is a pack that no struct_field_list is built
 // from.

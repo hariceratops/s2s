@@ -114,3 +114,9 @@ add_rejected_case_matching(rejects_stream_cast_on_a_fixed_order_schema
   byte_order_misuse.cpp 8 "or stream_cast_le or stream_cast_be to write it")
 add_rejected_case_matching(rejects_stream_cast_le_on_a_self_announcing_schema
   byte_order_misuse.cpp 9 "or stream_cast to write it")
+
+# At most one announcement (060). Matched against the sentence rather than
+# merely expected to fail, because the wording is the point: the message has to
+# say limitation, not conflict.
+add_rejected_case_matching(rejects_more_than_one_announcing_record
+  byte_order_misuse.cpp 5 "current limitation of s2s, not an inherent conflict")

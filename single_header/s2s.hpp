@@ -4169,6 +4169,15 @@ struct announcing_record_check {
   // unconditional path, and only a walk from here sees both.
   static constexpr auto census = census_of_fields<fields...>::value;
 
+  static_assert(census.on_spine + census.off_spine <= 1,
+    "a schema may declare at most one byte-order-announcing record. This is a "
+    "current limitation of s2s, not an inherent conflict: a second "
+    "announcement taking over from the first follows from the same "
+    "stream-position rule at no extra cost, and is left undecided only until a "
+    "real format settles whether the second overrides the first and whether "
+    "nesting is restricted. Merge the two announcements into one record, or "
+    "read the second region as a separate cast");
+
   static_assert(census.off_spine == 0,
     "a byte-order-announcing record must be read exactly once, "
     "unconditionally. This one sits inside an optional, an array or vector of "
@@ -4176,7 +4185,11 @@ struct announcing_record_check {
     "resolving an order, or could resolve one repeatedly. Move the "
     "announcement onto the unconditional path");
 
-  static constexpr bool res = names_ok && fields_order_agnostic && (census.off_spine == 0);
+  static constexpr bool res =
+    names_ok &&
+    fields_order_agnostic &&
+    (census.off_spine == 0) &&
+    (census.on_spine + census.off_spine <= 1);
 };
 
 template <typename... fields>
