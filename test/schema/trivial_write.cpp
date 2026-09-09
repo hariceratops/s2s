@@ -1,3 +1,4 @@
+#include <array>
 #include <gtest/gtest.h>
 #include "../../single_header/s2s.hpp"
 #include "../utils/s2s_test_utils.hpp"
@@ -40,6 +41,37 @@ TEST(TrivialWrite, RoundTripsTrivialFieldsBigEndian) {
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ((*result)["a"_f], 0xdeadbeef);
     EXPECT_EQ((*result)["b"_f], 0xcafed00d);
+  });
+}
+
+// std::byteswap has no floating-point overload, and a schema containing a
+// float reaches both the host and foreign arms of write_impl once byte order
+// is a runtime value, so both directions have to actually work on one.
+TEST(TrivialWrite, RoundTripsFloatFieldsInBothByteOrders) {
+  FIELD_LIST_SCHEMA =
+    s2s::struct_field_list<
+      s2s::field<"a", float, 4_B, s2s::no_constraint<float>{}>,
+      s2s::fixed_array_field<"b", float, 2>
+    >;
+
+  test_field_list original{};
+  original["a"_f] = 1.5f;
+  original["b"_f] = std::array<float, 2>{2.5f, -3.25f};
+
+  FIELD_LIST_LE_ROUNDTRIP_CHECK(original, {
+    ASSERT_TRUE(written.has_value());
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["a"_f], 1.5f);
+    EXPECT_EQ((*result)["b"_f][0], 2.5f);
+    EXPECT_EQ((*result)["b"_f][1], -3.25f);
+  });
+
+  FIELD_LIST_BE_ROUNDTRIP_CHECK(original, {
+    ASSERT_TRUE(written.has_value());
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["a"_f], 1.5f);
+    EXPECT_EQ((*result)["b"_f][0], 2.5f);
+    EXPECT_EQ((*result)["b"_f][1], -3.25f);
   });
 }
 

@@ -266,6 +266,12 @@ concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
 
 template <typename T>
 concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
+
+// For a static_assert inside an `if constexpr` chain's otherwise-unreachable
+// branch: `static_assert(false, ...)` is ill-formed even when the branch is
+// discarded, because it does not depend on a template parameter. This does.
+template <typename T>
+inline constexpr bool dependent_false = false;
 } /* namespace s2s */
 
 #endif // _S2S_TYPE_TRAITS_HPP_

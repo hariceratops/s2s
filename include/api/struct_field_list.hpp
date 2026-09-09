@@ -6,6 +6,7 @@
 #include "../lib/algorithms/algorithms.hpp"
 #include "../lib/containers/static_set.hpp"
 #include "../field/field_traits.hpp"
+#include "../field_list/announcing_record.hpp"
 #include "../field_list/field_list_metadata.hpp"
 #include "../field_list/field_list.hpp"
 
@@ -47,8 +48,62 @@ struct dependency_check {
 template <typename metadata>
 concept all_dependencies_resolved = dependency_check<metadata>::all_dependencies_ok;
 
+// Beside dependency_check and shaped like it: a struct of static_asserts whose
+// res a concept reads, so a bad schema fails as a sentence and as an
+// unsatisfied constraint rather than as one or the other.
 template <typename... fields>
-  requires (all_dependencies_resolved<field_list_metadata<fields...>>)
+struct announcing_record_check {
+  static constexpr bool names_ok = (announcement_names_resolve_v<fields> && ...);
+
+  static_assert(names_ok,
+    "the byte-order announcement names a field the announcing record does not "
+    "have; names resolve inside the announcing record's own field list, not in "
+    "the record that contains it");
+
+  static constexpr bool fields_order_agnostic =
+    (record_of_announcement_is_order_agnostic_v<fields> && ...);
+
+  static_assert(fields_order_agnostic,
+    "a byte-order-announcing record is parsed before its own deduction runs, so "
+    "every field in it must read the same under either byte order; this one "
+    "declares a field that does not. Spell the marker as bytes — a "
+    "fixed_array_field or magic_byte_array of a one-byte type, or a string — "
+    "rather than as a multi-byte integer");
+
+  // Cumulative rather than local, and therefore checked at every level: the
+  // announcement may sit several records below the one that puts it off the
+  // unconditional path, and only a walk from here sees both.
+  static constexpr auto census = census_of_fields<fields...>::value;
+
+  static_assert(census.on_spine + census.off_spine <= 1,
+    "a schema may declare at most one byte-order-announcing record. This is a "
+    "current limitation of s2s, not an inherent conflict: a second "
+    "announcement taking over from the first follows from the same "
+    "stream-position rule at no extra cost, and is left undecided only until a "
+    "real format settles whether the second overrides the first and whether "
+    "nesting is restricted. Merge the two announcements into one record, or "
+    "read the second region as a separate cast");
+
+  static_assert(census.off_spine == 0,
+    "a byte-order-announcing record must be read exactly once, "
+    "unconditionally. This one sits inside an optional, an array or vector of "
+    "records, or a union alternative, so a cast could finish without ever "
+    "resolving an order, or could resolve one repeatedly. Move the "
+    "announcement onto the unconditional path");
+
+  static constexpr bool res =
+    names_ok &&
+    fields_order_agnostic &&
+    (census.off_spine == 0) &&
+    (census.on_spine + census.off_spine <= 1);
+};
+
+template <typename... fields>
+concept announcing_records_well_formed = announcing_record_check<fields...>::res;
+
+template <typename... fields>
+  requires (all_dependencies_resolved<field_list_metadata<fields...>>) &&
+           (announcing_records_well_formed<fields...>)
 struct create_struct_field_list {
   using metadata = field_list_metadata<fields...>;
   static constexpr auto metadata_v = meta::type_id<metadata>;

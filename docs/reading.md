@@ -1,17 +1,30 @@
 # Reading
 
 ```cpp
-template <struct_field_list_like T, stream_like S>
+template <fixed_order_schema T, stream_like S>
 auto struct_cast_le(S& stream) -> std::expected<T, cast_error>;
 
-template <struct_field_list_like T, stream_like S>
+template <fixed_order_schema T, stream_like S>
 auto struct_cast_be(S& stream) -> std::expected<T, cast_error>;
+
+template <self_announcing_schema T, stream_like S>
+auto struct_cast(S& stream) -> std::expected<T, cast_error>;
 ```
 
-The schema is the template argument, the stream is the runtime one. The `le` and
-`be` suffix fixes the byte order of every integral member of the schema — it is
-not a per-field setting. Success yields the populated `struct_field_list`;
-failure yields a `cast_error`.
+The schema is the template argument, the stream is the runtime one. Success
+yields the populated `struct_field_list`; failure yields a `cast_error`.
+
+Which of the three to call is a property of the format, and the schema decides
+it rather than the caller. For a format whose byte order is fixed — BMP is
+little-endian, always — the `le` and `be` suffix fixes the byte order of every
+integral member of the schema, and is not a per-field setting.
+
+For a format that carries its own byte order, `struct_cast` takes no order at
+all: the schema marks the record whose bytes decide it, and resolution happens
+at that point in the stream. That is [the byte-order
+axis](schema/byte-order-axis.md), and the two kinds of schema do not mix —
+calling `struct_cast` on a fixed-order schema, or `struct_cast_le` on a
+self-announcing one, is a compile error naming the call that was wanted.
 
 The struct is read strictly left to right, one field at a time, in declaration
 order and at every nesting level. That ordering is not an implementation detail

@@ -1,17 +1,27 @@
 # Writing
 
 ```cpp
-template <struct_field_list_like T, output_stream_like S>
+template <fixed_order_schema T, output_stream_like S>
 [[nodiscard]] auto stream_cast_le(S& stream, const T& obj) -> std::expected<void, cast_error>;
 
-template <struct_field_list_like T, output_stream_like S>
+template <fixed_order_schema T, output_stream_like S>
 [[nodiscard]] auto stream_cast_be(S& stream, const T& obj) -> std::expected<void, cast_error>;
+
+template <self_announcing_schema T, output_stream_like S>
+[[nodiscard]] auto stream_cast(S& stream, const T& obj) -> std::expected<void, cast_error>;
 ```
 
-These mirror `struct_cast_xx`: the same schema drives both directions, the
-suffix picks the byte order of every member, and failures come back as the same
-`cast_error`. There is nothing to return on success, so the `expected` holds
-`void`.
+These mirror `struct_cast_xx` one for one: the same schema drives both
+directions, the same three entry points answer to the same two kinds of schema,
+and failures come back as the same `cast_error`. There is nothing to return on
+success, so the `expected` holds `void`.
+
+For a fixed-order format the suffix picks the byte order of every member. For a
+format that carries its own, `stream_cast` takes no order argument either — the
+marker already sitting in the struct decides it, and setting that marker is how
+a caller chooses what the output looks like. It is ordinary struct data with an
+ordinary setter, not a field frozen by a constraint. See [The byte-order
+axis](schema/byte-order-axis.md#on-write-the-marker-decides).
 
 Both entry points are named after what they produce, which is what makes the
 pair read as one API: `struct_cast` yields a struct, `stream_cast` yields a

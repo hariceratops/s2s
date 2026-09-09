@@ -38,14 +38,17 @@ folder can be used for direct inclusion into a project
     * Unions
     * Magic strings
     * Magic numbers
-* Writing a struct back to a stream with the same schema, in either byte order
+* Writing a struct back to a stream with the same schema, in the byte order the
+  schema names
 * Lengths and union discriminants derived on write, so they cannot drift from
   the data they describe — a length is not part of the struct's interface at
   all, and a discriminant is read-only
 * Validation of fields in place while reading and while writing
 * A per-field ceiling on what a wire-supplied length may allocate, on by
   default, so a corrupt stream cannot ask for gigabytes
-* Compile time endianness handling 
+* Endianness fixed by the schema and applied at compile time where it is a
+  fact about the format, or read from the file itself where the format says so
+  — a TIFF-style `II`/`MM` marker decides the order of everything after it
 * Pluggable interfaces working with custom streams
 
 ## Requirements
@@ -243,7 +246,7 @@ Entries under `test/must_not_compile/` are expected to fail to build, and
 - [x] Support for all major compilers
 - [ ] Full Support in Freestanding Compilers
 - [x] Compile-time Endianness Handling
-- [ ] Run-time Endianness Handling
+- [x] Run-time Endianness Handling
 - [ ] Modules
 - [x] Write struct to stream
 - [ ] struct_view - Zero copy views into buffers

@@ -55,7 +55,67 @@ template <fixed_string id, type_deduction_like type_deducer,
 using variance =
   union_field<id, type_deducer,
               constraint_of_pack<typename type_deducer::variant, opts...>>;
+
+template <fixed_string id, field_list_like T, order_deduction_like guide,
+          constraint_option_like<T> auto... opts>
+using announces_byte_order =
+  order_announcing_field<field<id, T, size_dont_care, constraint_of_pack<T, opts...>>,
+                         guide>;
 ```
+
+## The byte-order guide
+
+The declaration surface of [the byte-order axis](schema/byte-order-axis.md),
+mirroring the type-deduction constructs one for one.
+
+```cpp
+template <auto v, std::endian order>
+struct order_case;
+
+template <evaluates_to_bool eval, std::endian order>
+struct order_branch;
+
+template <order_case_like... cases>
+  requires (sizeof...(cases) > 0)
+struct order_switch;
+
+template <order_branch_like... branches>
+  requires (sizeof...(branches) > 0)
+struct order_if_else;
+
+// order_from<match_field<id>, order_switch<...>>
+// order_from<compute_t<callable, R, names>, order_switch<...>>
+// order_from<order_if_else<...>>
+template <typename... Args>
+struct order_from;
+```
+
+## The entry points
+
+```cpp
+template <fixed_order_schema T, input_stream_like stream>
+[[nodiscard]] auto struct_cast_le(stream& s) -> std::expected<T, cast_error>;
+
+template <fixed_order_schema T, input_stream_like stream>
+[[nodiscard]] auto struct_cast_be(stream& s) -> std::expected<T, cast_error>;
+
+template <self_announcing_schema T, input_stream_like stream>
+[[nodiscard]] auto struct_cast(stream& s) -> std::expected<T, cast_error>;
+
+template <fixed_order_schema T, output_stream_like stream>
+[[nodiscard]] auto stream_cast_le(stream& s, const T& obj) -> cast_result;
+
+template <fixed_order_schema T, output_stream_like stream>
+[[nodiscard]] auto stream_cast_be(stream& s, const T& obj) -> cast_result;
+
+template <self_announcing_schema T, output_stream_like stream>
+[[nodiscard]] auto stream_cast(stream& s, const T& obj) -> cast_result;
+```
+
+`fixed_order_schema` is a schema declaring no byte-order-announcing record;
+`self_announcing_schema` is one declaring exactly one. The two are disjoint, so
+which entry point a schema takes is settled by the schema, and taking the wrong
+one is a compile error rather than a wrong file.
 
 ## Known limitations
 
@@ -76,3 +136,18 @@ they are planned work:
   [The size axis](schema/size-axis.md#size_choices-is-not-currently-declarable).
 - **`range`, `is_in_open_range` and `is_in_closed_range` do not compile** — see
   [Constraints](constraints.md#range-constraints-do-not-currently-compile).
+- **A schema may declare at most one byte-order-announcing record.** Two
+  anywhere in a schema is a compile error. A second one taking over from the
+  first follows from the same stream-position rule at no extra engine cost; it
+  is left undecided until a real format settles what it should mean.
+- **A resolved byte order always governs the rest of the file.** An announcement
+  cannot be scoped to its own subtree, which is what an embedded format carrying
+  its own marker needs — Exif MakerNotes is the standing example. Reading such a
+  region as a separate cast is the workaround.
+- **Only the announcing record's own fields are checked for byte-order
+  agnosticism.** A field placed as an earlier sibling of the announcing record
+  is read before the order is known and is not diagnosed — see
+  [The byte-order axis](schema/byte-order-axis.md#what-an-announcing-record-may-contain).
+
+The last three are current limitations rather than design principles, and
+lifting any of them is additive.

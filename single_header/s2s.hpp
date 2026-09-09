@@ -817,6 +817,12 @@ concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
 
 template <typename T>
 concept buffer_like = fixed_buffer_like<T> || variable_sized_buffer_like<T>;
+
+// For a static_assert inside an `if constexpr` chain's otherwise-unreachable
+// branch: `static_assert(false, ...)` is ill-formed even when the branch is
+// discarded, because it does not depend on a template parameter. This does.
+template <typename T>
+inline constexpr bool dependent_false = false;
 } /* namespace s2s */
 
 #endif // _S2S_TYPE_TRAITS_HPP_
@@ -1064,6 +1070,24 @@ struct type_condition_list {};
  
  
 namespace s2s {
+// Whether a constraint pins this field to a value the field can actually hold.
+// Kept as a trait rather than written inline in field's initializer: the
+// convertibility test names eq's own member, which does not exist on any other
+// constraint, and an unevaluated operand still has to be well-formed.
+template <typename constraint_t, typename field_type>
+struct is_seedable_eq {
+  static constexpr bool res = false;
+};
+
+template <typename T, typename field_type>
+struct is_seedable_eq<eq<T>, field_type> {
+  static constexpr bool res = std::is_convertible_v<T, field_type>;
+};
+
+template <typename constraint_t, typename field_type>
+inline constexpr bool is_seedable_eq_v = is_seedable_eq<constraint_t, field_type>::res;
+
+
 template <fixed_string id,
           typename T,
           auto size,
@@ -1078,6 +1102,24 @@ struct field {
 
   static constexpr auto field_id = id;
   static constexpr auto constraint_checker = constraint_on_value;
+
+  // A frozen field's stored value is the value it writes. Without this it is
+  // whatever default construction left behind, and every write-side computation
+  // that reads such a field — a byte-order announcement's marker, a maybe's
+  // presence predicate, a computed size, a ladder branch — sees a zero the
+  // field can never actually hold.
+  //
+  // Seeded in the constructor rather than in a default member initializer: a
+  // c-array field type cannot be returned from a function or copy-initialized
+  // from one, and the assignment form lets the array case discard the branch
+  // instead of failing to declare it. Such a field is never seeded anyway —
+  // eq over a C array fails the convertibility test, the same oddity
+  // frozen_field_like's own comment documents.
+  constexpr field() {
+    if constexpr(is_seedable_eq_v<std::remove_cvref_t<decltype(constraint_on_value)>, field_type>)
+      value = static_cast<field_type>(constraint_on_value.v);
+  }
+
   field_type value{};
 };
 
@@ -1125,6 +1167,18 @@ class maybe_field : public optional
 public:
   using field_base_type = base_field;
   using field_presence_checker = present_only_if;
+};
+
+
+// A record whose bytes decide the byte order of everything read after it.
+// Shaped like maybe_field — public inheritance from the base field plus two
+// member aliases — so every trait, the field table and both folds go on seeing
+// the base field. The guide stays an opaque typename here, which is what keeps
+// this header's include closure to the three it already has.
+template <typename base_field, typename order_deduction>
+struct order_announcing_field : base_field {
+  using field_base_type = base_field;
+  using byte_order_deduction = order_deduction;
 };
 
 
@@ -1368,13 +1422,37 @@ template <typename T>
 concept union_field_like = is_union_field_v<T>;
 
 template <typename T>
+struct is_order_announcing_field;
+
+template <fixed_string id, field_list_like T, auto size, auto constraint, auto bound,
+          typename guide>
+struct is_order_announcing_field<
+    order_announcing_field<field<id, T, size, constraint, bound>, guide>
+  >
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_announcing_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_announcing_field_v = is_order_announcing_field<T>::res;
+
+template <typename T>
+concept order_announcing_field_like = is_order_announcing_field_v<T>;
+
+template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
                      vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
-                     union_field_like<T>;
+                     union_field_like<T> ||
+                     order_announcing_field_like<T>;
 } /* namespace s2s */
 
 #endif /*_FIELD_TRAITS_HPP_*/
@@ -1749,100 +1827,6 @@ struct field_type_info {
 
 // End field/field_type_info.hpp
 
-// Begin type_deduction/type/type.hpp
-#ifndef _TYPE_HPP_
-#define _TYPE_HPP_
- 
-namespace s2s {
-template <typename... Args>
-struct type;
-
-
-template <fixed_string id>
-using match_field = field_accessor<id>;
-
-// todo constraints compute like
-template <typename eval_expression, typename _switch>
-struct type<eval_expression, _switch> {
-  using expression = eval_expression;
-  using type_switch = _switch;
-  using variant = _switch::variant;
-  using conditions = _switch::conditions;
-};
-
-template <fixed_string id, typename _switch>
-struct type<match_field<id>, _switch> {
-  using type_switch = _switch;
-  using variant = _switch::variant;
-  using conditions = _switch::conditions;
-};
-
-// todo constraints
-template <typename ladder>
-struct type<ladder> {
-  using type_ladder = ladder;
-  using variant = ladder::variant;
-  using conditions = ladder::conditions;
-};
-} /* namespace s2s */
-
-
-#endif // _TYPE_HPP_
-
-// End type_deduction/type/type.hpp
-
-// Begin error/cast_error.hpp
-#ifndef _CAST_ERROR_HPP_
-#define _CAST_ERROR_HPP_
- 
- 
-namespace s2s {
-enum error_reason {
-  buffer_exhaustion,
-  validation_failure,
-  type_deduction_failure,
-  // Two parts of the struct imply different lengths for the same data — a
-  // cross-field disagreement, not a value that is wrong on its own terms.
-  // Appended rather than inserted so the existing enumerators keep their
-  // values.
-  found_contradicting_length,
-  // A length off the wire that cannot be allocated: it would overflow the byte
-  // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
-  // which means the stream ran dry *during* a read — this one fires before any
-  // allocation happens, which is the whole point of it.
-  excessive_length
-};
-
-
-struct cast_error {
-  error_reason failure_reason;
-  std::string_view failed_at;
-};
-
-
-using rw_result = std::expected<void, error_reason>;
-using cast_result = std::expected<void, cast_error>;
-
-
-// Both directions fold their per-field steps through these, so they live here
-// rather than in the read path's headers — the amalgamated header is a single
-// translation unit, where a second definition would be an error.
-constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
-constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
-{
-  return res ? callable() : std::unexpected(res.error());
-}
-
-} /* namespace s2s */
-
-#endif // _CAST_ERROR_HPP_
-
-// End error/cast_error.hpp
-
 // Begin field_size/comptime_field_size_deduce.hpp
 #ifndef _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
 #define _COMPTIME_FIELD_SIZE_DEDUCE_HPP_
@@ -2205,52 +2189,6 @@ concept type_tag_like = is_type_tag_v<T>;
 
 // End type_deduction/utils/type_tags.hpp
 
-// Begin type_deduction/switch/match_case.hpp
-#ifndef _MATCH_CASE_HPP_
-#define _MATCH_CASE_HPP_
- 
-namespace s2s {
-// todo constrain to data types possible for fields
-template <auto v, type_tag_like T>
-struct match_case {
-  static constexpr auto value = v;
-  using type_tag = T;
-};
-} /* namespace s2s */
-
-#endif // _MATCH_CASE_HPP_
-
-// End type_deduction/switch/match_case.hpp
-
-// Begin type_deduction/switch/match_case_traits.hpp
-#ifndef _MATCH_CASE_TRAITS_HPP_
-#define _MATCH_CASE_TRAITS_HPP_
- 
-namespace s2s {
-template <typename T>
-struct is_match_case;
-
-template <auto v, typename h>
-struct is_match_case<match_case<v, h>> {
-  static constexpr bool res = true;
-};
-
-template <typename T>
-struct is_match_case {
-  static constexpr bool res = false;
-};
-
-template <typename T>
-inline constexpr bool is_match_case_v = is_match_case<T>::res;
-
-template <typename T>
-concept match_case_like = is_match_case_v<T>;
-} /* namespace s2s */
-
-#endif // _MATCH_CASE_TRAITS_HPP_
-
-// End type_deduction/switch/match_case_traits.hpp
-
 // Begin field_compute/computation_from_fields.hpp
 #ifndef _COMPUTATION_FROM_FIELDS_HPP_
 #define _COMPUTATION_FROM_FIELDS_HPP_
@@ -2369,6 +2307,318 @@ struct branch {
 
 // End type_deduction/if_else_ladder/clause.hpp
 
+// Begin type_deduction/type/type.hpp
+#ifndef _TYPE_HPP_
+#define _TYPE_HPP_
+ 
+namespace s2s {
+template <typename... Args>
+struct type;
+
+
+template <fixed_string id>
+using match_field = field_accessor<id>;
+
+// todo constraints compute like
+template <typename eval_expression, typename _switch>
+struct type<eval_expression, _switch> {
+  using expression = eval_expression;
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using conditions = _switch::conditions;
+};
+
+template <fixed_string id, typename _switch>
+struct type<match_field<id>, _switch> {
+  using type_switch = _switch;
+  using variant = _switch::variant;
+  using conditions = _switch::conditions;
+};
+
+// todo constraints
+template <typename ladder>
+struct type<ladder> {
+  using type_ladder = ladder;
+  using variant = ladder::variant;
+  using conditions = ladder::conditions;
+};
+} /* namespace s2s */
+
+
+#endif // _TYPE_HPP_
+
+// End type_deduction/type/type.hpp
+
+// Begin order_deduction/order_deduction.hpp
+#ifndef _ORDER_DEDUCTION_HPP_
+#define _ORDER_DEDUCTION_HPP_
+ 
+namespace s2s {
+// The schema speaks std::endian, not cast_endianness: `II` means
+// little-endian on every machine, while cast_endianness is relative to the
+// host and therefore not something a schema author can write. The collapse
+// happens once, where the order is resolved.
+template <auto v, std::endian order>
+struct order_case {
+  static constexpr auto value = v;
+  static constexpr auto byte_order = order;
+};
+
+template <typename T>
+struct is_order_case;
+
+template <auto v, std::endian order>
+struct is_order_case<order_case<v, order>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_case {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_case_v = is_order_case<T>::res;
+
+template <typename T>
+concept order_case_like = is_order_case_v<T>;
+
+
+// Deliberately not type_switch parameterised over an order-carrying tag:
+// type_switch exposes `variant` as a member typedef, which forces every case's
+// type_tag::type to exist, and giving an order outcome a ::type would make
+// variance<"x", type<..., type_switch<match_case<1, as_order<...>>>>> a schema
+// that compiles into a variant of two std::endians. A spelling that is
+// nonsense and accepted is worse than one that does not exist. The evaluation
+// logic — the part that is code — is shared; only these carriers are parallel.
+template <order_case_like... cases>
+  requires (sizeof...(cases) > 0)
+struct order_switch {};
+
+template <typename T>
+struct is_order_switch;
+
+template <order_case_like... cases>
+struct is_order_switch<order_switch<cases...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_switch {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_switch_v = is_order_switch<T>::res;
+
+template <typename T>
+concept order_switch_like = is_order_switch_v<T>;
+
+
+// A ladder branch, mirroring `branch`. The expression is the same
+// eval_bool_from_fields the type axis takes, which is what lets
+// evaluate_ladder_helper fold either kind.
+template <evaluates_to_bool eval, std::endian order>
+struct order_branch {
+  using expression = eval;
+  static constexpr auto byte_order = order;
+};
+
+template <typename T>
+struct is_order_branch;
+
+template <typename eval, std::endian order>
+struct is_order_branch<order_branch<eval, order>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_branch {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_branch_v = is_order_branch<T>::res;
+
+template <typename T>
+concept order_branch_like = is_order_branch_v<T>;
+
+
+template <order_branch_like... branches>
+  requires (sizeof...(branches) > 0)
+struct order_if_else {};
+
+template <typename T>
+struct is_order_if_else;
+
+template <order_branch_like... branches>
+struct is_order_if_else<order_if_else<branches...>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_if_else {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_if_else_v = is_order_if_else<T>::res;
+
+template <typename T>
+concept order_if_else_like = is_order_if_else_v<T>;
+
+
+// Mirrors `type`: the same input forms feeding the same case list, with a
+// byte order as the outcome instead of a variant alternative. Names inside it
+// resolve in the announcing record's own field table, one level below the list
+// that declares the announcement.
+template <typename... Args>
+struct order_from;
+
+template <typename eval_expression, typename _switch>
+struct order_from<eval_expression, _switch> {};
+
+template <fixed_string id, typename _switch>
+struct order_from<match_field<id>, _switch> {};
+
+template <typename ladder>
+struct order_from<ladder> {};
+
+template <typename T>
+struct is_order_deduction;
+
+template <typename eval_expression, typename _switch>
+struct is_order_deduction<order_from<eval_expression, _switch>> {
+  static constexpr bool res =
+    is_compute_like_v<eval_expression> &&
+    order_switch_like<_switch>;
+};
+
+template <fixed_string id, typename _switch>
+struct is_order_deduction<order_from<match_field<id>, _switch>> {
+  static constexpr bool res = order_switch_like<_switch>;
+};
+
+template <typename ladder>
+struct is_order_deduction<order_from<ladder>> {
+  static constexpr bool res = order_if_else_like<ladder>;
+};
+
+template <typename T>
+struct is_order_deduction {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_deduction_v = is_order_deduction<T>::res;
+
+template <typename T>
+concept order_deduction_like = is_order_deduction_v<T>;
+} /* namespace s2s */
+
+
+#endif // _ORDER_DEDUCTION_HPP_
+
+// End order_deduction/order_deduction.hpp
+
+// Begin error/cast_error.hpp
+#ifndef _CAST_ERROR_HPP_
+#define _CAST_ERROR_HPP_
+ 
+ 
+namespace s2s {
+enum error_reason {
+  buffer_exhaustion,
+  validation_failure,
+  type_deduction_failure,
+  // Two parts of the struct imply different lengths for the same data — a
+  // cross-field disagreement, not a value that is wrong on its own terms.
+  // Appended rather than inserted so the existing enumerators keep their
+  // values.
+  found_contradicting_length,
+  // A length off the wire that cannot be allocated: it would overflow the byte
+  // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
+  // which means the stream ran dry *during* a read — this one fires before any
+  // allocation happens, which is the whole point of it.
+  excessive_length
+};
+
+
+struct cast_error {
+  error_reason failure_reason;
+  std::string_view failed_at;
+};
+
+
+using rw_result = std::expected<void, error_reason>;
+using cast_result = std::expected<void, cast_error>;
+
+
+// Both directions fold their per-field steps through these, so they live here
+// rather than in the read path's headers — the amalgamated header is a single
+// translation unit, where a second definition would be an error.
+constexpr auto operator|(const cast_result& res, auto&& callable) -> cast_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
+constexpr auto operator|(const rw_result& res, auto&& callable) -> rw_result
+{
+  return res ? callable() : std::unexpected(res.error());
+}
+
+} /* namespace s2s */
+
+#endif // _CAST_ERROR_HPP_
+
+// End error/cast_error.hpp
+
+// Begin type_deduction/switch/match_case.hpp
+#ifndef _MATCH_CASE_HPP_
+#define _MATCH_CASE_HPP_
+ 
+namespace s2s {
+// todo constrain to data types possible for fields
+template <auto v, type_tag_like T>
+struct match_case {
+  static constexpr auto value = v;
+  using type_tag = T;
+};
+} /* namespace s2s */
+
+#endif // _MATCH_CASE_HPP_
+
+// End type_deduction/switch/match_case.hpp
+
+// Begin type_deduction/switch/match_case_traits.hpp
+#ifndef _MATCH_CASE_TRAITS_HPP_
+#define _MATCH_CASE_TRAITS_HPP_
+ 
+namespace s2s {
+template <typename T>
+struct is_match_case;
+
+template <auto v, typename h>
+struct is_match_case<match_case<v, h>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_match_case {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_match_case_v = is_match_case<T>::res;
+
+template <typename T>
+concept match_case_like = is_match_case_v<T>;
+} /* namespace s2s */
+
+#endif // _MATCH_CASE_TRAITS_HPP_
+
+// End type_deduction/switch/match_case_traits.hpp
+
 // Begin type_deduction/if_else_ladder/clause_traits.hpp
 #ifndef _CLAUSE_TRAITS_HPP_
 #define _CLAUSE_TRAITS_HPP_
@@ -2472,6 +2722,7 @@ struct type_if_else {
  
  
  
+ 
 namespace s2s {
 // todo fix these numbers and possibly generate them
 static inline constexpr std::size_t max_dep_count_per_field = 8;
@@ -2537,6 +2788,19 @@ template <fixed_string id, typename T, auto size, auto constraint,
           typename present_only_if, typename optional>
 struct extract_length_dependencies<
   maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+>
+{
+  using f = field<id, T, size, constraint>;
+  static constexpr auto value = extract_length_dependencies<f>::value;
+};
+
+// extract_length_dependencies has no primary definition, so a wrapper that
+// reaches no specialization is a hard error rather than a silently empty
+// answer. The base is a size_dont_care record, so the answer is the empty
+// vector; this exists to say so.
+template <fixed_string id, typename T, auto size, auto constraint, typename guide>
+struct extract_length_dependencies<
+  order_announcing_field<field<id, T, size, constraint>, guide>
 >
 {
   using f = field<id, T, size, constraint>;
@@ -2647,6 +2911,21 @@ struct extract_req_fields_from_clause<
   branch<
     compute_t<callable, bool, fixed_string_list<req_fields...>>,
     T
+  >
+>
+{
+  static constexpr auto value = dep_vec(as_sv(req_fields)...);
+};
+
+// An order ladder's branch answers the same question, so it is the same
+// metafunction rather than a parallel one. Only the consumer differs: these
+// names resolve inside the announcing record's own table, not this list's, so
+// they never reach a dependency table — see announcing_record.hpp.
+template <auto callable, fixed_string... req_fields, std::endian order>
+struct extract_req_fields_from_clause<
+  order_branch<
+    compute_t<callable, bool, fixed_string_list<req_fields...>>,
+    order
   >
 >
 {
@@ -3388,6 +3667,7 @@ constexpr bool has_unique_match_values(const s2s::static_vector<std::size_t, N>&
  
  
  
+ 
 namespace s2s {
 struct always_true {
   // const: compute_impl invokes the callable as a const NTTP, so without this
@@ -3477,11 +3757,349 @@ using variance =
   union_field<id, type_deducer,
               constraint_of_pack<typename type_deducer::variant, opts...>>;
 
+
+// The record whose bytes decide the byte order of everything read after it.
+// Constraint-only, like struct_field: the record's own size is size_dont_care
+// and it drives no allocation of its own.
+template <fixed_string id, field_list_like T, order_deduction_like guide,
+          constraint_option_like<T> auto... opts>
+using announces_byte_order =
+  order_announcing_field<field<id, T, size_dont_care, constraint_of_pack<T, opts...>>,
+                         guide>;
 } /* namespace s2s */
 
 #endif /* _FIELD_DESCRIPTORS_HPP_ */
 
 // End api/field_descriptors.hpp
+
+// Begin field/field_metafunctions.hpp
+#ifndef _FIELD_METAFUNCTIONS_HPP_
+#define _FIELD_METAFUNCTIONS_HPP_
+ 
+ 
+ 
+namespace s2s {
+struct not_a_field;
+
+template <typename T>
+struct extract_type_from_field;
+
+template <fixed_string id, typename field_type, auto size, auto constraint, auto bound>
+struct extract_type_from_field<field<id, field_type, size, constraint, bound>> {
+  using type = field_type;
+};
+
+template <typename T>
+struct extract_type_from_field {
+  using type = not_a_field;
+};
+
+template <typename T>
+using extract_type_from_field_v = typename extract_type_from_field<T>::type;
+} /* namespace s2s */
+
+#endif // _FIELD_METAFUNCTIONS_HPP_
+
+// End field/field_metafunctions.hpp
+
+// Begin field_list/announcing_record.hpp
+#ifndef _ANNOUNCING_RECORD_HPP_
+#define _ANNOUNCING_RECORD_HPP_
+ 
+ 
+ 
+ 
+ 
+namespace s2s {
+// The names a byte-order announcement reads. Extracted with the same shape and
+// the same helpers extract_type_deduction_dependencies uses, but deliberately
+// not through it: that metafunction feeds a dependency table consumed by
+// is_dependencies_resolved, which looks every name up in the *declaring* list's
+// field table and dereferences the result. An announcement's names are fields
+// of the inner record, so routing them there would make every such schema a
+// constant-evaluation error.
+//
+// Existence is also the whole obligation. The ordering half that check performs
+// is vacuous on this axis: every field of the announcing record is read before
+// resolution runs, so no name can be "not yet read".
+//
+// Sits above field_list.hpp rather than inside the metadata, because reaching
+// the inner record's table means pattern-matching struct_field_list_impl, which
+// the metadata header is included by.
+template <typename guide>
+struct order_deduction_dependencies;
+
+template <fixed_string id, typename _switch>
+struct order_deduction_dependencies<order_from<match_field<id>, _switch>> {
+  static constexpr auto value = dep_vec(as_sv(id));
+};
+
+template <auto callable, typename R, fixed_string... req_fields, typename _switch>
+struct order_deduction_dependencies<
+  order_from<compute_t<callable, R, fixed_string_list<req_fields...>>, _switch>
+>
+{
+  static constexpr auto value = dep_vec(as_sv(req_fields)...);
+};
+
+template <typename... branches>
+struct order_deduction_dependencies<order_from<order_if_else<branches...>>> {
+  static constexpr dep_vec deps[64] = {dep_vec(extract_req_fields_from_clause_v<branches>)...};
+  static constexpr auto flat_values = flatten(deps);
+  static constexpr auto value = remove_duplicates(flat_values);
+};
+
+
+template <typename T>
+struct field_table_of;
+
+template <auto metadata, typename... fields>
+struct field_table_of<struct_field_list_impl<metadata, fields...>> {
+  static constexpr auto value = meta::type_of<metadata>::field_table;
+};
+
+
+constexpr auto all_names_present(const field_table_t& table, const dep_vec& names) -> bool {
+  for(auto name: names) {
+    if(!table[name].has_value())
+      return false;
+  }
+  return true;
+}
+
+
+template <typename T>
+struct announcement_names_resolve {
+  static constexpr bool res = true;
+};
+
+template <fixed_string id, field_list_like T, auto size, auto constraint, auto bound,
+          typename guide>
+struct announcement_names_resolve<
+  order_announcing_field<field<id, T, size, constraint, bound>, guide>
+>
+{
+  static constexpr bool res =
+    all_names_present(field_table_of<T>::value, order_deduction_dependencies<guide>::value);
+};
+
+template <typename T>
+inline constexpr bool announcement_names_resolve_v = announcement_names_resolve<T>::res;
+
+// A field is order-agnostic when reading it yields the same value whichever
+// state the order cell is in. Every field of an announcing record is read
+// before its own deduction runs, so this predicate is what makes the seed the
+// entry point supplies unobservable — and what forces a marker to be spelled as
+// bytes rather than as a multi-byte integer.
+//
+// A variable-length field's length lives in a different field of the same
+// record and is judged on its own, which is the right answer: a str_field whose
+// length comes from a u16 is agnostic in its payload, and that u16 is not, so
+// the record is rejected — correctly, since the u16 is read before the order is
+// known.
+template <typename T>
+constexpr auto is_order_agnostic_field() -> bool;
+
+template <typename T>
+struct is_order_agnostic_list;
+
+template <auto metadata, typename... fields>
+struct is_order_agnostic_list<struct_field_list_impl<metadata, fields...>> {
+  static constexpr bool res = (is_order_agnostic_field<fields>() && ...);
+};
+
+template <typename T>
+inline constexpr bool is_order_agnostic_list_v = is_order_agnostic_list<T>::res;
+
+template <typename T>
+constexpr auto is_order_agnostic_value() -> bool {
+  if constexpr(trivial<T>)
+    return sizeof(T) == 1;
+  // byteswap_elements returns immediately on a fixed_string, and the write path
+  // routes it to write_native, so it reads the same either way. A std::string is
+  // chars.
+  else if constexpr(fixed_string_like<T> || string_like<T>)
+    return true;
+  else if constexpr(fixed_array_like<T>)
+    return is_order_agnostic_value<extract_type_from_array_v<T>>();
+  else if constexpr(is_c_array_v<T>)
+    return is_order_agnostic_value<std::remove_extent_t<T>>();
+  else if constexpr(vector_like<T>)
+    return is_order_agnostic_value<extract_type_from_vec_t<T>>();
+  else if constexpr(field_list_like<T>)
+    return is_order_agnostic_list_v<T>;
+  else
+    static_assert(dependent_false<T>,
+      "the byte-order agnosticism of this field type is unknown to the check "
+      "that guards an announcing record's fields");
+}
+
+
+template <typename T>
+struct order_agnostic_choices;
+
+template <typename... choices>
+struct order_agnostic_choices<field_choice_list<choices...>> {
+  static constexpr bool res = (is_order_agnostic_field<choices>() && ...);
+};
+
+// The wrapper kinds reduce to what they wrap; everything else reduces to its
+// value type. An order_announcing_field needs no arm of its own: its inherited
+// field_type is the announced record, so the last branch descends into it.
+template <typename T>
+constexpr auto is_order_agnostic_field() -> bool {
+  if constexpr(struct_field_like<T>)
+    return is_order_agnostic_list_v<extract_type_from_field_v<T>>;
+  else if constexpr(array_of_record_field_like<T>)
+    return is_order_agnostic_list_v<extract_type_from_array_v<typename T::field_type>>;
+  else if constexpr(vector_of_record_field_like<T>)
+    return is_order_agnostic_list_v<extract_type_from_vec_t<typename T::field_type>>;
+  else if constexpr(optional_field_like<T>)
+    return is_order_agnostic_field<typename T::field_base_type>();
+  else if constexpr(union_field_like<T>)
+    return order_agnostic_choices<typename T::field_choices>::res;
+  else
+    return is_order_agnostic_value<typename T::field_type>();
+}
+
+
+template <typename T>
+struct record_of_announcement_is_order_agnostic {
+  static constexpr bool res = true;
+};
+
+template <fixed_string id, field_list_like T, auto size, auto constraint, auto bound,
+          typename guide>
+struct record_of_announcement_is_order_agnostic<
+  order_announcing_field<field<id, T, size, constraint, bound>, guide>
+>
+{
+  static constexpr bool res = is_order_agnostic_list_v<T>;
+};
+
+template <typename T>
+inline constexpr bool record_of_announcement_is_order_agnostic_v =
+  record_of_announcement_is_order_agnostic<T>::res;
+
+
+// One depth-first census, three consumers: 056's local checks read it to find
+// the announcement a list declares, 057 rejects an off-spine one, and 060
+// rejects a second one anywhere. Two counts rather than one, because an
+// announcement reached conditionally (a maybe, a union alternative) or
+// repeatedly (an array or vector of records) is a different rejection from a
+// second one on the spine.
+struct announcement_census {
+  std::size_t on_spine;
+  std::size_t off_spine;
+};
+
+constexpr auto operator+(announcement_census a, announcement_census b) -> announcement_census {
+  return {a.on_spine + b.on_spine, a.off_spine + b.off_spine};
+}
+
+constexpr auto folded_off_spine(announcement_census c) -> announcement_census {
+  return {0, c.on_spine + c.off_spine};
+}
+
+template <typename T>
+constexpr auto census_of_field() -> announcement_census;
+
+template <typename... fields>
+struct census_of_fields {
+  static constexpr auto value = (announcement_census{0, 0} + ... + census_of_field<fields>());
+};
+
+template <typename T>
+struct census_of_list;
+
+template <auto metadata, typename... fields>
+struct census_of_list<struct_field_list_impl<metadata, fields...>> {
+  static constexpr auto value = census_of_fields<fields...>::value;
+};
+
+template <typename T>
+inline constexpr auto census_of_list_v = census_of_list<T>::value;
+
+template <typename... choices>
+struct census_of_choices;
+
+template <typename... choices>
+struct census_of_choices<field_choice_list<choices...>> {
+  static constexpr auto value = (announcement_census{0, 0} + ... + census_of_field<choices>());
+};
+
+template <typename T>
+constexpr auto census_of_field() -> announcement_census {
+  // Descends into the announced record too, so a second announcement declared
+  // inside one is counted rather than hidden by the field that carries it.
+  if constexpr(order_announcing_field_like<T>)
+    return announcement_census{1, 0} + census_of_list_v<typename T::field_type>;
+  else if constexpr(struct_field_like<T>)
+    return census_of_list_v<extract_type_from_field_v<T>>;
+  else if constexpr(array_of_record_field_like<T>)
+    return folded_off_spine(census_of_list_v<extract_type_from_array_v<typename T::field_type>>);
+  else if constexpr(vector_of_record_field_like<T>)
+    return folded_off_spine(census_of_list_v<extract_type_from_vec_t<typename T::field_type>>);
+  else if constexpr(optional_field_like<T>)
+    return folded_off_spine(census_of_field<typename T::field_base_type>());
+  else if constexpr(union_field_like<T>)
+    return folded_off_spine(census_of_choices<typename T::field_choices>::value);
+  else
+    return announcement_census{0, 0};
+}
+
+// Which entry point a schema takes is a property of the schema, so the two
+// concepts are the shape of it: one for a format whose order is fixed by the
+// format, one for a format whose bytes decide. Each is backed by a struct of
+// static_asserts, following dependency_check, so the failure arrives as a
+// sentence as well as an unsatisfied constraint.
+//
+// One pair serves both directions rather than four structs differing only in
+// wording — the rule is the same rule, so each message names the read call and
+// the write call together.
+//
+// A count of two or more never reaches either: announcing_record_check rejects
+// it at schema declaration, which is strictly earlier and names a better
+// problem.
+template <typename T>
+struct self_announcing_check {
+  static constexpr auto count = census_of_list_v<T>.on_spine;
+
+  static_assert(count != 0,
+    "struct_cast and stream_cast are for a schema that declares a "
+    "byte-order-announcing record — one whose bytes decide the order, like "
+    "TIFF's II/MM. This schema declares none, so its byte order is a fixed "
+    "fact about the format: call struct_cast_le or struct_cast_be to read it, "
+    "or stream_cast_le or stream_cast_be to write it");
+
+  static constexpr bool res = (count == 1);
+};
+
+template <typename T>
+concept self_announcing_schema = field_list_like<T> && self_announcing_check<T>::res;
+
+template <typename T>
+struct fixed_order_check {
+  static constexpr auto count = census_of_list_v<T>.on_spine;
+
+  static_assert(count == 0,
+    "struct_cast_le, struct_cast_be, stream_cast_le and stream_cast_be are for "
+    "a schema whose byte order is fixed by the format. This schema declares a "
+    "byte-order-announcing record, so the file decides its own order: call "
+    "struct_cast to read it, or stream_cast to write it. There is deliberately "
+    "no way to force a fixed order over a self-announcing schema");
+
+  static constexpr bool res = (count == 0);
+};
+
+template <typename T>
+concept fixed_order_schema = field_list_like<T> && fixed_order_check<T>::res;
+} /* namespace s2s */
+
+
+#endif // _ANNOUNCING_RECORD_HPP_
+
+// End field_list/announcing_record.hpp
 
 // Begin api/struct_field_list.hpp
 #ifndef _STRUCT_FIELD_LIST_HPP_
@@ -3524,8 +4142,62 @@ struct dependency_check {
 template <typename metadata>
 concept all_dependencies_resolved = dependency_check<metadata>::all_dependencies_ok;
 
+// Beside dependency_check and shaped like it: a struct of static_asserts whose
+// res a concept reads, so a bad schema fails as a sentence and as an
+// unsatisfied constraint rather than as one or the other.
 template <typename... fields>
-  requires (all_dependencies_resolved<field_list_metadata<fields...>>)
+struct announcing_record_check {
+  static constexpr bool names_ok = (announcement_names_resolve_v<fields> && ...);
+
+  static_assert(names_ok,
+    "the byte-order announcement names a field the announcing record does not "
+    "have; names resolve inside the announcing record's own field list, not in "
+    "the record that contains it");
+
+  static constexpr bool fields_order_agnostic =
+    (record_of_announcement_is_order_agnostic_v<fields> && ...);
+
+  static_assert(fields_order_agnostic,
+    "a byte-order-announcing record is parsed before its own deduction runs, so "
+    "every field in it must read the same under either byte order; this one "
+    "declares a field that does not. Spell the marker as bytes — a "
+    "fixed_array_field or magic_byte_array of a one-byte type, or a string — "
+    "rather than as a multi-byte integer");
+
+  // Cumulative rather than local, and therefore checked at every level: the
+  // announcement may sit several records below the one that puts it off the
+  // unconditional path, and only a walk from here sees both.
+  static constexpr auto census = census_of_fields<fields...>::value;
+
+  static_assert(census.on_spine + census.off_spine <= 1,
+    "a schema may declare at most one byte-order-announcing record. This is a "
+    "current limitation of s2s, not an inherent conflict: a second "
+    "announcement taking over from the first follows from the same "
+    "stream-position rule at no extra cost, and is left undecided only until a "
+    "real format settles whether the second overrides the first and whether "
+    "nesting is restricted. Merge the two announcements into one record, or "
+    "read the second region as a separate cast");
+
+  static_assert(census.off_spine == 0,
+    "a byte-order-announcing record must be read exactly once, "
+    "unconditionally. This one sits inside an optional, an array or vector of "
+    "records, or a union alternative, so a cast could finish without ever "
+    "resolving an order, or could resolve one repeatedly. Move the "
+    "announcement onto the unconditional path");
+
+  static constexpr bool res =
+    names_ok &&
+    fields_order_agnostic &&
+    (census.off_spine == 0) &&
+    (census.on_spine + census.off_spine <= 1);
+};
+
+template <typename... fields>
+concept announcing_records_well_formed = announcing_record_check<fields...>::res;
+
+template <typename... fields>
+  requires (all_dependencies_resolved<field_list_metadata<fields...>>) &&
+           (announcing_records_well_formed<fields...>)
 struct create_struct_field_list {
   using metadata = field_list_metadata<fields...>;
   static constexpr auto metadata_v = meta::type_id<metadata>;
@@ -3542,36 +4214,6 @@ using struct_field_list = create_struct_field_list<fields...>::value;
 
 
 // End api/struct_field_list.hpp
-
-// Begin field/field_metafunctions.hpp
-#ifndef _FIELD_METAFUNCTIONS_HPP_
-#define _FIELD_METAFUNCTIONS_HPP_
- 
- 
- 
-namespace s2s {
-struct not_a_field;
-
-template <typename T>
-struct extract_type_from_field;
-
-template <fixed_string id, typename field_type, auto size, auto constraint, auto bound>
-struct extract_type_from_field<field<id, field_type, size, constraint, bound>> {
-  using type = field_type;
-};
-
-template <typename T>
-struct extract_type_from_field {
-  using type = not_a_field;
-};
-
-template <typename T>
-using extract_type_from_field_v = typename extract_type_from_field<T>::type;
-} /* namespace s2s */
-
-#endif // _FIELD_METAFUNCTIONS_HPP_
-
-// End field/field_metafunctions.hpp
 
 // Begin type_deduction/if_else_ladder/ladder_impl.hpp
 #ifndef _LADDER_IMPL_HPP_
@@ -3688,6 +4330,101 @@ struct evaluate_switch<type_switch<cases...>> {
 #endif // _SWITCH_IMPL_HPP_
 
 // End type_deduction/switch/switch_impl.hpp
+
+// Begin order_deduction/order_deduction_impl.hpp
+#ifndef _ORDER_DEDUCTION_IMPL_HPP_
+#define _ORDER_DEDUCTION_IMPL_HPP_
+ 
+ 
+ 
+namespace s2s {
+// evaluate_switch_helper folds a positional case list down to an index, and an
+// index is what a case list resolves to on either axis — only the mapping out
+// of it differs. Reused as it stands rather than reimplemented.
+//
+// A marker matching nothing is validation_failure, not the type axis's
+// type_deduction_failure. On the type axis a failed deduction means the reader
+// cannot proceed at all; here it means the file is not this format, which is a
+// magic mismatch, and that is validation_failure everywhere else in s2s.
+template <typename _switch>
+struct evaluate_order_switch;
+
+template <typename... cases>
+struct evaluate_order_switch<order_switch<cases...>> {
+  constexpr auto operator()(const auto& v) const -> std::expected<std::endian, error_reason> {
+    auto res =
+      evaluate_switch_helper<cases...>{}(
+        v, std::make_index_sequence<sizeof...(cases)>{}
+      );
+    if(!res)
+      return std::unexpected(error_reason::validation_failure);
+    constexpr auto orders = std::array{cases::byte_order...};
+    return orders[*res];
+  }
+};
+
+
+// evaluate_ladder_helper reads only ::expression off each branch, so it folds
+// an order ladder as it stands too. The mapping out of the index is the only
+// thing this axis supplies.
+template <typename ladder>
+struct evaluate_order_ladder;
+
+template <typename... branches>
+struct evaluate_order_ladder<order_if_else<branches...>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    auto res =
+      evaluate_ladder_helper<branches...>{}(
+        sfl, std::make_index_sequence<sizeof...(branches)>{}
+      );
+    if(!res)
+      return std::unexpected(error_reason::validation_failure);
+    constexpr auto orders = std::array{branches::byte_order...};
+    return orders[*res];
+  }
+};
+
+
+template <typename guide>
+struct deduce_order;
+
+// The callable form is the one that justifies marking the record rather than
+// the field: it reads several of the record's fields, which no single
+// match_field can express.
+template <typename eval_expression, typename _switch>
+struct deduce_order<order_from<eval_expression, _switch>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    return evaluate_order_switch<_switch>{}(compute_impl<eval_expression>{}(sfl));
+  }
+};
+
+template <fixed_string id, typename _switch>
+struct deduce_order<order_from<match_field<id>, _switch>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    return evaluate_order_switch<_switch>{}(sfl[field_accessor<id>{}]);
+  }
+};
+
+template <typename ladder>
+struct deduce_order<order_from<ladder>> {
+  template <auto metadata, typename... fields>
+  constexpr auto operator()(const struct_field_list_impl<metadata, fields...>& sfl) const
+    -> std::expected<std::endian, error_reason> {
+    return evaluate_order_ladder<ladder>{}(sfl);
+  }
+};
+} /* namespace s2s */
+
+
+#endif // _ORDER_DEDUCTION_IMPL_HPP_
+
+// End order_deduction/order_deduction_impl.hpp
 
 // Begin type_deduction/type/type_impl.hpp
 #ifndef _TYPE_IMPL_HPP_
@@ -3874,7 +4611,36 @@ constexpr auto as_byte_buffer(const T& obj) -> std::array<char, size> {
 #ifndef _BYTE_ORDER_HPP_
 #define _BYTE_ORDER_HPP_
  
+ 
 namespace s2s {
+// std::byteswap admits only integral types, and `trivial` admits floats too.
+// A float/double is swapped through the unsigned integer of the same width —
+// bit_cast there, byteswap, bit_cast back — since there is no portable way to
+// flip the bytes of a floating-point object directly. `long double`'s
+// extended representation has no such width and no portable wire form, so it
+// is rejected at compile time rather than silently mis-swapped.
+template <std::size_t N>
+struct uint_of_size;
+template <> struct uint_of_size<2> { using type = std::uint16_t; };
+template <> struct uint_of_size<4> { using type = std::uint32_t; };
+template <> struct uint_of_size<8> { using type = std::uint64_t; };
+template <std::size_t N>
+using uint_of_size_t = typename uint_of_size<N>::type;
+
+template <trivial T>
+constexpr auto byteswapped(T v) -> T {
+  if constexpr(std::is_integral_v<T>) {
+    return std::byteswap(v);
+  } else {
+    static_assert(sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8,
+                  "a floating-point field is byte-swapped through an unsigned "
+                  "integer of the same width; this type has no such width and "
+                  "no portable wire form");
+    using rep = uint_of_size_t<sizeof(T)>;
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<rep>(v)));
+  }
+}
+
 // Single-byte elements have no byte order, and fixed_string exposes no
 // iterators, so both fall through untouched. Shared by the read and write
 // directions, which is why it lives here rather than beside either one.
@@ -3886,7 +4652,7 @@ constexpr auto byteswap_elements(T& obj) -> void {
       if constexpr(buffer_like<std::remove_reference_t<decltype(elem)>>)
         byteswap_elements(elem);
       else if constexpr(sizeof(elem) > 1)
-        elem = std::byteswap(elem);
+        elem = byteswapped(elem);
     }
   }
 }
@@ -3904,6 +4670,15 @@ constexpr cast_endianness deduce_byte_order() {
     return cast_endianness::host;
   else if constexpr(std::endian::native != endianness)
     return cast_endianness::foreign;
+}
+
+// The runtime counterpart: a resolved order is a runtime value by
+// construction (a byte-order-announcing record decides it from stream
+// contents), so the collapse from the schema's std::endian vocabulary to the
+// engine's cast_endianness needs a form that does not require a compile-time
+// constant.
+constexpr auto deduce_byte_order(std::endian endianness) -> cast_endianness {
+  return std::endian::native == endianness ? cast_endianness::host : cast_endianness::foreign;
 }
 } /* namespace s2s */
 
@@ -4002,7 +4777,7 @@ constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) 
   auto res = read_native_impl(s, obj, size_to_read);
   if(res) {
     // todo rollout byteswap if freestanding compiler doesnt provide one
-    obj = std::byteswap(obj);
+    obj = byteswapped(obj);
     return {};
   }
   return res;
@@ -4023,23 +4798,25 @@ constexpr auto read_foreign_buffer(stream& s, T& obj, std::size_t len_to_read) -
   return res;
 }
 
-// The ceiling is a defaulted NTTP after endianness so the existing call sites
-// keep compiling verbatim; only the resizing overload of read_native is handed
-// one, since the constant-sized overload has nothing to bound.
-template <std::endian endianness, std::size_t ceiling = default_max_bytes,
-          typename T, input_stream_like stream>
-constexpr auto read_impl(stream& s, T& obj, std::size_t N) -> rw_result {
-  auto constexpr byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
+// `ceiling` is the only template parameter with a default now that
+// `endianness` is gone from the front of the list; `byte_order` arrives as a
+// runtime value because it is one — a byte-order-announcing record decides it
+// from stream contents, not from the type being instantiated.
+template <std::size_t ceiling = default_max_bytes, typename T, input_stream_like stream>
+constexpr auto read_impl(stream& s, T& obj, std::size_t N, cast_endianness byte_order) -> rw_result {
+  if(byte_order == cast_endianness::host) {
     if constexpr(variable_sized_buffer_like<T>)
       return read_native<ceiling>(s, obj, N);
     else
       return read_native(s, obj, N);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
+  } else {
     if constexpr(trivial<T>) {
       return read_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
       return read_foreign_buffer<ceiling>(s, obj, N);
+    } else {
+      static_assert(dependent_false<T>,
+                    "read_impl has no foreign-order reading strategy for this type");
     }
   }
 }
@@ -4069,11 +4846,11 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list) {}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
-    return read_impl<endianness>(s, field.value, size_to_read);
+    return read_impl(s, field.value, size_to_read, order);
   }
 };
 
@@ -4086,11 +4863,11 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return read_impl<endianness, bound_in_bytes<T::field_bound>>(s, field.value, len_to_read);
+    return read_impl<bound_in_bytes<T::field_bound>>(s, field.value, len_to_read, order);
   }
 };
 
@@ -4142,13 +4919,13 @@ struct read_buffer_of_records {
   constexpr read_buffer_of_records(T& field, F& field_list, std::size_t len_to_read)
     : field(field), field_list(field_list), len_to_read(len_to_read) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
-      auto res = reader.template read<endianness, stream>(s);
-      if(!res) 
+      auto res = reader.read(s, order);
+      if(!res)
         return std::unexpected(res.error());
       field.value[count] = std::move(elem.value);
     }
@@ -4164,15 +4941,15 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using array_type = typename T::field_type;
     using array_element_field = create_field_from_array_of_records_v<T>;
     using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
 
     constexpr auto array_len = extract_size_from_array_v<array_type>;
     auto reader = read_impl_t(field, field_list, array_len);
-    auto res = reader.template read<endianness>(s);
+    auto res = reader.read(s, order);
     return res;
   }
 };
@@ -4186,8 +4963,8 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     constexpr auto field_size = T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
@@ -4203,27 +4980,27 @@ struct read_field<T, F> {
 
     field.value.resize(len_to_read);
     auto reader = read_impl_t(field, field_list, len_to_read);
-    auto res = reader.template read<endianness>(s);
+    auto res = reader.read(s, order);
     return res;
   }
 };
 
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct struct_cast_impl;
 
 template <struct_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
   F& field_list;
-  
+
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    auto res = struct_cast_impl<field_list_t, stream, endianness>{}(s);
+    auto res = struct_cast_impl<field_list_t, stream>{}(s, order);
     if(!res) {
       auto err = res.error();
       return std::unexpected(err.failure_reason);
@@ -4243,8 +5020,8 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list): 
     field(field), field_list(field_list){}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     if(!compute_impl<typename T::field_presence_checker>{}(field_list)) {
       field.value = std::nullopt;
       return {};
@@ -4252,10 +5029,42 @@ struct read_field<T, F> {
     using field_base_type_t = typename T::field_base_type;
     field_base_type_t base_field{};
     read_field<field_base_type_t, F> reader(base_field, field_list);
-    auto res = reader.template read<endianness>(s);
-    if(!res) 
+    auto res = reader.read(s, order);
+    if(!res)
       return std::unexpected(res.error());
     field.value = base_field.value;
+    return {};
+  }
+};
+
+
+// Resolution happens here rather than in the fold, because here is exactly the
+// stream position the rule names: the base reader returns the moment the
+// announcing record's last field leaves the stream, and the next statement
+// writes the cell. `order` is a reference to a cell the entry point owns, so a
+// write at any depth is seen by every enclosing fold's remaining fields — the
+// "escapes to the rest of the file" semantics is what a borrowed cell already
+// does, not a rule the folds have to remember.
+template <order_announcing_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
+
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
+    using field_base_type_t = typename T::field_base_type;
+    auto reader = read_field<field_base_type_t, F>(field, field_list);
+    auto res = reader.read(s, order);
+    if(!res)
+      return std::unexpected(res.error());
+
+    auto resolved = deduce_order<typename T::byte_order_deduction>{}(field.value);
+    if(!resolved)
+      return std::unexpected(resolved.error());
+    order = deduce_byte_order(*resolved);
     return {};
   }
 };
@@ -4274,14 +5083,14 @@ struct read_variant_impl {
     std::size_t idx_r) :
       variant(variant), field_list(field_list), idx_r(idx_r) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
-    if (idx_r != idx) 
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
+    if (idx_r != idx)
       return {};
 
     T field;
     auto reader = read_field<T, F>(field, field_list);
-    auto res = reader.template read<endianness, stream>(s);
+    auto res = reader.read(s, order);
     if(!res)
       return std::unexpected(res.error());
     // The struct-level fold runs constraint_checker over the fields of a
@@ -4308,15 +5117,15 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
   constexpr read_variant_helper(T& field, F& field_list, std::size_t idx_r) 
     : field(field), field_list(field_list), idx_r(idx_r) {}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     rw_result pipeline_seed{};
     return (
       pipeline_seed |
-      ... | 
+      ... |
       [&]() {
         auto reader_impl = read_variant_impl<idx, fields, F, typename T::field_type>(field.value, field_list, idx_r);
-        return reader_impl.template read<endianness>(s);
+        return reader_impl.read(s, order);
       }
     );
   }
@@ -4331,27 +5140,27 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list): 
     field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
 
     auto type_index_deducer = deduce_type<type_deduction_guide>();
-    auto type_index_result = type_index_deducer(field_list); 
+    auto type_index_result = type_index_deducer(field_list);
     if(!type_index_result)
       return std::unexpected(type_index_result.error());
 
     auto idx_r = *type_index_result;
-    using read_helper_t = 
+    using read_helper_t =
       read_variant_helper<
-        T, 
-        F, 
-        field_choices, 
+        T,
+        F,
+        field_choices,
         std::make_index_sequence<max_type_index>
       >;
     auto field_reader = read_helper_t(field, field_list, idx_r);
-    auto field_read_res = field_reader.template read<endianness, stream>(s);
+    auto field_read_res = field_reader.read(s, order);
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};
@@ -4369,15 +5178,15 @@ struct read_field<T, F> {
  
 namespace s2s {
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct struct_cast_impl;
 
-template <auto metadata, typename... fields, typename stream, auto endianness>
-struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+template <auto metadata, typename... fields, typename stream>
+struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
   using S = struct_field_list_impl<metadata, fields...>;
   using R = std::expected<S, cast_error>;
 
-  constexpr auto operator()(stream& s) -> R {
+  constexpr auto operator()(stream& s, cast_endianness& order) -> R {
     S field_list;
     cast_result pipeline_seed{};
     auto res = (
@@ -4386,7 +5195,7 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
       [&]() -> cast_result {
         auto& field = static_cast<fields&>(field_list);
         auto reader = read_field<fields, S>(field, field_list);
-        auto read_res = reader.template read<endianness>(s);
+        auto read_res = reader.read(s, order);
         // Short circuit the remaining pipeline since read failed for current field
         if(!read_res) {
           auto field_name = std::string_view{fields::field_id.data()};
@@ -4423,14 +5232,26 @@ struct struct_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
  
  
 namespace s2s {
-template <field_list_like T, input_stream_like stream>
+template <fixed_order_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_le(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::little>{}(s);
+  auto order = deduce_byte_order<std::endian::little>();
+  return struct_cast_impl<T, stream>{}(s, order);
 }
 
-template <field_list_like T, input_stream_like stream>
+template <fixed_order_schema T, input_stream_like stream>
 [[nodiscard]] constexpr auto struct_cast_be(stream& s) -> std::expected<T, cast_error> {
-  return struct_cast_impl<T, stream, std::endian::big>{}(s);
+  auto order = deduce_byte_order<std::endian::big>();
+  return struct_cast_impl<T, stream>{}(s, order);
+}
+
+// The entry point for a schema that decides its own byte order: it takes none,
+// because the file supplies it. The seed only governs the announcing record's
+// own fields, which are read before resolution and are required to be
+// order-agnostic.
+template <self_announcing_schema T, input_stream_like stream>
+[[nodiscard]] constexpr auto struct_cast(stream& s) -> std::expected<T, cast_error> {
+  auto order = cast_endianness::host;
+  return struct_cast_impl<T, stream>{}(s, order);
 }
 } /* namespace s2s */
 
@@ -4787,7 +5608,7 @@ template <trivial T, output_stream_like stream>
 constexpr auto write_foreign_scalar(stream& s, const T& obj, std::size_t size_to_write) -> rw_result {
   // The source is const and belongs to the caller, so the swap lands in a
   // stack temporary rather than mutating it in place as the read path does.
-  T swapped = std::byteswap(obj);
+  T swapped = byteswapped(obj);
   return write_native_impl(s, swapped, size_to_write);
 }
 
@@ -4817,16 +5638,18 @@ constexpr auto write_foreign_buffer(stream& s, const T& obj, std::size_t len_to_
   }
 }
 
-template <std::endian endianness, typename T, output_stream_like stream>
-constexpr auto write_impl(stream& s, const T& obj, std::size_t N) -> rw_result {
-  auto constexpr byte_order = deduce_byte_order<endianness>();
-  if constexpr(byte_order == cast_endianness::host) {
+template <typename T, output_stream_like stream>
+constexpr auto write_impl(stream& s, const T& obj, std::size_t N, cast_endianness byte_order) -> rw_result {
+  if(byte_order == cast_endianness::host) {
     return write_native(s, obj, N);
-  } else if constexpr(byte_order == cast_endianness::foreign) {
+  } else {
     if constexpr(trivial<T>) {
       return write_foreign_scalar(s, obj, N);
     } else if constexpr(buffer_like<T>) {
       return write_foreign_buffer(s, obj, N);
+    } else {
+      static_assert(dependent_false<T>,
+                    "write_impl has no foreign-order writing strategy for this type");
     }
   }
 }
@@ -4854,8 +5677,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     constexpr auto size_to_write = deduce_field_size<field_size>{}();
     if constexpr(is_derived_target_v<T, F>) {
@@ -4866,7 +5689,7 @@ struct write_field<T, F> {
         return std::unexpected(derived.error());
       if(!T::constraint_checker(*derived))
         return std::unexpected(error_reason::validation_failure);
-      return verify_then_write<endianness>(s, *derived, size_to_write);
+      return verify_then_write(s, *derived, size_to_write, order);
     } else if constexpr(is_frozen_target_v<T, F>) {
       // Ordered after the derived branch, not before it: a frozen field can
       // also be some other field's length target, and there the derived value
@@ -4875,9 +5698,9 @@ struct write_field<T, F> {
       //
       // No constraint check of its own. The value is the constraint's, so it
       // satisfies it by construction.
-      return verify_then_write<endianness>(s, frozen_value_of<T>, size_to_write);
+      return verify_then_write(s, frozen_value_of<T>, size_to_write, order);
     } else {
-      return verify_then_write<endianness>(s, value, size_to_write);
+      return verify_then_write(s, value, size_to_write, order);
     }
   }
 
@@ -4885,16 +5708,16 @@ private:
   // Conditional producers cannot make this field derived, so whatever value
   // reaches this point — derived or stored — still has to satisfy every
   // obligation that is currently active.
-  template <auto endianness, typename stream>
+  template <typename stream>
   constexpr auto verify_then_write(
-    stream& s, const typename T::field_type& v, std::size_t size_to_write) const -> rw_result
+    stream& s, const typename T::field_type& v, std::size_t size_to_write, cast_endianness& order) const -> rw_result
   {
     if constexpr(has_conditional_len_obligation_v<T, F>) {
       auto res = verify_conditional_len<T, F>{}(field_list, static_cast<std::size_t>(v));
       if(!res)
         return res;
     }
-    return write_impl<endianness>(s, v, size_to_write);
+    return write_impl(s, v, size_to_write, order);
   }
 };
 
@@ -4906,8 +5729,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     if constexpr(is_computed_size_v<size_type_of<field_size>>) {
       // An arbitrary N-ary callable has no inverse, so its source fields stay
@@ -4918,21 +5741,21 @@ struct write_field<T, F> {
     }
     // For a len_from_field size there is nothing to check: the length slot was
     // derived from this very container, so the container is the authority.
-    return write_impl<endianness>(s, value, value.size());
+    return write_impl(s, value, value.size(), order);
   }
 };
 
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct stream_cast_impl;
 
 // The one seam where the error representation narrows. A nested list names
 // its own failing field, but rw_result carries no name and the outer fold
 // re-attaches the outer field's id, so failed_at ends up naming the outermost
 // record field. read_field<struct_field_like> does exactly the same.
-template <field_list_like L, auto endianness, typename stream>
-constexpr auto write_nested(stream& s, const L& nested) -> rw_result {
-  auto res = stream_cast_impl<L, stream, endianness>{}(s, nested);
+template <field_list_like L, typename stream>
+constexpr auto write_nested(stream& s, const L& nested, cast_endianness& order) -> rw_result {
+  auto res = stream_cast_impl<L, stream>{}(s, nested, order);
   if(!res)
     return std::unexpected(res.error().failure_reason);
   return {};
@@ -4946,10 +5769,10 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    return write_nested<field_list_t, endianness>(s, value);
+    return write_nested<field_list_t>(s, value, order);
   }
 };
 
@@ -4961,14 +5784,14 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using array_type = typename T::field_type;
     using element_t = extract_type_from_array_v<array_type>;
     constexpr auto array_len = extract_size_from_array_v<array_type>;
 
     for(std::size_t count = 0; count < array_len; ++count) {
-      auto res = write_nested<element_t, endianness>(s, value[count]);
+      auto res = write_nested<element_t>(s, value[count], order);
       if(!res)
         return res;
     }
@@ -4984,8 +5807,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using vector_type = typename T::field_type;
     using element_t = extract_type_from_vec_t<vector_type>;
     constexpr auto field_size = T::field_size;
@@ -4995,13 +5818,50 @@ struct write_field<T, F> {
         return std::unexpected(error_reason::found_contradicting_length);
     }
     for(const auto& record: value) {
-      auto res = write_nested<element_t, endianness>(s, record);
+      auto res = write_nested<element_t>(s, record, order);
       if(!res)
         return res;
     }
     return {};
   }
 };
+
+// Line for line the read side's announcing reader, with write for read: the
+// record goes out first, then the order it names takes effect. `value` is the
+// inner field list — field_type is inherited from the base — so the same
+// deduce_order instantiation serves both directions, and there is one rule
+// rather than two that could drift.
+//
+// Deliberately resolved here rather than up front, though on write the marker's
+// value is available before any byte is emitted. Resolving up front would need
+// a depth-first search for the announcing field plus a second rule about when
+// the order starts applying; the announcing record's own fields are
+// order-agnostic, so the bytes are identical either way and the only question
+// is which rule the code states.
+template <order_announcing_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
+    using field_base_type_t = typename T::field_base_type;
+    auto writer = write_field<field_base_type_t, F>(value, field_list);
+    auto res = writer.write(s, order);
+    if(!res)
+      return res;
+
+    auto resolved = deduce_order<typename T::byte_order_deduction>{}(value);
+    if(!resolved)
+      return std::unexpected(resolved.error());
+    order = deduce_byte_order(*resolved);
+    return {};
+  }
+};
+
 
 template <optional_field_like T, field_list_like F>
 struct write_field<T, F> {
@@ -5011,8 +5871,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     // Presence is a predicate over siblings, not a stored flag, so there is
     // nothing to derive here — only to check that the struct agrees with what
     // the reader will conclude from the very same sibling bytes.
@@ -5029,7 +5889,7 @@ struct write_field<T, F> {
     // reaches the engaged value.
     if(!base_t::constraint_checker(*value))
       return std::unexpected(error_reason::validation_failure);
-    return write_field<base_t, F>(*value, field_list).template write<endianness>(s);
+    return write_field<base_t, F>(*value, field_list).write(s, order);
   }
 };
 
@@ -5042,8 +5902,8 @@ struct write_variant_impl {
   constexpr write_variant_impl(const V& variant, const F& field_list)
     : variant(variant), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     if(variant.index() != idx)
       return {};
     const auto& alternative = std::get<idx>(variant);
@@ -5053,7 +5913,7 @@ struct write_variant_impl {
     // stream untouched — a discarded value is recoverable, half a record is not.
     if(!E::constraint_checker(alternative))
       return std::unexpected(error_reason::validation_failure);
-    return write_field<E, F>(alternative, field_list).template write<endianness>(s);
+    return write_field<E, F>(alternative, field_list).write(s, order);
   }
 };
 
@@ -5062,15 +5922,15 @@ struct write_variant_helper;
 
 template <typename F, typename... choices, std::size_t... idx>
 struct write_variant_helper<F, field_choice_list<choices...>, std::index_sequence<idx...>> {
-  template <auto endianness, typename stream, typename V>
-  static constexpr auto write(stream& s, const V& variant, const F& field_list) -> rw_result {
+  template <typename stream, typename V>
+  static constexpr auto write(stream& s, const V& variant, const F& field_list, cast_endianness& order) -> rw_result {
     rw_result pipeline_seed{};
     return (
       pipeline_seed |
       ... |
       [&]() {
         return write_variant_impl<idx, choices, F, V>(variant, field_list)
-                 .template write<endianness>(s);
+                 .write(s, order);
       }
     );
   }
@@ -5084,8 +5944,8 @@ struct write_field<T, F> {
   constexpr write_field(const typename T::field_type& value, const F& field_list)
     : value(value), field_list(field_list) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto write(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
     using guide = typename T::type_deduction_guide;
 
     // Exactly the unions whose discriminant is derivable need no check here:
@@ -5106,7 +5966,7 @@ struct write_field<T, F> {
       typename T::field_choices,
       std::make_index_sequence<T::variant_size>
     >;
-    return helper::template write<endianness>(s, value, field_list);
+    return helper::write(s, value, field_list, order);
   }
 };
 } /* namespace s2s */
@@ -5121,14 +5981,14 @@ struct write_field<T, F> {
  
 namespace s2s {
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct stream_cast_impl;
 
-template <auto metadata, typename... fields, typename stream, auto endianness>
-struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+template <auto metadata, typename... fields, typename stream>
+struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
   using S = struct_field_list_impl<metadata, fields...>;
 
-  constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
+  constexpr auto operator()(stream& s, const S& field_list, cast_endianness& order) -> cast_result {
     cast_result pipeline_seed{};
     return (
       pipeline_seed |
@@ -5149,7 +6009,7 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
           }
         }
         auto writer = write_field<fields, S>(field.value, field_list);
-        auto write_res = writer.template write<endianness>(s);
+        auto write_res = writer.write(s, order);
         if(!write_res) {
           auto field_name = std::string_view{fields::field_id.data()};
           return std::unexpected(cast_error{write_res.error(), field_name});
@@ -5171,14 +6031,27 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
 #define _STREAM_CAST_HPP_
  
 namespace s2s {
-template <field_list_like T, output_stream_like stream>
+template <fixed_order_schema T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_le(stream& s, const T& obj) -> cast_result {
-  return stream_cast_impl<T, stream, std::endian::little>{}(s, obj);
+  auto order = deduce_byte_order<std::endian::little>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 
-template <field_list_like T, output_stream_like stream>
+template <fixed_order_schema T, output_stream_like stream>
 [[nodiscard]] constexpr auto stream_cast_be(stream& s, const T& obj) -> cast_result {
-  return stream_cast_impl<T, stream, std::endian::big>{}(s, obj);
+  auto order = deduce_byte_order<std::endian::big>();
+  return stream_cast_impl<T, stream>{}(s, obj, order);
+}
+
+// No order argument, for the same reason struct_cast takes none: the struct's
+// own marker decides. Whatever it holds — from a prior parse, or set by the
+// caller — is the order everything after it is written in. There is no
+// requested order to derive the marker from and none to check it against; the
+// stored value is authoritative because there is nothing else.
+template <self_announcing_schema T, output_stream_like stream>
+[[nodiscard]] constexpr auto stream_cast(stream& s, const T& obj) -> cast_result {
+  auto order = cast_endianness::host;
+  return stream_cast_impl<T, stream>{}(s, obj, order);
 }
 } /* namespace s2s */
 
@@ -5189,6 +6062,7 @@ template <field_list_like T, output_stream_like stream>
 // Begin s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
+ 
  
  
  

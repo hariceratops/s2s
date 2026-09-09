@@ -191,13 +191,37 @@ template <typename T>
 concept union_field_like = is_union_field_v<T>;
 
 template <typename T>
+struct is_order_announcing_field;
+
+template <fixed_string id, field_list_like T, auto size, auto constraint, auto bound,
+          typename guide>
+struct is_order_announcing_field<
+    order_announcing_field<field<id, T, size, constraint, bound>, guide>
+  >
+{
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_order_announcing_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_order_announcing_field_v = is_order_announcing_field<T>::res;
+
+template <typename T>
+concept order_announcing_field_like = is_order_announcing_field_v<T>;
+
+template <typename T>
 concept field_like = fixed_sized_field_like<T> || 
                      variable_sized_field_like<T> ||
                      array_of_record_field_like<T> ||
                      vector_of_record_field_like<T> ||
                      struct_field_like<T> || 
                      optional_field_like<T> || 
-                     union_field_like<T>;
+                     union_field_like<T> ||
+                     order_announcing_field_like<T>;
 } /* namespace s2s */
 
 #endif /*_FIELD_TRAITS_HPP_*/

@@ -30,6 +30,14 @@ satisfiable and nothing was allocated for it. See
 [Allocation limits](reading.md#allocation-limits) for the ceiling it reports
 against and how to change it.
 
+A byte-order marker that matches no case is a `validation_failure`, at the
+announcing field's id — not a `type_deduction_failure`, though it is a deduction
+that failed. On the type axis a failed deduction means the reader cannot proceed
+at all: it does not know how many bytes to consume next or what to consume them
+into. On the byte-order axis it means the file is not this format, which is a
+magic mismatch, and a magic mismatch is a `validation_failure` everywhere else
+in the library. See [The byte-order axis](schema/byte-order-axis.md).
+
 A write can fail in the first three ways plus `found_contradicting_length`,
 which means two parts of the struct imply different lengths for the same data —
 a cross-field disagreement rather than a value that is wrong on its own terms.

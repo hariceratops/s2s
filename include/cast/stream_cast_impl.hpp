@@ -10,14 +10,14 @@
 
 namespace s2s {
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct stream_cast_impl;
 
-template <auto metadata, typename... fields, typename stream, auto endianness>
-struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, endianness> {
+template <auto metadata, typename... fields, typename stream>
+struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream> {
   using S = struct_field_list_impl<metadata, fields...>;
 
-  constexpr auto operator()(stream& s, const S& field_list) -> cast_result {
+  constexpr auto operator()(stream& s, const S& field_list, cast_endianness& order) -> cast_result {
     cast_result pipeline_seed{};
     return (
       pipeline_seed |
@@ -38,7 +38,7 @@ struct stream_cast_impl<struct_field_list_impl<metadata, fields...>, stream, end
           }
         }
         auto writer = write_field<fields, S>(field.value, field_list);
-        auto write_res = writer.template write<endianness>(s);
+        auto write_res = writer.write(s, order);
         if(!write_res) {
           auto field_name = std::string_view{fields::field_id.data()};
           return std::unexpected(cast_error{write_res.error(), field_name});

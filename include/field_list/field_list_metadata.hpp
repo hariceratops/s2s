@@ -10,6 +10,7 @@
 #include "../field/field.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field/field_type_info.hpp"
+#include "../order_deduction/order_deduction.hpp"
 #include "../type_deduction/type/type.hpp"
 #include "../type_deduction/if_else_ladder/ladder.hpp"
 
@@ -79,6 +80,19 @@ template <fixed_string id, typename T, auto size, auto constraint,
           typename present_only_if, typename optional>
 struct extract_length_dependencies<
   maybe_field<field<id, T, size, constraint>, present_only_if, optional>
+>
+{
+  using f = field<id, T, size, constraint>;
+  static constexpr auto value = extract_length_dependencies<f>::value;
+};
+
+// extract_length_dependencies has no primary definition, so a wrapper that
+// reaches no specialization is a hard error rather than a silently empty
+// answer. The base is a size_dont_care record, so the answer is the empty
+// vector; this exists to say so.
+template <fixed_string id, typename T, auto size, auto constraint, typename guide>
+struct extract_length_dependencies<
+  order_announcing_field<field<id, T, size, constraint>, guide>
 >
 {
   using f = field<id, T, size, constraint>;
@@ -189,6 +203,21 @@ struct extract_req_fields_from_clause<
   branch<
     compute_t<callable, bool, fixed_string_list<req_fields...>>,
     T
+  >
+>
+{
+  static constexpr auto value = dep_vec(as_sv(req_fields)...);
+};
+
+// An order ladder's branch answers the same question, so it is the same
+// metafunction rather than a parallel one. Only the consumer differs: these
+// names resolve inside the announcing record's own table, not this list's, so
+// they never reach a dependency table — see announcing_record.hpp.
+template <auto callable, fixed_string... req_fields, std::endian order>
+struct extract_req_fields_from_clause<
+  order_branch<
+    compute_t<callable, bool, fixed_string_list<req_fields...>>,
+    order
   >
 >
 {

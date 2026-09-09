@@ -123,6 +123,7 @@ consumes off the wire, and where that count comes from.
 | `magic_number<id, T, size, expected>` | magic number | integral `T` | its declared size; the value is checked on read and supplied on write |
 | `maybe<field, present_only_if>` | optional | whatever it wraps | zero, or the wrapped field's |
 | `variance<id, deducer, c>` | union | `std::variant` of the alternatives | the selected alternative's |
+| `announces_byte_order<id, T, guide, c>` | byte-order marker | `T`, a schema | whatever the marked schema occupies |
 
 Four things in that table are easy to misread.
 
@@ -150,6 +151,11 @@ earlier field.
 `maybe` and `variance` are combinators rather than field kinds — they wrap or
 select among the descriptors above, and are covered in
 [Optional and variant fields](optional-and-variant.md).
+
+`announces_byte_order` is a third one. It wraps a record and marks it as the one
+whose bytes decide the byte order of everything read after it, which is what a
+format like TIFF needs and what no other axis can express — see
+[The byte-order axis](byte-order-axis.md).
 
 ## `fixed_string`
 

@@ -88,3 +88,11 @@ add_struct_cast_test(union_constraint_read)
 add_struct_cast_test(union_constraint_write)
 add_ut_test(union_constraint_read_ct)
 add_ut_test(union_constraint_write_ct)
+
+# The byte-order axis (053-060). Read and write are separate files rather than
+# one round-trip: a round-trip stays green if both directions are wrong the
+# same way, which for a byte-order feature is the likely failure.
+add_struct_cast_test(byte_order_axis_read)
+add_struct_cast_test(byte_order_axis_write)
+add_ut_test(byte_order_axis_read_ct)
+add_ut_test(byte_order_axis_write_ct)

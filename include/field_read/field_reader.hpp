@@ -10,6 +10,7 @@
 #include "../field_size/field_size_deduce.hpp"
 #include "../error/cast_error.hpp"
 #include "../field/field.hpp"
+#include "../order_deduction/order_deduction_impl.hpp"
 #include "../type_deduction/type/type_impl.hpp"
 #include "read_impl.hpp"
 
@@ -26,11 +27,11 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list) {}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     constexpr auto size_to_read = deduce_field_size<field_size>{}();
-    return read_impl<endianness>(s, field.value, size_to_read);
+    return read_impl(s, field.value, size_to_read, order);
   }
 };
 
@@ -43,11 +44,11 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
-    return read_impl<endianness, bound_in_bytes<T::field_bound>>(s, field.value, len_to_read);
+    return read_impl<bound_in_bytes<T::field_bound>>(s, field.value, len_to_read, order);
   }
 };
 
@@ -99,13 +100,13 @@ struct read_buffer_of_records {
   constexpr read_buffer_of_records(T& field, F& field_list, std::size_t len_to_read)
     : field(field), field_list(field_list), len_to_read(len_to_read) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     for(std::size_t count = 0; count < len_to_read; ++count) {
       E elem;
       auto reader = read_field<E, F>(elem, field_list);
-      auto res = reader.template read<endianness, stream>(s);
-      if(!res) 
+      auto res = reader.read(s, order);
+      if(!res)
         return std::unexpected(res.error());
       field.value[count] = std::move(elem.value);
     }
@@ -121,15 +122,15 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using array_type = typename T::field_type;
     using array_element_field = create_field_from_array_of_records_v<T>;
     using read_impl_t = read_buffer_of_records<T, F, array_element_field>;
 
     constexpr auto array_len = extract_size_from_array_v<array_type>;
     auto reader = read_impl_t(field, field_list, array_len);
-    auto res = reader.template read<endianness>(s);
+    auto res = reader.read(s, order);
     return res;
   }
 };
@@ -143,8 +144,8 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using vector_element_field = create_field_from_vector_of_records_v<T>;
     constexpr auto field_size = T::field_size;
     using read_impl_t = read_buffer_of_records<T, F, vector_element_field>;
@@ -160,27 +161,27 @@ struct read_field<T, F> {
 
     field.value.resize(len_to_read);
     auto reader = read_impl_t(field, field_list, len_to_read);
-    auto res = reader.template read<endianness>(s);
+    auto res = reader.read(s, order);
     return res;
   }
 };
 
 
-template <typename F, typename stream, auto endianness>
+template <typename F, typename stream>
 struct struct_cast_impl;
 
 template <struct_field_like T, field_list_like F>
 struct read_field<T, F> {
   T& field;
   F& field_list;
-  
+
   constexpr read_field(T& field, F& field_list)
     : field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) const -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
     using field_list_t = extract_type_from_field_v<T>;
-    auto res = struct_cast_impl<field_list_t, stream, endianness>{}(s);
+    auto res = struct_cast_impl<field_list_t, stream>{}(s, order);
     if(!res) {
       auto err = res.error();
       return std::unexpected(err.failure_reason);
@@ -200,8 +201,8 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list): 
     field(field), field_list(field_list){}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     if(!compute_impl<typename T::field_presence_checker>{}(field_list)) {
       field.value = std::nullopt;
       return {};
@@ -209,10 +210,42 @@ struct read_field<T, F> {
     using field_base_type_t = typename T::field_base_type;
     field_base_type_t base_field{};
     read_field<field_base_type_t, F> reader(base_field, field_list);
-    auto res = reader.template read<endianness>(s);
-    if(!res) 
+    auto res = reader.read(s, order);
+    if(!res)
       return std::unexpected(res.error());
     field.value = base_field.value;
+    return {};
+  }
+};
+
+
+// Resolution happens here rather than in the fold, because here is exactly the
+// stream position the rule names: the base reader returns the moment the
+// announcing record's last field leaves the stream, and the next statement
+// writes the cell. `order` is a reference to a cell the entry point owns, so a
+// write at any depth is seen by every enclosing fold's remaining fields — the
+// "escapes to the rest of the file" semantics is what a borrowed cell already
+// does, not a rule the folds have to remember.
+template <order_announcing_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
+
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
+    using field_base_type_t = typename T::field_base_type;
+    auto reader = read_field<field_base_type_t, F>(field, field_list);
+    auto res = reader.read(s, order);
+    if(!res)
+      return std::unexpected(res.error());
+
+    auto resolved = deduce_order<typename T::byte_order_deduction>{}(field.value);
+    if(!resolved)
+      return std::unexpected(resolved.error());
+    order = deduce_byte_order(*resolved);
     return {};
   }
 };
@@ -231,14 +264,14 @@ struct read_variant_impl {
     std::size_t idx_r) :
       variant(variant), field_list(field_list), idx_r(idx_r) {}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
-    if (idx_r != idx) 
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
+    if (idx_r != idx)
       return {};
 
     T field;
     auto reader = read_field<T, F>(field, field_list);
-    auto res = reader.template read<endianness, stream>(s);
+    auto res = reader.read(s, order);
     if(!res)
       return std::unexpected(res.error());
     // The struct-level fold runs constraint_checker over the fields of a
@@ -265,15 +298,15 @@ struct read_variant_helper<T, F, field_choice_list<fields...>, std::index_sequen
   constexpr read_variant_helper(T& field, F& field_list, std::size_t idx_r) 
     : field(field), field_list(field_list), idx_r(idx_r) {}
   
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     rw_result pipeline_seed{};
     return (
       pipeline_seed |
-      ... | 
+      ... |
       [&]() {
         auto reader_impl = read_variant_impl<idx, fields, F, typename T::field_type>(field.value, field_list, idx_r);
-        return reader_impl.template read<endianness>(s);
+        return reader_impl.read(s, order);
       }
     );
   }
@@ -288,27 +321,27 @@ struct read_field<T, F> {
   constexpr read_field(T& field, F& field_list): 
     field(field), field_list(field_list){}
 
-  template <auto endianness, typename stream>
-  constexpr auto read(stream& s) -> rw_result {
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) -> rw_result {
     using type_deduction_guide = typename T::type_deduction_guide;
     using field_choices = typename T::field_choices;
     constexpr auto max_type_index = T::variant_size;
 
     auto type_index_deducer = deduce_type<type_deduction_guide>();
-    auto type_index_result = type_index_deducer(field_list); 
+    auto type_index_result = type_index_deducer(field_list);
     if(!type_index_result)
       return std::unexpected(type_index_result.error());
 
     auto idx_r = *type_index_result;
-    using read_helper_t = 
+    using read_helper_t =
       read_variant_helper<
-        T, 
-        F, 
-        field_choices, 
+        T,
+        F,
+        field_choices,
         std::make_index_sequence<max_type_index>
       >;
     auto field_reader = read_helper_t(field, field_list, idx_r);
-    auto field_read_res = field_reader.template read<endianness, stream>(s);
+    auto field_read_res = field_reader.read(s, order);
     if(!field_read_res)
       return std::unexpected(field_read_res.error());
     return {};
