@@ -34,3 +34,15 @@ Spec: `dev/specs/byte-order-is-data-not-a-template-parameter.md`.
   entries; `single_header/s2s.hpp` is regenerated in the same commit.
 
 Depends on 054.
+
+## Review 2026-09-09
+- The `must_not_compile` case exists and produces a distinguishable sentence,
+  but the test does not assert it. CASE 3 and 4 are registered with
+  `add_rejected_case`, which only requires the build to fail — the gap
+  `WILL_FAIL` alone leaves, and the one this suite has documented twice. Each
+  was checked by hand against the no-`CASE` control build when it landed, but
+  nothing holds that afterwards. `add_rejected_case_matching`, which does assert
+  the diagnostic, arrived two slices later in 058 and the earlier cases were not
+  migrated. The same applies to the byte-order cases belonging to other slices:
+  CASE 7 (055) and CASE 6 and 10 (057). Fix: move all five to the matching
+  harness, each against its own `static_assert` text.
