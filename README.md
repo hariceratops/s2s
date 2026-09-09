@@ -246,7 +246,7 @@ Entries under `test/must_not_compile/` are expected to fail to build, and
 - [x] Support for all major compilers
 - [ ] Full Support in Freestanding Compilers
 - [x] Compile-time Endianness Handling
-- [ ] Run-time Endianness Handling
+- [x] Run-time Endianness Handling
 - [ ] Modules
 - [x] Write struct to stream
 - [ ] struct_view - Zero copy views into buffers
