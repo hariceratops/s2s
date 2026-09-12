@@ -97,6 +97,29 @@ template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
 
 template <typename T>
+struct is_delimited_field;
+
+// byte_buffer_like rather than variable_sized_buffer_like: a delimiter is one
+// byte, so a delimited field's elements are one byte (field_options.hpp's
+// delimited_buffer_is_byte_wide states the same rule at the descriptor level).
+template <fixed_string id, byte_buffer_like T, auto size, auto constraint_on_value, auto bound>
+  requires delimited_size_like<size_type_of<size>>
+struct is_delimited_field<field<id, T, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_delimited_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_delimited_field_v = is_delimited_field<T>::res;
+
+template <typename T>
+concept delimited_field_like = is_delimited_field_v<T>;
+
+template <typename T>
 struct is_vector_of_record_field;
 
 template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
@@ -214,12 +237,13 @@ template <typename T>
 concept order_announcing_field_like = is_order_announcing_field_v<T>;
 
 template <typename T>
-concept field_like = fixed_sized_field_like<T> || 
+concept field_like = fixed_sized_field_like<T> ||
                      variable_sized_field_like<T> ||
+                     delimited_field_like<T> ||
                      array_of_record_field_like<T> ||
                      vector_of_record_field_like<T> ||
-                     struct_field_like<T> || 
-                     optional_field_like<T> || 
+                     struct_field_like<T> ||
+                     optional_field_like<T> ||
                      union_field_like<T> ||
                      order_announcing_field_like<T>;
 } /* namespace s2s */

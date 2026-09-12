@@ -33,8 +33,9 @@ concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(fi
 // `field_option_like<T> auto... opts` substitutes decltype(opt) as the first
 // argument, so a value-parameterised concept could not be used this way at all.
 template <typename S, typename T>
-concept size_option_like = fixed_size_like<S>    ||
-                           variable_size_like<S> ||
+concept size_option_like = fixed_size_like<S>     ||
+                           variable_size_like<S>  ||
+                           delimited_size_like<S> ||
                            size_dont_care_like<S> ||
                            selectable_size_like<S>;
 

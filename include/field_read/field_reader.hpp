@@ -53,6 +53,25 @@ struct read_field<T, F> {
 };
 
 
+template <delimited_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list) {}
+
+  // The order cell is unnamed, not ignored: a delimited field's elements are
+  // one byte wide, so there is no byte order to apply. That is the same fact
+  // that lets this reader bypass read_impl entirely.
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness&) const -> rw_result {
+    constexpr auto delim = size_type_of<T::field_size>::delim;
+    return read_delimited<bound_in_bytes<T::field_bound>>(s, field.value, delim);
+  }
+};
+
+
 struct not_array_of_records_field {};
 
 template <typename T>

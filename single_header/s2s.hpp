@@ -233,6 +233,20 @@ struct byte_count {
 
 struct size_dont_care_t {};
 
+// The one thing a delimited field declares. Like size_from_fields_t and unlike
+// byte_count, the payload lives in the type: read_field, write_field and the
+// option classifier all pattern-match on it.
+template <unsigned char d>
+struct delimited_by_t {
+  static constexpr unsigned char delim = d;
+};
+
+// A delimiter is one byte. Named rather than written inline as a requires
+// clause so the diagnostic for until<u16{0x0d0a}> says what the rule is, and
+// so a multi-byte form can later relax it in one place.
+template <typename T>
+concept delimiter_value_like = std::is_integral_v<T> && sizeof(T) == 1;
+
 // Safety is on by default: a field that declares nothing still gets a ceiling.
 // The macro is the one global knob — raise it, or set it to SIZE_MAX to turn
 // the defaults off wholesale. It cannot reach a declared max_bytes, which is
@@ -278,6 +292,12 @@ inline constexpr auto size_from_fields = size_from_fields_t<callable, field_name
 
 template <auto callable, fixed_string... ids>
 inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
+
+// The schema may spell the delimiter as u8{0}, '\0' or char{0}; all three
+// land on the same delimited_by_t<0>, so two schemas that mean the same
+// delimiter are the same type.
+template <delimiter_value_like auto d>
+inline constexpr auto until = delimited_by_t<static_cast<unsigned char>(d)>{};
 
 inline constexpr auto size_dont_care = size_dont_care_t{};
 
@@ -374,6 +394,26 @@ struct is_variable_size<size_from_fields_t<callable, ids>> {
 template <typename T>
 inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
 
+// The third size category: its length is what the read produces, not what
+// the read is told. Deliberately its own trait rather than a widening of
+// is_variable_size — see field_traits.hpp's is_delimited_field for what that
+// buys.
+template <typename T>
+struct is_delimited_size {
+  static constexpr bool res = false;
+};
+
+template <unsigned char d>
+struct is_delimited_size<delimited_by_t<d>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_delimited_size_v = is_delimited_size<T>::res;
+
+template <typename T>
+concept delimited_size_like = is_delimited_size_v<T>;
+
 // A size produced by a user callable rather than read from a single field.
 // The distinction matters only on the write path: len_from_field can be
 // inverted and derived, this cannot, so it can only be verified.
@@ -400,6 +440,13 @@ concept variable_size_like = is_variable_size_v<T>;
 template <typename T>
 concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
 
+// The sizes a resizable byte buffer may declare: a count resolved before the
+// read, or a delimiter that ends it. Deliberately a *new* concept rather than
+// a widening of variable_size_like, which is the gate into deduce_field_size
+// and must not see a size that has nothing to resolve to.
+template <typename T>
+concept buffer_size_like = variable_size_like<T> || delimited_size_like<T>;
+
 template <typename T>
 struct is_selectable_size {
   static constexpr bool res = false;
@@ -418,8 +465,9 @@ template <typename T>
 concept selectable_size_like = is_selectable_size_v<T>;
 
 template <typename T>
-concept is_size_like = fixed_size_like<T>    ||
-                       variable_size_like<T> ||
+concept is_size_like = fixed_size_like<T>     ||
+                       variable_size_like<T>  ||
+                       delimited_size_like<T> ||
                        selectable_size_like<T>;
 
 template <typename T>
@@ -811,6 +859,13 @@ inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array
 
 template <typename T>
 concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
+
+// A delimiter is one byte, so a delimited field's elements are one byte.
+// Stated once at the engine level and reused at the descriptor level
+// (field_options.hpp) so the two cannot drift.
+template <typename T>
+concept byte_buffer_like =
+  variable_sized_buffer_like<T> && sizeof(typename T::value_type) == 1;
 
 template <typename T>
 concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
@@ -1328,6 +1383,29 @@ template <typename T>
 concept variable_sized_field_like = is_variable_sized_field_v<T>;
 
 template <typename T>
+struct is_delimited_field;
+
+// byte_buffer_like rather than variable_sized_buffer_like: a delimiter is one
+// byte, so a delimited field's elements are one byte (field_options.hpp's
+// delimited_buffer_is_byte_wide states the same rule at the descriptor level).
+template <fixed_string id, byte_buffer_like T, auto size, auto constraint_on_value, auto bound>
+  requires delimited_size_like<size_type_of<size>>
+struct is_delimited_field<field<id, T, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_delimited_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_delimited_field_v = is_delimited_field<T>::res;
+
+template <typename T>
+concept delimited_field_like = is_delimited_field_v<T>;
+
+template <typename T>
 struct is_vector_of_record_field;
 
 template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
@@ -1445,12 +1523,13 @@ template <typename T>
 concept order_announcing_field_like = is_order_announcing_field_v<T>;
 
 template <typename T>
-concept field_like = fixed_sized_field_like<T> || 
+concept field_like = fixed_sized_field_like<T> ||
                      variable_sized_field_like<T> ||
+                     delimited_field_like<T> ||
                      array_of_record_field_like<T> ||
                      vector_of_record_field_like<T> ||
-                     struct_field_like<T> || 
-                     optional_field_like<T> || 
+                     struct_field_like<T> ||
+                     optional_field_like<T> ||
                      union_field_like<T> ||
                      order_announcing_field_like<T>;
 } /* namespace s2s */
@@ -1887,8 +1966,9 @@ concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(fi
 // `field_option_like<T> auto... opts` substitutes decltype(opt) as the first
 // argument, so a value-parameterised concept could not be used this way at all.
 template <typename S, typename T>
-concept size_option_like = fixed_size_like<S>    ||
-                           variable_size_like<S> ||
+concept size_option_like = fixed_size_like<S>     ||
+                           variable_size_like<S>  ||
+                           delimited_size_like<S> ||
                            size_dont_care_like<S> ||
                            selectable_size_like<S>;
 
@@ -2540,7 +2620,12 @@ enum error_reason {
   // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
   // which means the stream ran dry *during* a read — this one fires before any
   // allocation happens, which is the whole point of it.
-  excessive_length
+  excessive_length,
+  // A delimited read's bound was reached with no delimiter found. Distinct
+  // from buffer_exhaustion, which means the stream ran dry first: truncated
+  // and corrupt are different facts about a file, and a caller can act
+  // differently on them.
+  delimiter_not_found
 };
 
 
@@ -2773,6 +2858,18 @@ struct extract_length_dependencies<
 {
   static constexpr auto value =
     static_vector<sv, max_dep_count_per_struct>(as_sv(len_source_of<size_type_of<size>>::value));
+};
+
+// A delimiter is carried in the field's own declaration, so a delimited field
+// depends on no sibling — the same answer a fixed size gives, for the same
+// reason, and stated for the same reason the size_dont_care arm is.
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
+  requires delimited_size_like<size_type_of<size>>
+struct extract_length_dependencies<
+  field<id, T, size, constraint, bound>
+>
+{
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
 };
 
 template <fixed_string id, typename T, auto size, auto constraint, auto bound>
@@ -3680,7 +3777,8 @@ struct always_true {
 using always_present = eval_bool_from_fields<always_true{}>;
 
 template <fixed_string id, integral T, field_option_like<T> auto... opts>
-  requires field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
+  requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
+           field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 using basic_field = field<id, T, size_of_pack<T, opts...>, constraint_of_pack<T, opts...>>;
 
 template <fixed_string id, field_containable T, std::size_t N,
@@ -3732,7 +3830,7 @@ using vector_of_records =
 
 // todo check if this will work for all char types like wstring
 template <fixed_string id, boundable_field_option_like<std::string> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
+  requires buffer_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 using str_field =
   field<id, std::string, size_of_pack<std::string, opts...>,
         constraint_of_pack<std::string, opts...>,
@@ -4772,6 +4870,38 @@ constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_res
   }
 }
 
+// Per byte, by decision: the spec's format scan puts every delimited field at
+// tens of bytes, and the alternatives all change the stream concept or need a
+// pushback buffer threaded through every field reader. read_until is recorded
+// in the spec as the fast primitive and is deliberately not built.
+template <std::size_t ceiling, byte_buffer_like T, input_stream_like stream>
+constexpr auto read_delimited(stream& s, T& obj, unsigned char delim) -> rw_result {
+  using element = typename T::value_type;
+  // Cast the delimiter down once, rather than promoting each element up: for
+  // a std::string and a delimiter >= 0x80 the promoted comparison is false
+  // for the very byte that should match.
+  const element stop = static_cast<element>(delim);
+
+  obj.clear();
+  while(true) {
+    element byte{};
+    // The one place the two stream shapes coincide. read_native_impl's
+    // constexpr overload stages through std::array<char, sizeof(T)> and its
+    // runtime overload through char*, and at sizeof(element) == 1 both are a
+    // single byte — so the existing overload pair is the whole of the
+    // constexpr/runtime split, and this loop needs no `if constexpr` of its
+    // own.
+    auto res = read_native_impl(s, byte, sizeof(element));
+    if(!res)
+      return res;                                  // buffer_exhaustion
+    if(byte == stop)
+      return {};                                   // consumed, not stored
+    if(obj.size() == ceiling)
+      return std::unexpected(error_reason::delimiter_not_found);
+    obj.push_back(byte);
+  }
+}
+
 template <trivial T, input_stream_like stream>
 constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto res = read_native_impl(s, obj, size_to_read);
@@ -4868,6 +4998,25 @@ struct read_field<T, F> {
     constexpr auto field_size = T::field_size;
     auto len_to_read = deduce_field_size<field_size>{}(field_list);
     return read_impl<bound_in_bytes<T::field_bound>>(s, field.value, len_to_read, order);
+  }
+};
+
+
+template <delimited_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list) {}
+
+  // The order cell is unnamed, not ignored: a delimited field's elements are
+  // one byte wide, so there is no byte order to apply. That is the same fact
+  // that lets this reader bypass read_impl entirely.
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness&) const -> rw_result {
+    constexpr auto delim = size_type_of<T::field_size>::delim;
+    return read_delimited<bound_in_bytes<T::field_bound>>(s, field.value, delim);
   }
 };
 

@@ -19,7 +19,12 @@ enum error_reason {
   // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
   // which means the stream ran dry *during* a read — this one fires before any
   // allocation happens, which is the whole point of it.
-  excessive_length
+  excessive_length,
+  // A delimited read's bound was reached with no delimiter found. Distinct
+  // from buffer_exhaustion, which means the stream ran dry first: truncated
+  // and corrupt are different facts about a file, and a caller can act
+  // differently on them.
+  delimiter_not_found
 };
 
 

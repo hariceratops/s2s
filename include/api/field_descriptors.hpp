@@ -26,7 +26,8 @@ struct always_true {
 using always_present = eval_bool_from_fields<always_true{}>;
 
 template <fixed_string id, integral T, field_option_like<T> auto... opts>
-  requires field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
+  requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
+           field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 using basic_field = field<id, T, size_of_pack<T, opts...>, constraint_of_pack<T, opts...>>;
 
 template <fixed_string id, field_containable T, std::size_t N,
@@ -78,7 +79,7 @@ using vector_of_records =
 
 // todo check if this will work for all char types like wstring
 template <fixed_string id, boundable_field_option_like<std::string> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
+  requires buffer_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 using str_field =
   field<id, std::string, size_of_pack<std::string, opts...>,
         constraint_of_pack<std::string, opts...>,

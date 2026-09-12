@@ -96,3 +96,8 @@ add_struct_cast_test(byte_order_axis_read)
 add_struct_cast_test(byte_order_axis_write)
 add_ut_test(byte_order_axis_read_ct)
 add_ut_test(byte_order_axis_write_ct)
+
+# The size axis's third category (062): a length discovered by the read
+# rather than declared before it. str_field only; vec_field is 063's.
+add_struct_cast_test(delimited_read)
+add_ut_test(delimited_read_ct)
