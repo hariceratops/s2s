@@ -9,6 +9,7 @@
 #include "../field_size/field_size.hpp"
 #include "../field_size/comptime_field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
+#include "../lib/s2s_traits/type_traits.hpp"
 
 
 // Split out of api/field_descriptors.hpp so type_tags.hpp can reach it.
