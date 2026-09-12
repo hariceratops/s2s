@@ -24,7 +24,12 @@ enum error_reason {
   // from buffer_exhaustion, which means the stream ran dry first: truncated
   // and corrupt are different facts about a file, and a caller can act
   // differently on them.
-  delimiter_not_found
+  delimiter_not_found,
+  // The write-side rejection: a value containing the delimiter would read
+  // back short, with no error raised anywhere else. Not folded into
+  // validation_failure — the author has not violated a constraint they
+  // wrote, they have hit a rule of the size form.
+  found_delimiter_in_value
 };
 
 

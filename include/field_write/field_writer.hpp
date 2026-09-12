@@ -13,6 +13,7 @@
 #include "../field_compute/computation_from_fields_impl.hpp"
 #include "../order_deduction/order_deduction_impl.hpp"
 #include "../error/cast_error.hpp"
+#include "../lib/algorithms/algorithms.hpp"
 #include "derived_value.hpp"
 #include "write_impl.hpp"
 
@@ -94,6 +95,42 @@ struct write_field<T, F> {
     // For a len_from_field size there is nothing to check: the length slot was
     // derived from this very container, so the container is the authority.
     return write_impl(s, value, value.size(), order);
+  }
+};
+
+
+// No entry in derived_value.hpp's obligation machinery: a delimited field
+// derives nothing (§1.2 of the design) — the container is the only
+// authority, so there is no length slot to invert and nothing to check the
+// container against.
+template <delimited_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness&) const -> rw_result {
+    using element = typename T::field_type::value_type;
+    constexpr element stop = static_cast<element>(size_type_of<T::field_size>::delim);
+
+    // Before any byte leaves: a rejected value leaves the stream untouched,
+    // which is the rule write_variant_impl already states — a discarded
+    // value is recoverable, half a field is not.
+    if(find_index(value, stop) != value.size())
+      return std::unexpected(error_reason::found_delimiter_in_value);
+
+    // Empty is a valid value and emits the lone delimiter. Skipped rather
+    // than written as a zero-length run: const_byte_addressof on an empty
+    // vector yields data(), which may be null.
+    if(!value.empty()) {
+      auto res = write_native(s, value, value.size());
+      if(!res)
+        return res;
+    }
+    return write_native_impl(s, stop, sizeof(stop));
   }
 };
 

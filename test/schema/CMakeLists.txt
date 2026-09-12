@@ -101,3 +101,9 @@ add_ut_test(byte_order_axis_write_ct)
 # rather than declared before it. str_field only; vec_field is 063's.
 add_struct_cast_test(delimited_read)
 add_ut_test(delimited_read_ct)
+
+# 065: the write path's happy path — a value that does not contain the
+# delimiter. Rejecting one that does is 066's, in the same write_field
+# specialization.
+add_struct_cast_test(delimited_write)
+add_ut_test(delimited_write_ct)
