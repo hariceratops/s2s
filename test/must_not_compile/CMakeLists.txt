@@ -130,3 +130,15 @@ add_rejected_case_matching(rejects_more_than_one_announcing_record
 # build: 1 fails on delimited_buffer_is_byte_wide, not on any other option-pack
 # rule.
 add_rejected_case(rejects_wide_element_delimited_vector delimited_misuse.cpp 1)
+
+# The delimiter spellings the form does not support (064). Each checked
+# against a no-CASE control build and confirmed to fail on its own
+# diagnostic: 2 on delimiter_value_like, 3 on basic_field's new fixed_size_like
+# clause (not on field_fits_to_underlying_type), 4 and 5 on
+# constraint_option_like — fixed_array_field and c_str_field take
+# constraint-only packs, so until<> is an unrecognised pack entry there, with
+# no production code involved.
+add_rejected_case(rejects_multi_byte_delimiter delimited_misuse.cpp 2)
+add_rejected_case(rejects_until_on_basic_field delimited_misuse.cpp 3)
+add_rejected_case(rejects_until_on_fixed_array_field delimited_misuse.cpp 4)
+add_rejected_case(rejects_until_on_c_str_field delimited_misuse.cpp 5)
