@@ -37,6 +37,66 @@ template rather than an alias of `compute`. The distinction rarely matters when
 writing a schema and matters a great deal when reading a compiler error, which
 is why it is called out here.
 
+A `size_from_fields` callable can name a field whose own length was discovered
+rather than declared — one read with `until<>` — and receives its parsed
+value like any other sibling. PNG's tEXt chunk composes the two this way: a
+NUL-terminated keyword, then text that is explicitly *not* terminated because
+the chunk's declared length locates its end, so the text's length is the
+chunk length minus the keyword's discovered length minus the one delimiter
+byte.
+
+<!-- docs: test/doc_examples/guide_delimited_composition_example.cpp -->
+```cpp
+#include "s2s.hpp"
+
+#include <fstream>
+#include <string>
+
+using namespace s2s_literals;
+
+using u8 = unsigned char;
+using u32 = unsigned int;
+
+// PNG's tEXt chunk: a NUL-terminated keyword, then text running to the end of
+// the chunk. The text is explicitly not terminated — the chunk's declared
+// length is what locates its end, so its size is the chunk length minus the
+// keyword's own discovered length minus the one delimiter byte.
+constexpr auto remaining = [](auto length, const std::string& keyword) -> std::size_t {
+  return length - keyword.size() - 1;
+};
+
+using text_chunk =
+  s2s::struct_field_list<
+    s2s::basic_field<"length", u32, 4_B>,
+    s2s::str_field<"keyword", s2s::until<u8{0}>, s2s::max_bytes<79>>,
+    s2s::str_field<"text", s2s::size_from_fields<remaining, "length", "keyword">>
+  >;
+
+// length, "Author\0", "Claude Code" — 6 + 1 + 11 = 18.
+constexpr unsigned char chunk_bytes[] = {
+  0x00, 0x00, 0x00, 0x12,
+  'A', 'u', 't', 'h', 'o', 'r', 0x00,
+  'C', 'l', 'a', 'u', 'd', 'e', ' ', 'C', 'o', 'd', 'e'
+};
+
+auto main() -> int {
+  {
+    std::ofstream out("text_chunk.bin", std::ios::out | std::ios::binary | std::ios::trunc);
+    out.write(reinterpret_cast<const char*>(chunk_bytes), sizeof(chunk_bytes));
+  }
+
+  std::ifstream file("text_chunk.bin", std::ios::in | std::ios::binary);
+
+  const auto parsed =
+    s2s::struct_cast_be<text_chunk>(file)
+      .transform([](const text_chunk& chunk) {
+        return chunk["keyword"_f] == "Author" && chunk["text"_f] == "Claude Code";
+      });
+
+  return parsed.value_or(false) ? 0 : 1;
+}
+```
+
 <!-- docs: test/doc_examples/guide_computed_example.cpp -->
 ```cpp
 #include "s2s.hpp"

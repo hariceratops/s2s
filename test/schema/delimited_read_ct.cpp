@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <string>
 #include <string_view>
 #include <vector>
 #include <ut>
@@ -25,6 +26,7 @@ using namespace s2s_literals;
 
 using u8 = unsigned char;
 using u16 = unsigned short;
+using u32 = unsigned int;
 
 using bounded_keyword_then_tail =
   s2s::struct_field_list<
@@ -48,6 +50,20 @@ using bounded_vector_then_tail =
 using bounded_vector_only =
   s2s::struct_field_list<
     s2s::vec_field<"data", u8, s2s::until<u8{0}>, s2s::max_bytes<79>>
+  >;
+
+// 067: a discovered length (until<>) feeding a computed one
+// (size_from_fields) — PNG's tEXt chunk. The text runs to the chunk's
+// declared end rather than carrying its own delimiter.
+constexpr auto remaining = [](auto length, const std::string& keyword) -> std::size_t {
+  return length - keyword.size() - 1;
+};
+
+using png_text_chunk =
+  s2s::struct_field_list<
+    s2s::basic_field<"length", u32, 4_B>,
+    s2s::str_field<"keyword", s2s::until<u8{0}>, s2s::max_bytes<79>>,
+    s2s::str_field<"text", s2s::size_from_fields<remaining, "length", "keyword">>
   >;
 
 auto main() -> int {
@@ -180,6 +196,24 @@ auto main() -> int {
     expect(eq(res.has_value(), false));
     expect(eq(res.error().failure_reason, s2s::buffer_exhaustion));
     expect(eq(res.error().failed_at, std::string_view{"data"}));
+  };
+
+  // 067: a discovered length feeding a computed one. The text's length is
+  // the chunk length minus the keyword's discovered length minus the one
+  // delimiter byte, not a delimiter of its own.
+  "the PNG tEXt shape composes a discovered length with a computed one"_test = [] constexpr {
+    std::array<u8, 15> buffer{
+      0x0b, 0x00, 0x00, 0x00,
+      'f', 'o', 'o', 0x00,
+      'b', 'a', 'r', ' ', 'b', 'a', 'z'
+    };
+    memstream<15> stream(buffer);
+
+    auto res = s2s::struct_cast_le<png_text_chunk>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq(std::string_view{(*res)["keyword"_f]}, std::string_view{"foo"}));
+    expect(eq(std::string_view{(*res)["text"_f]}, std::string_view{"bar baz"}));
   };
 
   // The read compares bytes, not signed chars: a delimiter >= 0x80 must not

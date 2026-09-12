@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <string>
 #include <string_view>
 #include <vector>
 #include <ut>
@@ -24,6 +25,7 @@ using namespace s2s_literals;
 
 using u8 = unsigned char;
 using u16 = unsigned short;
+using u32 = unsigned int;
 
 using bounded_keyword_then_tail =
   s2s::struct_field_list<
@@ -35,6 +37,19 @@ using bounded_vector_then_tail =
   s2s::struct_field_list<
     s2s::vec_field<"data", u8, s2s::until<u8{0}>, s2s::max_bytes<79>>,
     s2s::basic_field<"tail", u16, 2_B>
+  >;
+
+// 067: a discovered length (until<>) feeding a computed one
+// (size_from_fields) — PNG's tEXt chunk.
+constexpr auto remaining = [](auto length, const std::string& keyword) -> std::size_t {
+  return length - keyword.size() - 1;
+};
+
+using png_text_chunk =
+  s2s::struct_field_list<
+    s2s::basic_field<"length", u32, 4_B>,
+    s2s::str_field<"keyword", s2s::until<u8{0}>, s2s::max_bytes<79>>,
+    s2s::str_field<"text", s2s::size_from_fields<remaining, "length", "keyword">>
   >;
 
 auto main() -> int {
@@ -213,6 +228,33 @@ auto main() -> int {
     expect(eq(written.has_value(), false));
     expect(eq(written.error().failure_reason, s2s::error_reason::found_delimiter_in_value));
     expect(eq(written.error().failed_at, std::string_view{"data"}));
+  };
+
+  // 067: the PNG tEXt shape round trips byte-identically, with the keyword
+  // at PNG's stated 79-byte maximum — the same off-by-one bound that matters
+  // on the read side matters here too, since the write scans the value
+  // before emitting it.
+  "the PNG tEXt shape round trips with a 79-byte keyword"_test = [] constexpr {
+    std::array<u8, 89> buffer{};
+    memstream<89> stream(buffer);
+    png_text_chunk obj{};
+    std::string keyword;
+    for(std::size_t i = 0; i < 79; ++i)
+      keyword.push_back('k');
+    std::string text = "hello";
+    obj["length"_f] = static_cast<u32>(keyword.size() + 1 + text.size());
+    obj["keyword"_f] = keyword;
+    obj["text"_f] = text;
+
+    auto written = s2s::stream_cast_le<png_text_chunk>(stream, obj);
+    expect(eq(written.has_value(), true));
+
+    stream.rewind();
+    auto res = s2s::struct_cast_le<png_text_chunk>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["keyword"_f], keyword));
+    expect(eq((*res)["text"_f], text));
   };
 
   "vec_field: a value whose last byte is the delimiter is rejected too"_test = [] constexpr {
