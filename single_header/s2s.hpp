@@ -1980,6 +1980,12 @@ concept constraint_option_like = requires (const C& c, const T& v) {
 template <typename O, typename T>
 concept field_option_like = size_option_like<O, T> || constraint_option_like<O, T>;
 
+// A delimiter is one byte, so a delimited field's elements are one byte.
+// Phrased as an implication over the pair rather than folded into
+// buffer_size_like: a schema declaring neither half should never see this rule.
+template <typename S, typename buffer>
+concept delimited_buffer_is_byte_wide = !delimited_size_like<S> || byte_buffer_like<buffer>;
+
 // A bound is meaningful only where wire input drives the allocation, so only
 // the three container descriptors admit one. Everywhere else max_bytes fails
 // the per-element placeholder constraint exactly as an unrecognised entry
@@ -3815,7 +3821,8 @@ using magic_number = field<id, T, size, eq{expected}>;
 
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires buffer_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>> &&
+           delimited_buffer_is_byte_wide<size_type_of<size_of_pack<std::vector<T>, opts...>>, std::vector<T>>
 using vec_field =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,

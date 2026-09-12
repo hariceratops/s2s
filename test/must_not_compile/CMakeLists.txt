@@ -125,3 +125,8 @@ add_rejected_case_matching(rejects_stream_cast_le_on_a_self_announcing_schema
 # say limitation, not conflict.
 add_rejected_case_matching(rejects_more_than_one_announcing_record
   byte_order_misuse.cpp 5 "current limitation of s2s, not an inherent conflict")
+
+# The discovered-length size axis (062-064). Checked against a no-CASE control
+# build: 1 fails on delimited_buffer_is_byte_wide, not on any other option-pack
+# rule.
+add_rejected_case(rejects_wide_element_delimited_vector delimited_misuse.cpp 1)

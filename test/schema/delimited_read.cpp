@@ -23,6 +23,15 @@ using undeclared_bound_keyword =
     s2s::str_field<"keyword", s2s::until<u8{0}>>
   >;
 
+// 063: vec_field<u8> is the same read loop as str_field, instantiated a
+// second time — the same five cases, against std::vector<u8> instead of
+// std::string.
+using bounded_vector_then_tail =
+  s2s::struct_field_list<
+    s2s::vec_field<"data", u8, s2s::until<u8{0}>, s2s::max_bytes<79>>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+
 // PREPARE_INPUT_FILE's argument is a macro parameter, not a variadic one: a
 // brace-init list's top-level commas would be read as separate arguments.
 // Bytes therefore live in a named array declared ahead of the macro call, and
@@ -125,6 +134,101 @@ TEST(DelimitedRead, RejectsAnUnterminatedValueAtTheDefaultBoundWithNothingDeclar
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().failure_reason, s2s::error_reason::delimiter_not_found);
   EXPECT_EQ(result.error().failed_at, "keyword");
+}
+
+TEST(DelimitedRead, VecFieldReadsUntilTheDelimiterAndDropsIt) {
+  PREPARE_INPUT_FILE({
+    file.write(reinterpret_cast<const char*>(keyword_then_tail_bytes), sizeof(keyword_then_tail_bytes));
+  });
+
+  FIELD_LIST_SCHEMA = bounded_vector_then_tail;
+
+  FIELD_LIST_LE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_EQ(fields["data"_f], (std::vector<u8>{'f', 'o', 'o'}));
+    EXPECT_EQ(fields["tail"_f], u16{0x1122});
+  });
+}
+
+TEST(DelimitedRead, VecFieldDelimiterInFirstPositionYieldsAnEmptyValue) {
+  PREPARE_INPUT_FILE({
+    file.write(reinterpret_cast<const char*>(empty_keyword_bytes), sizeof(empty_keyword_bytes));
+  });
+
+  FIELD_LIST_SCHEMA = bounded_vector_then_tail;
+
+  FIELD_LIST_LE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    auto fields = *result;
+    EXPECT_TRUE(fields["data"_f].empty());
+    EXPECT_EQ(fields["tail"_f], u16{0x1122});
+  });
+}
+
+TEST(DelimitedRead, VecFieldMaxBytesAcceptsAValueExactlyAtItsDeclaredBound) {
+  FIELD_LIST_SCHEMA = bounded_vector_then_tail;
+
+  PREPARE_INPUT_FILE({
+    std::string value(79, 'a');
+    value.push_back(static_cast<char>(0x00));
+    value.push_back(static_cast<char>(0x22));
+    value.push_back(static_cast<char>(0x11));
+    file.write(value.data(), static_cast<std::streamsize>(value.size()));
+  });
+
+  FIELD_LIST_LE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["data"_f].size(), 79u);
+  });
+}
+
+TEST(DelimitedRead, VecFieldMaxBytesRejectsAValueOneByteOverItsDeclaredBound) {
+  using bounded_only =
+    s2s::struct_field_list<
+      s2s::vec_field<"data", u8, s2s::until<u8{0}>, s2s::max_bytes<79>>
+    >;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  const std::string value(80, 'a');
+  stream.write(value.data(), static_cast<std::streamsize>(value.size()));
+
+  auto result = s2s::struct_cast_le<bounded_only>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::delimiter_not_found);
+  EXPECT_EQ(result.error().failed_at, "data");
+}
+
+TEST(DelimitedRead, VecFieldStreamRunningDryBeforeTheDelimiterReportsBufferExhaustion) {
+  PREPARE_INPUT_FILE({
+    file.write(reinterpret_cast<const char*>(short_stream_bytes), sizeof(short_stream_bytes));
+  });
+
+  FIELD_LIST_SCHEMA = bounded_vector_then_tail;
+
+  FIELD_LIST_LE_READ_CHECK({
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error().failure_reason, s2s::error_reason::buffer_exhaustion);
+    EXPECT_EQ(result.error().failed_at, "data");
+  });
+}
+
+TEST(DelimitedRead, VecFieldRejectsAnUnterminatedValueAtTheDefaultBoundWithNothingDeclared) {
+  using undeclared_bound_vector =
+    s2s::struct_field_list<
+      s2s::vec_field<"data", u8, s2s::until<u8{0}>>
+    >;
+
+  std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
+  const std::string value(s2s::default_max_bytes + 1, 'a');
+  stream.write(value.data(), static_cast<std::streamsize>(value.size()));
+
+  auto result = s2s::struct_cast_le<undeclared_bound_vector>(stream);
+
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().failure_reason, s2s::error_reason::delimiter_not_found);
+  EXPECT_EQ(result.error().failed_at, "data");
 }
 
 TEST(DelimitedRead, DelimiterAtOrAbove0x80IsMatchedNotSignExtendedPast) {

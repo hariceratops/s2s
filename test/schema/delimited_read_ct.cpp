@@ -8,9 +8,11 @@
 // -fconstexpr-ops-limit and -fconstexpr-loop-limit; that path is exercised in
 // delimited_read.cpp (GoogleTest) only.
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <string_view>
+#include <vector>
 #include <ut>
 
 #include "../../include/s2s.hpp"
@@ -33,6 +35,19 @@ using bounded_keyword_then_tail =
 using bounded_only =
   s2s::struct_field_list<
     s2s::str_field<"keyword", s2s::until<u8{0}>, s2s::max_bytes<79>>
+  >;
+
+// 063: vec_field<u8> shares read_delimited with str_field, instantiated a
+// second time — the same five cases, against std::vector<u8>.
+using bounded_vector_then_tail =
+  s2s::struct_field_list<
+    s2s::vec_field<"data", u8, s2s::until<u8{0}>, s2s::max_bytes<79>>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+
+using bounded_vector_only =
+  s2s::struct_field_list<
+    s2s::vec_field<"data", u8, s2s::until<u8{0}>, s2s::max_bytes<79>>
   >;
 
 auto main() -> int {
@@ -102,6 +117,69 @@ auto main() -> int {
     expect(eq(res.has_value(), false));
     expect(eq(res.error().failure_reason, s2s::buffer_exhaustion));
     expect(eq(res.error().failed_at, std::string_view{"keyword"}));
+  };
+
+  // 063: the same matrix against vec_field<u8> — read_delimited instantiated
+  // a second time, not duplicated.
+  "vec_field reads until the delimiter and drops it"_test = [] constexpr {
+    std::array<u8, 6> buffer{'f', 'o', 'o', 0x00, 0x22, 0x11};
+    memstream<6> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded_vector_then_tail>(stream);
+
+    constexpr std::array<u8, 3> expected{'f', 'o', 'o'};
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["data"_f].size(), std::size_t{3}));
+    expect(eq(std::equal((*res)["data"_f].begin(), (*res)["data"_f].end(), expected.begin()), true));
+    expect(eq((*res)["tail"_f], u16{0x1122}));
+  };
+
+  "vec_field: a delimiter in first position yields an empty value"_test = [] constexpr {
+    std::array<u8, 3> buffer{0x00, 0x22, 0x11};
+    memstream<3> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded_vector_then_tail>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["data"_f].empty(), true));
+    expect(eq((*res)["tail"_f], u16{0x1122}));
+  };
+
+  "vec_field: max_bytes accepts a value exactly at its declared bound"_test = [] constexpr {
+    std::array<u8, 80> buffer{};
+    for(std::size_t i = 0; i < 79; ++i)
+      buffer[i] = 'a';
+    buffer[79] = 0x00;
+    memstream<80> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded_vector_only>(stream);
+
+    expect(eq(res.has_value(), true));
+    expect(eq((*res)["data"_f].size(), std::size_t{79}));
+  };
+
+  "vec_field: max_bytes rejects a value one byte over its declared bound"_test = [] constexpr {
+    std::array<u8, 80> buffer{};
+    for(std::size_t i = 0; i < 80; ++i)
+      buffer[i] = 'a';
+    memstream<80> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded_vector_only>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::error_reason::delimiter_not_found));
+    expect(eq(res.error().failed_at, std::string_view{"data"}));
+  };
+
+  "vec_field: a stream that runs dry before the delimiter reports buffer_exhaustion"_test = [] constexpr {
+    std::array<u8, 3> buffer{'a', 'b', 'c'};
+    memstream<3> stream(buffer);
+
+    auto res = s2s::struct_cast_le<bounded_vector_then_tail>(stream);
+
+    expect(eq(res.has_value(), false));
+    expect(eq(res.error().failure_reason, s2s::buffer_exhaustion));
+    expect(eq(res.error().failed_at, std::string_view{"data"}));
   };
 
   // The read compares bytes, not signed chars: a delimiter >= 0x80 must not

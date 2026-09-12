@@ -64,7 +64,8 @@ using magic_number = field<id, T, size, eq{expected}>;
 
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires buffer_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>> &&
+           delimited_buffer_is_byte_wide<size_type_of<size_of_pack<std::vector<T>, opts...>>, std::vector<T>>
 using vec_field =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,
