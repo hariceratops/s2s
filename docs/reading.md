@@ -127,6 +127,7 @@ the same buffer is usually simpler.
 | a constraint on a `variance` rejected the resolved variant | `validation_failure` | the union field |
 | no `match_case` matched and no `branch` predicate held | `type_deduction_failure` | the union field |
 | a length exceeded the field's allocation ceiling | `excessive_length` | the container field |
+| a delimited field's `max_bytes` bound was reached before its delimiter | `delimiter_not_found` | the delimited field |
 
 Note the first and last rows are not the same failure. `buffer_exhaustion`
 means a read began and the stream ran dry; `excessive_length` means the read

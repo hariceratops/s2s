@@ -242,7 +242,8 @@ Entries under `test/must_not_compile/` are expected to fail to build, and
 - [x] Optionals
 - [x] Unions
 - [ ] Bitfields
-- [ ] Read-Until Delimiter[s]
+- [x] Read Until a Delimiter Byte
+- [ ] Read Until a Sentinel Record
 - [x] Support for all major compilers
 - [ ] Full Support in Freestanding Compilers
 - [x] Compile-time Endianness Handling

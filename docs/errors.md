@@ -9,7 +9,9 @@ enum error_reason {
   validation_failure,
   type_deduction_failure,
   found_contradicting_length,
-  excessive_length
+  excessive_length,
+  delimiter_not_found,
+  found_delimiter_in_value
 };
 
 struct cast_error {
@@ -30,6 +32,14 @@ satisfiable and nothing was allocated for it. See
 [Allocation limits](reading.md#allocation-limits) for the ceiling it reports
 against and how to change it.
 
+A delimited field (`until<d>`, see [The size axis](schema/size-axis.md)) can
+fail a fifth way while reading: `delimiter_not_found`, when its `max_bytes`
+bound is reached before the delimiter turns up. It is not `buffer_exhaustion`
+under another name — `buffer_exhaustion` means the stream ran dry;
+`delimiter_not_found` means bytes kept arriving and none of them was the
+delimiter. Truncated and corrupt are different facts about a file, and a
+caller can act differently on each.
+
 A byte-order marker that matches no case is a `validation_failure`, at the
 announcing field's id — not a `type_deduction_failure`, though it is a deduction
 that failed. On the type axis a failed deduction means the reader cannot proceed
@@ -43,6 +53,14 @@ which means two parts of the struct imply different lengths for the same data �
 a cross-field disagreement rather than a value that is wrong on its own terms.
 `excessive_length` is read-only: a write's container is one the caller already
 holds, so nothing is being allocated from an untrusted number.
+
+A write can also fail with `found_delimiter_in_value`, when a delimited field's
+value contains its own delimiter byte and so cannot round-trip: written whole,
+it would read back short with no error raised anywhere. It is not folded into
+`validation_failure` — the author has not broken a constraint they wrote, they
+have hit a rule of the size form itself, and no other size form has a content
+rule at all. The check runs before any byte of the field is emitted, so a
+rejected value leaves the stream untouched.
 
 Which check produces which reason is tabulated per direction:
 [Read errors](reading.md#read-errors) and

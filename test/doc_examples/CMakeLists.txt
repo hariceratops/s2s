@@ -116,6 +116,14 @@ target_compile_options(guide_delimited_composition_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
 add_test(NAME guide_delimited_composition_example COMMAND guide_delimited_composition_example)
 
+# docs/schema/size-axis.md: the until<> example — an ELF string table entry.
+add_executable(guide_delimited_size_example guide_delimited_size_example.cpp)
+add_dependencies(guide_delimited_size_example generate_single_header)
+target_include_directories(guide_delimited_size_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_delimited_size_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+add_test(NAME guide_delimited_size_example COMMAND guide_delimited_size_example)
+
 # The README's read example opens a file the way a consumer would, so the file
 # has to exist before it runs. Generated rather than shown, to keep that example
 # a pitch instead of a setup script.

@@ -114,8 +114,8 @@ consumes off the wire, and where that count comes from.
 | `array_of_records<id, T, N, c>` | array of records | `std::array<T, N>`, `T` a schema | sum of `N` nested schemas |
 | `fixed_string_field<id, N, c>` | const-sized string | `fixed_string<N>` | `N + 1`, terminator included |
 | `c_str_field<id, N, c>` | const-sized string | `char[N + 1]` | `N + 1`, terminator included |
-| `str_field<id, size, c>` | length-prefixed string | `std::string` | byte count from the size axis |
-| `vec_field<id, T, size, c>` | length-prefixed vector of trivials | `std::vector<T>` | element count from the size axis |
+| `str_field<id, size, c>` | length-prefixed string | `std::string` | byte count from the size axis, or — for `until<d>` — whatever precedes the delimiter, plus the delimiter itself |
+| `vec_field<id, T, size, c>` | length-prefixed vector of trivials | `std::vector<T>` | element count from the size axis, or — for `until<d>`, byte-wide `T` only — whatever precedes the delimiter, plus the delimiter itself |
 | `vector_of_records<id, T, size, c>` | length-prefixed vector of records | `std::vector<T>`, `T` a schema | element count from the size axis |
 | `struct_field<id, T>` | nested record | `T`, a schema | whatever the nested schema occupies |
 | `magic_byte_array<id, N, expected>` | magic bytes | `std::array<unsigned char, N>` | `N`; the value is checked on read and supplied on write |
