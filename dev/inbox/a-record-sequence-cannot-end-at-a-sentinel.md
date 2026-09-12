@@ -108,3 +108,46 @@ stream in the companion brief.
 - Is there a format where the sentinel is a *value the schema reads earlier*
   rather than a constant? Nothing in the scan suggested one, but the question
   decides whether the value stays a template parameter.
+
+## Settled elsewhere (2026-09-10)
+
+The companion's requirements interview ran first and closed three of the
+questions above. Recorded here so this brief's own interview starts from them
+rather than reopening them.
+
+- **Delimited runs of trivials are not this feature's.** `until<>` is accepted
+  on `vec_field` as well as `str_field`, so a run of trivials ending at a
+  sentinel value is spelled there. The open question "does this belong on
+  `vec_field` of trivials as well" is answered no, on the grounds this brief
+  already gave: two ways to say one thing is worse than one.
+- **The terminating element should be discarded** — a recommendation, not yet
+  the user's decision. The reasoning: keeping it moves the cost onto the caller,
+  who must remember to append a terminator by hand on write, and a caller who
+  forgets writes a malformed file with no error raised anywhere. That is the
+  same silent-corruption class the companion's "a value containing the
+  delimiter must fail to write" rule exists to prevent, and the library already
+  distinguishes constraints it can satisfy (`eq{v}`) from ones it can only
+  check (`lt{100}`). Discarding forces the write path to synthesise, which is
+  what makes the open question below — whether `until_field_equals` must name
+  the element's first field — a real compile-time check that needs a precise
+  rule.
+- **Acceptance criteria carried forward:** GIF sub-block runs and DNS label
+  lists, both round-tripping. Named during the companion's interview as this
+  feature's witnesses, not that one's.
+
+Still open and untouched by that interview: whether the named field must be the
+element's first, and what the compile-time check is checking; a distinct
+`error_reason` for a run that ends without its sentinel; nesting, and whether
+the bound applies per run or across the nest; whether any format supplies the
+sentinel as a value read earlier.
+
+One correction to this brief's own reasoning, from the same interview: the
+rejection of "peeking or ungetting so the terminator stays unconsumed" rests on
+a false premise. Adding a lookahead operation to the stream concept is
+**additive, not breaking** — a capability concept plus `if constexpr` dispatch
+leaves every existing custom stream compiling, on a fallback path. The direction
+may still be wrong for this feature, but it has to be re-argued on its merits
+rather than dismissed as a breaking change. Note also that `peek` is the wrong
+primitive regardless: `std::istream::peek()` pays the same per-call sentry cost
+as `read`, and peeking K bytes at once has no `std::istream` spelling that does
+not require a seek.
