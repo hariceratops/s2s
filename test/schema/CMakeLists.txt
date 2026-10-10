@@ -113,3 +113,7 @@ add_ut_test(delimited_write_ct)
 # the _ct source.
 add_struct_cast_test(sentinel_records_read)
 add_ut_test(sentinel_records_read_ct)
+
+# The write half: the synthesised terminator (071).
+add_struct_cast_test(sentinel_records_write)
+add_ut_test(sentinel_records_write_ct)

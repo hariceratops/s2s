@@ -14,6 +14,7 @@
 #include "../order_deduction/order_deduction_impl.hpp"
 #include "../error/cast_error.hpp"
 #include "../lib/algorithms/algorithms.hpp"
+#include "../field_list/sentinel_terminator.hpp"
 #include "derived_value.hpp"
 #include "write_impl.hpp"
 
@@ -212,6 +213,28 @@ struct write_field<T, F> {
         return res;
     }
     return {};
+  }
+};
+
+template <sentinel_terminated_record_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
+    using record = extract_type_from_vec_t<typename T::field_type>;
+    constexpr auto field_size = T::field_size;
+
+    for(const auto& rec: value) {
+      auto res = write_nested<record>(s, rec, order);
+      if(!res)
+        return res;
+    }
+    return write_nested<record>(s, synthesised_terminator<field_size, record>(), order);
   }
 };
 

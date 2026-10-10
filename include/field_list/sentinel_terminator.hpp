@@ -24,6 +24,16 @@ constexpr auto matches_sentinel(const record& r) -> bool {
   const auto& v = field_value_of<field_accessor<sz::sentinel_field>>(r);
   return v == static_cast<std::remove_cvref_t<decltype(v)>>(sz::sentinel_value);
 }
+// Everything else in the element is whatever default construction leaves, which
+// the soundness check established is the minimal terminator.
+template <auto size, field_list_like record>
+constexpr auto synthesised_terminator() -> record {
+  using sz = size_type_of<size>;
+  record r{};
+  auto& v = field_value_of<field_accessor<sz::sentinel_field>>(r);
+  v = static_cast<std::remove_cvref_t<decltype(v)>>(sz::sentinel_value);
+  return r;
+}
 // Whether a field emits a determined number of bytes in a default-constructed
 // element, which is what the synthesised terminator is. The purpose is the
 // determined width; "driven by the named field" is not it, because every
