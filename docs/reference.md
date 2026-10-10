@@ -4,7 +4,7 @@ The descriptor aliases as declared in `include/api/field_descriptors.hpp`. The
 [descriptor table](schema/index.md#the-descriptors) is the readable form; this is the exact one.
 
 ```cpp
-template <fixed_string id, integral T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
+template <fixed_string id, trivial T, fixed_size_like size_type, auto constraint_on_value = no_constraint<T>{}>
   requires field_fits_to_underlying_type<size_type, T>
 using basic_field = field<id, T, size_type, constraint_on_value>;
 

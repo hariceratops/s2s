@@ -151,3 +151,14 @@ add_rejected_case(rejects_sentinel_with_field_count sentinel_misuse.cpp 1)
 add_rejected_case(rejects_sentinel_with_literal_count sentinel_misuse.cpp 2)
 add_rejected_case(rejects_sentinel_on_computed_size_element sentinel_misuse.cpp 3)
 add_rejected_case(rejects_nonzero_sentinel_on_length_target sentinel_misuse.cpp 4)
+
+# A floating-point field's size (change/float-basic-field). Each checked
+# against a no-CASE control build, which compiles the valid spellings, and fails
+# on field_fits_to_underlying_type: 1-3 on a width other than sizeof, 4 on a
+# long double that byteswapped cannot swap, 5 on the same check reached through
+# as_trivial.
+add_rejected_case(rejects_narrow_float float_field_misuse.cpp 1)
+add_rejected_case(rejects_wide_float float_field_misuse.cpp 2)
+add_rejected_case(rejects_narrow_double float_field_misuse.cpp 3)
+add_rejected_case(rejects_sized_long_double float_field_misuse.cpp 4)
+add_rejected_case(rejects_narrow_float_in_tag float_field_misuse.cpp 5)

@@ -129,7 +129,7 @@ alternative has no id of its own — it inherits the `variance`'s.
 
 | Tag | Alternative type |
 |---|---|
-| `as_trivial<T, opts...>` | integral `T` |
+| `as_trivial<T, opts...>` | integral or floating-point `T` |
 | `as_struct<T, opts...>` | a nested schema |
 | `as_fixed_arr<T, N, opts...>` | `std::array<T, N>` |
 | `as_arr_of_records<T, N, opts...>` | `std::array<T, N>` of schemas |

@@ -62,7 +62,7 @@ TEST(TrivialRead, ReadsFloatFieldsInBothByteOrders) {
 
   FIELD_LIST_SCHEMA =
     s2s::struct_field_list<
-      s2s::field<"a", float, 4_B, s2s::no_constraint<float>{}>,
+      s2s::basic_field<"a", float, 4_B>,
       s2s::fixed_array_field<"b", float, 2>
     >;
 
