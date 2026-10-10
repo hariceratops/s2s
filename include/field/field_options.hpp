@@ -9,6 +9,7 @@
 #include "../field_size/field_size.hpp"
 #include "../field_size/comptime_field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
+#include "../lib/s2s_traits/type_traits.hpp"
 
 
 // Split out of api/field_descriptors.hpp so type_tags.hpp can reach it.
@@ -33,8 +34,10 @@ concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(fi
 // `field_option_like<T> auto... opts` substitutes decltype(opt) as the first
 // argument, so a value-parameterised concept could not be used this way at all.
 template <typename S, typename T>
-concept size_option_like = fixed_size_like<S>    ||
-                           variable_size_like<S> ||
+concept size_option_like = fixed_size_like<S>     ||
+                           variable_size_like<S>  ||
+                           delimited_size_like<S> ||
+                           sentinel_terminated_size_like<S> ||
                            size_dont_care_like<S> ||
                            selectable_size_like<S>;
 
@@ -45,6 +48,12 @@ concept constraint_option_like = requires (const C& c, const T& v) {
 
 template <typename O, typename T>
 concept field_option_like = size_option_like<O, T> || constraint_option_like<O, T>;
+
+// A delimiter is one byte, so a delimited field's elements are one byte.
+// Phrased as an implication over the pair rather than folded into
+// buffer_size_like: a schema declaring neither half should never see this rule.
+template <typename S, typename buffer>
+concept delimited_buffer_is_byte_wide = !delimited_size_like<S> || byte_buffer_like<buffer>;
 
 // A bound is meaningful only where wire input drives the allocation, so only
 // the three container descriptors admit one. Everywhere else max_bytes fails

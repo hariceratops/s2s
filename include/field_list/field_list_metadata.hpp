@@ -67,6 +67,30 @@ struct extract_length_dependencies<
     static_vector<sv, max_dep_count_per_struct>(as_sv(len_source_of<size_type_of<size>>::value));
 };
 
+// A delimiter is carried in the field's own declaration, so a delimited field
+// depends on no sibling — the same answer a fixed size gives, for the same
+// reason, and stated for the same reason the size_dont_care arm is.
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
+  requires delimited_size_like<size_type_of<size>>
+struct extract_length_dependencies<
+  field<id, T, size, constraint, bound>
+>
+{
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
+};
+
+// The sentinel's field name resolves inside the element's field list, not in
+// the list that declares the run, so a sentinel-terminated run depends on no
+// sibling.
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
+  requires sentinel_terminated_size_like<size_type_of<size>>
+struct extract_length_dependencies<
+  field<id, T, size, constraint, bound>
+>
+{
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
+};
+
 template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires is_computed_size_v<size_type_of<size>>
 struct extract_length_dependencies<

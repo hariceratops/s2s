@@ -261,6 +261,13 @@ inline constexpr std::size_t extract_size_from_array_v = extract_size_from_array
 template <typename T>
 concept variable_sized_buffer_like = vector_like<T> || string_like<T>;
 
+// A delimiter is one byte, so a delimited field's elements are one byte.
+// Stated once at the engine level and reused at the descriptor level
+// (field_options.hpp) so the two cannot drift.
+template <typename T>
+concept byte_buffer_like =
+  variable_sized_buffer_like<T> && sizeof(typename T::value_type) == 1;
+
 template <typename T>
 concept constant_sized_like = fixed_buffer_like<T> || trivial<T>;
 

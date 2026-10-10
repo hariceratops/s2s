@@ -25,6 +25,30 @@ struct byte_count {
 
 struct size_dont_care_t {};
 
+// The one thing a delimited field declares. Like size_from_fields_t and unlike
+// byte_count, the payload lives in the type: read_field, write_field and the
+// option classifier all pattern-match on it.
+template <unsigned char d>
+struct delimited_by_t {
+  static constexpr unsigned char delim = d;
+};
+
+// What a sentinel-terminated record sequence declares: which field of the
+// element decides, and the value that ends the run. Both live in the type,
+// for the same reason as above: read_field tests on them and the option
+// classifier matches on them.
+template <fixed_string id, auto v>
+struct terminated_by_sentinel_t {
+  static constexpr auto sentinel_field = id;
+  static constexpr auto sentinel_value = v;
+};
+
+// A delimiter is one byte. Named rather than written inline as a requires
+// clause so the diagnostic for until<u16{0x0d0a}> says what the rule is, and
+// so a multi-byte form can later relax it in one place.
+template <typename T>
+concept delimiter_value_like = std::is_integral_v<T> && sizeof(T) == 1;
+
 // Safety is on by default: a field that declares nothing still gets a ceiling.
 // The macro is the one global knob — raise it, or set it to SIZE_MAX to turn
 // the defaults off wholesale. It cannot reach a declared max_bytes, which is
@@ -70,6 +94,15 @@ inline constexpr auto size_from_fields = size_from_fields_t<callable, field_name
 
 template <auto callable, fixed_string... ids>
 inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
+
+// The schema may spell the delimiter as u8{0}, '\0' or char{0}; all three
+// land on the same delimited_by_t<0>, so two schemas that mean the same
+// delimiter are the same type.
+template <delimiter_value_like auto d>
+inline constexpr auto until = delimited_by_t<static_cast<unsigned char>(d)>{};
+
+template <fixed_string id, auto v>
+inline constexpr auto until_field_equals = terminated_by_sentinel_t<id, v>{};
 
 inline constexpr auto size_dont_care = size_dont_care_t{};
 
@@ -166,6 +199,45 @@ struct is_variable_size<size_from_fields_t<callable, ids>> {
 template <typename T>
 inline constexpr bool is_variable_size_v = is_variable_size<T>::res;
 
+// The third size category: its length is what the read produces, not what
+// the read is told. Deliberately its own trait rather than a widening of
+// is_variable_size — see field_traits.hpp's is_delimited_field for what that
+// buys.
+template <typename T>
+struct is_delimited_size {
+  static constexpr bool res = false;
+};
+
+template <unsigned char d>
+struct is_delimited_size<delimited_by_t<d>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_delimited_size_v = is_delimited_size<T>::res;
+
+template <typename T>
+concept delimited_size_like = is_delimited_size_v<T>;
+
+// The fourth size category: a record sequence whose length is the position of
+// the element that ends it. Its own trait, not a widening of
+// is_variable_size, because every consumer of that trait wants a count.
+template <typename T>
+struct is_sentinel_terminated_size {
+  static constexpr bool res = false;
+};
+
+template <fixed_string id, auto v>
+struct is_sentinel_terminated_size<terminated_by_sentinel_t<id, v>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_sentinel_terminated_size_v = is_sentinel_terminated_size<T>::res;
+
+template <typename T>
+concept sentinel_terminated_size_like = is_sentinel_terminated_size_v<T>;
+
 // A size produced by a user callable rather than read from a single field.
 // The distinction matters only on the write path: len_from_field can be
 // inverted and derived, this cannot, so it can only be verified.
@@ -192,6 +264,18 @@ concept variable_size_like = is_variable_size_v<T>;
 template <typename T>
 concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
 
+// The sizes a resizable byte buffer may declare: a count resolved before the
+// read, or a delimiter that ends it. Deliberately a *new* concept rather than
+// a widening of variable_size_like, which is the gate into deduce_field_size
+// and must not see a size that has nothing to resolve to.
+template <typename T>
+concept buffer_size_like = variable_size_like<T> || delimited_size_like<T>;
+
+// The sizes a vector of records may declare: a count resolved before the read,
+// or a sentinel element that ends it.
+template <typename T>
+concept record_sequence_size_like = variable_size_like<T> || sentinel_terminated_size_like<T>;
+
 template <typename T>
 struct is_selectable_size {
   static constexpr bool res = false;
@@ -210,8 +294,10 @@ template <typename T>
 concept selectable_size_like = is_selectable_size_v<T>;
 
 template <typename T>
-concept is_size_like = fixed_size_like<T>    ||
-                       variable_size_like<T> ||
+concept is_size_like = fixed_size_like<T>     ||
+                       variable_size_like<T>  ||
+                       delimited_size_like<T> ||
+                       sentinel_terminated_size_like<T> ||
                        selectable_size_like<T>;
 
 template <typename T>

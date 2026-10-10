@@ -34,6 +34,8 @@ folder can be used for direct inclusion into a project
     * Length prefixed vector of records
     * Const sized strings
     * Length prefixed strings
+    * Delimiter-terminated strings and vectors of trivials
+    * Record sequences ending at a sentinel element
     * Optionals
     * Unions
     * Magic strings
@@ -242,7 +244,8 @@ Entries under `test/must_not_compile/` are expected to fail to build, and
 - [x] Optionals
 - [x] Unions
 - [ ] Bitfields
-- [ ] Read-Until Delimiter[s]
+- [x] Read Until a Delimiter Byte
+- [x] Read Until a Sentinel Record
 - [x] Support for all major compilers
 - [ ] Full Support in Freestanding Compilers
 - [x] Compile-time Endianness Handling

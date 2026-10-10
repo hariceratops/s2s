@@ -6,6 +6,7 @@
 #include "../field/field.hpp"
 #include "../field/field_options.hpp"
 #include "../field_list/field_list_base.hpp"
+#include "../field_list/sentinel_terminator.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
@@ -26,7 +27,8 @@ struct always_true {
 using always_present = eval_bool_from_fields<always_true{}>;
 
 template <fixed_string id, integral T, field_option_like<T> auto... opts>
-  requires field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
+  requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
+           field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 using basic_field = field<id, T, size_of_pack<T, opts...>, constraint_of_pack<T, opts...>>;
 
 template <fixed_string id, field_containable T, std::size_t N,
@@ -63,14 +65,17 @@ using magic_number = field<id, T, size, eq{expected}>;
 
 // todo how user can provide user defined vector impl or allocator
 template <fixed_string id, typename T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires buffer_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>> &&
+           delimited_buffer_is_byte_wide<size_type_of<size_of_pack<std::vector<T>, opts...>>, std::vector<T>>
 using vec_field =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,
         bound_of_pack<std::vector<T>, opts...>>;
 
 template <fixed_string id, field_list_like T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires record_sequence_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>> &&
+           sentinel_field_exists<size_type_of<size_of_pack<std::vector<T>, opts...>>, T> &&
+           sentinel_terminator_is_synthesisable<size_type_of<size_of_pack<std::vector<T>, opts...>>, T>
 using vector_of_records =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,
@@ -78,7 +83,7 @@ using vector_of_records =
 
 // todo check if this will work for all char types like wstring
 template <fixed_string id, boundable_field_option_like<std::string> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::string, opts...>>>
+  requires buffer_size_like<size_type_of<size_of_pack<std::string, opts...>>>
 using str_field =
   field<id, std::string, size_of_pack<std::string, opts...>,
         constraint_of_pack<std::string, opts...>,

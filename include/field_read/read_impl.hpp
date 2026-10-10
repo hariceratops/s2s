@@ -93,6 +93,38 @@ constexpr auto read_native(stream& s, T& obj, std::size_t len_to_read) -> rw_res
   }
 }
 
+// Per byte, by decision: the spec's format scan puts every delimited field at
+// tens of bytes, and the alternatives all change the stream concept or need a
+// pushback buffer threaded through every field reader. read_until is recorded
+// in the spec as the fast primitive and is deliberately not built.
+template <std::size_t ceiling, byte_buffer_like T, input_stream_like stream>
+constexpr auto read_delimited(stream& s, T& obj, unsigned char delim) -> rw_result {
+  using element = typename T::value_type;
+  // Cast the delimiter down once, rather than promoting each element up: for
+  // a std::string and a delimiter >= 0x80 the promoted comparison is false
+  // for the very byte that should match.
+  const element stop = static_cast<element>(delim);
+
+  obj.clear();
+  while(true) {
+    element byte{};
+    // The one place the two stream shapes coincide. read_native_impl's
+    // constexpr overload stages through std::array<char, sizeof(T)> and its
+    // runtime overload through char*, and at sizeof(element) == 1 both are a
+    // single byte — so the existing overload pair is the whole of the
+    // constexpr/runtime split, and this loop needs no `if constexpr` of its
+    // own.
+    auto res = read_native_impl(s, byte, sizeof(element));
+    if(!res)
+      return res;
+    if(byte == stop)
+      return {};
+    if(obj.size() == ceiling)
+      return std::unexpected(error_reason::delimiter_not_found);
+    obj.push_back(byte);
+  }
+}
+
 template <trivial T, input_stream_like stream>
 constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
   auto res = read_native_impl(s, obj, size_to_read);

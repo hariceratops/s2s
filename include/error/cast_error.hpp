@@ -19,7 +19,24 @@ enum error_reason {
   // count, or exceed the field's ceiling. Distinct from buffer_exhaustion,
   // which means the stream ran dry *during* a read — this one fires before any
   // allocation happens, which is the whole point of it.
-  excessive_length
+  excessive_length,
+  // A delimited read's bound was reached with no delimiter found. Distinct
+  // from buffer_exhaustion, which means the stream ran dry first: truncated
+  // and corrupt are different facts about a file, and a caller can act
+  // differently on them.
+  delimiter_not_found,
+  // The write-side rejection: a value containing the delimiter would read
+  // back short, with no error raised anywhere else. Not folded into
+  // validation_failure — the author has not violated a constraint they
+  // wrote, they have hit a rule of the size form.
+  found_delimiter_in_value,
+  // A sentinel-terminated record read reached its bound with no sentinel
+  // element found. Distinct from buffer_exhaustion for the same reason
+  // delimiter_not_found is.
+  sentinel_not_found,
+  // The write-side rejection: an element whose named field would be written as
+  // the sentinel would read back as the run's end and silently drop every element after it.
+  found_sentinel_in_sequence
 };
 
 

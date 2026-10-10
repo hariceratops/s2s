@@ -13,6 +13,8 @@
 #include "../field_compute/computation_from_fields_impl.hpp"
 #include "../order_deduction/order_deduction_impl.hpp"
 #include "../error/cast_error.hpp"
+#include "../lib/algorithms/algorithms.hpp"
+#include "../field_list/sentinel_terminator.hpp"
 #include "derived_value.hpp"
 #include "write_impl.hpp"
 
@@ -98,6 +100,42 @@ struct write_field<T, F> {
 };
 
 
+// No entry in derived_value.hpp's obligation machinery: a delimited field
+// derives nothing (§1.2 of the design) — the container is the only
+// authority, so there is no length slot to invert and nothing to check the
+// container against.
+template <delimited_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness&) const -> rw_result {
+    using element = typename T::field_type::value_type;
+    constexpr element stop = static_cast<element>(size_type_of<T::field_size>::delim);
+
+    // Before any byte leaves: a rejected value leaves the stream untouched,
+    // which is the rule write_variant_impl already states — a discarded
+    // value is recoverable, half a field is not.
+    if(find_index(value, stop) != value.size())
+      return std::unexpected(error_reason::found_delimiter_in_value);
+
+    // Empty is a valid value and emits the lone delimiter. Skipped rather
+    // than written as a zero-length run: const_byte_addressof on an empty
+    // vector yields data(), which may be null.
+    if(!value.empty()) {
+      auto res = write_native(s, value, value.size());
+      if(!res)
+        return res;
+    }
+    return write_native_impl(s, stop, sizeof(stop));
+  }
+};
+
+
 template <typename F, typename stream>
 struct stream_cast_impl;
 
@@ -175,6 +213,46 @@ struct write_field<T, F> {
         return res;
     }
     return {};
+  }
+};
+
+template <sentinel_terminated_record_field_like T, field_list_like F>
+struct write_field<T, F> {
+  const typename T::field_type& value;
+  const F& field_list;
+
+  constexpr write_field(const typename T::field_type& value, const F& field_list)
+    : value(value), field_list(field_list) {}
+
+  template <typename stream>
+  constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
+    constexpr auto field_size = T::field_size;
+
+    for(const auto& rec: value) {
+      // Before this element's bytes leave, not before the run's: no rollback.
+      if(writes_sentinel(rec))
+        return std::unexpected(error_reason::found_sentinel_in_sequence);
+      auto res = write_nested<record>(s, rec, order);
+      if(!res)
+        return res;
+    }
+    return write_nested<record>(s, synthesised_terminator<field_size, record>(), order);
+  }
+
+private:
+  using record = extract_type_from_vec_t<typename T::field_type>;
+  using named = meta::type_of<
+    lookup_field<metadata_of<record>::value>(as_sv(size_type_of<T::field_size>::sentinel_field))->id>;
+
+  // The reader tests the wire value, so this asks the writer's own question. A
+  // named field that cannot be derived never reaches the wire; the element's own
+  // write reports why.
+  static constexpr auto writes_sentinel(const record& r) -> bool {
+    if constexpr(is_derived_target_v<named, record>) {
+      auto derived = derive_value<named, record>{}(r);
+      return derived && equals_sentinel<T::field_size>(*derived);
+    } else
+      return matches_sentinel<T::field_size>(r);
   }
 };
 

@@ -96,3 +96,24 @@ add_struct_cast_test(byte_order_axis_read)
 add_struct_cast_test(byte_order_axis_write)
 add_ut_test(byte_order_axis_read_ct)
 add_ut_test(byte_order_axis_write_ct)
+
+# The size axis's third category (062): a length discovered by the read
+# rather than declared before it. str_field only; vec_field is 063's.
+add_struct_cast_test(delimited_read)
+add_ut_test(delimited_read_ct)
+
+# 065: the write path's happy path — a value that does not contain the
+# delimiter. Rejecting one that does is 066's, in the same write_field
+# specialization.
+add_struct_cast_test(delimited_write)
+add_ut_test(delimited_write_ct)
+
+# A record sequence that ends at a sentinel element (069): the read half. The
+# write half is 071-072's; the soundness positive control (070) is asserted in
+# the _ct source.
+add_struct_cast_test(sentinel_records_read)
+add_ut_test(sentinel_records_read_ct)
+
+# The write half: the synthesised terminator (071).
+add_struct_cast_test(sentinel_records_write)
+add_ut_test(sentinel_records_write_ct)

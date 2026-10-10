@@ -125,3 +125,29 @@ add_rejected_case_matching(rejects_stream_cast_le_on_a_self_announcing_schema
 # say limitation, not conflict.
 add_rejected_case_matching(rejects_more_than_one_announcing_record
   byte_order_misuse.cpp 5 "current limitation of s2s, not an inherent conflict")
+
+# The discovered-length size axis (062-064). Checked against a no-CASE control
+# build: 1 fails on delimited_buffer_is_byte_wide, not on any other option-pack
+# rule.
+add_rejected_case(rejects_wide_element_delimited_vector delimited_misuse.cpp 1)
+
+# The delimiter spellings the form does not support (064). Each checked
+# against a no-CASE control build and confirmed to fail on its own
+# diagnostic: 2 on delimiter_value_like, 3 on basic_field's new fixed_size_like
+# clause (not on field_fits_to_underlying_type), 4 and 5 on
+# constraint_option_like — fixed_array_field and c_str_field take
+# constraint-only packs, so until<> is an unrecognised pack entry there, with
+# no production code involved.
+add_rejected_case(rejects_multi_byte_delimiter delimited_misuse.cpp 2)
+add_rejected_case(rejects_until_on_basic_field delimited_misuse.cpp 3)
+add_rejected_case(rejects_until_on_fixed_array_field delimited_misuse.cpp 4)
+add_rejected_case(rejects_until_on_c_str_field delimited_misuse.cpp 5)
+
+# The sentinel-terminated record sequence (070). Each checked against a
+# no-CASE control build and confirmed to fail on its own diagnostic: 1 and 2 on
+# pack_options' at-most-one-size assertion, 3 on terminator_field_check, 4 on
+# terminator_synthesis_check's derivation obligation.
+add_rejected_case(rejects_sentinel_with_field_count sentinel_misuse.cpp 1)
+add_rejected_case(rejects_sentinel_with_literal_count sentinel_misuse.cpp 2)
+add_rejected_case(rejects_sentinel_on_computed_size_element sentinel_misuse.cpp 3)
+add_rejected_case(rejects_nonzero_sentinel_on_length_target sentinel_misuse.cpp 4)

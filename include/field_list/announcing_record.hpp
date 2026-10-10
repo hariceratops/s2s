@@ -151,7 +151,7 @@ constexpr auto is_order_agnostic_field() -> bool {
     return is_order_agnostic_list_v<extract_type_from_field_v<T>>;
   else if constexpr(array_of_record_field_like<T>)
     return is_order_agnostic_list_v<extract_type_from_array_v<typename T::field_type>>;
-  else if constexpr(vector_of_record_field_like<T>)
+  else if constexpr(record_sequence_field_like<T>)
     return is_order_agnostic_list_v<extract_type_from_vec_t<typename T::field_type>>;
   else if constexpr(optional_field_like<T>)
     return is_order_agnostic_field<typename T::field_base_type>();
@@ -237,7 +237,7 @@ constexpr auto census_of_field() -> announcement_census {
     return census_of_list_v<extract_type_from_field_v<T>>;
   else if constexpr(array_of_record_field_like<T>)
     return folded_off_spine(census_of_list_v<extract_type_from_array_v<typename T::field_type>>);
-  else if constexpr(vector_of_record_field_like<T>)
+  else if constexpr(record_sequence_field_like<T>)
     return folded_off_spine(census_of_list_v<extract_type_from_vec_t<typename T::field_type>>);
   else if constexpr(optional_field_like<T>)
     return folded_off_spine(census_of_field<typename T::field_base_type>());
