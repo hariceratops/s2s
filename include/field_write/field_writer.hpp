@@ -226,15 +226,33 @@ struct write_field<T, F> {
 
   template <typename stream>
   constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
-    using record = extract_type_from_vec_t<typename T::field_type>;
     constexpr auto field_size = T::field_size;
 
     for(const auto& rec: value) {
+      // Before this element's bytes leave, not before the run's: no rollback.
+      if(writes_sentinel(rec))
+        return std::unexpected(error_reason::found_sentinel_in_sequence);
       auto res = write_nested<record>(s, rec, order);
       if(!res)
         return res;
     }
     return write_nested<record>(s, synthesised_terminator<field_size, record>(), order);
+  }
+
+private:
+  using record = extract_type_from_vec_t<typename T::field_type>;
+  using named = meta::type_of<
+    lookup_field<metadata_of<record>::value>(as_sv(size_type_of<T::field_size>::sentinel_field))->id>;
+
+  // The reader tests the wire value, so this asks the writer's own question. A
+  // named field that cannot be derived never reaches the wire; the element's own
+  // write reports why.
+  static constexpr auto writes_sentinel(const record& r) -> bool {
+    if constexpr(is_derived_target_v<named, record>) {
+      auto derived = derive_value<named, record>{}(r);
+      return derived && equals_sentinel<T::field_size>(*derived);
+    } else
+      return matches_sentinel<T::field_size>(r);
   }
 };
 

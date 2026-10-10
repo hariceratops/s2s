@@ -18,11 +18,15 @@ namespace s2s {
 // Cast the sentinel to the named field's type once, rather than promoting the
 // field's value up: a signed char field holding 0xff compared against 0xff
 // promotes to -1 == 255 and would never match the value that ends the run.
+template <auto size, typename V>
+constexpr auto equals_sentinel(const V& v) -> bool {
+  return v == static_cast<V>(size_type_of<size>::sentinel_value);
+}
+// On an element the reader produced, the stored value is the wire value.
 template <auto size, field_list_like record>
 constexpr auto matches_sentinel(const record& r) -> bool {
   using sz = size_type_of<size>;
-  const auto& v = field_value_of<field_accessor<sz::sentinel_field>>(r);
-  return v == static_cast<std::remove_cvref_t<decltype(v)>>(sz::sentinel_value);
+  return equals_sentinel<size>(field_value_of<field_accessor<sz::sentinel_field>>(r));
 }
 // Everything else in the element is whatever default construction leaves, which
 // the soundness check established is the minimal terminator.

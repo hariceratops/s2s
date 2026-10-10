@@ -2742,7 +2742,10 @@ enum error_reason {
   // A sentinel-terminated record read reached its bound with no sentinel
   // element found. Distinct from buffer_exhaustion for the same reason
   // delimiter_not_found is.
-  sentinel_not_found
+  sentinel_not_found,
+  // The write-side rejection: an element whose named field would be written as
+  // the sentinel would read back as the run's end and silently drop every element after it.
+  found_sentinel_in_sequence
 };
 
 
@@ -3509,11 +3512,15 @@ namespace s2s {
 // Cast the sentinel to the named field's type once, rather than promoting the
 // field's value up: a signed char field holding 0xff compared against 0xff
 // promotes to -1 == 255 and would never match the value that ends the run.
+template <auto size, typename V>
+constexpr auto equals_sentinel(const V& v) -> bool {
+  return v == static_cast<V>(size_type_of<size>::sentinel_value);
+}
+// On an element the reader produced, the stored value is the wire value.
 template <auto size, field_list_like record>
 constexpr auto matches_sentinel(const record& r) -> bool {
   using sz = size_type_of<size>;
-  const auto& v = field_value_of<field_accessor<sz::sentinel_field>>(r);
-  return v == static_cast<std::remove_cvref_t<decltype(v)>>(sz::sentinel_value);
+  return equals_sentinel<size>(field_value_of<field_accessor<sz::sentinel_field>>(r));
 }
 // Everything else in the element is whatever default construction leaves, which
 // the soundness check established is the minimal terminator.
@@ -6346,15 +6353,33 @@ struct write_field<T, F> {
 
   template <typename stream>
   constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
-    using record = extract_type_from_vec_t<typename T::field_type>;
     constexpr auto field_size = T::field_size;
 
     for(const auto& rec: value) {
+      // Before this element's bytes leave, not before the run's: no rollback.
+      if(writes_sentinel(rec))
+        return std::unexpected(error_reason::found_sentinel_in_sequence);
       auto res = write_nested<record>(s, rec, order);
       if(!res)
         return res;
     }
     return write_nested<record>(s, synthesised_terminator<field_size, record>(), order);
+  }
+
+private:
+  using record = extract_type_from_vec_t<typename T::field_type>;
+  using named = meta::type_of<
+    lookup_field<metadata_of<record>::value>(as_sv(size_type_of<T::field_size>::sentinel_field))->id>;
+
+  // The reader tests the wire value, so this asks the writer's own question. A
+  // named field that cannot be derived never reaches the wire; the element's own
+  // write reports why.
+  static constexpr auto writes_sentinel(const record& r) -> bool {
+    if constexpr(is_derived_target_v<named, record>) {
+      auto derived = derive_value<named, record>{}(r);
+      return derived && equals_sentinel<T::field_size>(*derived);
+    } else
+      return matches_sentinel<T::field_size>(r);
   }
 };
 

@@ -33,7 +33,10 @@ enum error_reason {
   // A sentinel-terminated record read reached its bound with no sentinel
   // element found. Distinct from buffer_exhaustion for the same reason
   // delimiter_not_found is.
-  sentinel_not_found
+  sentinel_not_found,
+  // The write-side rejection: an element whose named field would be written as
+  // the sentinel would read back as the run's end and silently drop every element after it.
+  found_sentinel_in_sequence
 };
 
 
