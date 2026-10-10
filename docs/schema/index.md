@@ -80,9 +80,9 @@ is a compile error, and so is naming an id the schema does not contain, because
 the lookup is a concept check rather than a runtime search.
 
 **`type`** is an ordinary C++ type. Which types are admissible depends on the
-descriptor: `basic_field` takes integrals, the record descriptors take another
-`struct_field_list`, and the string and vector descriptors fix the type
-themselves.
+descriptor: `basic_field` takes integrals and floating-point types, the record
+descriptors take another `struct_field_list`, and the string and vector
+descriptors fix the type themselves.
 
 **`size`** says how many bytes the field occupies on the wire, which is not the
 same question as how large its C++ type is. A `u32` field can be declared to
@@ -108,7 +108,7 @@ consumes off the wire, and where that count comes from.
 
 | Descriptor | Wire concept | Type it holds | Bytes consumed |
 |---|---|---|---|
-| `basic_field<id, T, opts...>` | trivial | integral `T` | `sizeof(T)`, or an `N_B` that must fit it |
+| `basic_field<id, T, opts...>` | trivial | integral or floating-point `T` | `sizeof(T)`; an integer may take a narrower `N_B`, a float must take exactly `sizeof(T)` |
 | `fixed_array_field<id, T, N, c>` | array of trivials | `std::array<T, N>` | `N * sizeof(T)` |
 | `c_arr_field<id, T, N, c>` | array of trivials | `T[N]` | `N * sizeof(T)` |
 | `array_of_records<id, T, N, c>` | array of records | `std::array<T, N>`, `T` a schema | sum of `N` nested schemas |

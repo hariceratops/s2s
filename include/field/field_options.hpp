@@ -25,8 +25,16 @@
 // machinery about a descriptor's parameters, and field/ is the layer both sit
 // above.
 namespace s2s {
+// An integer may be declared narrower than its type (a 3-byte value in a u32),
+// but a float has no such reading: its bytes are one representation, so any
+// other width is a mis-declaration. The widths are the ones byteswapped can
+// swap, which also rejects a long double wherever it is wider than a double,
+// at the schema rather than at the leaf.
 template <auto size, typename field_type>
-concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
+concept field_fits_to_underlying_type =
+  (integral<field_type> && deduce_field_size<size>{}() <= sizeof(field_type)) ||
+  (floating_point<field_type> && deduce_field_size<size>{}() == sizeof(field_type) &&
+   (sizeof(field_type) == 2 || sizeof(field_type) == 4 || sizeof(field_type) == 8));
 
 // The trailing options of a descriptor are an unordered pack: a size, a
 // constraint, either, or neither. Classification is by the option's *type*,

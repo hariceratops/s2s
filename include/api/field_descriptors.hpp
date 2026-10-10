@@ -26,7 +26,7 @@ struct always_true {
 
 using always_present = eval_bool_from_fields<always_true{}>;
 
-template <fixed_string id, integral T, field_option_like<T> auto... opts>
+template <fixed_string id, trivial T, field_option_like<T> auto... opts>
   requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
            field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 using basic_field = field<id, T, size_of_pack<T, opts...>, constraint_of_pack<T, opts...>>;

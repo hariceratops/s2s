@@ -104,10 +104,7 @@ auto main() -> int {
 
   "a field's stored type is extractable, and a non-field says so"_test = [] constexpr {
     using int_field = s2s::basic_field<"x", int, 4_B>;
-    // basic_field requires an integral T, so a float leaf is spelled with the
-    // field template it expands to.
-    using float_field = s2s::field<"y", float, 4_B,
-                                   s2s::no_constraint<float>{}>;
+    using float_field = s2s::basic_field<"y", float, 4_B>;
     using inner = s2s::struct_field_list<int_field, float_field>;
 
     expect(eq(std::is_same_v<s2s::extract_type_from_field_v<int_field>, int>, true));

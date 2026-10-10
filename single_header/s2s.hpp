@@ -2058,8 +2058,16 @@ struct deduce_field_size<size> {
 // machinery about a descriptor's parameters, and field/ is the layer both sit
 // above.
 namespace s2s {
+// An integer may be declared narrower than its type (a 3-byte value in a u32),
+// but a float has no such reading: its bytes are one representation, so any
+// other width is a mis-declaration. The widths are the ones byteswapped can
+// swap, which also rejects a long double wherever it is wider than a double,
+// at the schema rather than at the leaf.
 template <auto size, typename field_type>
-concept field_fits_to_underlying_type = deduce_field_size<size>{}() <= sizeof(field_type);
+concept field_fits_to_underlying_type =
+  (integral<field_type> && deduce_field_size<size>{}() <= sizeof(field_type)) ||
+  (floating_point<field_type> && deduce_field_size<size>{}() == sizeof(field_type) &&
+   (sizeof(field_type) == 2 || sizeof(field_type) == 4 || sizeof(field_type) == 8));
 
 // The trailing options of a descriptor are an unordered pack: a size, a
 // constraint, either, or neither. Classification is by the option's *type*,
@@ -4101,7 +4109,7 @@ struct always_true {
 
 using always_present = eval_bool_from_fields<always_true{}>;
 
-template <fixed_string id, integral T, field_option_like<T> auto... opts>
+template <fixed_string id, trivial T, field_option_like<T> auto... opts>
   requires fixed_size_like<size_type_of<size_of_pack<T, opts...>>> &&
            field_fits_to_underlying_type<size_of_pack<T, opts...>, T>
 using basic_field = field<id, T, size_of_pack<T, opts...>, constraint_of_pack<T, opts...>>;
