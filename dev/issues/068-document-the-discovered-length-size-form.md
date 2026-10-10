@@ -45,3 +45,6 @@ Spec: `dev/specs/the-size-axis-cannot-say-read-until-a-byte.md`.
   sequence feature does not also claim that line; if it does, the line is split so
   each feature ticks what it delivered.
 - `ctest` is green tree-wide, including `doc_examples_match`.
+
+## Review 2026-10-10
+- `docs/schema/size-axis.md:112-123` ("Three read outcomes, one write outcome") restates the error rationale that `docs/errors.md` owns; trim it to a link, per "nothing is documented twice".

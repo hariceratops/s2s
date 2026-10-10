@@ -109,14 +109,10 @@ deliberately not built now: adding it to the stream concept is additive, but it
 would multiply the test matrix (a fast path and a fallback, each in constexpr
 and runtime form) for one field kind, which is not worth it yet.
 
-**Three read outcomes, one write outcome.** The delimiter turning up is success.
-The stream running dry before it does is `buffer_exhaustion` — the same fact
-reported the same way as anywhere else in the library. The bound being reached
-first, with no delimiter among the bytes read, is `delimiter_not_found` — a
-*new* reason, because truncated and corrupt are different facts about a file and
-a caller can act on the difference. On the write side, a value containing the
-delimiter is `found_delimiter_in_value`. All four are covered in
-[Errors](../errors.md).
+**Errors.** The bound being reached with no delimiter is
+`delimiter_not_found`; a value containing the delimiter is
+`found_delimiter_in_value` on write. Both, and how they differ from
+`buffer_exhaustion`, are in [Errors](../errors.md).
 
 **An empty value is valid.** A delimiter in first position yields an empty value,
 having consumed exactly one byte — ELF's string-table index 0 is exactly this.
@@ -237,11 +233,9 @@ auto main() -> int {
 ```
 
 **The write side imposes a content rule, which nothing else in
-`vector_of_records` does.** An element that would be written as the sentinel
-would read back as the end of the run, silently dropping every element after it.
-So writing such a vector fails with `found_sentinel_in_sequence`
-([Errors](../errors.md)) rather than producing a stream that reads back short.
-The rule is stated in terms of what the element writes, not what it stores: when
+`vector_of_records` does.** Writing a vector with an element that would be
+written as the sentinel fails with `found_sentinel_in_sequence`
+([Errors](../errors.md)). The rule is stated in terms of what the element writes, not what it stores: when
 the named field is another field's `len_from_field` target, as `size` is here,
 the author never sets it and its stored value is not what reaches the wire. The
 rejected element is then the one whose sized containers are empty — a sub-block
@@ -289,14 +283,11 @@ worst-case footprint is the **product** of the two bounds, not the outer bound
 alone. No single budget is threaded through a whole read, so the outer bound is
 not a guarantee about the total.
 
-**Three read outcomes, one write outcome.** The sentinel element turning up is
-success. The stream running dry before it does is `buffer_exhaustion`. The bound
-being reached with no sentinel element found is `sentinel_not_found` — a *new*
-reason, because truncated and corrupt are different facts about a file. On the
-write side, an element that would be written as the sentinel is
+**Errors.** The bound being reached with no sentinel element is
+`sentinel_not_found`; an element that would be written as the sentinel is
 `found_sentinel_in_sequence`. A failed read leaves no partial vector: the cast
-returns no struct, and the stream is left where the failure occurred. All four
-are covered in [Errors](../errors.md).
+returns no struct, and the stream is left where the failure occurred. The
+reasons are in [Errors](../errors.md).
 
 ## Sizes and ceilings are different things
 

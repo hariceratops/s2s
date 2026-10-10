@@ -171,9 +171,6 @@ TEST(DelimitedWrite, VecFieldRoundTripsAValueExactlyAtItsDeclaredBound) {
   });
 }
 
-// stream_cast_le/_be's own signature and behaviour are untouched by this
-// slice — the dispatch above is an added write_field specialization, not a
-// change to either function.
 TEST(DelimitedWrite, RejectsAValueContainingTheDelimiter) {
   using test_field_list = bounded_keyword_then_tail;
 
@@ -263,9 +260,6 @@ TEST(DelimitedWrite, PngTextChunkRoundTripsWithA79ByteKeyword) {
   });
 }
 
-// stream_cast_le/_be's own signature and behaviour are untouched by this
-// slice — the dispatch above is an added write_field specialization, not a
-// change to either function.
 TEST(DelimitedWrite, RoundTripsBigEndianTooEvenThoughDelimitedFieldsIgnoreOrder) {
   using test_field_list = bounded_keyword_then_tail;
 

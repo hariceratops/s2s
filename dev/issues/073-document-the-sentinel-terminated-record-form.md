@@ -44,3 +44,6 @@ Spec: `dev/specs/a-record-sequence-cannot-end-at-a-sentinel.md`.
   `docs_nav_lists_every_page` passes.
 - `README.md`'s roadmap ticks "Read Until a Sentinel Record".
 - `ctest` is green tree-wide, including `doc_examples_match`.
+
+## Review 2026-10-10
+- `docs/schema/size-axis.md:238-250,292-299` repeats the `found_sentinel_in_sequence` and `sentinel_not_found` rationale that `docs/errors.md:45-56` owns; trim to a link, per "nothing is documented twice".

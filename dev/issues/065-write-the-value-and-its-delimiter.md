@@ -35,3 +35,6 @@ Spec: `dev/specs/the-size-axis-cannot-say-read-until-a-byte.md`.
   that directory's `<feature>_write.cpp` / `_ct.cpp` convention.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`
   entries; `single_header/s2s.hpp` is regenerated in the same commit.
+
+## Review 2026-10-10
+- `test/schema/delimited_write.cpp:174-176,266-268`: the comment "stream_cast_le/_be's own signature and behaviour are untouched by this slice" describes a change's history, not why the code is so, and sits above unrelated tests; remove it.

@@ -116,9 +116,9 @@ constexpr auto read_delimited(stream& s, T& obj, unsigned char delim) -> rw_resu
     // own.
     auto res = read_native_impl(s, byte, sizeof(element));
     if(!res)
-      return res;                                  // buffer_exhaustion
+      return res;
     if(byte == stop)
-      return {};                                   // consumed, not stored
+      return {};
     if(obj.size() == ceiling)
       return std::unexpected(error_reason::delimiter_not_found);
     obj.push_back(byte);

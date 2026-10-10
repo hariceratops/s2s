@@ -93,3 +93,6 @@ Spec: `dev/specs/the-size-axis-cannot-say-read-until-a-byte.md`.
   oversight in coverage.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`
   entries; `single_header/s2s.hpp` is regenerated in the same commit.
+
+## Review 2026-10-10
+- `include/field_read/read_impl.hpp:119,121`: trailing comments `// buffer_exhaustion` and `// consumed, not stored` only restate the line; remove them.
