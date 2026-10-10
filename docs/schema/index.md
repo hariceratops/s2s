@@ -116,7 +116,7 @@ consumes off the wire, and where that count comes from.
 | `c_str_field<id, N, c>` | const-sized string | `char[N + 1]` | `N + 1`, terminator included |
 | `str_field<id, size, c>` | length-prefixed string | `std::string` | byte count from the size axis, or — for `until<d>` — whatever precedes the delimiter, plus the delimiter itself |
 | `vec_field<id, T, size, c>` | length-prefixed vector of trivials | `std::vector<T>` | element count from the size axis, or — for `until<d>`, byte-wide `T` only — whatever precedes the delimiter, plus the delimiter itself |
-| `vector_of_records<id, T, size, c>` | length-prefixed vector of records | `std::vector<T>`, `T` a schema | element count from the size axis |
+| `vector_of_records<id, T, size, c>` | length-prefixed vector of records | `std::vector<T>`, `T` a schema | element count from the size axis, or — for `until_field_equals<field, value>` — every element up to and including the first whose `field` equals `value` |
 | `struct_field<id, T>` | nested record | `T`, a schema | whatever the nested schema occupies |
 | `magic_byte_array<id, N, expected>` | magic bytes | `std::array<unsigned char, N>` | `N`; the value is checked on read and supplied on write |
 | `magic_string<id, expected>` | magic string | `fixed_string<expected.size()>` | `size() + 1`; the value is checked on read and supplied on write |

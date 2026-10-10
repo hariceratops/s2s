@@ -242,6 +242,7 @@ offending field's first byte is emitted.
 | two containers sharing one length field imply different lengths | `found_contradicting_length` | the length field |
 | a length inside a `maybe` or union alternative disagrees while that producer is active | `found_contradicting_length` | the length field |
 | a delimited field's value contains its own delimiter byte | `found_delimiter_in_value` | the delimited field |
+| an element of a sentinel-terminated record run would be written as the sentinel | `found_sentinel_in_sequence` | the `vector_of_records` field |
 | the underlying stream refuses the write | `buffer_exhaustion` | the field being written |
 
 For a violation inside a nested record, `failed_at` names the outermost record

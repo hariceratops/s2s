@@ -11,7 +11,9 @@ enum error_reason {
   found_contradicting_length,
   excessive_length,
   delimiter_not_found,
-  found_delimiter_in_value
+  found_delimiter_in_value,
+  sentinel_not_found,
+  found_sentinel_in_sequence
 };
 
 struct cast_error {
@@ -40,6 +42,13 @@ under another name — `buffer_exhaustion` means the stream ran dry;
 delimiter. Truncated and corrupt are different facts about a file, and a
 caller can act differently on each.
 
+A sentinel-terminated record run (`until_field_equals<field, value>`, see
+[The size axis](schema/size-axis.md)) can fail a sixth way while reading:
+`sentinel_not_found`, when its `max_bytes` bound is reached before a sentinel
+element turns up. As with `delimiter_not_found`, it is not `buffer_exhaustion`
+under another name: the stream did not run dry, it kept supplying elements and
+none of them was the sentinel.
+
 A byte-order marker that matches no case is a `validation_failure`, at the
 announcing field's id — not a `type_deduction_failure`, though it is a deduction
 that failed. On the type axis a failed deduction means the reader cannot proceed
@@ -61,6 +70,14 @@ it would read back short with no error raised anywhere. It is not folded into
 have hit a rule of the size form itself, and no other size form has a content
 rule at all. The check runs before any byte of the field is emitted, so a
 rejected value leaves the stream untouched.
+
+A write can also fail with `found_sentinel_in_sequence`, when an element of a
+sentinel-terminated run would be written as the sentinel and so would read back
+as the end of the run, silently dropping every element after it. It is not
+`validation_failure` for the same reason as above: the rule belongs to the
+termination form, not to a constraint the author wrote. The check runs per
+element, so earlier elements' bytes are already on the stream when it fires, and
+nothing is rolled back; the offending element's own bytes are not.
 
 Which check produces which reason is tabulated per direction:
 [Read errors](reading.md#read-errors) and
