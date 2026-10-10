@@ -142,3 +142,12 @@ add_rejected_case(rejects_multi_byte_delimiter delimited_misuse.cpp 2)
 add_rejected_case(rejects_until_on_basic_field delimited_misuse.cpp 3)
 add_rejected_case(rejects_until_on_fixed_array_field delimited_misuse.cpp 4)
 add_rejected_case(rejects_until_on_c_str_field delimited_misuse.cpp 5)
+
+# The sentinel-terminated record sequence (070). Each checked against a
+# no-CASE control build and confirmed to fail on its own diagnostic: 1 and 2 on
+# pack_options' at-most-one-size assertion, 3 on terminator_field_check, 4 on
+# terminator_synthesis_check's derivation obligation.
+add_rejected_case(rejects_sentinel_with_field_count sentinel_misuse.cpp 1)
+add_rejected_case(rejects_sentinel_with_literal_count sentinel_misuse.cpp 2)
+add_rejected_case(rejects_sentinel_on_computed_size_element sentinel_misuse.cpp 3)
+add_rejected_case(rejects_nonzero_sentinel_on_length_target sentinel_misuse.cpp 4)

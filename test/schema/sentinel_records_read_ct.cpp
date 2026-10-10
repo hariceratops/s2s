@@ -47,6 +47,13 @@ using dns_name =
     s2s::basic_field<"tail", u16, 2_B>
   >;
 
+// The witnesses must also pass the write-side soundness check (070), so a
+// schema the read accepts is one the write can synthesise a terminator for.
+static_assert(s2s::sentinel_terminator_is_synthesisable<
+  s2s::terminated_by_sentinel_t<"size", u8{0}>, sub_block>);
+static_assert(s2s::sentinel_terminator_is_synthesisable<
+  s2s::terminated_by_sentinel_t<"len", u8{0}>, label>);
+
 constexpr std::size_t bound_elements = 3;
 
 using bounded_blocks =

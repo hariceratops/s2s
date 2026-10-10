@@ -6,6 +6,7 @@
 #include "../field/field.hpp"
 #include "../field/field_options.hpp"
 #include "../field_list/field_list_base.hpp"
+#include "../field_list/sentinel_terminator.hpp"
 #include "../field_size/field_size.hpp"
 #include "../field_size/field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
@@ -72,7 +73,9 @@ using vec_field =
         bound_of_pack<std::vector<T>, opts...>>;
 
 template <fixed_string id, field_list_like T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires record_sequence_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires record_sequence_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>> &&
+           sentinel_field_exists<size_type_of<size_of_pack<std::vector<T>, opts...>>, T> &&
+           sentinel_terminator_is_synthesisable<size_type_of<size_of_pack<std::vector<T>, opts...>>, T>
 using vector_of_records =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,
