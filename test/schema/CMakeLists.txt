@@ -107,3 +107,8 @@ add_ut_test(delimited_read_ct)
 # specialization.
 add_struct_cast_test(delimited_write)
 add_ut_test(delimited_write_ct)
+
+# A record sequence that ends at a sentinel element (069): the read half. The
+# write half and the compile-time rejections are 070-072's.
+add_struct_cast_test(sentinel_records_read)
+add_ut_test(sentinel_records_read_ct)

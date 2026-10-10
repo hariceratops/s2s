@@ -72,7 +72,7 @@ using vec_field =
         bound_of_pack<std::vector<T>, opts...>>;
 
 template <fixed_string id, field_list_like T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires record_sequence_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 using vector_of_records =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,

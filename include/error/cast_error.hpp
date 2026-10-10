@@ -29,7 +29,11 @@ enum error_reason {
   // back short, with no error raised anywhere else. Not folded into
   // validation_failure — the author has not violated a constraint they
   // wrote, they have hit a rule of the size form.
-  found_delimiter_in_value
+  found_delimiter_in_value,
+  // A sentinel-terminated record read reached its bound with no sentinel
+  // element found. Distinct from buffer_exhaustion for the same reason
+  // delimiter_not_found is.
+  sentinel_not_found
 };
 
 

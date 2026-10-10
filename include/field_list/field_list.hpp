@@ -116,6 +116,16 @@ constexpr auto& field_value_of(const struct_field_list_impl<list_metadata, field
   using field_type_cref = const meta::type_of<field_lookup_res->id>&;
   return static_cast<field_type_cref>(field_list).value;
 }
+
+// The write path has to set the named field of a synthesised terminator, which
+// operator[] cannot reach for a length-derived field.
+template <typename field_accessor, auto list_metadata, typename... fields>
+constexpr auto& field_value_of(struct_field_list_impl<list_metadata, fields...>& field_list) {
+  constexpr auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+  static_assert(field_lookup_res.has_value, "no such field in this field list");
+  using field_type_ref = meta::type_of<field_lookup_res->id>&;
+  return static_cast<field_type_ref>(field_list).value;
+}
 } /* namespace s2s */
 
 

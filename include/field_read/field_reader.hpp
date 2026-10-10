@@ -13,6 +13,7 @@
 #include "../order_deduction/order_deduction_impl.hpp"
 #include "../type_deduction/type/type_impl.hpp"
 #include "read_impl.hpp"
+#include "../field_list/sentinel_terminator.hpp"
 
 
 namespace s2s {
@@ -96,7 +97,7 @@ struct not_vector_of_records_field {};
 template <typename T>
 struct create_field_from_vector_of_records;
 
-template <vector_of_record_field_like T>
+template <record_sequence_field_like T>
 struct create_field_from_vector_of_records<T> {
   using vector_type = typename T::field_type;
   using vector_elem_type = extract_type_from_vec_t<vector_type>;
@@ -185,6 +186,40 @@ struct read_field<T, F> {
   }
 };
 
+// Read-then-test: with no count there is nothing to resize by, so the length
+// is an outcome of the read. The element is read through the struct reader
+// (struct_cast_impl), so no stream operation is added.
+template <sentinel_terminated_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
+
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
+    using record = extract_type_from_vec_t<typename T::field_type>;
+    using element_field = create_field_from_vector_of_records_v<T>;
+    constexpr auto field_size = T::field_size;
+    // Phrased as a division so n * sizeof(record) is never evaluated.
+    constexpr auto max_elements = bound_in_bytes<T::field_bound> / sizeof(record);
+
+    field.value.clear();
+    while(true) {
+      element_field elem;
+      auto res = read_field<element_field, F>(elem, field_list).read(s, order);
+      if(!res)
+        return res;
+      if(matches_sentinel<field_size>(elem.value))
+        return {};
+      // Before the push_back, so the vector never grows past the bound.
+      if(field.value.size() == max_elements)
+        return std::unexpected(error_reason::sentinel_not_found);
+      field.value.push_back(std::move(elem.value));
+    }
+  }
+};
 
 template <typename F, typename stream>
 struct struct_cast_impl;

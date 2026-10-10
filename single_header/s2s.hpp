@@ -241,6 +241,16 @@ struct delimited_by_t {
   static constexpr unsigned char delim = d;
 };
 
+// What a sentinel-terminated record sequence declares: which field of the
+// element decides, and the value that ends the run. Both live in the type,
+// for the same reason as above: read_field tests on them and the option
+// classifier matches on them.
+template <fixed_string id, auto v>
+struct terminated_by_sentinel_t {
+  static constexpr auto sentinel_field = id;
+  static constexpr auto sentinel_value = v;
+};
+
 // A delimiter is one byte. Named rather than written inline as a requires
 // clause so the diagnostic for until<u16{0x0d0a}> says what the rule is, and
 // so a multi-byte form can later relax it in one place.
@@ -298,6 +308,9 @@ inline constexpr auto len_from_fields = size_from_fields<callable, ids...>;
 // delimiter are the same type.
 template <delimiter_value_like auto d>
 inline constexpr auto until = delimited_by_t<static_cast<unsigned char>(d)>{};
+
+template <fixed_string id, auto v>
+inline constexpr auto until_field_equals = terminated_by_sentinel_t<id, v>{};
 
 inline constexpr auto size_dont_care = size_dont_care_t{};
 
@@ -414,6 +427,25 @@ inline constexpr bool is_delimited_size_v = is_delimited_size<T>::res;
 template <typename T>
 concept delimited_size_like = is_delimited_size_v<T>;
 
+// The fourth size category: a record sequence whose length is the position of
+// the element that ends it. Its own trait, not a widening of
+// is_variable_size, because every consumer of that trait wants a count.
+template <typename T>
+struct is_sentinel_terminated_size {
+  static constexpr bool res = false;
+};
+
+template <fixed_string id, auto v>
+struct is_sentinel_terminated_size<terminated_by_sentinel_t<id, v>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_sentinel_terminated_size_v = is_sentinel_terminated_size<T>::res;
+
+template <typename T>
+concept sentinel_terminated_size_like = is_sentinel_terminated_size_v<T>;
+
 // A size produced by a user callable rather than read from a single field.
 // The distinction matters only on the write path: len_from_field can be
 // inverted and derived, this cannot, so it can only be verified.
@@ -447,6 +479,11 @@ concept atomic_size = fixed_size_like<T> || variable_size_like<T>;
 template <typename T>
 concept buffer_size_like = variable_size_like<T> || delimited_size_like<T>;
 
+// The sizes a vector of records may declare: a count resolved before the read,
+// or a sentinel element that ends it.
+template <typename T>
+concept record_sequence_size_like = variable_size_like<T> || sentinel_terminated_size_like<T>;
+
 template <typename T>
 struct is_selectable_size {
   static constexpr bool res = false;
@@ -468,6 +505,7 @@ template <typename T>
 concept is_size_like = fixed_size_like<T>     ||
                        variable_size_like<T>  ||
                        delimited_size_like<T> ||
+                       sentinel_terminated_size_like<T> ||
                        selectable_size_like<T>;
 
 template <typename T>
@@ -1408,7 +1446,10 @@ concept delimited_field_like = is_delimited_field_v<T>;
 template <typename T>
 struct is_vector_of_record_field;
 
+// Narrowed to a counted size so it is disjoint from the sentinel-terminated
+// trait below; read_field and write_field select on disjoint concepts.
 template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+  requires variable_size_like<size_type_of<size>>
 struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
@@ -1423,6 +1464,34 @@ inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>
 
 template <typename T>
 concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
+
+template <typename T>
+struct is_sentinel_terminated_record_field;
+
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+  requires sentinel_terminated_size_like<size_type_of<size>>
+struct is_sentinel_terminated_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_sentinel_terminated_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_sentinel_terminated_record_field_v = is_sentinel_terminated_record_field<T>::res;
+
+template <typename T>
+concept sentinel_terminated_record_field_like = is_sentinel_terminated_record_field_v<T>;
+
+// A run of records, however it ends. Sites that ask "is this a run of
+// records?" mean it regardless of the termination form; two of them answer
+// silently wrong, rather than failing to compile, if keyed on the counted
+// trait alone.
+template <typename T>
+concept record_sequence_field_like =
+  vector_of_record_field_like<T> || sentinel_terminated_record_field_like<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -1528,6 +1597,7 @@ concept field_like = fixed_sized_field_like<T> ||
                      delimited_field_like<T> ||
                      array_of_record_field_like<T> ||
                      vector_of_record_field_like<T> ||
+                     sentinel_terminated_record_field_like<T> ||
                      struct_field_like<T> ||
                      optional_field_like<T> ||
                      union_field_like<T> ||
@@ -1970,6 +2040,7 @@ template <typename S, typename T>
 concept size_option_like = fixed_size_like<S>     ||
                            variable_size_like<S>  ||
                            delimited_size_like<S> ||
+                           sentinel_terminated_size_like<S> ||
                            size_dont_care_like<S> ||
                            selectable_size_like<S>;
 
@@ -2637,7 +2708,11 @@ enum error_reason {
   // back short, with no error raised anywhere else. Not folded into
   // validation_failure — the author has not violated a constraint they
   // wrote, they have hit a rule of the size form.
-  found_delimiter_in_value
+  found_delimiter_in_value,
+  // A sentinel-terminated record read reached its bound with no sentinel
+  // element found. Distinct from buffer_exhaustion for the same reason
+  // delimiter_not_found is.
+  sentinel_not_found
 };
 
 
@@ -2877,6 +2952,18 @@ struct extract_length_dependencies<
 // reason, and stated for the same reason the size_dont_care arm is.
 template <fixed_string id, typename T, auto size, auto constraint, auto bound>
   requires delimited_size_like<size_type_of<size>>
+struct extract_length_dependencies<
+  field<id, T, size, constraint, bound>
+>
+{
+  static constexpr auto value = static_vector<sv, max_dep_count_per_struct>();
+};
+
+// The sentinel's field name resolves inside the element's field list, not in
+// the list that declares the run, so a sentinel-terminated run depends on no
+// sibling.
+template <fixed_string id, typename T, auto size, auto constraint, auto bound>
+  requires sentinel_terminated_size_like<size_type_of<size>>
 struct extract_length_dependencies<
   field<id, T, size, constraint, bound>
 >
@@ -3366,6 +3453,16 @@ constexpr auto& field_value_of(const struct_field_list_impl<list_metadata, field
   using field_type_cref = const meta::type_of<field_lookup_res->id>&;
   return static_cast<field_type_cref>(field_list).value;
 }
+
+// The write path has to set the named field of a synthesised terminator, which
+// operator[] cannot reach for a length-derived field.
+template <typename field_accessor, auto list_metadata, typename... fields>
+constexpr auto& field_value_of(struct_field_list_impl<list_metadata, fields...>& field_list) {
+  constexpr auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
+  static_assert(field_lookup_res.has_value, "no such field in this field list");
+  using field_type_ref = meta::type_of<field_lookup_res->id>&;
+  return static_cast<field_type_ref>(field_list).value;
+}
 } /* namespace s2s */
 
 
@@ -3835,7 +3932,7 @@ using vec_field =
         bound_of_pack<std::vector<T>, opts...>>;
 
 template <fixed_string id, field_list_like T, boundable_field_option_like<std::vector<T>> auto... opts>
-  requires variable_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
+  requires record_sequence_size_like<size_type_of<size_of_pack<std::vector<T>, opts...>>>
 using vector_of_records =
   field<id, std::vector<T>, size_of_pack<std::vector<T>, opts...>,
         constraint_of_pack<std::vector<T>, opts...>,
@@ -4063,7 +4160,7 @@ constexpr auto is_order_agnostic_field() -> bool {
     return is_order_agnostic_list_v<extract_type_from_field_v<T>>;
   else if constexpr(array_of_record_field_like<T>)
     return is_order_agnostic_list_v<extract_type_from_array_v<typename T::field_type>>;
-  else if constexpr(vector_of_record_field_like<T>)
+  else if constexpr(record_sequence_field_like<T>)
     return is_order_agnostic_list_v<extract_type_from_vec_t<typename T::field_type>>;
   else if constexpr(optional_field_like<T>)
     return is_order_agnostic_field<typename T::field_base_type>();
@@ -4149,7 +4246,7 @@ constexpr auto census_of_field() -> announcement_census {
     return census_of_list_v<extract_type_from_field_v<T>>;
   else if constexpr(array_of_record_field_like<T>)
     return folded_off_spine(census_of_list_v<extract_type_from_array_v<typename T::field_type>>);
-  else if constexpr(vector_of_record_field_like<T>)
+  else if constexpr(record_sequence_field_like<T>)
     return folded_off_spine(census_of_list_v<extract_type_from_vec_t<typename T::field_type>>);
   else if constexpr(optional_field_like<T>)
     return folded_off_spine(census_of_field<typename T::field_base_type>());
@@ -4971,6 +5068,26 @@ constexpr auto read_impl(stream& s, T& obj, std::size_t N, cast_endianness byte_
 
 // End field_read/read_impl.hpp
 
+// Begin field_list/sentinel_terminator.hpp
+#ifndef _SENTINEL_TERMINATOR_HPP_
+#define _SENTINEL_TERMINATOR_HPP_
+ 
+namespace s2s {
+// Cast the sentinel to the named field's type once, rather than promoting the
+// field's value up: a signed char field holding 0xff compared against 0xff
+// promotes to -1 == 255 and would never match the value that ends the run.
+template <auto size, field_list_like record>
+constexpr auto matches_sentinel(const record& r) -> bool {
+  using sz = size_type_of<size>;
+  const auto& v = field_value_of<field_accessor<sz::sentinel_field>>(r);
+  return v == static_cast<std::remove_cvref_t<decltype(v)>>(sz::sentinel_value);
+}
+} /* namespace s2s */
+
+#endif // _SENTINEL_TERMINATOR_HPP_
+
+// End field_list/sentinel_terminator.hpp
+
 // Begin field_read/field_reader.hpp
 #ifndef _FIELD_READER_HPP_
 #define _FIELD_READER_HPP_
@@ -5058,7 +5175,7 @@ struct not_vector_of_records_field {};
 template <typename T>
 struct create_field_from_vector_of_records;
 
-template <vector_of_record_field_like T>
+template <record_sequence_field_like T>
 struct create_field_from_vector_of_records<T> {
   using vector_type = typename T::field_type;
   using vector_elem_type = extract_type_from_vec_t<vector_type>;
@@ -5147,6 +5264,40 @@ struct read_field<T, F> {
   }
 };
 
+// Read-then-test: with no count there is nothing to resize by, so the length
+// is an outcome of the read. The element is read through the struct reader
+// (struct_cast_impl), so no stream operation is added.
+template <sentinel_terminated_record_field_like T, field_list_like F>
+struct read_field<T, F> {
+  T& field;
+  F& field_list;
+
+  constexpr read_field(T& field, F& field_list)
+    : field(field), field_list(field_list){}
+
+  template <typename stream>
+  constexpr auto read(stream& s, cast_endianness& order) const -> rw_result {
+    using record = extract_type_from_vec_t<typename T::field_type>;
+    using element_field = create_field_from_vector_of_records_v<T>;
+    constexpr auto field_size = T::field_size;
+    // Phrased as a division so n * sizeof(record) is never evaluated.
+    constexpr auto max_elements = bound_in_bytes<T::field_bound> / sizeof(record);
+
+    field.value.clear();
+    while(true) {
+      element_field elem;
+      auto res = read_field<element_field, F>(elem, field_list).read(s, order);
+      if(!res)
+        return res;
+      if(matches_sentinel<field_size>(elem.value))
+        return {};
+      // Before the push_back, so the vector never grows past the bound.
+      if(field.value.size() == max_elements)
+        return std::unexpected(error_reason::sentinel_not_found);
+      field.value.push_back(std::move(elem.value));
+    }
+  }
+};
 
 template <typename F, typename stream>
 struct struct_cast_impl;

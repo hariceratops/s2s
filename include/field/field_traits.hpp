@@ -122,7 +122,10 @@ concept delimited_field_like = is_delimited_field_v<T>;
 template <typename T>
 struct is_vector_of_record_field;
 
+// Narrowed to a counted size so it is disjoint from the sentinel-terminated
+// trait below; read_field and write_field select on disjoint concepts.
 template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+  requires variable_size_like<size_type_of<size>>
 struct is_vector_of_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
   static constexpr bool res = true;
 };
@@ -137,6 +140,34 @@ inline constexpr bool is_vector_of_record_field_v = is_vector_of_record_field<T>
 
 template <typename T>
 concept vector_of_record_field_like = is_vector_of_record_field_v<T>;
+
+template <typename T>
+struct is_sentinel_terminated_record_field;
+
+template <fixed_string id, field_list_like T, auto size, auto constraint_on_value, auto bound>
+  requires sentinel_terminated_size_like<size_type_of<size>>
+struct is_sentinel_terminated_record_field<field<id, std::vector<T>, size, constraint_on_value, bound>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+struct is_sentinel_terminated_record_field {
+  static constexpr bool res = false;
+};
+
+template <typename T>
+inline constexpr bool is_sentinel_terminated_record_field_v = is_sentinel_terminated_record_field<T>::res;
+
+template <typename T>
+concept sentinel_terminated_record_field_like = is_sentinel_terminated_record_field_v<T>;
+
+// A run of records, however it ends. Sites that ask "is this a run of
+// records?" mean it regardless of the termination form; two of them answer
+// silently wrong, rather than failing to compile, if keyed on the counted
+// trait alone.
+template <typename T>
+concept record_sequence_field_like =
+  vector_of_record_field_like<T> || sentinel_terminated_record_field_like<T>;
 
 template <typename T>
 struct is_struct_field;
@@ -242,6 +273,7 @@ concept field_like = fixed_sized_field_like<T> ||
                      delimited_field_like<T> ||
                      array_of_record_field_like<T> ||
                      vector_of_record_field_like<T> ||
+                     sentinel_terminated_record_field_like<T> ||
                      struct_field_like<T> ||
                      optional_field_like<T> ||
                      union_field_like<T> ||

@@ -37,6 +37,7 @@ template <typename S, typename T>
 concept size_option_like = fixed_size_like<S>     ||
                            variable_size_like<S>  ||
                            delimited_size_like<S> ||
+                           sentinel_terminated_size_like<S> ||
                            size_dont_care_like<S> ||
                            selectable_size_like<S>;
 
