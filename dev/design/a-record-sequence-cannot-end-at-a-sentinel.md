@@ -7,6 +7,12 @@ lists where the spec and the issues are incomplete rather than wrong, including
 one place where the spec's *mechanization* of its own soundness rule does not do
 what the rule's stated purpose requires (F4, F5).
 
+**Amended during 072** (§3.4, §11 F12). The write-side rejection first compared
+the named field's *stored* value, which the writer discards when the named field
+is a length target — exactly the motivating schema's `"size"`. It now compares
+the value the writer emits. The read test, the synthesis and every compile-time
+rule are unchanged.
+
 Issues served, in order:
 `dev/issues/069-read-a-record-sequence-until-a-sentinel.md` through
 `dev/issues/073-document-the-sentinel-terminated-record-form.md`. §7 gives the
@@ -46,7 +52,9 @@ So the sentinel's field id and value both live in the type.
 | `field_like` gains an arm | `field/field_traits.hpp` | **not optional**; without it `all_field_like` rejects the schema |
 | `extract_length_dependencies` arm | `field_list/field_list_metadata.hpp` | **not optional**; the primary is undefined (§1.6) |
 | `field_value_of` non-const overload | `field_list/field_list.hpp` | one overload; the write path has to *set* the named field, which `operator[]` cannot reach (§1.7) |
-| `matches_sentinel<size>(record)` | `field_list/sentinel_terminator.hpp` (new) | the read test and the write rejection, one function |
+| `equals_sentinel<size>(v)` | `field_list/sentinel_terminator.hpp` (new) | the one comparison against the sentinel, cast down to the field's type; both directions make it |
+| `matches_sentinel<size>(record)` | `field_list/sentinel_terminator.hpp` | the read test: the named field's stored value, which on a read element is the wire value |
+| `write_field<…>::writes_sentinel(record)` | `field_write/field_writer.hpp` | the write rejection: the value the writer will emit for the named field — derived for a length target, stored otherwise (§3.4) |
 | `synthesised_terminator<size, record>()` | `field_list/sentinel_terminator.hpp` | default-construct, set the named field, return |
 | `writes_determined_bytes<field>()` | `field_list/sentinel_terminator.hpp` | the recursive field-by-field soundness walk (§5.2) |
 | `terminator_field_check<field>` | `field_list/sentinel_terminator.hpp` | one `static_assert` per field, so the offending field is named by the instantiation (§5.5) |
@@ -275,7 +283,8 @@ constexpr auto& field_value_of(struct_field_list_impl<list_metadata, fields...>&
 ```
 
 That is the whole of the mutable access this feature needs, and it is confined
-to `synthesised_terminator`. The two helpers built on it:
+to `synthesised_terminator`. The helpers that reach the named field, and the one
+comparison they share:
 
 ```cpp
 // field_list/sentinel_terminator.hpp
@@ -284,11 +293,16 @@ to `synthesised_terminator`. The two helpers built on it:
 // field's value up — the same rule read_delimited applies for the same reason:
 // a signed char field holding 0xff compared against 0xff promotes to
 // -1 == 255 and never matches the very value that should terminate the run.
+template <auto size, typename V>
+constexpr auto equals_sentinel(const V& v) -> bool {
+  return v == static_cast<V>(size_type_of<size>::sentinel_value);
+}
+
+// On an element the reader produced, the stored value is the wire value.
 template <auto size, field_list_like record>
 constexpr auto matches_sentinel(const record& r) -> bool {
   using sz = size_type_of<size>;
-  const auto& v = field_value_of<field_accessor<sz::sentinel_field>>(r);
-  return v == static_cast<std::remove_cvref_t<decltype(v)>>(sz::sentinel_value);
+  return equals_sentinel<size>(field_value_of<field_accessor<sz::sentinel_field>>(r));
 }
 
 template <auto size, field_list_like record>
@@ -301,10 +315,13 @@ constexpr auto synthesised_terminator() -> record {
 }
 ```
 
-One function serves the read test *and* 072's write rejection, which is what
-makes "an element that matches the sentinel is rejected on write" and "an
-element that matches the sentinel ends the run on read" provably the same
-predicate rather than two that could drift.
+One comparison, `equals_sentinel`, serves the read test *and* 072's write
+rejection, so the cast-down rule cannot drift between them. What each compares is
+**not** shared. `matches_sentinel` reads the stored value, which is right for the
+read test and wrong for the write rejection whenever the named field is
+length-derived — the case this section opens with, since the writer discards
+that stored value. §3.4 gives the write side's value and why the two directions
+differ (§11 F12 records how the original single-function design missed it).
 
 ### 1.8 The new header, and why it is a header
 
@@ -466,21 +483,25 @@ struct write_field<T, F> {
 
   template <typename stream>
   constexpr auto write(stream& s, cast_endianness& order) const -> rw_result {
-    using record = extract_type_from_vec_t<typename T::field_type>;
-    constexpr auto field_size = T::field_size;
-
     for(const auto& rec: value) {
       // Before this element's bytes leave, not before the run's: §3.3.
-      if(matches_sentinel<field_size>(rec))
+      if(writes_sentinel(rec))
         return std::unexpected(error_reason::found_sentinel_in_sequence);
       auto res = write_nested<record>(s, rec, order);
       if(!res)
         return res;
     }
-    return write_nested<record>(s, synthesised_terminator<field_size, record>(), order);
+    return write_nested<record>(s, synthesised_terminator<T::field_size, record>(), order);
   }
+
+private:
+  using record = extract_type_from_vec_t<typename T::field_type>;
+  // named, writes_sentinel: §3.4
 };
 ```
+
+The rejection's predicate is `writes_sentinel`, not the read test
+`matches_sentinel`. §3.4 explains why the two differ.
 
 An empty vector emits the lone synthesised terminator — the loop simply does not
 run. No special case, and none of the companion's F7 hazard
@@ -561,6 +582,140 @@ evaluation and produces `std::unexpected(found_sentinel_in_sequence)` at compile
 time, asserted on as a value. Nothing is deferred and nothing is a diagnostic —
 the companion's §3.2 reasoning about not turning a runtime rejection into a hard
 error applies verbatim and is not re-argued here.
+
+### 3.4 What the rejection compares — the value the writer emits
+
+**Decision: the rejection tests the value the writer will put on the wire for the
+named field, not the value stored in it. For a named field that is not a derived
+target the two are the same, and the read test is reused verbatim. For a
+length-derived named field the value is `derive_value`'s result, i.e. the length
+of the containers the field sizes.**
+
+072's rule is "no element may read back as the terminator", and the reader
+decides that on the wire value. As first written, §3.1 called `matches_sentinel`,
+which reads the stored value. That is the wire value only when the writer writes
+the stored value, and for the motivating schema it does not. `"size"` is
+`"data"`'s length target, so `write_field<fixed_sized_field_like>` takes its
+`is_derived_target_v` branch, discards the stored value and emits `data.size()`.
+And because a length-derived field has no `operator[]` (§1.7), a caller building
+an element cannot set it at all; it stays at its default 0. Comparing the stored
+value therefore:
+
+- rejects every hand-built element, since 0 is the sentinel. That includes 071's
+  own "a GIF sub-block run is followed by one synthesised terminator byte",
+  which fails against that check;
+- accepts a read element whose `data` the caller has since cleared, because its
+  stored `size` still holds the old non-zero length. That element goes out as
+  `00`, ends the run on read and silently drops everything after it: the one
+  failure 072 exists to prevent;
+- reports a hand-built element with 256 bytes of `data` under a `u8` slot as
+  `found_sentinel_in_sequence`, where its own write would correctly say
+  `validation_failure`.
+
+The predicate. `equals_sentinel` and `matches_sentinel` are §1.7's; this is the
+write side:
+
+```cpp
+// field_writer.hpp — private to write_field<sentinel_terminated_record_field_like T, F>
+using record = extract_type_from_vec_t<typename T::field_type>;
+using named = meta::type_of<
+  lookup_field<metadata_of<record>::value>(as_sv(size_type_of<T::field_size>::sentinel_field))->id>;
+
+// The reader tests what the writer emits, so this asks the writer's own
+// question with the writer's own calls. An element whose named field cannot be
+// derived never reaches the wire, so it cannot read back as the terminator; its
+// own write reports why.
+static constexpr auto writes_sentinel(const record& r) -> bool {
+  if constexpr(is_derived_target_v<named, record>) {
+    auto derived = derive_value<named, record>{}(r);
+    return derived && equals_sentinel<T::field_size>(*derived);
+  } else
+    return matches_sentinel<T::field_size>(r);
+}
+```
+
+Case by case:
+
+| Named field | What the writer emits | Rejected when |
+|---|---|---|
+| not a derived target (a `kind` tag, a signed `v`) | the stored value, unchanged | it equals the sentinel: `matches_sentinel`, the read test verbatim |
+| a length target whose containers agree on a length that fits the slot (GIF `size`, DNS `len`) | that length | it equals the sentinel. With §5.3 obligation 5's zero sentinel, that means every container it sizes is empty |
+| a length target whose containers disagree, or whose length overflows the slot | nothing. The element's write fails at the named field with `found_contradicting_length` or `validation_failure` | never: it is not a match, and the element's write reports the same failure it reported before 072 |
+
+The first row covers every non-derived named field, because the writer has only
+two other ways to emit something other than the stored value, and neither can
+reach a named field. A frozen named field is rejected by §5.3 obligation 3. A
+conditional length obligation needs a `maybe` or `variance` producer in the
+element, which §5.2 rejects. `verify_then_write` only checks; it never
+substitutes a value.
+
+**Why `is_derived_target_v` and `derive_value`, rather than "every container
+sized by the named field is empty".**
+
+1. They are the calls the writer makes, so the rejection cannot disagree with
+   the bytes. A second scan for driven containers is exactly the drift
+   `is_derived_target`'s own comment rules out.
+2. They do not lean on obligation 5's zero-only rule. If that rule were relaxed
+   (§8, Alternatives rejected: resizing driven containers to the sentinel),
+   `writes_sentinel` would stay correct unchanged.
+3. They do not truncate. `static_cast<u8>(data.size())` is 0 for 256 bytes and
+   would match; `derive_value`'s width check fails it instead.
+4. `is_derived_target_v`, not §5.3's `is_length_derived_field`. Inside an
+   element the two coincide: a discriminant-derived field needs a union, which
+   §5.2 rejects. But the rejection is asking the writer's question, so it uses
+   the writer's predicate.
+
+**Why a failed derivation is "not a match" rather than an error raised here.**
+The rejection answers one question, and an element whose named field has no
+writable value cannot read back as anything. Raising `derive_value`'s error from
+the check would report the element's failure from a second site. It would also
+change which error wins when an earlier field of the same element fails too,
+because the check runs before any of them. Declining leaves every error other
+than `found_sentinel_in_sequence` exactly where it was. The cost is that a
+derived named field is derived twice per element, here and in the element's
+write, which is a fold of `.size()` calls. Caching it would mean threading a
+value through `write_nested` and `stream_cast_impl`, for a saving too small to
+measure.
+
+**Why read and write do not call one function.** They share the comparison
+(`equals_sentinel`) and they test the same quantity: the named field's value on
+the wire. But each reads that value where it is authoritative. On read it is the
+stored value, because the reader just put it there. A container sized by a
+derived named field was resized to that stored value by its own reader
+(`read_impl`'s `resize(len_to_read)`), so `derive_value` would return exactly the
+stored value. Hence `writes_sentinel(e) == matches_sentinel(e)` for every element
+the reader can produce. The GIF and DNS round trips witness this equivalence, and
+"the read test and the write rejection are the same predicate" now rests on it
+rather than on code identity. Calling `writes_sentinel` on read anyway was
+rejected on three counts:
+
+- 072 requires the check to cost nothing on the read path, and a per-element
+  derivation fold there is exactly that cost.
+- Its failure arm is unreachable on read, by the construction above, so it would
+  be error handling for an impossible case.
+- `field_reader.hpp` would have to reach `field_write/derived_value.hpp` through
+  `sentinel_terminator.hpp`. `api/field_descriptors.hpp` includes that header
+  too, so the descriptor header would also pull in writer machinery.
+
+**Placement.** Private to the writer specialization, beside its one caller. This
+is the shape `verify_then_write` already has in the fixed-size writer.
+`field_writer.hpp` already includes both `derived_value.hpp` and
+`sentinel_terminator.hpp`, so no include edge is added and
+`sentinel_terminator.hpp` gains nothing from `field_write/`.
+
+**Synthesis is unchanged.** Storing the sentinel into a derived named field is
+ignored on write, and obligation 5 already guarantees that the derived zero
+equals the sentinel. Branching `synthesised_terminator` on `is_derived_target_v`
+would add code only to skip a harmless store.
+
+**What the author meets.** For a GIF-shaped run the rule is "no element with
+empty `data`", not "no element with `size` 0", because the author never sets
+`size`. §10 states it that way.
+
+Verified before this was written down: it was prototyped against a scratch copy
+of `include/` with g++ 14, in all three ut modes. 071's existing write tests and
+every 072 case in §9 pass at compile time and at run time, and 071's hand-built
+GIF test fails against the stored-value check.
 
 ---
 
@@ -903,7 +1058,9 @@ removed. Must land with 072 in one reviewable unit: between them the branch
 writes vectors that read back short with nothing raising an error, which is the
 hazard the feature exists to prevent. Same coupling the companion's 065/066 had.
 
-**072 — the rejection.** The two scan lines, and
+**072 — the rejection.** The two scan lines; `writes_sentinel` and its two
+class-scope aliases (§3.4); `equals_sentinel` factored out of 069's
+`matches_sentinel`, a refactor with no behaviour change on read; and
 `error_reason::found_sentinel_in_sequence`.
 
 **073 — documentation.** §10.
@@ -933,7 +1090,10 @@ partial-completion decision.** §3.3. The offending element's own bytes never
 reach the stream; earlier elements' bytes do. The property deliberately *not*
 claimed is "the field leaves the stream untouched" — that is false for a vector
 of records under every other error too, and a pre-pass that made it true for this
-one error class would be a guarantee a caller could over-generalize.
+one error class would be a guarantee a caller could over-generalize. §3.4 leaves
+this as it was. The rejection still runs before any of the element's bytes, and a
+derivation failure it declines to report surfaces from the element's own write,
+after that element's earlier fields, exactly as before 072.
 
 **Write: the synthesised terminator is constructed fresh per write and owned by
 the writer's frame.** It is a value returned by `synthesised_terminator`,
@@ -969,7 +1129,11 @@ it means a caller cannot learn which element failed from the error alone.
 - `found_sentinel_in_sequence` — the write-side rejection. Deliberately not
   folded into `validation_failure`: the author has not violated a constraint they
   wrote, they have hit a rule of the termination form. Same argument, same shape,
-  as `found_delimiter_in_value`.
+  as `found_delimiter_in_value`. It is the only reason the rejection raises.
+  When the named field is length-derived and `derive_value` fails on it, the
+  rejection reports nothing. The element's own write then raises
+  `found_contradicting_length` or `validation_failure` from the named field,
+  unchanged by 072 (§3.4).
 
 The layer below is reused rather than wrapped: `buffer_exhaustion` reaches the
 caller from the element read untouched, and so does any error the element's own
@@ -996,6 +1160,10 @@ destroyed at the end of the full expression. It is deliberately not a
 function-local `static` or a namespace-scope `constexpr`, which would be shared
 mutable state under the first schema whose element holds a container.
 
+§3.4's `writes_sentinel` adds nothing on this axis. It is a `static` member that
+reads a `const` element and holds nothing between calls, and the value it
+derives is a local.
+
 Two concurrent casts over one stream were never supportable and still are not.
 
 ### Reuse
@@ -1014,6 +1182,11 @@ Used rather than reimplemented:
   (§1.7). One overload added; no new lookup path.
 - **`is_length_derived_field`** — the same table `operator[]`'s visibility policy
   reads, so §5.3's obligation 5 cannot drift from what the write path does.
+- **`is_derived_target_v` / `derive_value`** — the write rejection asks the
+  writer's own question with the writer's own calls (§3.4), so what it rejects
+  cannot disagree with what is emitted. Re-scanning for "containers sized by the
+  named field" would be the second scan that `is_derived_target`'s comment says
+  would drift.
 - **`max_bytes` / `bound_in_bytes` / `field_bound`** — the whole bound vocabulary
   from 046–047, repurposed a second time, exactly as the companion repurposed it.
 - **`is_order_agnostic_field`'s shape** for §5.2's recursive walk, and
@@ -1029,11 +1202,13 @@ Introduced here and worth factoring for the next comparable piece of work:
   for record runs will also want. Adding one means one new narrow trait and one
   more arm in the umbrella, with no site-by-site audit — which is exactly the
   audit §1.5 had to do this time because the umbrella did not exist.
-- **`matches_sentinel` / `synthesised_terminator`** are free functions over
-  `(size, record)` rather than members of a reader or writer, so the read test
-  and the write rejection are provably one predicate, and so a future
-  region-bounded or nested variant can call them without inheriting a field
-  reader.
+- **`equals_sentinel`** is the one comparison both directions make, so the
+  cast-down rule is stated once. **`matches_sentinel` / `synthesised_terminator`**
+  are free functions over `(size, record)` rather than members of a reader or
+  writer, so a future region-bounded or nested variant can call them without
+  inheriting a field reader. The read test and the write rejection are *not* one
+  function (§3.4). They make one comparison over one quantity, the named field's
+  value on the wire, and agree on every element the reader can produce.
 - **`writes_determined_bytes`** answers a question broader than this feature:
   "what does this field emit in a default-constructed record?" Any later feature
   that has to synthesise a record — a padding form, a default-record form — needs
@@ -1107,6 +1282,12 @@ is built, but its two halves reuse `is_order_agnostic_field`'s recursion shape a
 `field_list_metadata`'s existing `length_derived_field_ids` table rather than
 re-deriving either.
 
+The same holds for 072's predicate (§3.4). The value a derived named field will
+carry on the wire is taken from the writer's own `derive_value`. A "containers
+sized by the named field are empty" scan was evaluated and not built: it could
+not see a length overflowing its slot, and it depends on the sentinel being
+zero.
+
 ### Abstractions introduced
 
 Each with the specific problem that forces it. Anything without one has been
@@ -1120,7 +1301,9 @@ collapsed.
 | `is_sentinel_terminated_record_field` / `_like` | `read_field` and `write_field` dispatch on field traits, not size traits, and the two specializations must be selected by disjoint concepts rather than by subsumption |
 | `record_sequence_field_like` | three sites ask "is this a run of records?", and two of them answer silently wrong if left keyed on the narrowed trait (§1.5) |
 | `sentinel_fits_named_field` | the read comparison and the write assignment need the same convertibility, and stating it twice is how they drift |
-| `matches_sentinel` | the read test and the write rejection must be one predicate, and each has a different caller |
+| `equals_sentinel` | the cast-down comparison has two callers whose values come from different places (§3.4). Stated twice, one copy can be "simplified" into a promotion and lose the signed-0xff case |
+| `matches_sentinel` | the stored-value test has two callers: the read loop, and the write rejection's non-derived branch, which uses it verbatim |
+| `writes_sentinel` | for a derived named field, the write rejection's value is not the stored value. The predicate is an `if constexpr` over the writer's derivation branch; inlined, the loop body would carry both arms and an `expected` unwrap around a one-line rule. Private with one caller, the same shape as `verify_then_write` |
 | `synthesised_terminator` | the terminator is constructed in one direction and from two slices (071 writes it, 070 proves it sound) |
 | `writes_determined_bytes` | the soundness rule is recursive over field kinds and over nested records; an inline fold cannot recurse |
 | `terminator_field_check` | naming the offending field requires it to be a template argument of the failing entity (§5.5) |
@@ -1213,6 +1396,33 @@ satisfy from ones it can only check, and admitting the DSL here advertises
 `lt{4}` as a terminator, which cannot be constructed. The plain value says
 exactly what can be done with it.
 
+**Compare the named field's stored value on write.** This was §3.1 as first
+written, and it is the reason for §3.4. Rejected because the writer discards
+that value for a length-derived named field. The check rejects every hand-built
+element, and admits a read element whose containers were emptied after the read
+(F12).
+
+**One derivation-aware predicate for both directions.** Literally one function,
+and correct on read. Rejected in §3.4: it puts a per-element derivation on the
+read path, which 072 forbids; its failure arm is unreachable there; and it drags
+writer machinery into the include graphs of the reader and the descriptors. The
+read side gets the same guarantee by construction instead.
+
+**Detect a sentinel element as "every container sized by the named field is
+empty"**, relying on obligation 5's zero-only sentinel. Rejected: it is a second
+scan beside `derive_value` that could drift from it, and it silently goes wrong
+if obligation 5 is ever relaxed.
+
+**Compare `static_cast<named_type>(container.size())`.** Rejected: it truncates,
+so an element too long for its slot can masquerade as the sentinel.
+
+**Raise `derive_value`'s error from the rejection.** Rejected in §3.4: it would be
+a second reporting site for an error the element's write already reports, and it
+would change which error wins.
+
+**Require callers to set the named field.** Not available: a length-derived
+field has no `operator[]` (043), and the writer would discard the value anyway.
+
 ---
 
 ## 9. Tests
@@ -1241,17 +1451,47 @@ Read (069), each in both forms:
   cast-down comparison, and is the case that fails if the sentinel is promoted
   instead (a `signed char` field and a sentinel of `0xff`)
 
-Write (071, 072), both forms:
+Write (071), both forms:
 
 - a run of real elements plus one synthesised terminator, compared against
-  expected bytes
+  expected bytes. The elements are **hand-built**: `data` is set and `size` is
+  never touched, so its stored value is 0. That makes this 072's accept case as
+  well as 071's, and it is the test the stored-value check broke (F12). The ut
+  suite has it. The GoogleTest suite does not and needs it, because its only
+  non-empty writes are of read elements, which cannot tell the stored value from
+  the derived one.
 - an empty vector emits the lone terminator, and reads back empty
-- an element matching the sentinel in first, middle and last position each fails
-  with `found_sentinel_in_sequence`, and `failed_at` names the sequence field
-- the last-position case specifically, to pin that there is no "already
-  terminated" exemption
 - round trip, byte-identical, for GIF and DNS including the empty-run case —
   the feature's acceptance witnesses
+
+Write (072), both forms, each asserting the reason by value:
+
+- **derived named field, empty `data`, any position.** GIF schema, three
+  hand-built elements, with the one at first, middle or last position having
+  empty `data`: `found_sentinel_in_sequence`, with `failed_at == "blocks"`. The
+  last position pins that there is no "already terminated" exemption. In the ut
+  form, pre-fill the buffer with a marker byte and assert that the byte at the
+  offending element's offset is still the marker. In the GoogleTest form, assert
+  that the file holds exactly the bytes before the offending element. This
+  checks §3.3's guarantee that the offending element's own bytes never reach the
+  stream, and fails if the check moves after `write_nested`.
+- **derived named field, stale stored value.** Read a GIF run, clear one
+  element's `data` (its stored `size` stays non-zero), then write:
+  `found_sentinel_in_sequence`. Pins that the stored value is not consulted when
+  the writer discards it, and fails if the check reverts to `matches_sentinel`.
+- **a failed derivation is not a match.** A hand-built element with 256 bytes of
+  `data` under a `u8` `size` fails with `validation_failure`, not
+  `found_sentinel_in_sequence`. Pins `derive_value` over a truncating cast (which
+  yields 0 and matches), and §3.4's rule that the element's own write reports the
+  failure.
+- **non-derived named field.** A `tagged{kind u8 1_B, value u16 2_B}` run with
+  `until_field_equals<"kind", u8{0xff}>`. Elements with `kind` 1 and 2 write, and
+  the expected bytes end in the full three-byte terminator `ff 00 00`. Setting
+  either element's `kind` to 0xff gives `found_sentinel_in_sequence`.
+- **cast-down on write.** A `signed char` named field with
+  `until_field_equals<"v", 0xff>`, and an element with `v = -1`:
+  `found_sentinel_in_sequence`. The write-side twin of the read suite's signed
+  case, and it fails if `equals_sentinel` promotes instead of casting down.
 
 Soundness positive control (070), in `test/schema/` rather than
 `must_not_compile`: both witness schemas declare and compile, asserted as
@@ -1299,7 +1539,11 @@ expect it:
 - **the write-side rejection** (072) and the exact property it guarantees: the
   offending element's own bytes never reach the stream, earlier elements' bytes
   do, and there is no rollback. Nothing else in `vector_of_records` constrains
-  what an element may contain.
+  what an element may contain. State the rule in terms the author controls.
+  When the named field is a length target, the rejected element is the one
+  whose sized containers are empty (a GIF sub-block with empty `data`), not the
+  one "whose `size` is 0": the author never sets `size`, and its stored value
+  is not what is written (§3.4).
 - **both compile-time rejections** (070), as structural rules a schema author
   meets at declaration time — including §6's table of what a terminating element
   may contain, which is the actionable form of the soundness rule.
@@ -1426,6 +1670,22 @@ the right answer for 072 (the offending thing is the run), but it means a caller
 cannot learn *which element* failed. Worth one sentence in 073 so it is not
 discovered as a surprise.
 
+**F12 — the write rejection compared a value the writer discards. Found by the
+implementer during 072.** §1.7 states that the motivating named field is
+length-derived and has no `operator[]`, and §3.1 then compared its stored value
+regardless. For such a field the stored value never reaches the wire.
+Hand-built elements always store 0, so every one was rejected, including 071's
+own hand-built GIF write test, which fails with the check as first specified.
+Meanwhile a read element whose `data` had been cleared kept its old `size`,
+passed the check, and went out as `00`: the silent truncation 072 exists to
+prevent. §3.4 fixes it by testing the value the writer emits. This is a defect in
+this design, not in the spec. The spec says "an element that matches the
+sentinel", and the match that matters is the one on the wire. The original claim
+that one function made read and write "provably the same predicate" is replaced
+by one shared comparison, plus an equivalence that holds on every element the
+reader can produce.
+
 **Nothing in the spec was found to be wrong** other than F4/F5, which concern its
 proposed mechanization of a rule whose stated purpose this design implements
-unchanged. Its three Open Questions are settled in §3.3, §4 and §5.5.
+unchanged. F12 is a defect in this design, corrected in place. The spec's three
+Open Questions are settled in §3.3, §4 and §5.5.
