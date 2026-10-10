@@ -3480,7 +3480,7 @@ struct struct_field_list_impl : struct_field_list_base, fields... {
 // reading fields, and both can name a length target — which the user cannot
 // see, but which is still on the wire and still has to be read.
 template <typename field_accessor, auto list_metadata, typename... fields>
-constexpr auto& field_value_of(const struct_field_list_impl<list_metadata, fields...>& field_list) {
+constexpr auto field_value_of(const struct_field_list_impl<list_metadata, fields...>& field_list) -> auto& {
   constexpr auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
   static_assert(field_lookup_res.has_value, "no such field in this field list");
   using field_type_cref = const meta::type_of<field_lookup_res->id>&;
@@ -3490,7 +3490,7 @@ constexpr auto& field_value_of(const struct_field_list_impl<list_metadata, field
 // The write path has to set the named field of a synthesised terminator, which
 // operator[] cannot reach for a length-derived field.
 template <typename field_accessor, auto list_metadata, typename... fields>
-constexpr auto& field_value_of(struct_field_list_impl<list_metadata, fields...>& field_list) {
+constexpr auto field_value_of(struct_field_list_impl<list_metadata, fields...>& field_list) -> auto& {
   constexpr auto field_lookup_res = lookup_field<list_metadata>(as_sv(field_accessor::field_id));
   static_assert(field_lookup_res.has_value, "no such field in this field list");
   using field_type_ref = meta::type_of<field_lookup_res->id>&;
@@ -3512,9 +3512,9 @@ namespace s2s {
 // Cast the sentinel to the named field's type once, rather than promoting the
 // field's value up: a signed char field holding 0xff compared against 0xff
 // promotes to -1 == 255 and would never match the value that ends the run.
-template <auto size, typename V>
-constexpr auto equals_sentinel(const V& v) -> bool {
-  return v == static_cast<V>(size_type_of<size>::sentinel_value);
+template <auto size, typename value_type>
+constexpr auto equals_sentinel(const value_type& value) -> bool {
+  return value == static_cast<value_type>(size_type_of<size>::sentinel_value);
 }
 // On an element the reader produced, the stored value is the wire value.
 template <auto size, field_list_like record>
@@ -3597,16 +3597,16 @@ struct terminator_field_check {
 
 // One requirement, two users: the read test casts the sentinel down to the
 // field, and the synthesis assigns it.
-template <typename named_type, auto v>
+template <typename named_type, auto sentinel>
 concept sentinel_fits_named_field =
-  requires { static_cast<named_type>(v); } && std::equality_comparable<named_type>;
+  requires { static_cast<named_type>(sentinel); } && std::equality_comparable<named_type>;
 
 template <typename record, fixed_string sentinel_field, auto sentinel>
 struct terminator_synthesis_check;
 
-template <auto metadata, typename... fields, fixed_string S, auto v>
-struct terminator_synthesis_check<struct_field_list_impl<metadata, fields...>, S, v> {
-  using named = meta::type_of<lookup_field<metadata>(as_sv(S))->id>;
+template <auto metadata, typename... fields, fixed_string sentinel_field, auto sentinel>
+struct terminator_synthesis_check<struct_field_list_impl<metadata, fields...>, sentinel_field, sentinel> {
+  using named = meta::type_of<lookup_field<metadata>(as_sv(sentinel_field))->id>;
   using named_type = typename named::field_type;
 
   static constexpr bool named_is_fixed_width = fixed_sized_field_like<named>;
@@ -3614,7 +3614,7 @@ struct terminator_synthesis_check<struct_field_list_impl<metadata, fields...>, S
     "the field named by until_field_equals must be fixed-width, so the "
     "terminating element has a determined width");
 
-  static constexpr bool sentinel_fits = sentinel_fits_named_field<named_type, v>;
+  static constexpr bool sentinel_fits = sentinel_fits_named_field<named_type, sentinel>;
   static_assert(sentinel_fits,
     "the sentinel given to until_field_equals cannot be held by, or compared "
     "against, the named field");
@@ -3628,7 +3628,7 @@ struct terminator_synthesis_check<struct_field_list_impl<metadata, fields...>, S
 
   static constexpr bool sentinel_satisfies_constraint = [] {
     if constexpr(sentinel_fits)
-      return named::constraint_checker(static_cast<named_type>(v));
+      return named::constraint_checker(static_cast<named_type>(sentinel));
     else
       return false;
   }();
@@ -3640,8 +3640,8 @@ struct terminator_synthesis_check<struct_field_list_impl<metadata, fields...>, S
   // sizes and discards the stored value. The terminator's containers are
   // empty, so the byte written is zero.
   static constexpr bool sentinel_survives_derivation =
-    !is_length_derived_field<metadata>(as_sv(S)) ||
-    (sentinel_fits && static_cast<named_type>(v) == named_type{});
+    !is_length_derived_field<metadata>(as_sv(sentinel_field)) ||
+    (sentinel_fits && static_cast<named_type>(sentinel) == named_type{});
   static_assert(sentinel_survives_derivation,
     "the named field is the declared length of another field in this element, "
     "so the write path derives its value from that field's contents rather than "
