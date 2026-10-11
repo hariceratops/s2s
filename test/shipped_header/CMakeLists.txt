@@ -16,7 +16,7 @@ target_include_directories(shipped_header_roundtrip PRIVATE ${SINGLE_HEADER_DIR}
 # friend-injection trick for type_id; suppressed here so the guard catches
 # anything new instead of being permanently red.
 target_compile_options(shipped_header_roundtrip PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 
 add_test(NAME shipped_header_roundtrip COMMAND shipped_header_roundtrip)
 

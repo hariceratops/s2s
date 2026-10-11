@@ -8,7 +8,7 @@ add_dependencies(hello_s2s generate_single_header)
 # Only the shipped header, the way a consumer sees it.
 target_include_directories(hello_s2s PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(hello_s2s PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 
 add_test(
   NAME make_example_fixture

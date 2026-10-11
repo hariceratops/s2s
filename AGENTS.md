@@ -27,6 +27,10 @@ belongs to GoogleTest, registered with `add_struct_cast_test`. The two never
 share a binary: ut aborts from a static destructor, and its compile-time mode
 is a `static_assert` inside the translation unit.
 
+Run `CXX=g++-14 cmake --workflow --preset ubsan --fresh` (also `clang++-19`) for
+any slice that reads through typed pointers or views: it runs the `run_time`
+label under fatal UBSan.
+
 Both helpers live in `test/CMakeLists.txt`; per-directory files only call
 them. A `ut` CTest entry named `*_compile_time` drives `cmake --build` rather
 than running its binary — running it reports a stale binary from the last good

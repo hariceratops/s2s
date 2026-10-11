@@ -210,6 +210,23 @@ ctest --test-dir build -R '_ct_'           # the compile-time tier only
 ctest --test-dir build --output-on-failure # show output from what failed
 ```
 
+Run the run-time tests under UBSan (`-fsanitize=undefined`, reports fatal).
+One command configures, builds and runs, in `build-ubsan/`; it needs
+CMake 3.25 or newer, and `--fresh` is there because CMake ignores a changed
+`CXX` once it has cached the compiler:
+
+```sh
+CXX=g++-14     cmake --workflow --preset ubsan --fresh
+CXX=clang++-19 cmake --workflow --preset ubsan --fresh
+```
+
+The clang build currently stops at `test/schema/delimited_write_ct.cpp`, which
+clang 19 with libstdc++ 14 cannot constant-evaluate; every other target builds.
+
+It runs the GoogleTest suite and the `*_run_time` ut entries (the `run_time`
+CTest label) and skips `*_compile_time`. x86 does not trap on a misaligned
+typed load, so this is the only thing that catches one.
+
 The test tree is named for what each directory verifies:
 
 | Directory | Verifies |

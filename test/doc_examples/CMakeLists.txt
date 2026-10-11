@@ -7,7 +7,7 @@ add_executable(doc_example doc_example.cpp)
 add_dependencies(doc_example generate_single_header)
 target_include_directories(doc_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(doc_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME doc_example COMMAND doc_example)
 
 # README.md's write-direction example, kept compilable for the same reason as
@@ -17,7 +17,7 @@ add_executable(readme_roundtrip_example readme_roundtrip_example.cpp)
 add_dependencies(readme_roundtrip_example generate_single_header)
 target_include_directories(readme_roundtrip_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(readme_roundtrip_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME readme_roundtrip_example COMMAND readme_roundtrip_example)
 
 # docs/schema/ pages: the four-axes example.
@@ -25,7 +25,7 @@ add_executable(guide_schema_example guide_schema_example.cpp)
 add_dependencies(guide_schema_example generate_single_header)
 target_include_directories(guide_schema_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_schema_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_schema_example COMMAND guide_schema_example)
 
 # docs/schema/ pages: the computed-values example.
@@ -33,7 +33,7 @@ add_executable(guide_computed_example guide_computed_example.cpp)
 add_dependencies(guide_computed_example generate_single_header)
 target_include_directories(guide_computed_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_computed_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_computed_example COMMAND guide_computed_example)
 
 # docs/schema/ pages: the maybe and variance examples.
@@ -41,14 +41,14 @@ add_executable(guide_optional_example guide_optional_example.cpp)
 add_dependencies(guide_optional_example generate_single_header)
 target_include_directories(guide_optional_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_optional_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_optional_example COMMAND guide_optional_example)
 
 add_executable(guide_variance_example guide_variance_example.cpp)
 add_dependencies(guide_variance_example generate_single_header)
 target_include_directories(guide_variance_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_variance_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_variance_example COMMAND guide_variance_example)
 
 # docs/schema/byte-order-axis.md: the TIFF example.
@@ -56,7 +56,7 @@ add_executable(guide_byte_order_example guide_byte_order_example.cpp)
 add_dependencies(guide_byte_order_example generate_single_header)
 target_include_directories(guide_byte_order_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_byte_order_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_byte_order_example COMMAND guide_byte_order_example)
 
 # docs/constraints.md.
@@ -64,7 +64,7 @@ add_executable(guide_constraints_example guide_constraints_example.cpp)
 add_dependencies(guide_constraints_example generate_single_header)
 target_include_directories(guide_constraints_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_constraints_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_constraints_example COMMAND guide_constraints_example)
 
 # docs/reading.md: the worked example.
@@ -72,7 +72,7 @@ add_executable(guide_reading_example guide_reading_example.cpp)
 add_dependencies(guide_reading_example generate_single_header)
 target_include_directories(guide_reading_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_reading_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_reading_example COMMAND guide_reading_example)
 
 # docs/writing.md: the worked example.
@@ -80,7 +80,7 @@ add_executable(guide_writing_example guide_writing_example.cpp)
 add_dependencies(guide_writing_example generate_single_header)
 target_include_directories(guide_writing_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_writing_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_writing_example COMMAND guide_writing_example)
 
 # docs/streams.md: the reference implementation.
@@ -88,7 +88,7 @@ add_executable(guide_stream_example guide_stream_example.cpp)
 add_dependencies(guide_stream_example generate_single_header)
 target_include_directories(guide_stream_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_stream_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_stream_example COMMAND guide_stream_example)
 
 # docs/compile-time.md: the constexpr example.
@@ -96,7 +96,7 @@ add_executable(guide_constexpr_example guide_constexpr_example.cpp)
 add_dependencies(guide_constexpr_example generate_single_header)
 target_include_directories(guide_constexpr_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_constexpr_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_constexpr_example COMMAND guide_constexpr_example)
 
 # README.md's read-direction example.
@@ -104,7 +104,7 @@ add_executable(readme_read_example readme_read_example.cpp)
 add_dependencies(readme_read_example generate_single_header)
 target_include_directories(readme_read_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(readme_read_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME readme_read_example COMMAND readme_read_example)
 
 # docs/schema/computed-values.md: a discovered length (until<>) feeding a
@@ -113,7 +113,7 @@ add_executable(guide_delimited_composition_example guide_delimited_composition_e
 add_dependencies(guide_delimited_composition_example generate_single_header)
 target_include_directories(guide_delimited_composition_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_delimited_composition_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_delimited_composition_example COMMAND guide_delimited_composition_example)
 
 # docs/schema/size-axis.md: the until<> example — an ELF string table entry.
@@ -121,7 +121,7 @@ add_executable(guide_delimited_size_example guide_delimited_size_example.cpp)
 add_dependencies(guide_delimited_size_example generate_single_header)
 target_include_directories(guide_delimited_size_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_delimited_size_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_delimited_size_example COMMAND guide_delimited_size_example)
 
 # docs/schema/size-axis.md: the until_field_equals<> example — a GIF image's
@@ -130,7 +130,7 @@ add_executable(guide_sentinel_terminated_records_example guide_sentinel_terminat
 add_dependencies(guide_sentinel_terminated_records_example generate_single_header)
 target_include_directories(guide_sentinel_terminated_records_example PRIVATE ${SINGLE_HEADER_DIR})
 target_compile_options(guide_sentinel_terminated_records_example PRIVATE
-  -Wall -Wextra -Wpedantic -Werror -Wno-non-template-friend)
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_sentinel_terminated_records_example COMMAND guide_sentinel_terminated_records_example)
 
 # The README's read example opens a file the way a consumer would, so the file

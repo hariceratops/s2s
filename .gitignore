@@ -9,3 +9,4 @@ site/
 
 # Local Python environment for the docs build
 .venv/
+build-ubsan

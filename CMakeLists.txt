@@ -24,6 +24,19 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 
+# Off by default so the developer build is unchanged. It is an option rather
+# than flags passed through CMAKE_CXX_FLAGS because the set() above shadows that
+# cache entry, which would drop them silently and leave a green run that
+# sanitized nothing. See `cmake --workflow --preset ubsan` in the README.
+option(S2S_SANITIZE_UNDEFINED "Build and link everything with -fsanitize=undefined" OFF)
+if(S2S_SANITIZE_UNDEFINED)
+  if(MSVC)
+    message(FATAL_ERROR "S2S_SANITIZE_UNDEFINED needs gcc or clang; MSVC has no -fsanitize=undefined.")
+  endif()
+  add_compile_options(-fsanitize=undefined -fno-sanitize-recover=all)
+  add_link_options(-fsanitize=undefined)
+endif()
+
 # Set the paths
 set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 set(SINGLE_HEADER_DIR "${CMAKE_SOURCE_DIR}/single_header")
