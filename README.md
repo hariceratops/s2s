@@ -51,6 +51,10 @@ folder can be used for direct inclusion into a project
 * Endianness fixed by the schema and applied at compile time where it is a
   fact about the format, or read from the file itself where the format says so
   — a TIFF-style `II`/`MM` marker decides the order of everything after it
+* Reading a few fields of a fixed-layout record in place from a `std::span` of
+  bytes, with `struct_view_le`/`_be`: fields never touched are never decoded.
+  Not zero-copy, and the view's lifetime and bounds are the caller's to keep —
+  see [Views](docs/views.md)
 * Pluggable interfaces working with custom streams
 
 ## Requirements
@@ -231,7 +235,7 @@ The test tree is named for what each directory verifies:
 
 | Directory | Verifies |
 |---|---|
-| `test/schema/` | one schema construct per file pair — the descriptor table in [`docs/schema/`](docs/schema/index.md) |
+| `test/schema/` | one schema construct per file pair — the descriptor table in [`docs/schema/`](docs/schema/index.md) — and the read APIs over them, such as `struct_view` |
 | `test/internals/` | traits, containers and field-list metadata |
 | `test/must_not_compile/` | programs that must fail to compile |
 | `test/doc_examples/` | every program shown in the docs compiles, runs, and matches its fenced block |
@@ -269,7 +273,7 @@ Entries under `test/must_not_compile/` are expected to fail to build, and
 - [x] Run-time Endianness Handling
 - [ ] Modules
 - [x] Write struct to stream
-- [ ] struct_view - Zero copy views into buffers
+- [x] struct_view - Views that read only the fields touched, in place (not zero-copy)
 - [ ] Asynchronous Read-Write
 - [ ] Support for seeking
 - [ ] Compile time functions for struct_field_list - 

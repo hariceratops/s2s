@@ -133,6 +133,14 @@ target_compile_options(guide_sentinel_terminated_records_example PRIVATE
   -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
 add_test(NAME guide_sentinel_terminated_records_example COMMAND guide_sentinel_terminated_records_example)
 
+# docs/views.md: walking a pcap capture file through views.
+add_executable(guide_views_example guide_views_example.cpp)
+add_dependencies(guide_views_example generate_single_header)
+target_include_directories(guide_views_example PRIVATE ${SINGLE_HEADER_DIR})
+target_compile_options(guide_views_example PRIVATE
+  -Wall -Wextra -Wpedantic -Werror $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>)
+add_test(NAME guide_views_example COMMAND guide_views_example)
+
 # The README's read example opens a file the way a consumer would, so the file
 # has to exist before it runs. Generated rather than shown, to keep that example
 # a pitch instead of a setup script.

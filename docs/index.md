@@ -13,6 +13,8 @@ is documented once:
   shared vocabulary. Nothing in them belongs to reading or to writing.
 - **[Reading](reading.md)** and **[Writing](writing.md)** cover only what each
   direction does with that vocabulary.
+- **[Views](views.md)** read a few fields of a fixed-layout record in place,
+  from bytes the caller holds, and carry caveats the compiler does not check.
 - **[Streams](streams.md)**, **[Compile time](compile-time.md)** and
   **[Errors](errors.md)** cut across both.
 - **[Reference](reference.md)** holds the exact declarations and the known

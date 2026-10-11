@@ -15,7 +15,10 @@ requires gcc 14 or newer, and `CMakeLists.txt` fails configure below it.
 Sources live under `include/` and are amalgamated by `scripts/amalgam.py`
 into the shipped `single_header/s2s.hpp`, which is what consumers include.
 Both directions are complete: stream to struct via `struct_cast_le`/`_be`, and
-struct to stream via `stream_cast_le`/`_be`.
+struct to stream via `stream_cast_le`/`_be`. A third read API, `struct_view_le`/`_be`,
+reads individual fields of a fixed-layout record in place from a `std::span` of
+bytes; it is not zero-copy and its lifetime and bounds are the caller's (see
+`docs/views.md`).
 Tests use two frameworks, both fetched at configure time via CMake
 `FetchContent`. Routing between them is by constant-evaluability, and the
 compiler enforces it: a body the compiler can evaluate on its own belongs to
@@ -54,7 +57,7 @@ named for what it verifies:
 
 | Directory | Verifies |
 |---|---|
-| `test/schema/` | one schema construct per `<feature>_{read,write}.cpp` (GoogleTest) and `_ct.cpp` (ut) pair; mirrors the descriptor table in `docs/schema/index.md` |
+| `test/schema/` | one schema construct per `<feature>_{read,write}.cpp` (GoogleTest) and `_ct.cpp` (ut) pair, mirroring the descriptor table in `docs/schema/index.md`; also the tests of a read API over those constructs, such as `struct_view_read{,_ct}.cpp` |
 | `test/internals/` | machinery that is not a schema construct — traits, containers, field-list metadata |
 | `test/must_not_compile/` | programs that must fail to compile; each is its own target, and `ctest` expects the build to fail |
 | `test/doc_examples/` | every program the documentation shows compiles, runs, and still matches its fenced block |
