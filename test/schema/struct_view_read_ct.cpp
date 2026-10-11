@@ -281,6 +281,94 @@ using record_checked =
 
 constexpr auto in_range = [](const u32& v) { return v >= 10 && v <= 20; };
 
+// Arrays of records (079). The u8 lead puts the table at an odd offset; each
+// entry is 7 bytes, so every element is misaligned differently.
+using table_entry =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::basic_field<"flags", u16, 2_B>
+  >;
+using table_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::array_of_records<"entries", table_entry, 3>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+constexpr std::size_t table_width = 1 + 3 * 7 + 2;
+
+constexpr auto table_sample = std::array<u8, table_width>{
+  0x7f,
+  0x01, 0x10, 0x11, 0x12, 0x13, 0x20, 0x21,
+  0x02, 0x30, 0x31, 0x32, 0x33, 0x40, 0x41,
+  0x03, 0x50, 0x51, 0x52, 0x53, 0x60, 0x61,
+  0x0c, 0x0d
+};
+
+template <std::endian order>
+constexpr auto table_agrees_with_parser() -> bool {
+  auto bytes = table_sample;
+  memstream<table_width> stream(bytes);
+  auto parsed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_cast_le<table_record>(stream);
+    else
+      return s2s::struct_cast_be<table_record>(stream);
+  }();
+  auto viewed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_view_le<table_record>(std::span<const u8>{table_sample});
+    else
+      return s2s::struct_view_be<table_record>(std::span<const u8>{table_sample});
+  }();
+  if(!parsed.has_value() || !viewed.has_value())
+    return false;
+  const auto& p = *parsed;
+  const auto& v = *viewed;
+  bool same = p["lead"_f] == v["lead"_f] && p["tail"_f] == v["tail"_f];
+  for(std::size_t idx = 0; idx < 3; ++idx) {
+    const auto entry = v["entries"_f][idx];
+    same = same && p["entries"_f][idx]["kind"_f] == entry["kind"_f] &&
+           p["entries"_f][idx]["len"_f] == entry["len"_f] &&
+           p["entries"_f][idx]["flags"_f] == entry["flags"_f];
+  }
+  return same;
+}
+
+// Arrays nested in records nested in arrays, with a constraint at the bottom.
+using leaf_entry =
+  s2s::struct_field_list<
+    s2s::basic_field<"id", u8, 1_B>,
+    s2s::basic_field<"size", u16, 2_B, s2s::gte(u16{5})>
+  >;
+using group =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u8, 1_B>,
+    s2s::array_of_records<"leaves", leaf_entry, 2>
+  >;
+using groups_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::array_of_records<"groups", group, 2>
+  >;
+constexpr std::size_t groups_width = 1 + 2 * (1 + 2 * 3);
+
+constexpr auto groups_sample = std::array<u8, groups_width>{
+  0x7f,
+  0x01, 0xa1, 0x05, 0x00, 0xa2, 0x06, 0x00,
+  0x02, 0xb1, 0x07, 0x00, 0xb2, 0x08, 0x00
+};
+
+constexpr auto entries_sum_is_96 = [](const std::array<table_entry, 3>& entries) {
+  return entries[0]["len"_f] + entries[1]["len"_f] + entries[2]["len"_f] == 96u;
+};
+using array_checked =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::array_of_records<"entries", table_entry, 3, entries_sum_is_96>
+  >;
+constexpr std::size_t array_checked_width = 1 + 3 * 7;
+
 auto main() -> int {
   "the record's width is a compile-time constant"_test = [] constexpr {
     expect(eq(s2s::wire_width<record>, record_width));
@@ -601,5 +689,109 @@ auto main() -> int {
     inner_bad[1] = 0x06;
     expect(eq(creation_agrees_with_parser<record_checked, std::endian::little>(inner_bad), true));
     expect(eq(creation_agrees_with_parser<record_checked, std::endian::big>(good), true));
+  };
+
+  "an array of records indexes as sub-views that match the parser in both orders"_test = [] constexpr {
+    expect(eq(table_agrees_with_parser<std::endian::little>(), true));
+    expect(eq(table_agrees_with_parser<std::endian::big>(), true));
+    auto le = s2s::struct_view_le<table_record>(std::span<const u8, table_width>{table_sample});
+    auto be = s2s::struct_view_be<table_record>(std::span<const u8, table_width>{table_sample});
+    expect(eq((*le)["entries"_f][1]["len"_f], 0x33323130u));
+    expect(eq((*be)["entries"_f][1]["len"_f], 0x30313233u));
+    expect(eq((*le)["entries"_f][2]["flags"_f], u16{0x6160}));
+    expect(eq((*le)["entries"_f].size(), std::size_t{3}));
+  };
+
+  "the width and every element offset are compile-time constants"_test = [] constexpr {
+    expect(eq(s2s::wire_width<table_record>, table_width));
+    expect(eq(s2s::record_layout<table_record>::offsets[2], std::size_t{1 + 21}));
+    constexpr auto v = s2s::struct_view_le<table_record>(std::span<const u8, table_width>{table_sample});
+    constexpr auto flags = (*v)["entries"_f][2]["flags"_f];
+    expect(eq(flags, u16{0x6160}));
+  };
+
+  "an element is a sub-view of the same type as a top-level view"_test = [] constexpr {
+    auto view = s2s::struct_view_le<table_record>(std::span<const u8>{table_sample});
+    auto entries = (*view)["entries"_f];
+    auto entry = entries[1];
+    expect(eq(sizeof(entries) == sizeof(const u8*), true));
+    expect(eq(sizeof(entry) == sizeof(const u8*), true));
+    expect(eq(std::is_trivially_copyable_v<decltype(entries)>, true));
+    expect(eq(entry["kind"_f], u8{2}));
+  };
+
+  "reading one element leaves the other elements unread"_test = [] constexpr {
+    auto original = table_sample;
+    auto mutated = table_sample;
+    mutated[2] = 0x99;
+    mutated[16] = 0x99;
+    auto before = s2s::struct_view_le<table_record>(std::span<const u8>{original});
+    auto after = s2s::struct_view_le<table_record>(std::span<const u8>{mutated});
+    expect(eq((*before)["entries"_f][1]["len"_f] == (*after)["entries"_f][1]["len"_f], true));
+    expect(eq((*before)["entries"_f][0]["len"_f] == (*after)["entries"_f][0]["len"_f], false));
+  };
+
+  "a span short of the table names the array field, like the parser"_test = [] constexpr {
+    auto view = s2s::struct_view_le<table_record>(std::span<const u8>{table_sample}.first(table_width - 1));
+    expect(eq(view.has_value(), false));
+    expect(eq(view.error().failed_at == "tail", true));
+    auto shorter = s2s::struct_view_le<table_record>(std::span<const u8>{table_sample}.first(10));
+    expect(eq(shorter.error().failed_at == "entries", true));
+  };
+
+  "arrays nested in records nested in arrays read through chained indexing"_test = [] constexpr {
+    static_assert(s2s::fixed_layout_schema<groups_record>);
+    expect(eq(s2s::wire_width<groups_record>, groups_width));
+    auto bytes = groups_sample;
+    memstream<groups_width> stream(bytes);
+    auto parsed = s2s::struct_cast_le<groups_record>(stream);
+    auto viewed = s2s::struct_view_le<groups_record>(std::span<const u8>{groups_sample});
+    expect(eq(parsed.has_value() && viewed.has_value(), true));
+    for(std::size_t g = 0; g < 2; ++g) {
+      expect(eq((*parsed)["groups"_f][g]["n"_f] == (*viewed)["groups"_f][g]["n"_f], true));
+      for(std::size_t l = 0; l < 2; ++l) {
+        expect(eq((*parsed)["groups"_f][g]["leaves"_f][l]["id"_f] ==
+                  (*viewed)["groups"_f][g]["leaves"_f][l]["id"_f], true));
+        expect(eq((*parsed)["groups"_f][g]["leaves"_f][l]["size"_f] ==
+                  (*viewed)["groups"_f][g]["leaves"_f][l]["size"_f], true));
+      }
+    }
+    expect(eq((*viewed)["groups"_f][1]["leaves"_f][1]["size"_f], u16{8}));
+  };
+
+  "a constraint in any element is checked at creation, in wire order"_test = [] constexpr {
+    expect(eq(s2s::any_field_constrained_v<groups_record>, true));
+    expect(eq(s2s::any_field_constrained_v<table_record>, false));
+    expect(eq(creation_agrees_with_parser<groups_record, std::endian::little>(groups_sample), true));
+    expect(eq(s2s::struct_view_le<groups_record>(std::span<const u8>{groups_sample}).has_value(), true));
+    for(std::size_t at: {3uz, 13uz}) {
+      auto bad = groups_sample;
+      bad[at] = 0x04;
+      expect(eq(creation_agrees_with_parser<groups_record, std::endian::little>(bad), true));
+      auto err = s2s::struct_view_le<groups_record>(std::span<const u8>{bad}).error();
+      expect(eq(err.failure_reason, s2s::error_reason::validation_failure));
+      expect(eq(err.failed_at == "groups", true));
+    }
+  };
+
+  "a constraint on the array itself is checked at creation"_test = [] constexpr {
+    expect(eq(s2s::any_field_constrained_v<array_checked>, true));
+    std::array<u8, array_checked_width> good{};
+    good[2] = 32;
+    good[9] = 32;
+    good[16] = 32;
+    expect(eq(creation_agrees_with_parser<array_checked, std::endian::little>(good), true));
+    expect(eq(s2s::struct_view_le<array_checked>(std::span<const u8>{good}).has_value(), true));
+    auto bad = good;
+    bad[16] = 33;
+    expect(eq(creation_agrees_with_parser<array_checked, std::endian::little>(bad), true));
+    auto err = s2s::struct_view_le<array_checked>(std::span<const u8>{bad}).error();
+    expect(eq(err.failure_reason, s2s::error_reason::validation_failure));
+    expect(eq(err.failed_at == "entries", true));
+    std::array<u8, array_checked_width> be_good{};
+    be_good[4] = 32;
+    be_good[11] = 32;
+    be_good[18] = 32;
+    expect(eq(creation_agrees_with_parser<array_checked, std::endian::big>(be_good), true));
   };
 }

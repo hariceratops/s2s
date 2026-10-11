@@ -447,3 +447,91 @@ TEST(StructViewRead, AShortSpanNamesTheOutermostFieldOfANestedRecord) {
   EXPECT_EQ(viewed.error().failure_reason, s2s::error_reason::buffer_exhaustion);
   EXPECT_EQ(viewed.error().failed_at, "mid");
 }
+
+namespace {
+using table_entry =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u32, 4_B, s2s::gte(0u)>,
+    s2s::basic_field<"flags", u16, 2_B>
+  >;
+using table_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::array_of_records<"entries", table_entry, 3>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+constexpr std::size_t table_width = 1 + 3 * 7 + 2;
+constexpr std::array<u8, table_width> table_sample{
+  0x7f,
+  0x01, 0x10, 0x11, 0x12, 0x13, 0x20, 0x21,
+  0x02, 0x30, 0x31, 0x32, 0x33, 0x40, 0x41,
+  0x03, 0x50, 0x51, 0x52, 0x53, 0x60, 0x61,
+  0x0c, 0x0d
+};
+
+using checked_entry =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u16, 2_B, s2s::lte(u16{9})>
+  >;
+using checked_table =
+  s2s::struct_field_list<
+    s2s::array_of_records<"entries", checked_entry, 3>
+  >;
+
+void write_bytes(const auto& bytes) {
+  std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+  file.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+}
+}
+
+TEST(StructViewRead, AnArrayOfRecordsIndexesAsSubViewsInBothOrders) {
+  write_bytes(table_sample);
+  auto bytes = slurp();
+  std::ifstream le_file("test_input.bin", std::ios::in | std::ios::binary);
+  std::ifstream be_file("test_input.bin", std::ios::in | std::ios::binary);
+  auto parsed_le = s2s::struct_cast_le<table_record>(le_file);
+  auto parsed_be = s2s::struct_cast_be<table_record>(be_file);
+  auto viewed_le = s2s::struct_view_le<table_record>(std::span<const char>{bytes});
+  auto viewed_be = s2s::struct_view_be<table_record>(std::span<const char>{bytes});
+  ASSERT_TRUE(parsed_le && parsed_be && viewed_le && viewed_be);
+  for(std::size_t idx = 0; idx < 3; ++idx) {
+    EXPECT_EQ((*parsed_le)["entries"_f][idx]["len"_f], (*viewed_le)["entries"_f][idx]["len"_f]);
+    EXPECT_EQ((*parsed_le)["entries"_f][idx]["flags"_f], (*viewed_le)["entries"_f][idx]["flags"_f]);
+    EXPECT_EQ((*parsed_be)["entries"_f][idx]["len"_f], (*viewed_be)["entries"_f][idx]["len"_f]);
+    EXPECT_EQ((*parsed_be)["entries"_f][idx]["kind"_f], (*viewed_be)["entries"_f][idx]["kind"_f]);
+  }
+  EXPECT_EQ((*viewed_le)["entries"_f].size(), 3u);
+  static_assert(s2s::wire_width<table_record> == table_width);
+}
+
+TEST(StructViewRead, AnElementReadsFromAnOddAddress) {
+  alignas(8) std::array<char, table_width + 1> storage{};
+  for(std::size_t idx = 0; idx < table_width; ++idx)
+    storage[idx + 1] = static_cast<char>(table_sample[idx]);
+  auto le = s2s::struct_view_le<table_record>(std::span<const char>{storage.data() + 1, table_width});
+  ASSERT_TRUE(le.has_value());
+  EXPECT_EQ((*le)["entries"_f][2]["len"_f], 0x53525150u);
+  EXPECT_EQ(sizeof((*le)["entries"_f][1]), sizeof(const char*));
+}
+
+TEST(StructViewRead, AConstraintInAnyElementFailsLikeTheParser) {
+  auto check = [](std::array<u8, 9> bytes, bool ok) {
+    write_bytes(bytes);
+    auto data = slurp();
+    std::ifstream file("test_input.bin", std::ios::in | std::ios::binary);
+    auto parsed = s2s::struct_cast_le<checked_table>(file);
+    auto viewed = s2s::struct_view_le<checked_table>(std::span<const char>{data});
+    ASSERT_EQ(parsed.has_value(), viewed.has_value());
+    ASSERT_EQ(viewed.has_value(), ok);
+    if(!parsed) {
+      EXPECT_EQ(parsed.error().failure_reason, viewed.error().failure_reason);
+      EXPECT_EQ(parsed.error().failed_at, viewed.error().failed_at);
+      EXPECT_EQ(viewed.error().failed_at, "entries");
+    }
+  };
+  check({1, 9, 0, 2, 9, 0, 3, 9, 0}, true);
+  check({1, 10, 0, 2, 9, 0, 3, 9, 0}, false);
+  check({1, 9, 0, 2, 9, 0, 3, 10, 0}, false);
+}

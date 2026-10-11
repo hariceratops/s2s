@@ -66,6 +66,11 @@ template <struct_field_like F>
 inline constexpr bool field_needs_check_v<F> =
   field_is_constrained_v<F> || any_field_constrained_v<extract_type_from_field_v<F>>;
 
+template <array_of_record_field_like F>
+inline constexpr bool field_needs_check_v<F> =
+  field_is_constrained_v<F> ||
+  any_field_constrained_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
 // Lets creation skip the constraint walk entirely for a schema with nothing to check.
 template <auto metadata, typename... fields>
 inline constexpr bool any_field_constrained_v<struct_field_list_impl<metadata, fields...>> =
@@ -80,6 +85,10 @@ inline constexpr bool field_has_compile_time_width_v = leaf_has_compile_time_wid
 template <struct_field_like F>
 inline constexpr bool field_has_compile_time_width_v<F> =
   every_field_has_compile_time_width_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_has_compile_time_width_v<F> =
+  every_field_has_compile_time_width_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
 
 template <auto metadata, typename... fields>
 inline constexpr bool every_field_has_compile_time_width_v<struct_field_list_impl<metadata, fields...>> =
@@ -101,7 +110,11 @@ template <typename F>
 constexpr auto field_wire_width() -> std::size_t {
   if constexpr(struct_field_like<F>)
     return record_layout<extract_type_from_field_v<F>>::width;
-  else
+  else if constexpr(array_of_record_field_like<F>) {
+    using array_type = extract_type_from_field_v<F>;
+    return extract_size_from_array_v<array_type> *
+           record_layout<extract_type_from_array_v<array_type>>::width;
+  } else
     return deduce_field_size<F::field_size>{}();
 }
 

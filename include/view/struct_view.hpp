@@ -93,6 +93,16 @@ struct view_read<F, order, B> {
   using type = const struct_view<typename F::field_type, order, B>;
 };
 
+template <typename S, std::size_t N, std::endian order, raw_byte_like B>
+class array_of_records_view;
+
+template <array_of_record_field_like F, std::endian order, raw_byte_like B>
+struct view_read<F, order, B> {
+  using array_type = typename F::field_type;
+  using type = const array_of_records_view<
+    extract_type_from_array_v<array_type>, extract_size_from_array_v<array_type>, order, B>;
+};
+
 template <typename F, std::endian order, raw_byte_like B>
 using view_read_t = typename view_read<F, order, B>::type;
 
@@ -124,6 +134,9 @@ class struct_view<struct_field_list_impl<metadata, fields...>, order, B> {
   template <typename, std::endian, raw_byte_like>
   friend class struct_view;
 
+  template <typename, std::size_t, std::endian, raw_byte_like>
+  friend class array_of_records_view;
+
 public:
   template <
     typename accessor,
@@ -135,8 +148,34 @@ public:
     const B* at = base + layout::offsets[res->occurs_at_idx];
     if constexpr(struct_field_like<field_t>)
       return struct_view<typename field_t::field_type, order, B>{at};
+    else if constexpr(array_of_record_field_like<field_t>)
+      return view_read_t<field_t, order, B>{at};
     else
       return read_leaf_at<field_t, order>(at);
+  }
+};
+
+// Indexing takes a size_t, which struct_view's accessor operator[] cannot, so
+// an array of records is its own type.
+template <auto metadata, typename... fields, std::size_t N, std::endian order, raw_byte_like B>
+class array_of_records_view<struct_field_list_impl<metadata, fields...>, N, order, B> {
+  using S = struct_field_list_impl<metadata, fields...>;
+
+  const B* base;
+
+  constexpr explicit array_of_records_view(const B* first_byte) : base(first_byte) {}
+
+  template <typename, std::endian, raw_byte_like>
+  friend class struct_view;
+
+public:
+  static constexpr auto size() -> std::size_t {
+    return N;
+  }
+
+  // Unchecked, like std::array::operator[]: the precondition is i < N.
+  constexpr auto operator[](std::size_t i) const -> const struct_view<S, order, B> {
+    return struct_view<S, order, B>{base + i * record_layout<S>::width};
   }
 };
 
@@ -185,6 +224,31 @@ private:
       } else if constexpr(any_field_constrained_v<nested>) {
         using nested_impl = struct_view_impl<nested, order>;
         return nested_impl::first_violated_field(at) != nested_impl::layout::field_count;
+      } else {
+        return false;
+      }
+    } else if constexpr(array_of_record_field_like<F>) {
+      using array_type = typename F::field_type;
+      using elem = extract_type_from_array_v<array_type>;
+      constexpr std::size_t count = extract_size_from_array_v<array_type>;
+      if constexpr(field_is_constrained_v<F>) {
+        unchecked_byte_source<B> source{{}, at};
+        auto order_cell = deduce_byte_order<order>();
+        array_type elements;
+        for(std::size_t idx = 0; idx < count; ++idx) {
+          auto record = struct_cast_impl<elem, unchecked_byte_source<B>>{}(source, order_cell);
+          if(!record)
+            return true;
+          elements[idx] = std::move(*record);
+        }
+        return !F::constraint_checker(elements);
+      } else if constexpr(any_field_constrained_v<elem>) {
+        using elem_impl = struct_view_impl<elem, order>;
+        for(std::size_t idx = 0; idx < count; ++idx) {
+          if(elem_impl::first_violated_field(at + idx * elem_impl::layout::width) != elem_impl::layout::field_count)
+            return true;
+        }
+        return false;
       } else {
         return false;
       }
