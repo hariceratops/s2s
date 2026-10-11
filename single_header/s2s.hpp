@@ -6688,13 +6688,22 @@ template <typename T>
 concept viewable_leaf_value =
   trivial<T> || array_of_trivials<T> || c_array_of_trivials<T> || fixed_string_like<T>;
 
-// Narrowed per slice (design 2.5): a constrained leaf is not admitted until
-// the code that honours it exists.
 template <typename F>
 inline constexpr bool leaf_has_compile_time_width_v =
   fixed_sized_field_like<F> &&
-  viewable_leaf_value<typename F::field_type> &&
-  is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
+  viewable_leaf_value<typename F::field_type>;
+
+template <typename F>
+inline constexpr bool field_is_constrained_v =
+  !is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
+
+// Lets creation skip the constraint walk entirely for a schema with nothing to check.
+template <typename S>
+inline constexpr bool any_field_constrained_v = false;
+
+template <auto metadata, typename... fields>
+inline constexpr bool any_field_constrained_v<struct_field_list_impl<metadata, fields...>> =
+  (field_is_constrained_v<fields> || ...);
 
 template <typename S>
 inline constexpr bool every_field_has_compile_time_width_v = false;
@@ -6757,6 +6766,7 @@ inline constexpr std::size_t wire_width = record_layout<S>::width;
 // Begin view/struct_view.hpp
 #ifndef _STRUCT_VIEW_HPP_
 #define _STRUCT_VIEW_HPP_
+ 
  
  
  
@@ -6884,7 +6894,31 @@ struct struct_view_impl<struct_field_list_impl<metadata, fields...>, order> {
         return std::unexpected(cast_error{error_reason::buffer_exhaustion, layout::names[first_short]});
       }
     }
+    if constexpr(any_field_constrained_v<S>) {
+      auto violated = first_violated_field(std::index_sequence_for<fields...>{}, bytes.data());
+      if(violated != layout::field_count)
+        return std::unexpected(cast_error{error_reason::validation_failure, layout::names[violated]});
+    }
     return struct_view<S, order, std::remove_const_t<B>>{bytes.data()};
+  }
+
+private:
+  // Same predicate the parser applies, to a value decoded the parser's way. An
+  // unconstrained field is not decoded at all.
+  template <typename F, raw_byte_like B>
+  static constexpr auto violates(const B* at) -> bool {
+    if constexpr(field_is_constrained_v<F>)
+      return !F::constraint_checker(decode_field_at<F, order>(at).value);
+    else
+      return false;
+  }
+
+  // Wire order, stopping at the first violation; field_count when there is none.
+  template <std::size_t... idx, raw_byte_like B>
+  static constexpr auto first_violated_field(std::index_sequence<idx...>, const B* base) -> std::size_t {
+    std::size_t found = layout::field_count;
+    static_cast<void>(((violates<fields>(base + layout::offsets[idx]) ? (found = idx, true) : false) || ...));
+    return found;
   }
 };
 } /* namespace s2s */

@@ -7,6 +7,7 @@
 #include <expected>
 #include <span>
 #include <type_traits>
+#include <utility>
 #include "../error/cast_error.hpp"
 #include "../field_list/field_list.hpp"
 #include "../field_list/fixed_layout.hpp"
@@ -137,7 +138,31 @@ struct struct_view_impl<struct_field_list_impl<metadata, fields...>, order> {
         return std::unexpected(cast_error{error_reason::buffer_exhaustion, layout::names[first_short]});
       }
     }
+    if constexpr(any_field_constrained_v<S>) {
+      auto violated = first_violated_field(std::index_sequence_for<fields...>{}, bytes.data());
+      if(violated != layout::field_count)
+        return std::unexpected(cast_error{error_reason::validation_failure, layout::names[violated]});
+    }
     return struct_view<S, order, std::remove_const_t<B>>{bytes.data()};
+  }
+
+private:
+  // Same predicate the parser applies, to a value decoded the parser's way. An
+  // unconstrained field is not decoded at all.
+  template <typename F, raw_byte_like B>
+  static constexpr auto violates(const B* at) -> bool {
+    if constexpr(field_is_constrained_v<F>)
+      return !F::constraint_checker(decode_field_at<F, order>(at).value);
+    else
+      return false;
+  }
+
+  // Wire order, stopping at the first violation; field_count when there is none.
+  template <std::size_t... idx, raw_byte_like B>
+  static constexpr auto first_violated_field(std::index_sequence<idx...>, const B* base) -> std::size_t {
+    std::size_t found = layout::field_count;
+    static_cast<void>(((violates<fields>(base + layout::offsets[idx]) ? (found = idx, true) : false) || ...));
+    return found;
   }
 };
 } /* namespace s2s */

@@ -224,3 +224,115 @@ TEST(StructViewRead, AggregatesReadFromAnOddAddress) {
   EXPECT_EQ((*be)["carr"_f], (std::array<u32, 2>{0x11121314, 0x21222324}));
   EXPECT_EQ((*be)["cs"_f], (std::array<char, 4>{'a', 'b', 'c', 0}));
 }
+
+namespace {
+using magic_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::magic_number<"num", u32, 4_B, 0xdeadbeef>,
+    s2s::magic_string<"str", "GIF">,
+    s2s::magic_byte_array<"arr", 2, std::array<unsigned char, 2>{0xca, 0xfe}>,
+    s2s::basic_field<"v", u16, 2_B, s2s::any_of(static_cast<u16>(0x0201), static_cast<u16>(0x0102))>
+  >;
+
+constexpr std::array<u8, 13> magic_sample{
+  0x42,
+  0xef, 0xbe, 0xad, 0xde,
+  'G', 'I', 'F', 0,
+  0xca, 0xfe,
+  0x01, 0x02
+};
+
+void write_magic(const std::array<u8, 13>& bytes) {
+  std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+  file.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+}
+
+void write_and_compare(std::array<u8, 13> bytes) {
+  write_magic(bytes);
+  auto data = slurp();
+  std::ifstream le_file("test_input.bin", std::ios::in | std::ios::binary);
+  std::ifstream be_file("test_input.bin", std::ios::in | std::ios::binary);
+  auto parsed_le = s2s::struct_cast_le<magic_record>(le_file);
+  auto parsed_be = s2s::struct_cast_be<magic_record>(be_file);
+  auto viewed_le = s2s::struct_view_le<magic_record>(std::span<const char>{data});
+  auto viewed_be = s2s::struct_view_be<magic_record>(std::span<const char>{data});
+  ASSERT_EQ(parsed_le.has_value(), viewed_le.has_value());
+  ASSERT_EQ(parsed_be.has_value(), viewed_be.has_value());
+  if(!parsed_le) {
+    EXPECT_EQ(parsed_le.error().failure_reason, viewed_le.error().failure_reason);
+    EXPECT_EQ(parsed_le.error().failed_at, viewed_le.error().failed_at);
+  }
+  if(!parsed_be) {
+    EXPECT_EQ(parsed_be.error().failure_reason, viewed_be.error().failure_reason);
+    EXPECT_EQ(parsed_be.error().failed_at, viewed_be.error().failed_at);
+  }
+}
+}
+
+TEST(StructViewRead, MagicFieldsReadBackLikeTheParser) {
+  write_magic(magic_sample);
+  auto bytes = slurp();
+  std::ifstream file("test_input.bin", std::ios::in | std::ios::binary);
+  auto parsed = s2s::struct_cast_le<magic_record>(file);
+  auto viewed = s2s::struct_view_le<magic_record>(std::span<const char>{bytes});
+  ASSERT_TRUE(parsed.has_value());
+  ASSERT_TRUE(viewed.has_value());
+  EXPECT_EQ((*parsed)["num"_f], (*viewed)["num"_f]);
+  EXPECT_EQ((*parsed)["str"_f], (*viewed)["str"_f]);
+  EXPECT_EQ((*parsed)["arr"_f], (*viewed)["arr"_f]);
+  EXPECT_EQ((*viewed)["str"_f].to_sv(), "GIF");
+  static_assert(std::is_same_v<std::remove_cvref_t<decltype((*viewed)["str"_f])>, s2s::fixed_string<3>>);
+}
+
+TEST(StructViewRead, CreationFailsExactlyWhereTheParserDoes) {
+  write_and_compare(magic_sample);
+  auto bad_num = magic_sample;
+  bad_num[2] = 0;
+  write_and_compare(bad_num);
+  auto bad_str = magic_sample;
+  bad_str[5] = 'X';
+  write_and_compare(bad_str);
+  auto bad_arr = magic_sample;
+  bad_arr[9] = 0;
+  write_and_compare(bad_arr);
+  auto bad_v = magic_sample;
+  bad_v[11] = 0x09;
+  write_and_compare(bad_v);
+}
+
+TEST(StructViewRead, AShortSpanFailsWithExhaustionBeforeAConstraint) {
+  auto bad = magic_sample;
+  bad[1] = 0;
+  write_magic(bad);
+  auto bytes = slurp();
+  bytes.pop_back();
+  auto viewed = s2s::struct_view_le<magic_record>(std::span<const char>{bytes});
+  ASSERT_FALSE(viewed.has_value());
+  EXPECT_EQ(viewed.error().failure_reason, s2s::error_reason::buffer_exhaustion);
+}
+
+TEST(StructViewRead, ConstrainedFieldsAreCheckedAtAnOddAddress) {
+  alignas(8) std::array<char, magic_sample.size() + 1> storage{};
+  for(std::size_t idx = 0; idx < magic_sample.size(); ++idx)
+    storage[idx + 1] = static_cast<char>(magic_sample[idx]);
+  std::span<const char> at_odd{storage.data() + 1, magic_sample.size()};
+  auto le = s2s::struct_view_le<magic_record>(at_odd);
+  ASSERT_TRUE(le.has_value());
+  EXPECT_EQ((*le)["num"_f], 0xdeadbeefu);
+  EXPECT_FALSE(s2s::struct_view_be<magic_record>(at_odd).has_value());
+}
+
+TEST(StructViewRead, ChangingAnUnconstrainedUnreadFieldChangesNothing) {
+  write_magic(magic_sample);
+  auto bytes = slurp();
+  auto changed = bytes;
+  changed[0] = static_cast<char>(0x99);
+  auto before = s2s::struct_view_le<magic_record>(std::span<const char>{bytes});
+  auto after = s2s::struct_view_le<magic_record>(std::span<const char>{changed});
+  ASSERT_TRUE(before.has_value());
+  ASSERT_TRUE(after.has_value());
+  EXPECT_EQ((*before)["num"_f], (*after)["num"_f]);
+  EXPECT_EQ((*before)["v"_f], (*after)["v"_f]);
+  EXPECT_NE((*before)["lead"_f], (*after)["lead"_f]);
+}

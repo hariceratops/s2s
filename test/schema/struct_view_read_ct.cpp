@@ -132,6 +132,77 @@ constexpr auto aggregates_agree_with_parser(std::span<const u8> view_bytes) -> b
   return same;
 }
 
+// Constrained fields (077). The unconstrained fields around the constrained one
+// are what the mutation case changes: creation must not decode them.
+template <auto constraint>
+using guarded =
+  s2s::struct_field_list<
+    s2s::basic_field<"pre", u16, 2_B>,
+    s2s::basic_field<"v", u32, 4_B, constraint>,
+    s2s::basic_field<"post", u16, 2_B>
+  >;
+
+using magic_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::magic_number<"num", u32, 4_B, 0xdeadbeef>,
+    s2s::magic_string<"str", "GIF">,
+    s2s::magic_byte_array<"arr", 2, std::array<unsigned char, 2>{0xca, 0xfe}>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+
+constexpr std::size_t magic_width = 1 + 4 + 4 + 2 + 2;
+
+constexpr auto magic_sample = std::array<u8, magic_width>{
+  0x42,
+  0xef, 0xbe, 0xad, 0xde,
+  'G', 'I', 'F', 0,
+  0xca, 0xfe,
+  0x01, 0x02
+};
+
+// Creation and the parser must agree on whether and how bytes are rejected.
+template <typename schema, std::endian order, std::size_t N>
+constexpr auto creation_agrees_with_parser(std::array<u8, N> bytes) -> bool {
+  memstream<N> stream(bytes);
+  auto parsed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_cast_le<schema>(stream);
+    else
+      return s2s::struct_cast_be<schema>(stream);
+  }();
+  auto viewed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_view_le<schema>(std::span<const u8>{bytes});
+    else
+      return s2s::struct_view_be<schema>(std::span<const u8>{bytes});
+  }();
+  if(parsed.has_value() != viewed.has_value())
+    return false;
+  if(parsed)
+    return true;
+  return parsed.error().failure_reason == viewed.error().failure_reason &&
+         parsed.error().failed_at == viewed.error().failed_at;
+}
+
+// Rejects exactly when the stated bytes violate the constraint, in both orders.
+template <auto constraint>
+constexpr auto guard_rejects(u32 first_byte_of_v, bool expected_ok) -> bool {
+  std::array<u8, 8> bytes{0x01, 0x02, static_cast<u8>(first_byte_of_v), 0, 0, 0, 0x05, 0x06};
+  auto le = s2s::struct_view_le<guarded<constraint>>(std::span<const u8>{bytes});
+  auto be_bytes = std::array<u8, 8>{0x01, 0x02, 0, 0, 0, static_cast<u8>(first_byte_of_v), 0x05, 0x06};
+  auto be = s2s::struct_view_be<guarded<constraint>>(std::span<const u8>{be_bytes});
+  if(le.has_value() != expected_ok || be.has_value() != expected_ok)
+    return false;
+  if(!expected_ok && (le.error().failed_at != "v" || be.error().failed_at != "v" ||
+                      le.error().failure_reason != s2s::error_reason::validation_failure))
+    return false;
+  return creation_agrees_with_parser<guarded<constraint>, std::endian::little>(bytes) &&
+         creation_agrees_with_parser<guarded<constraint>, std::endian::big>(be_bytes);
+}
+
+constexpr auto in_range = [](const u32& v) { return v >= 10 && v <= 20; };
+
 auto main() -> int {
   "the record's width is a compile-time constant"_test = [] constexpr {
     expect(eq(s2s::wire_width<record>, record_width));
@@ -273,5 +344,90 @@ auto main() -> int {
     auto view = s2s::struct_view_le<aggregates>(std::span<const u8>{aggregates_sample}.first(aggregates_width - 1));
     expect(eq(view.has_value(), false));
     expect(eq(view.error().failed_at == "fs", true));
+  };
+
+  "creation rejects a violation of each constraint kind like the parser"_test = [] constexpr {
+    expect(eq(guard_rejects<s2s::eq(7u)>(7, true), true));
+    expect(eq(guard_rejects<s2s::eq(7u)>(8, false), true));
+    expect(eq(guard_rejects<s2s::neq(7u)>(8, true), true));
+    expect(eq(guard_rejects<s2s::neq(7u)>(7, false), true));
+    expect(eq(guard_rejects<s2s::lt(7u)>(6, true), true));
+    expect(eq(guard_rejects<s2s::lt(7u)>(7, false), true));
+    expect(eq(guard_rejects<s2s::gt(7u)>(8, true), true));
+    expect(eq(guard_rejects<s2s::gt(7u)>(7, false), true));
+    expect(eq(guard_rejects<s2s::lte(7u)>(7, true), true));
+    expect(eq(guard_rejects<s2s::lte(7u)>(8, false), true));
+    expect(eq(guard_rejects<s2s::gte(7u)>(7, true), true));
+    expect(eq(guard_rejects<s2s::gte(7u)>(6, false), true));
+    expect(eq(guard_rejects<s2s::any_of(1u, 7u, 9u)>(9, true), true));
+    expect(eq(guard_rejects<s2s::any_of(1u, 7u, 9u)>(8, false), true));
+    expect(eq(guard_rejects<in_range>(15, true), true));
+    expect(eq(guard_rejects<in_range>(21, false), true));
+  };
+
+  "magic fields are checked at creation and read back like the parser"_test = [] constexpr {
+    auto bytes = magic_sample;
+    auto le = s2s::struct_view_le<magic_record>(std::span<const u8>{bytes});
+    auto be_bytes = bytes;
+    be_bytes[1] = 0xde; be_bytes[2] = 0xad; be_bytes[3] = 0xbe; be_bytes[4] = 0xef;
+    auto be = s2s::struct_view_be<magic_record>(std::span<const u8>{be_bytes});
+    expect(eq(le.has_value(), true));
+    expect(eq(be.has_value(), true));
+    expect(eq((*le)["num"_f], 0xdeadbeefu));
+    expect(eq((*be)["num"_f], 0xdeadbeefu));
+    expect(eq(s2s::struct_view_be<magic_record>(std::span<const u8>{bytes}).has_value(), false));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::big>(bytes), true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::big>(be_bytes), true));
+    expect(eq((*le)["str"_f].to_sv() == "GIF", true));
+    expect(eq((*le)["arr"_f] == std::array<unsigned char, 2>{0xca, 0xfe}, true));
+    expect(eq(std::is_same_v<std::remove_cvref_t<decltype((*le)["str"_f])>, s2s::fixed_string<3>>, true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::little>(bytes), true));
+  };
+
+  "a violated magic field names itself, and the first violation wins"_test = [] constexpr {
+    auto bad_num = magic_sample;
+    bad_num[1] = 0;
+    auto bad_str = magic_sample;
+    bad_str[6] = 'X';
+    auto bad_arr = magic_sample;
+    bad_arr[10] = 0;
+    auto both = bad_str;
+    both[1] = 0;
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::little>(bad_num), true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::big>(bad_num), true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::little>(bad_str), true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::little>(bad_arr), true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::big>(bad_arr), true));
+    expect(eq(creation_agrees_with_parser<magic_record, std::endian::little>(both), true));
+    expect(eq(s2s::struct_view_le<magic_record>(std::span<const u8>{bad_str}).error().failed_at == "str", true));
+    expect(eq(s2s::struct_view_le<magic_record>(std::span<const u8>{both}).error().failed_at == "num", true));
+  };
+
+  "a span one byte short fails with exhaustion before any constraint"_test = [] constexpr {
+    auto bad = magic_sample;
+    bad[1] = 0;
+    auto view = s2s::struct_view_le<magic_record>(std::span<const u8>{bad}.first(magic_width - 1));
+    expect(eq(view.has_value(), false));
+    expect(eq(view.error().failure_reason, s2s::error_reason::buffer_exhaustion));
+    expect(eq(view.error().failed_at == "tail", true));
+  };
+
+  "changing an unconstrained unread field changes neither creation nor reads"_test = [] constexpr {
+    auto original = magic_sample;
+    auto mutated = magic_sample;
+    mutated[0] = 0x99;
+    mutated[11] = 0x77;
+    auto before = s2s::struct_view_le<magic_record>(std::span<const u8>{original});
+    auto after = s2s::struct_view_le<magic_record>(std::span<const u8>{mutated});
+    expect(eq(before.has_value() == after.has_value(), true));
+    expect(eq((*before)["num"_f] == (*after)["num"_f], true));
+    expect(eq((*before)["arr"_f] == (*after)["arr"_f], true));
+    expect(eq((*before)["lead"_f] == (*after)["lead"_f], false));
+  };
+
+  "a constrained field is decoded and an unconstrained one is not"_test = [] constexpr {
+    expect(eq(s2s::any_field_constrained_v<record>, false));
+    expect(eq(s2s::any_field_constrained_v<magic_record>, true));
+    expect(eq(s2s::any_field_constrained_v<guarded<s2s::eq(7u)>>, true));
   };
 }

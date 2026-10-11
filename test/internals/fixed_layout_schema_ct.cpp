@@ -48,6 +48,19 @@ static_assert(s2s::viewable_leaf_value<s2s::fixed_string<4>>);
 static_assert(!s2s::viewable_leaf_value<std::vector<u8>>);
 static_assert(s2s::every_field_has_compile_time_width<flat>);
 
+using constrained =
+  s2s::struct_field_list<
+    s2s::magic_number<"num", u32, 4_B, 0xdeadbeef>,
+    s2s::magic_string<"str", "GIF">,
+    s2s::magic_byte_array<"arr", 2, std::array<unsigned char, 2>{0xca, 0xfe}>,
+    s2s::basic_field<"v", u16, 2_B, s2s::gte(7u)>
+  >;
+static_assert(s2s::fixed_layout_schema<constrained>);
+static_assert(s2s::wire_width<constrained> == 4 + 4 + 2 + 2);
+static_assert(s2s::any_field_constrained_v<constrained>);
+static_assert(!s2s::any_field_constrained_v<flat>);
+static_assert(!s2s::any_field_constrained_v<int>);
+
 static_assert(s2s::wire_width<flat> == 14);
 static_assert(s2s::record_layout<flat>::offsets == std::array<std::size_t, 5>{0, 1, 5, 7, 10});
 static_assert(s2s::record_layout<flat>::widths == std::array<std::size_t, 5>{1, 4, 2, 3, 4});

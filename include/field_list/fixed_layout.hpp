@@ -44,13 +44,22 @@ template <typename T>
 concept viewable_leaf_value =
   trivial<T> || array_of_trivials<T> || c_array_of_trivials<T> || fixed_string_like<T>;
 
-// Narrowed per slice (design 2.5): a constrained leaf is not admitted until
-// the code that honours it exists.
 template <typename F>
 inline constexpr bool leaf_has_compile_time_width_v =
   fixed_sized_field_like<F> &&
-  viewable_leaf_value<typename F::field_type> &&
-  is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
+  viewable_leaf_value<typename F::field_type>;
+
+template <typename F>
+inline constexpr bool field_is_constrained_v =
+  !is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
+
+// Lets creation skip the constraint walk entirely for a schema with nothing to check.
+template <typename S>
+inline constexpr bool any_field_constrained_v = false;
+
+template <auto metadata, typename... fields>
+inline constexpr bool any_field_constrained_v<struct_field_list_impl<metadata, fields...>> =
+  (field_is_constrained_v<fields> || ...);
 
 template <typename S>
 inline constexpr bool every_field_has_compile_time_width_v = false;
