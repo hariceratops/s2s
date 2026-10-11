@@ -123,6 +123,114 @@ using inner_variable =
 static_assert(!s2s::fixed_layout_schema<
   s2s::struct_field_list<s2s::struct_field<"v", inner_variable>>>);
 
+// The rejected kinds (080): the concept and the sub-concept that names the rule
+// are false, not a hard error, and the others stay true.
+using with_vec =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u8, 1_B>,
+    s2s::vec_field<"v", u8, s2s::len_from_field<"n">>
+  >;
+using with_str =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u8, 1_B>,
+    s2s::str_field<"s", s2s::len_from_field<"n">>
+  >;
+using with_records =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u8, 1_B>,
+    s2s::vector_of_records<"r", inner_header, s2s::len_from_field<"n">>
+  >;
+using with_maybe =
+  s2s::struct_field_list<
+    s2s::basic_field<"present", u8, 1_B>,
+    s2s::maybe<
+      s2s::basic_field<"opt", u32, 4_B>,
+      s2s::parse_if<[](u8 present) { return present != 0; }, "present">
+    >
+  >;
+using same_width_a = s2s::struct_field_list<s2s::basic_field<"x", u32, 4_B>>;
+using same_width_b = s2s::struct_field_list<s2s::basic_field<"y", u32, 4_B>>;
+using with_variance =
+  s2s::struct_field_list<
+    s2s::basic_field<"tag", u32, 4_B>,
+    s2s::variance<"body",
+      s2s::type<s2s::match_field<"tag">,
+        s2s::type_switch<
+          s2s::match_case<1, s2s::as_struct<same_width_a>>,
+          s2s::match_case<2, s2s::as_struct<same_width_b>>>>>
+  >;
+using marker_record =
+  s2s::struct_field_list<s2s::fixed_array_field<"marker", u8, 2>>;
+using with_announcer =
+  s2s::struct_field_list<
+    s2s::announces_byte_order<"byte_order", marker_record,
+      s2s::order_from<s2s::match_field<"marker">,
+        s2s::order_switch<
+          s2s::order_case<std::array<u8, 2>{'I', 'I'}, std::endian::little>,
+          s2s::order_case<std::array<u8, 2>{'M', 'M'}, std::endian::big>>>>,
+    s2s::basic_field<"magic", u32>
+  >;
+
+static_assert(s2s::has_no_announcing_record<flat>);
+static_assert(s2s::has_no_optional_field<flat>);
+static_assert(s2s::has_no_variant_field<flat>);
+static_assert(s2s::every_field_has_compile_time_width<flat>);
+static_assert(s2s::has_no_announcing_record<nested_record>);
+static_assert(s2s::has_no_optional_field<nested_record>);
+static_assert(s2s::has_no_variant_field<nested_record>);
+
+static_assert(!s2s::every_field_has_compile_time_width<with_vec>);
+static_assert(!s2s::every_field_has_compile_time_width<with_str>);
+static_assert(!s2s::every_field_has_compile_time_width<with_records>);
+static_assert(!s2s::fixed_layout_schema<with_vec>);
+static_assert(!s2s::fixed_layout_schema<with_str>);
+static_assert(!s2s::fixed_layout_schema<with_records>);
+static_assert(s2s::has_no_announcing_record<with_vec>);
+static_assert(s2s::has_no_optional_field<with_vec>);
+static_assert(s2s::has_no_variant_field<with_vec>);
+
+static_assert(!s2s::has_no_optional_field<with_maybe>);
+static_assert(!s2s::fixed_layout_schema<with_maybe>);
+static_assert(s2s::has_no_variant_field<with_maybe>);
+
+static_assert(!s2s::has_no_variant_field<with_variance>);
+static_assert(!s2s::fixed_layout_schema<with_variance>);
+static_assert(s2s::has_no_optional_field<with_variance>);
+
+static_assert(!s2s::has_no_announcing_record<with_announcer>);
+static_assert(!s2s::fixed_layout_schema<with_announcer>);
+
+// The check descends through struct_field and array_of_records.
+using maybe_in_record =
+  s2s::struct_field_list<s2s::struct_field<"m", with_maybe>>;
+using variance_in_record =
+  s2s::struct_field_list<s2s::struct_field<"v", with_variance>>;
+using announcer_in_record =
+  s2s::struct_field_list<s2s::struct_field<"a", with_announcer>>;
+using vec_in_record =
+  s2s::struct_field_list<s2s::struct_field<"v", with_vec>>;
+using maybe_in_array =
+  s2s::struct_field_list<s2s::array_of_records<"m", with_maybe, 2>>;
+using variance_in_array =
+  s2s::struct_field_list<s2s::array_of_records<"v", with_variance, 2>>;
+using vec_in_array =
+  s2s::struct_field_list<s2s::array_of_records<"v", with_vec, 2>>;
+static_assert(!s2s::has_no_optional_field<maybe_in_record>);
+static_assert(!s2s::has_no_variant_field<variance_in_record>);
+static_assert(!s2s::has_no_announcing_record<announcer_in_record>);
+static_assert(!s2s::every_field_has_compile_time_width<vec_in_record>);
+static_assert(!s2s::has_no_optional_field<maybe_in_array>);
+static_assert(!s2s::has_no_variant_field<variance_in_array>);
+static_assert(!s2s::every_field_has_compile_time_width<vec_in_array>);
+static_assert(!s2s::fixed_layout_schema<maybe_in_record>);
+static_assert(!s2s::fixed_layout_schema<vec_in_array>);
+
+// Each sub-concept is pure for a type that is no schema.
+static_assert(!s2s::has_no_announcing_record<int>);
+static_assert(!s2s::has_no_optional_field<int>);
+static_assert(!s2s::has_no_variant_field<int>);
+static_assert(!s2s::every_field_has_compile_time_width<int>);
+
 auto main() -> int {
   "the layout table is a compile-time prefix sum"_test = [] constexpr {
     expect(eq(s2s::wire_width<flat>, std::size_t{14}));

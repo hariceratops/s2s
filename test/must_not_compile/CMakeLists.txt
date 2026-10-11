@@ -173,3 +173,26 @@ add_rejected_case_matching(rejects_static_span_shorter_than_the_record
 # for gcc 14 and clang 19 only: gcc says "discards qualifiers", clang "not marked const".
 add_rejected_case_matching(rejects_assignment_through_a_view_accessor
   struct_view_misuse.cpp 2 "discards qualifiers|not marked const")
+
+# The fixed-layout rule (080). Each checked against a no-CASE control build and
+# matched on the atom of the one rule it breaks (the atom is ours; compilers
+# only quote it). 9 puts a maybe one record deep, 10 a vec_field inside an
+# array_of_records element, 11 a variance inside one, proving the check descends.
+add_rejected_case_matching(rejects_view_of_a_vec_field
+  struct_view_misuse.cpp 3 "every_field_has_compile_time_width_v")
+add_rejected_case_matching(rejects_view_of_a_str_field
+  struct_view_misuse.cpp 4 "every_field_has_compile_time_width_v")
+add_rejected_case_matching(rejects_view_of_a_vector_of_records
+  struct_view_misuse.cpp 5 "every_field_has_compile_time_width_v")
+add_rejected_case_matching(rejects_view_of_a_maybe
+  struct_view_misuse.cpp 6 "has_no_optional_field_v")
+add_rejected_case_matching(rejects_view_of_a_same_width_variance
+  struct_view_misuse.cpp 7 "has_no_variant_field_v")
+add_rejected_case_matching(rejects_view_of_an_announcing_record
+  struct_view_misuse.cpp 8 "has_no_announcing_record_v")
+add_rejected_case_matching(rejects_view_of_a_maybe_one_record_deep
+  struct_view_misuse.cpp 9 "has_no_optional_field_v")
+add_rejected_case_matching(rejects_view_of_a_vec_field_in_an_array_element
+  struct_view_misuse.cpp 10 "every_field_has_compile_time_width_v")
+add_rejected_case_matching(rejects_view_of_a_variance_in_an_array_element
+  struct_view_misuse.cpp 11 "has_no_variant_field_v")

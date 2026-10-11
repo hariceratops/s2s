@@ -6740,9 +6740,73 @@ inline constexpr bool every_field_has_compile_time_width_v<struct_field_list_imp
 template <typename S>
 concept every_field_has_compile_time_width = every_field_has_compile_time_width_v<S>;
 
+// census_of_list has no primary definition, so the false primary is what keeps
+// this pure for a type that is no schema.
+template <typename S>
+inline constexpr bool has_no_announcing_record_v = false;
+
+template <auto metadata, typename... fields>
+inline constexpr bool has_no_announcing_record_v<struct_field_list_impl<metadata, fields...>> =
+  census_of_list_v<struct_field_list_impl<metadata, fields...>>.on_spine +
+  census_of_list_v<struct_field_list_impl<metadata, fields...>>.off_spine == 0;
+
+template <typename S>
+inline constexpr bool has_no_optional_field_v = false;
+
+template <typename S>
+inline constexpr bool has_no_variant_field_v = false;
+
+// Only struct_field and array_of_records are descended: any other record
+// carrier is already rejected by its own field, so descending would only
+// change which name is reported.
+template <typename F>
+inline constexpr bool field_is_not_optional_v = !optional_field_like<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_is_not_optional_v<F> =
+  has_no_optional_field_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_is_not_optional_v<F> =
+  has_no_optional_field_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
+template <typename F>
+inline constexpr bool field_is_not_variant_v = !union_field_like<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_is_not_variant_v<F> =
+  has_no_variant_field_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_is_not_variant_v<F> =
+  has_no_variant_field_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
+template <auto metadata, typename... fields>
+inline constexpr bool has_no_optional_field_v<struct_field_list_impl<metadata, fields...>> =
+  (field_is_not_optional_v<fields> && ...);
+
+template <auto metadata, typename... fields>
+inline constexpr bool has_no_variant_field_v<struct_field_list_impl<metadata, fields...>> =
+  (field_is_not_variant_v<fields> && ...);
+
+template <typename S>
+concept has_no_announcing_record = has_no_announcing_record_v<S>;
+
+template <typename S>
+concept has_no_optional_field = has_no_optional_field_v<S>;
+
+template <typename S>
+concept has_no_variant_field = has_no_variant_field_v<S>;
+
+// The width rule is false for every rejected kind, so it comes last: the first
+// false conjunct is the one the compiler reports, and each specific exclusion
+// must get to name itself first. The composite must not name an atom directly.
 template <typename S>
 concept fixed_layout_schema =
   field_list_like<S> &&
+  has_no_announcing_record<S> &&
+  has_no_optional_field<S> &&
+  has_no_variant_field<S> &&
   every_field_has_compile_time_width<S>;
 
 
