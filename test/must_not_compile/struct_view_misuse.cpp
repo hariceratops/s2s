@@ -21,11 +21,18 @@ using record =
     s2s::basic_field<"b", u32, 4_B>
   >;
 
+using with_array =
+  s2s::struct_field_list<
+    s2s::fixed_array_field<"arr", u8, 6>
+  >;
+
 auto main() -> int {
 #ifndef CASE
   std::array<char, 8> exact{};
+  std::array<char, 6> exact_arrays{};
   auto view = s2s::struct_view_le<record>(std::span<const char, 8>{exact});
-  return view.has_value() ? 0 : 1;
+  auto arrays = s2s::struct_view_le<with_array>(std::span<const char, 6>{exact_arrays});
+  return view.has_value() && arrays.has_value() ? 0 : 1;
 #endif
 
 #if CASE == 1
@@ -33,5 +40,14 @@ auto main() -> int {
   std::array<char, 7> short_buffer{};
   auto view = s2s::struct_view_le<record>(std::span<const char, 7>{short_buffer});
   return view.has_value() ? 0 : 1;
+#endif
+
+#if CASE == 2
+  // Must NOT compile — an accessor returns a const value, so a write through
+  // it has nowhere to go.
+  std::array<char, 6> buffer{};
+  auto view = s2s::struct_view_le<with_array>(std::span<const char, 6>{buffer});
+  (*view)["arr"_f] = std::array<u8, 6>{};
+  return 0;
 #endif
 }

@@ -20,12 +20,36 @@ namespace s2s {
 // The concept is deliberately free of static_assert (unlike fixed_order_schema)
 // so that it can be tested as false.
 
-// Narrowed per slice (design 2.5): a constrained or non-trivial leaf is not
-// admitted until the code that honours it exists.
+template <typename T>
+inline constexpr bool is_array_of_trivials_v = false;
+
+template <trivial T, std::size_t N>
+inline constexpr bool is_array_of_trivials_v<std::array<T, N>> = true;
+
+template <typename T>
+inline constexpr bool is_c_array_of_trivials_v = false;
+
+template <trivial T, std::size_t N>
+inline constexpr bool is_c_array_of_trivials_v<T[N]> = true;
+
+template <typename T>
+concept array_of_trivials = is_array_of_trivials_v<T>;
+
+template <typename T>
+concept c_array_of_trivials = is_c_array_of_trivials_v<T>;
+
+// What a view can return for a fixed-width leaf: a scalar, a whole array, a C
+// array (as its std::array equivalent) or a fixed string.
+template <typename T>
+concept viewable_leaf_value =
+  trivial<T> || array_of_trivials<T> || c_array_of_trivials<T> || fixed_string_like<T>;
+
+// Narrowed per slice (design 2.5): a constrained leaf is not admitted until
+// the code that honours it exists.
 template <typename F>
 inline constexpr bool leaf_has_compile_time_width_v =
   fixed_sized_field_like<F> &&
-  trivial<typename F::field_type> &&
+  viewable_leaf_value<typename F::field_type> &&
   is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
 
 template <typename S>

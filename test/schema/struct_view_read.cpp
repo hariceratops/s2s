@@ -55,6 +55,41 @@ void expect_same_fields(const parsed_t& p, const view_t& v) {
   EXPECT_EQ(p["d"_f], v["d"_f]);
   EXPECT_EQ(p["s"_f], v["s"_f]);
 }
+
+using aggregates =
+  s2s::struct_field_list<
+    s2s::basic_field<"a", u8, 1_B>,
+    s2s::fixed_array_field<"arr", u16, 3>,
+    s2s::c_arr_field<"carr", u32, 2>,
+    s2s::c_str_field<"cs", 3>,
+    s2s::fixed_string_field<"fs", 4>
+  >;
+constexpr std::size_t aggregates_width = 24;
+constexpr std::array<u8, aggregates_width> aggregates_sample{
+  0x7f,
+  0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+  0x11, 0x12, 0x13, 0x14, 0x21, 0x22, 0x23, 0x24,
+  'a', 'b', 'c', 0,
+  'w', 'x', 'y', 'z', 0
+};
+
+void write_aggregates() {
+  std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+  file.write(reinterpret_cast<const char*>(aggregates_sample.data()), aggregates_sample.size());
+}
+
+template <typename parsed_t, typename view_t>
+void expect_same_aggregates(const parsed_t& p, const view_t& v) {
+  EXPECT_EQ(p["a"_f], v["a"_f]);
+  EXPECT_EQ(p["arr"_f], v["arr"_f]);
+  EXPECT_EQ(p["fs"_f], v["fs"_f]);
+  const auto carr = v["carr"_f];
+  for(std::size_t idx = 0; idx < carr.size(); ++idx)
+    EXPECT_EQ(p["carr"_f][idx], carr[idx]);
+  const auto cs = v["cs"_f];
+  for(std::size_t idx = 0; idx < cs.size(); ++idx)
+    EXPECT_EQ(p["cs"_f][idx], cs[idx]);
+}
 }
 
 TEST(StructViewRead, MatchesTheParserLittleEndianOverADynamicSpan) {
@@ -155,4 +190,37 @@ TEST(StructViewRead, ChangingAnUnreadFieldDoesNotAffectOtherReads) {
 TEST(StructViewRead, WireWidthIsTheSumOfTheDeclaredWidths) {
   static_assert(s2s::wire_width<record> == record_width);
   EXPECT_EQ(s2s::wire_width<record>, record_width);
+}
+
+TEST(StructViewRead, AggregatesMatchTheParserInBothOrders) {
+  write_aggregates();
+  auto bytes = slurp();
+  std::ifstream le_file("test_input.bin", std::ios::in | std::ios::binary);
+  std::ifstream be_file("test_input.bin", std::ios::in | std::ios::binary);
+  auto parsed_le = s2s::struct_cast_le<aggregates>(le_file);
+  auto parsed_be = s2s::struct_cast_be<aggregates>(be_file);
+  auto viewed_le = s2s::struct_view_le<aggregates>(std::span<const char>{bytes});
+  auto viewed_be = s2s::struct_view_be<aggregates>(std::span<const char>{bytes});
+  ASSERT_TRUE(parsed_le.has_value());
+  ASSERT_TRUE(parsed_be.has_value());
+  ASSERT_TRUE(viewed_le.has_value());
+  ASSERT_TRUE(viewed_be.has_value());
+  expect_same_aggregates(*parsed_le, *viewed_le);
+  expect_same_aggregates(*parsed_be, *viewed_be);
+  EXPECT_EQ((*viewed_be)["arr"_f], (std::array<u16, 3>{0x0102, 0x0304, 0x0506}));
+  EXPECT_EQ((*viewed_le)["fs"_f].to_sv(), "wxyz");
+}
+
+TEST(StructViewRead, AggregatesReadFromAnOddAddress) {
+  alignas(8) std::array<char, aggregates_width + 1> storage{};
+  for(std::size_t idx = 0; idx < aggregates_width; ++idx)
+    storage[idx + 1] = static_cast<char>(aggregates_sample[idx]);
+  std::span<const char> at_odd{storage.data() + 1, aggregates_width};
+  auto le = s2s::struct_view_le<aggregates>(at_odd);
+  auto be = s2s::struct_view_be<aggregates>(at_odd);
+  ASSERT_TRUE(le.has_value());
+  ASSERT_TRUE(be.has_value());
+  EXPECT_EQ((*le)["carr"_f], (std::array<u32, 2>{0x14131211, 0x24232221}));
+  EXPECT_EQ((*be)["carr"_f], (std::array<u32, 2>{0x11121314, 0x21222324}));
+  EXPECT_EQ((*be)["cs"_f], (std::array<char, 4>{'a', 'b', 'c', 0}));
 }

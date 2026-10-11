@@ -80,6 +80,58 @@ constexpr auto view_agrees_with_parser(std::array<u8, parser_size> parser_bytes,
          p["d"_f] == v["d"_f] && p["s"_f] == v["s"_f];
 }
 
+// Fixed-width aggregates (076). The leading u8 puts every array at a
+// misaligned offset.
+using aggregates =
+  s2s::struct_field_list<
+    s2s::basic_field<"a", u8, 1_B>,
+    s2s::fixed_array_field<"arr", u16, 3>,
+    s2s::c_arr_field<"carr", u32, 2>,
+    s2s::c_str_field<"cs", 3>,
+    s2s::fixed_string_field<"fs", 4>
+  >;
+
+constexpr std::size_t aggregates_width = 24;
+
+constexpr auto aggregates_sample = std::array<u8, aggregates_width>{
+  0x7f,
+  0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+  0x11, 0x12, 0x13, 0x14, 0x21, 0x22, 0x23, 0x24,
+  'a', 'b', 'c', 0,
+  'w', 'x', 'y', 'z', 0
+};
+
+template <std::endian order>
+constexpr auto aggregates_agree_with_parser(std::span<const u8> view_bytes) -> bool {
+  auto bytes = aggregates_sample;
+  memstream<aggregates_width> stream(bytes);
+  auto parsed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_cast_le<aggregates>(stream);
+    else
+      return s2s::struct_cast_be<aggregates>(stream);
+  }();
+  auto viewed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_view_le<aggregates>(view_bytes);
+    else
+      return s2s::struct_view_be<aggregates>(view_bytes);
+  }();
+  if(!parsed.has_value() || !viewed.has_value())
+    return false;
+
+  const auto& p = *parsed;
+  const auto& v = *viewed;
+  const auto carr = v["carr"_f];
+  const auto cs = v["cs"_f];
+  bool same = p["a"_f] == v["a"_f] && p["arr"_f] == v["arr"_f] && p["fs"_f] == v["fs"_f];
+  for(std::size_t idx = 0; idx < carr.size(); ++idx)
+    same = same && p["carr"_f][idx] == carr[idx];
+  for(std::size_t idx = 0; idx < cs.size(); ++idx)
+    same = same && p["cs"_f][idx] == cs[idx];
+  return same;
+}
+
 auto main() -> int {
   "the record's width is a compile-time constant"_test = [] constexpr {
     expect(eq(s2s::wire_width<record>, record_width));
@@ -188,5 +240,38 @@ auto main() -> int {
     expect(eq(copy["a"_f] == (*view)["a"_f], true));
     expect(eq(sizeof(copy) == sizeof(const u8*), true));
     expect(eq(std::is_trivially_copyable_v<decltype(copy)>, true));
+  };
+
+  "fixed arrays and strings match the parser in both orders"_test = [] constexpr {
+    expect(eq(aggregates_agree_with_parser<std::endian::little>(aggregates_sample), true));
+    expect(eq(aggregates_agree_with_parser<std::endian::big>(aggregates_sample), true));
+  };
+
+  "arrays return their whole value and swap per element in foreign order"_test = [] constexpr {
+    auto le = s2s::struct_view_le<aggregates>(std::span<const u8, aggregates_width>{aggregates_sample});
+    auto be = s2s::struct_view_be<aggregates>(std::span<const u8, aggregates_width>{aggregates_sample});
+    expect(eq(le.has_value(), true));
+    expect(eq(be.has_value(), true));
+    expect(eq((*le)["arr"_f] == std::array<u16, 3>{0x0201, 0x0403, 0x0605}, true));
+    expect(eq((*be)["arr"_f] == std::array<u16, 3>{0x0102, 0x0304, 0x0506}, true));
+    expect(eq((*le)["carr"_f] == std::array<u32, 2>{0x14131211, 0x24232221}, true));
+    expect(eq((*be)["carr"_f] == std::array<u32, 2>{0x11121314, 0x21222324}, true));
+  };
+
+  "strings are not swapped and a c string keeps its terminator slot"_test = [] constexpr {
+    auto le = s2s::struct_view_le<aggregates>(std::span<const u8>{aggregates_sample});
+    auto be = s2s::struct_view_be<aggregates>(std::span<const u8>{aggregates_sample});
+    expect(eq((*le)["fs"_f].to_sv() == "wxyz", true));
+    expect(eq((*be)["fs"_f].to_sv() == "wxyz", true));
+    expect(eq((*be)["cs"_f] == std::array<char, 4>{'a', 'b', 'c', 0}, true));
+    expect(eq(std::is_same_v<std::remove_cvref_t<decltype((*le)["cs"_f])>, std::array<char, 4>>, true));
+    expect(eq(std::is_same_v<std::remove_cvref_t<decltype((*le)["carr"_f])>, std::array<u32, 2>>, true));
+    expect(eq(std::is_const_v<decltype((*le)["arr"_f])>, true));
+  };
+
+  "a dynamic span short of the aggregates names the first field that does not fit"_test = [] constexpr {
+    auto view = s2s::struct_view_le<aggregates>(std::span<const u8>{aggregates_sample}.first(aggregates_width - 1));
+    expect(eq(view.has_value(), false));
+    expect(eq(view.error().failed_at == "fs", true));
   };
 }

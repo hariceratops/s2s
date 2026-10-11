@@ -168,3 +168,8 @@ add_rejected_case(rejects_narrow_float_in_tag float_field_misuse.cpp 5)
 # schema's fixed-layout constraint.
 add_rejected_case_matching(rejects_static_span_shorter_than_the_record
   struct_view_misuse.cpp 1 "span_covers_record_v")
+
+# Assigning through a view accessor (076). The regex is compiler wording, verified
+# for gcc 14 and clang 19 only: gcc says "discards qualifiers", clang "not marked const".
+add_rejected_case_matching(rejects_assignment_through_a_view_accessor
+  struct_view_misuse.cpp 2 "discards qualifiers|not marked const")

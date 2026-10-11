@@ -29,7 +29,23 @@ using flat =
     s2s::basic_field<"ratio", float, 4_B>
   >;
 
+using aggregates =
+  s2s::struct_field_list<
+    s2s::fixed_array_field<"arr", u16, 3>,
+    s2s::c_arr_field<"carr", u32, 2>,
+    s2s::c_str_field<"cs", 3>,
+    s2s::fixed_string_field<"fs", 4>
+  >;
+
 static_assert(s2s::fixed_layout_schema<flat>);
+static_assert(s2s::fixed_layout_schema<aggregates>);
+static_assert(s2s::wire_width<aggregates> == 6 + 8 + 4 + 5);
+static_assert(s2s::array_of_trivials<std::array<u16, 3>>);
+static_assert(!s2s::array_of_trivials<u16[3]>);
+static_assert(s2s::c_array_of_trivials<u16[3]>);
+static_assert(!s2s::c_array_of_trivials<std::array<u16, 3>>);
+static_assert(s2s::viewable_leaf_value<s2s::fixed_string<4>>);
+static_assert(!s2s::viewable_leaf_value<std::vector<u8>>);
 static_assert(s2s::every_field_has_compile_time_width<flat>);
 
 static_assert(s2s::wire_width<flat> == 14);

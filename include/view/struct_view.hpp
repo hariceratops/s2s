@@ -65,8 +65,29 @@ constexpr auto decode_field_at(const B* at) -> F {
   return field;
 }
 
+// A function cannot return a C array, so those come back as the equivalent
+// std::array.
+template <typename T>
+struct view_value {
+  using type = T;
+};
+
+template <typename T, std::size_t N>
+struct view_value<T[N]> {
+  using type = std::array<T, N>;
+};
+
 template <typename F, std::endian order, raw_byte_like B>
-using view_read_t = const typename F::field_type;
+using view_read_t = const typename view_value<typename F::field_type>::type;
+
+template <typename F, std::endian order, raw_byte_like B>
+constexpr auto read_leaf_at(const B* at) -> view_read_t<F, order, B> {
+  auto field = decode_field_at<F, order>(at);
+  if constexpr(std::is_array_v<typename F::field_type>)
+    return std::to_array(field.value);
+  else
+    return field.value;
+}
 
 
 template <typename S, std::endian order, raw_byte_like B>
@@ -95,7 +116,7 @@ public:
     requires (res.has_value)
   constexpr auto operator[](accessor) const -> view_read_t<meta::type_of<res->id>, order, B> {
     using field_t = meta::type_of<res->id>;
-    return decode_field_at<field_t, order>(base + layout::offsets[res->occurs_at_idx]).value;
+    return read_leaf_at<field_t, order>(base + layout::offsets[res->occurs_at_idx]);
   }
 };
 
