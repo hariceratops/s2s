@@ -6682,8 +6682,6 @@ concept array_of_trivials = is_array_of_trivials_v<T>;
 template <typename T>
 concept c_array_of_trivials = is_c_array_of_trivials_v<T>;
 
-// What a view can return for a fixed-width leaf: a scalar, a whole array, a C
-// array (as its std::array equivalent) or a fixed string.
 template <typename T>
 concept viewable_leaf_value =
   trivial<T> || array_of_trivials<T> || c_array_of_trivials<T> || fixed_string_like<T>;
@@ -6938,7 +6936,6 @@ struct view_value<T[N]> {
 template <typename S, std::endian order, raw_byte_like B>
 class struct_view;
 
-// A nested record is not decoded: it comes back as a view of the nested schema.
 template <typename F, std::endian order, raw_byte_like B>
 struct view_read {
   using type = const typename view_value<typename F::field_type>::type;
@@ -7115,7 +7112,6 @@ private:
     }
   }
 
-  // Wire order, stopping at the first violation; field_count when there is none.
   template <raw_byte_like B>
   static constexpr auto first_violated_field(const B* base) -> std::size_t {
     return first_violated_field(std::index_sequence_for<fields...>{}, base);

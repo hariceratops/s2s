@@ -80,7 +80,8 @@ built as an mkdocs-material site. Everything needed to render it is confined to
 `docs/`: `docs/mkdocs.yml` holds the nav, `docs/requirements.txt` the one
 dependency. Both commands name that config —
 `mkdocs serve -f docs/mkdocs.yml` — and `.github/workflows/docs.yml` builds on
-every PR and deploys from main. Nothing is documented twice; the site owns the
+every PR and deploys from main. Nothing is documented twice, except the view's unsafe contract, which the spec
+requires on the guide page and in each entry point's reference entry; the site owns the
 schema language, the constraint DSL, both directions, streams and the
 compile-time claims.
 

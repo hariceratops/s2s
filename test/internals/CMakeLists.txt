@@ -13,6 +13,6 @@ add_ut_test(union_choice_pipeline_ct)
 # a type-level computation, not a round-trip.
 add_ut_test(announcement_census_ct)
 
-# The fixed-layout rule and record_layout (075): static_assert positives for the
+# The fixed-layout rule and record_layout: static_assert positives for the
 # schema concept, the layout table and the byte-source constraints.
 add_ut_test(fixed_layout_schema_ct)

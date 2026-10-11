@@ -1,17 +1,5 @@
 # Views
 
-```cpp
-template <fixed_layout_schema S, raw_byte_like B, std::size_t extent>
-  requires span_covers_record<extent, S>
-[[nodiscard]] constexpr auto struct_view_le(std::span<B, extent> bytes)
-    -> std::expected<struct_view<S, std::endian::little, std::remove_const_t<B>>, cast_error>;
-
-template <fixed_layout_schema S, raw_byte_like B, std::size_t extent>
-  requires span_covers_record<extent, S>
-[[nodiscard]] constexpr auto struct_view_be(std::span<B, extent> bytes)
-    -> std::expected<struct_view<S, std::endian::big, std::remove_const_t<B>>, cast_error>;
-```
-
 A view reads the fields of a record straight out of a span of bytes the caller
 already holds, without first parsing the whole record into a `struct_field_list`.
 It takes the same schema as [reading](reading.md) does, and `v["name"_f]` has
@@ -61,23 +49,12 @@ The schema must be a **fixed layout**: every field's width, and so every
 field's offset, is known at compile time. Offsets are computed once per schema
 as constants, so reading a field is a pointer addition and one decode.
 
-| Accepted | Notes |
-|---|---|
-| `basic_field`, including narrow `N_B` sizes | placed in the wider type exactly as the parser places it |
-| `fixed_array_field` | returned as `std::array<T, N>` |
-| `fixed_string_field` | returned as `fixed_string<N>` |
-| `c_arr_field` | returned as `std::array<T, N>`, since a function cannot return a C array |
-| `c_str_field` | returned as `std::array<char, N + 1>`, the terminator included |
-| `magic_number`, `magic_string`, `magic_byte_array` | checked at creation; see below |
-| `struct_field` over an accepted schema | returned as a sub-view; nothing is decoded |
-| `array_of_records` over an accepted schema | returned as an `array_of_records_view` |
-
-| Rejected | Why |
-|---|---|
-| `vec_field`, `str_field`, `vector_of_records` | their length is read from the wire, so the offsets of everything after them are not known until the bytes are |
-| `maybe` | whether the field is present depends on the data, which moves every offset after it |
-| `variance` | the width depends on the discriminant, **even when every alternative happens to be the same width**: the rule is about the schema, not about a coincidence in it |
-| `announces_byte_order` | the byte order is read from the data, but a view's order is part of its type |
+Fixed-width fields, magic fields, `struct_field` and `array_of_records` over an
+accepted schema are viewable. `vec_field`, `str_field`, `vector_of_records`,
+`maybe`, `variance` (even one whose alternatives share a width) and
+`announces_byte_order` are not, because each makes some later offset depend on
+the data. The [reference](reference.md#views) lists what each
+field kind returns, and the reason for each rejection.
 
 Rejection is a compile error: the call is not a viable candidate, and the
 diagnostic names the rule that failed. Each name, with what it rejects, is
