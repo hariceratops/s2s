@@ -7,6 +7,7 @@
 #include <type_traits>
 #include "field_list.hpp"
 #include "field_list_base.hpp"
+#include "../field/field_metafunctions.hpp"
 #include "../field/field_traits.hpp"
 #include "../field_size/comptime_field_size_deduce.hpp"
 #include "../field_validation/field_value_constraints.hpp"
@@ -53,20 +54,36 @@ template <typename F>
 inline constexpr bool field_is_constrained_v =
   !is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
 
-// Lets creation skip the constraint walk entirely for a schema with nothing to check.
 template <typename S>
 inline constexpr bool any_field_constrained_v = false;
 
+// A record with no constraint of its own still needs a walk when something
+// inside it is constrained.
+template <typename F>
+inline constexpr bool field_needs_check_v = field_is_constrained_v<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_needs_check_v<F> =
+  field_is_constrained_v<F> || any_field_constrained_v<extract_type_from_field_v<F>>;
+
+// Lets creation skip the constraint walk entirely for a schema with nothing to check.
 template <auto metadata, typename... fields>
 inline constexpr bool any_field_constrained_v<struct_field_list_impl<metadata, fields...>> =
-  (field_is_constrained_v<fields> || ...);
+  (field_needs_check_v<fields> || ...);
 
 template <typename S>
 inline constexpr bool every_field_has_compile_time_width_v = false;
 
+template <typename F>
+inline constexpr bool field_has_compile_time_width_v = leaf_has_compile_time_width_v<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_has_compile_time_width_v<F> =
+  every_field_has_compile_time_width_v<extract_type_from_field_v<F>>;
+
 template <auto metadata, typename... fields>
 inline constexpr bool every_field_has_compile_time_width_v<struct_field_list_impl<metadata, fields...>> =
-  (leaf_has_compile_time_width_v<fields> && ...);
+  (field_has_compile_time_width_v<fields> && ...);
 
 template <typename S>
 concept every_field_has_compile_time_width = every_field_has_compile_time_width_v<S>;
@@ -80,12 +97,20 @@ concept fixed_layout_schema =
 template <typename S>
 struct record_layout;
 
+template <typename F>
+constexpr auto field_wire_width() -> std::size_t {
+  if constexpr(struct_field_like<F>)
+    return record_layout<extract_type_from_field_v<F>>::width;
+  else
+    return deduce_field_size<F::field_size>{}();
+}
+
 template <auto metadata, typename... fields>
 struct record_layout<struct_field_list_impl<metadata, fields...>> {
   static constexpr std::size_t field_count = sizeof...(fields);
 
   static constexpr std::array<std::size_t, field_count> widths{
-    deduce_field_size<fields::field_size>{}()...
+    field_wire_width<fields>()...
   };
 
   static constexpr std::array<std::size_t, field_count> offsets = [] {

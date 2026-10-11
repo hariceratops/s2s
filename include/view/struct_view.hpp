@@ -8,6 +8,7 @@
 #include <span>
 #include <type_traits>
 #include <utility>
+#include "../cast/struct_cast_impl.hpp"
 #include "../error/cast_error.hpp"
 #include "../field_list/field_list.hpp"
 #include "../field_list/fixed_layout.hpp"
@@ -78,8 +79,22 @@ struct view_value<T[N]> {
   using type = std::array<T, N>;
 };
 
+template <typename S, std::endian order, raw_byte_like B>
+class struct_view;
+
+// A nested record is not decoded: it comes back as a view of the nested schema.
 template <typename F, std::endian order, raw_byte_like B>
-using view_read_t = const typename view_value<typename F::field_type>::type;
+struct view_read {
+  using type = const typename view_value<typename F::field_type>::type;
+};
+
+template <struct_field_like F, std::endian order, raw_byte_like B>
+struct view_read<F, order, B> {
+  using type = const struct_view<typename F::field_type, order, B>;
+};
+
+template <typename F, std::endian order, raw_byte_like B>
+using view_read_t = typename view_read<F, order, B>::type;
 
 template <typename F, std::endian order, raw_byte_like B>
 constexpr auto read_leaf_at(const B* at) -> view_read_t<F, order, B> {
@@ -90,9 +105,6 @@ constexpr auto read_leaf_at(const B* at) -> view_read_t<F, order, B> {
     return field.value;
 }
 
-
-template <typename S, std::endian order, raw_byte_like B>
-class struct_view;
 
 template <typename S, std::endian order>
 struct struct_view_impl;
@@ -109,6 +121,9 @@ class struct_view<struct_field_list_impl<metadata, fields...>, order, B> {
   template <typename, std::endian>
   friend struct struct_view_impl;
 
+  template <typename, std::endian, raw_byte_like>
+  friend class struct_view;
+
 public:
   template <
     typename accessor,
@@ -117,7 +132,11 @@ public:
     requires (res.has_value)
   constexpr auto operator[](accessor) const -> view_read_t<meta::type_of<res->id>, order, B> {
     using field_t = meta::type_of<res->id>;
-    return read_leaf_at<field_t, order>(base + layout::offsets[res->occurs_at_idx]);
+    const B* at = base + layout::offsets[res->occurs_at_idx];
+    if constexpr(struct_field_like<field_t>)
+      return struct_view<typename field_t::field_type, order, B>{at};
+    else
+      return read_leaf_at<field_t, order>(at);
   }
 };
 
@@ -139,7 +158,7 @@ struct struct_view_impl<struct_field_list_impl<metadata, fields...>, order> {
       }
     }
     if constexpr(any_field_constrained_v<S>) {
-      auto violated = first_violated_field(std::index_sequence_for<fields...>{}, bytes.data());
+      auto violated = first_violated_field(bytes.data());
       if(violated != layout::field_count)
         return std::unexpected(cast_error{error_reason::validation_failure, layout::names[violated]});
     }
@@ -147,17 +166,41 @@ struct struct_view_impl<struct_field_list_impl<metadata, fields...>, order> {
   }
 
 private:
+  template <typename, std::endian>
+  friend struct struct_view_impl;
+
   // Same predicate the parser applies, to a value decoded the parser's way. An
   // unconstrained field is not decoded at all.
   template <typename F, raw_byte_like B>
   static constexpr auto violates(const B* at) -> bool {
-    if constexpr(field_is_constrained_v<F>)
+    if constexpr(struct_field_like<F>) {
+      using nested = typename F::field_type;
+      if constexpr(field_is_constrained_v<F>) {
+        // A constraint over the whole record needs the whole record, so the
+        // parser itself decodes it.
+        unchecked_byte_source<B> source{{}, at};
+        auto order_cell = deduce_byte_order<order>();
+        auto record = struct_cast_impl<nested, unchecked_byte_source<B>>{}(source, order_cell);
+        return !record || !F::constraint_checker(*record);
+      } else if constexpr(any_field_constrained_v<nested>) {
+        using nested_impl = struct_view_impl<nested, order>;
+        return nested_impl::first_violated_field(at) != nested_impl::layout::field_count;
+      } else {
+        return false;
+      }
+    } else if constexpr(field_is_constrained_v<F>) {
       return !F::constraint_checker(decode_field_at<F, order>(at).value);
-    else
+    } else {
       return false;
+    }
   }
 
   // Wire order, stopping at the first violation; field_count when there is none.
+  template <raw_byte_like B>
+  static constexpr auto first_violated_field(const B* base) -> std::size_t {
+    return first_violated_field(std::index_sequence_for<fields...>{}, base);
+  }
+
   template <std::size_t... idx, raw_byte_like B>
   static constexpr auto first_violated_field(std::index_sequence<idx...>, const B* base) -> std::size_t {
     std::size_t found = layout::field_count;

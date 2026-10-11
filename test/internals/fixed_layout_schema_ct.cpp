@@ -88,6 +88,41 @@ using view_t = decltype(*s2s::struct_view_le<flat>(std::span<const u8>{}));
 static_assert(std::is_trivially_copyable_v<std::remove_cvref_t<view_t>>);
 static_assert(sizeof(std::remove_cvref_t<view_t>) == sizeof(const u8*));
 
+// Nesting (078): widths and offsets recurse, and a constraint anywhere inside
+// counts as a constraint on the record.
+using inner_header =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u32, 4_B>
+  >;
+using nested_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::struct_field<"hdr", inner_header>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+using inner_checked =
+  s2s::struct_field_list<
+    s2s::basic_field<"len", u32, 4_B, s2s::gte(7u)>
+  >;
+using nested_checked =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::struct_field<"hdr", inner_checked>
+  >;
+static_assert(s2s::fixed_layout_schema<nested_record>);
+static_assert(s2s::wire_width<nested_record> == 1 + 5 + 2);
+static_assert(s2s::record_layout<nested_record>::offsets == std::array<std::size_t, 3>{0, 1, 6});
+static_assert(!s2s::any_field_constrained_v<nested_record>);
+static_assert(s2s::any_field_constrained_v<nested_checked>);
+using inner_variable =
+  s2s::struct_field_list<
+    s2s::basic_field<"n", u8, 1_B>,
+    s2s::str_field<"s", s2s::len_from_field<"n">>
+  >;
+static_assert(!s2s::fixed_layout_schema<
+  s2s::struct_field_list<s2s::struct_field<"v", inner_variable>>>);
+
 auto main() -> int {
   "the layout table is a compile-time prefix sum"_test = [] constexpr {
     expect(eq(s2s::wire_width<flat>, std::size_t{14}));

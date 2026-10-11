@@ -201,6 +201,84 @@ constexpr auto guard_rejects(u32 first_byte_of_v, bool expected_ok) -> bool {
          creation_agrees_with_parser<guarded<constraint>, std::endian::big>(be_bytes);
 }
 
+// Nested records (078). The u8 lead puts the header at an odd offset, and the
+// header's own u32 at another.
+using inner_header =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u32, 4_B>,
+    s2s::basic_field<"narrow", u32, 3_B>
+  >;
+using middle =
+  s2s::struct_field_list<
+    s2s::basic_field<"m", u16, 2_B>,
+    s2s::struct_field<"hdr", inner_header>
+  >;
+using nested_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::struct_field<"mid", middle>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+constexpr std::size_t nested_width = 1 + (2 + (1 + 4 + 3)) + 2;
+
+constexpr auto nested_sample = std::array<u8, nested_width>{
+  0x7f,
+  0x0a, 0x0b,
+  0x01,
+  0x02, 0x03, 0x04, 0x85,
+  0x07, 0x08, 0x09,
+  0x0c, 0x0d
+};
+
+template <std::endian order>
+constexpr auto nested_agrees_with_parser() -> bool {
+  auto bytes = nested_sample;
+  memstream<nested_width> stream(bytes);
+  auto parsed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_cast_le<nested_record>(stream);
+    else
+      return s2s::struct_cast_be<nested_record>(stream);
+  }();
+  auto viewed = [&] {
+    if constexpr(order == std::endian::little)
+      return s2s::struct_view_le<nested_record>(std::span<const u8>{nested_sample});
+    else
+      return s2s::struct_view_be<nested_record>(std::span<const u8>{nested_sample});
+  }();
+  if(!parsed.has_value() || !viewed.has_value())
+    return false;
+  const auto& p = *parsed;
+  const auto& v = *viewed;
+  const auto sub = v["mid"_f]["hdr"_f];
+  return p["lead"_f] == v["lead"_f] && p["tail"_f] == v["tail"_f] &&
+         p["mid"_f]["m"_f] == v["mid"_f]["m"_f] &&
+         p["mid"_f]["hdr"_f]["kind"_f] == sub["kind"_f] &&
+         p["mid"_f]["hdr"_f]["len"_f] == sub["len"_f] &&
+         p["mid"_f]["hdr"_f]["narrow"_f] == v["mid"_f]["hdr"_f]["narrow"_f];
+}
+
+// Constraints at every depth: a field inside the header, and one on the
+// header record itself.
+using checked_header =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u32, 4_B, s2s::gte(7u)>
+  >;
+constexpr auto kind_is_len = [](const checked_header& h) { return h["kind"_f] == h["len"_f]; };
+using field_checked =
+  s2s::struct_field_list<
+    s2s::basic_field<"pre", u8, 1_B>,
+    s2s::struct_field<"hdr", checked_header>,
+    s2s::basic_field<"post", u8, 1_B, s2s::eq(u8{1})>
+  >;
+using record_checked =
+  s2s::struct_field_list<
+    s2s::basic_field<"pre", u8, 1_B>,
+    s2s::struct_field<"hdr", checked_header, kind_is_len>
+  >;
+
 constexpr auto in_range = [](const u32& v) { return v >= 10 && v <= 20; };
 
 auto main() -> int {
@@ -429,5 +507,99 @@ auto main() -> int {
     expect(eq(s2s::any_field_constrained_v<record>, false));
     expect(eq(s2s::any_field_constrained_v<magic_record>, true));
     expect(eq(s2s::any_field_constrained_v<guarded<s2s::eq(7u)>>, true));
+  };
+
+  "a nested record reads as a sub-view that matches the parser in both orders"_test = [] constexpr {
+    expect(eq(nested_agrees_with_parser<std::endian::little>(), true));
+    expect(eq(nested_agrees_with_parser<std::endian::big>(), true));
+    auto le = s2s::struct_view_le<nested_record>(std::span<const u8, nested_width>{nested_sample});
+    auto be = s2s::struct_view_be<nested_record>(std::span<const u8, nested_width>{nested_sample});
+    expect(eq((*le)["mid"_f]["hdr"_f]["len"_f], 0x85040302u));
+    expect(eq((*be)["mid"_f]["hdr"_f]["len"_f], 0x02030485u));
+    expect(eq((*le)["mid"_f]["hdr"_f]["narrow"_f], 0x090807u));
+    expect(eq((*le)["tail"_f], u16{0x0d0c}));
+  };
+
+  "the width and every offset through nesting are compile-time constants"_test = [] constexpr {
+    expect(eq(s2s::wire_width<nested_record>, nested_width));
+    expect(eq(s2s::wire_width<middle>, std::size_t{10}));
+    constexpr auto v = s2s::struct_view_le<nested_record>(std::span<const u8, nested_width>{nested_sample});
+    static_assert(v.has_value());
+    static_assert((*v)["mid"_f]["hdr"_f]["kind"_f] == 1);
+  };
+
+  "a sub-view is copyable, non-owning and the same type as a top-level view"_test = [] constexpr {
+    auto view = s2s::struct_view_le<nested_record>(std::span<const u8>{nested_sample});
+    auto sub = (*view)["mid"_f];
+    auto copy = sub;
+    expect(eq(copy["m"_f] == sub["m"_f], true));
+    expect(eq(sizeof(sub) == sizeof(const u8*), true));
+    expect(eq(std::is_trivially_copyable_v<decltype(sub)>, true));
+    using middle_view = std::remove_cvref_t<decltype(*s2s::struct_view_le<middle>(std::span<const u8>{}))>;
+    expect(eq(std::is_same_v<std::remove_cvref_t<decltype(sub)>, middle_view>, true));
+    expect(eq(std::is_const_v<decltype((*view)["mid"_f])>, true));
+  };
+
+  "reading a nested field leaves its siblings and the enclosing record unread"_test = [] constexpr {
+    auto original = nested_sample;
+    auto mutated = nested_sample;
+    mutated[0] = 0x55;
+    mutated[1] = 0x66;
+    mutated[3] = 0x77;
+    mutated[12] = 0x88;
+    auto before = s2s::struct_view_le<nested_record>(std::span<const u8>{original});
+    auto after = s2s::struct_view_le<nested_record>(std::span<const u8>{mutated});
+    expect(eq(before.has_value() && after.has_value(), true));
+    expect(eq((*before)["mid"_f]["hdr"_f]["len"_f] == (*after)["mid"_f]["hdr"_f]["len"_f], true));
+    expect(eq((*before)["mid"_f]["hdr"_f]["kind"_f] == (*after)["mid"_f]["hdr"_f]["kind"_f], false));
+  };
+
+  "a short span names the outermost field, like the parser"_test = [] constexpr {
+    auto view = s2s::struct_view_le<nested_record>(std::span<const u8>{nested_sample}.first(nested_width - 1));
+    expect(eq(view.has_value(), false));
+    expect(eq(view.error().failure_reason, s2s::error_reason::buffer_exhaustion));
+    expect(eq(view.error().failed_at == "tail", true));
+    auto shorter = s2s::struct_view_le<nested_record>(std::span<const u8>{nested_sample}.first(6));
+    expect(eq(shorter.error().failed_at == "mid", true));
+  };
+
+  "a constrained field inside a nested record is checked at creation"_test = [] constexpr {
+    expect(eq(s2s::any_field_constrained_v<field_checked>, true));
+    std::array<u8, 7> good{0x01, 0x01, 0x07, 0x00, 0x00, 0x00, 0x01};
+    expect(eq(creation_agrees_with_parser<field_checked, std::endian::little>(good), true));
+    expect(eq(s2s::struct_view_le<field_checked>(std::span<const u8>{good}).has_value(), true));
+    auto bad_len = good;
+    bad_len[2] = 0x06;
+    expect(eq(creation_agrees_with_parser<field_checked, std::endian::little>(bad_len), true));
+    auto err = s2s::struct_view_le<field_checked>(std::span<const u8>{bad_len}).error();
+    expect(eq(err.failure_reason, s2s::error_reason::validation_failure));
+    expect(eq(err.failed_at == "hdr", true));
+    auto bad_both = bad_len;
+    bad_both[6] = 0x02;
+    expect(eq(s2s::struct_view_le<field_checked>(std::span<const u8>{bad_both}).error().failed_at == "hdr", true));
+    auto bad_post = good;
+    bad_post[6] = 0x02;
+    expect(eq(creation_agrees_with_parser<field_checked, std::endian::little>(bad_post), true));
+    expect(eq(s2s::struct_view_le<field_checked>(std::span<const u8>{bad_post}).error().failed_at == "post", true));
+    std::array<u8, 7> be_good{0x01, 0x01, 0x00, 0x00, 0x00, 0x07, 0x01};
+    expect(eq(creation_agrees_with_parser<field_checked, std::endian::big>(be_good), true));
+  };
+
+  "a constraint on the nested record itself is checked at creation"_test = [] constexpr {
+    expect(eq(s2s::any_field_constrained_v<record_checked>, true));
+    std::array<u8, 6> good{0x01, 0x07, 0x07, 0x00, 0x00, 0x00};
+    expect(eq(s2s::struct_view_le<record_checked>(std::span<const u8>{good}).has_value(), true));
+    expect(eq(creation_agrees_with_parser<record_checked, std::endian::little>(good), true));
+    auto mismatch = good;
+    mismatch[1] = 0x08;
+    expect(eq(creation_agrees_with_parser<record_checked, std::endian::little>(mismatch), true));
+    auto err = s2s::struct_view_le<record_checked>(std::span<const u8>{mismatch}).error();
+    expect(eq(err.failure_reason, s2s::error_reason::validation_failure));
+    expect(eq(err.failed_at == "hdr", true));
+    auto inner_bad = good;
+    inner_bad[2] = 0x06;
+    inner_bad[1] = 0x06;
+    expect(eq(creation_agrees_with_parser<record_checked, std::endian::little>(inner_bad), true));
+    expect(eq(creation_agrees_with_parser<record_checked, std::endian::big>(good), true));
   };
 }

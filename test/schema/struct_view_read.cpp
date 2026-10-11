@@ -336,3 +336,114 @@ TEST(StructViewRead, ChangingAnUnconstrainedUnreadFieldChangesNothing) {
   EXPECT_EQ((*before)["v"_f], (*after)["v"_f]);
   EXPECT_NE((*before)["lead"_f], (*after)["lead"_f]);
 }
+
+namespace {
+using inner_header =
+  s2s::struct_field_list<
+    s2s::basic_field<"kind", u8, 1_B>,
+    s2s::basic_field<"len", u32, 4_B, s2s::gte(7u)>,
+    s2s::basic_field<"narrow", u32, 3_B>
+  >;
+constexpr auto kind_below_len = [](const inner_header& h) { return h["kind"_f] < h["len"_f]; };
+using middle =
+  s2s::struct_field_list<
+    s2s::basic_field<"m", u16, 2_B>,
+    s2s::struct_field<"hdr", inner_header, kind_below_len>
+  >;
+using nested_record =
+  s2s::struct_field_list<
+    s2s::basic_field<"lead", u8, 1_B>,
+    s2s::struct_field<"mid", middle>,
+    s2s::basic_field<"tail", u16, 2_B>
+  >;
+constexpr std::size_t nested_width = 1 + (2 + (1 + 4 + 3)) + 2;
+constexpr std::array<u8, nested_width> nested_sample{
+  0x7f,
+  0x0a, 0x0b,
+  0x01,
+  0x07, 0x00, 0x00, 0x00,
+  0x07, 0x08, 0x09,
+  0x0c, 0x0d
+};
+
+void write_nested(const std::array<u8, nested_width>& bytes) {
+  std::ofstream file("test_input.bin", std::ios::out | std::ios::binary);
+  file.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+}
+
+template <typename parsed_t, typename view_t>
+void expect_same_nested(const parsed_t& p, const view_t& v) {
+  EXPECT_EQ(p["lead"_f], v["lead"_f]);
+  EXPECT_EQ(p["tail"_f], v["tail"_f]);
+  EXPECT_EQ(p["mid"_f]["m"_f], v["mid"_f]["m"_f]);
+  EXPECT_EQ(p["mid"_f]["hdr"_f]["kind"_f], v["mid"_f]["hdr"_f]["kind"_f]);
+  EXPECT_EQ(p["mid"_f]["hdr"_f]["len"_f], v["mid"_f]["hdr"_f]["len"_f]);
+  EXPECT_EQ(p["mid"_f]["hdr"_f]["narrow"_f], v["mid"_f]["hdr"_f]["narrow"_f]);
+}
+}
+
+TEST(StructViewRead, ANestedRecordReadsAsASubViewInBothOrders) {
+  write_nested(nested_sample);
+  auto bytes = slurp();
+  std::ifstream le_file("test_input.bin", std::ios::in | std::ios::binary);
+  std::ifstream be_file("test_input.bin", std::ios::in | std::ios::binary);
+  auto parsed_le = s2s::struct_cast_le<nested_record>(le_file);
+  auto parsed_be = s2s::struct_cast_be<nested_record>(be_file);
+  auto viewed_le = s2s::struct_view_le<nested_record>(std::span<const char>{bytes});
+  auto viewed_be = s2s::struct_view_be<nested_record>(std::span<const char>{bytes});
+  ASSERT_EQ(parsed_le.has_value(), viewed_le.has_value());
+  ASSERT_TRUE(viewed_le.has_value());
+  ASSERT_TRUE(parsed_be.has_value() == viewed_be.has_value());
+  expect_same_nested(*parsed_le, *viewed_le);
+  EXPECT_EQ((*viewed_le)["mid"_f]["hdr"_f]["len"_f], 7u);
+  EXPECT_EQ((*viewed_le)["mid"_f]["hdr"_f]["narrow"_f], 0x090807u);
+  static_assert(s2s::wire_width<nested_record> == nested_width);
+}
+
+TEST(StructViewRead, ASubViewReadsFromAnOddAddress) {
+  alignas(8) std::array<char, nested_width + 1> storage{};
+  for(std::size_t idx = 0; idx < nested_width; ++idx)
+    storage[idx + 1] = static_cast<char>(nested_sample[idx]);
+  std::span<const char> at_odd{storage.data() + 1, nested_width};
+  auto le = s2s::struct_view_le<nested_record>(at_odd);
+  ASSERT_TRUE(le.has_value());
+  auto hdr = (*le)["mid"_f]["hdr"_f];
+  EXPECT_EQ(hdr["len"_f], 7u);
+  EXPECT_EQ(hdr["narrow"_f], 0x090807u);
+  auto copy = hdr;
+  EXPECT_EQ(copy["kind"_f], 1);
+  EXPECT_EQ(sizeof(hdr), sizeof(const char*));
+}
+
+TEST(StructViewRead, NestedConstraintsFailLikeTheParser) {
+  auto check = [](std::array<u8, nested_width> bytes) {
+    write_nested(bytes);
+    auto data = slurp();
+    std::ifstream file("test_input.bin", std::ios::in | std::ios::binary);
+    auto parsed = s2s::struct_cast_le<nested_record>(file);
+    auto viewed = s2s::struct_view_le<nested_record>(std::span<const char>{data});
+    ASSERT_EQ(parsed.has_value(), viewed.has_value());
+    if(!parsed) {
+      EXPECT_EQ(parsed.error().failure_reason, viewed.error().failure_reason);
+      EXPECT_EQ(parsed.error().failed_at, viewed.error().failed_at);
+      EXPECT_EQ(viewed.error().failed_at, "mid");
+    }
+  };
+  check(nested_sample);
+  auto bad_field = nested_sample;
+  bad_field[4] = 0x06;
+  check(bad_field);
+  auto bad_record = nested_sample;
+  bad_record[3] = 0x09;
+  check(bad_record);
+}
+
+TEST(StructViewRead, AShortSpanNamesTheOutermostFieldOfANestedRecord) {
+  write_nested(nested_sample);
+  auto bytes = slurp();
+  bytes.resize(6);
+  auto viewed = s2s::struct_view_le<nested_record>(std::span<const char>{bytes});
+  ASSERT_FALSE(viewed.has_value());
+  EXPECT_EQ(viewed.error().failure_reason, s2s::error_reason::buffer_exhaustion);
+  EXPECT_EQ(viewed.error().failed_at, "mid");
+}
