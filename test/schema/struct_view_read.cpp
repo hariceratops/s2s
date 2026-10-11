@@ -535,3 +535,65 @@ TEST(StructViewRead, AConstraintInAnyElementFailsLikeTheParser) {
   check({1, 10, 0, 2, 9, 0, 3, 9, 0}, false);
   check({1, 9, 0, 2, 9, 0, 3, 10, 0}, false);
 }
+
+TEST(StructViewRead, MisalignedFieldsReadInBothOrdersAtDepthFromAnOddAddress) {
+  alignas(8) std::array<char, table_width + 1> storage{};
+  for(std::size_t idx = 0; idx < table_width; ++idx)
+    storage[idx + 1] = static_cast<char>(table_sample[idx]);
+  std::span<const char> at_odd{storage.data() + 1, table_width};
+  auto be = s2s::struct_view_be<table_record>(at_odd);
+  ASSERT_TRUE(be.has_value());
+  EXPECT_EQ((*be)["entries"_f][1]["len"_f], 0x30313233u);
+  EXPECT_EQ((*be)["entries"_f][1]["flags"_f], 0x4041);
+  EXPECT_EQ((*be)["tail"_f], 0x0c0d);
+
+  alignas(8) std::array<char, nested_width + 1> nested_storage{};
+  for(std::size_t idx = 0; idx < nested_width; ++idx)
+    nested_storage[idx + 1] = static_cast<char>(nested_sample[idx]);
+  auto nested_be = s2s::struct_view_be<nested_record>(
+    std::span<const char>{nested_storage.data() + 1, nested_width});
+  ASSERT_TRUE(nested_be.has_value());
+  EXPECT_EQ((*nested_be)["mid"_f]["m"_f], 0x0a0b);
+  EXPECT_EQ((*nested_be)["mid"_f]["hdr"_f]["len"_f], 0x07000000u);
+  EXPECT_EQ((*nested_be)["mid"_f]["hdr"_f]["narrow"_f], 0x070809u);
+  EXPECT_EQ((*nested_be)["tail"_f], 0x0c0d);
+}
+
+TEST(StructViewRead, ChangingUnreadBytesAtDepthChangesNothingElse) {
+  auto expect_untouched = [](auto create) {
+    auto nested_changed = nested_sample;
+    for(std::size_t idx : {0, 1, 2, 8, 9, 10, 11, 12})
+      nested_changed[idx] = 0x55;
+    write_nested(nested_sample);
+    auto original = slurp();
+    write_nested(nested_changed);
+    auto changed = slurp();
+    auto before = create.template operator()<nested_record>(std::span<const char>{original});
+    auto after = create.template operator()<nested_record>(std::span<const char>{changed});
+    ASSERT_EQ(before.has_value(), after.has_value());
+    ASSERT_TRUE(before.has_value());
+    EXPECT_EQ((*before)["mid"_f]["hdr"_f]["kind"_f], (*after)["mid"_f]["hdr"_f]["kind"_f]);
+    EXPECT_EQ((*before)["mid"_f]["hdr"_f]["len"_f], (*after)["mid"_f]["hdr"_f]["len"_f]);
+    EXPECT_NE((*before)["tail"_f], (*after)["tail"_f]);
+    EXPECT_NE((*before)["mid"_f]["hdr"_f]["narrow"_f], (*after)["mid"_f]["hdr"_f]["narrow"_f]);
+
+    auto table_changed = table_sample;
+    for(std::size_t idx : {0, 6, 7, 13, 14, 20, 21, 22, 23})
+      table_changed[idx] = 0x55;
+    write_bytes(table_sample);
+    auto table_original = slurp();
+    write_bytes(table_changed);
+    auto table_other = slurp();
+    auto t_before = create.template operator()<table_record>(std::span<const char>{table_original});
+    auto t_after = create.template operator()<table_record>(std::span<const char>{table_other});
+    ASSERT_EQ(t_before.has_value(), t_after.has_value());
+    ASSERT_TRUE(t_before.has_value());
+    for(std::size_t idx = 0; idx < 3; ++idx) {
+      EXPECT_EQ((*t_before)["entries"_f][idx]["len"_f], (*t_after)["entries"_f][idx]["len"_f]);
+      EXPECT_EQ((*t_before)["entries"_f][idx]["kind"_f], (*t_after)["entries"_f][idx]["kind"_f]);
+      EXPECT_NE((*t_before)["entries"_f][idx]["flags"_f], (*t_after)["entries"_f][idx]["flags"_f]);
+    }
+  };
+  expect_untouched([]<typename S>(std::span<const char> s) { return s2s::struct_view_le<S>(s); });
+  expect_untouched([]<typename S>(std::span<const char> s) { return s2s::struct_view_be<S>(s); });
+}

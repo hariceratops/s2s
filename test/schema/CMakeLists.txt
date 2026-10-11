@@ -24,6 +24,7 @@ add_ut_test(record_write_ct)
 
 add_struct_cast_test(struct_view_read)
 add_ut_test(struct_view_read_ct)
+add_struct_cast_test(struct_view_allocation)
 
 add_struct_cast_test(magic_read)
 add_struct_cast_test(magic_write)

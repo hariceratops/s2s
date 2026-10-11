@@ -34,3 +34,13 @@ Spec: `dev/specs/reading-two-fields-costs-a-whole-record.md`.
   one byte short does not compile (a `must_not_compile` case), if not already
   covered by 075.
 - `ctest` is green tree-wide, and the documented 074 command is green.
+
+## Verification note
+
+Checked once by hand: a runtime-only `*reinterpret_cast<const unsigned int*>(at)`
+load in `decode_field_at` (`include/view/struct_view.hpp`) made
+`CXX=g++-14 cmake --workflow --preset ubsan --fresh` fail. UBSan reported
+"load of misaligned address ... for type 'const unsigned int'" in
+`struct_view_read`, `struct_view_read_ct_run_time` and `struct_view_allocation`
+(3 of 70 failed). The mutation was reverted; `git diff` shows no change under
+`include/` and `single_header/s2s.hpp` was regenerated clean.
