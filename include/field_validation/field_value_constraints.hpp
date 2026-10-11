@@ -63,6 +63,11 @@ struct is_eq_constraint<eq<T>> {
 template <typename T>
 inline constexpr bool is_eq_constraint_v = is_eq_constraint<T>::res;
 
+template <typename T>
+struct is_no_constraint {
+  static constexpr bool res = false;
+};
+
 template <equality_comparable T>
 struct neq {
   T v;
@@ -109,6 +114,14 @@ struct no_constraint {
     return true; 
   }
 };
+
+template <typename T>
+struct is_no_constraint<no_constraint<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
 
 template <typename T, typename... Ts>
   requires (typelist::all_are_same_v<typelist::list<T, Ts...>>)

@@ -15,5 +15,6 @@
 #include "type_deduction/utils/type_tags.hpp"
 #include "api/struct_cast.hpp"
 #include "api/stream_cast.hpp"
+#include "api/struct_view.hpp"
 
 #endif // STRUCT_CAST_HPP

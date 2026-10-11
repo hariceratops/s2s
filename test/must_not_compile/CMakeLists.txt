@@ -18,7 +18,7 @@ function(add_rejected_case name source case_id)
 endfunction()
 
 # A rejected case that must fail for a stated reason. The diagnostic matched is
-# our own static_assert text rather than the compiler's concept wording, so
+# our own identifiers (static_assert text, concept atom names) rather than the compiler's concept wording, so
 # matching it stays portable in the way matching a substitution failure would
 # not. PASS_REGULAR_EXPRESSION replaces WILL_FAIL: the build still has to fail,
 # since nothing in these cases compiles, but a failure for an unrelated reason
@@ -162,3 +162,9 @@ add_rejected_case(rejects_wide_float float_field_misuse.cpp 2)
 add_rejected_case(rejects_narrow_double float_field_misuse.cpp 3)
 add_rejected_case(rejects_sized_long_double float_field_misuse.cpp 4)
 add_rejected_case(rejects_narrow_float_in_tag float_field_misuse.cpp 5)
+
+# The view entry points (075). Checked against a no-CASE control build: 1 fails
+# on the span-length atom of the entry point's requires-clause, and not on the
+# schema's fixed-layout constraint.
+add_rejected_case_matching(rejects_static_span_shorter_than_the_record
+  struct_view_misuse.cpp 1 "span_covers_record_v")

@@ -63,3 +63,24 @@ Spec: `dev/specs/reading-two-fields-costs-a-whole-record.md`.
   UBSan configuration from 074.
 - `ctest` is green tree-wide, including the `*_compile_time` and `*_coverage`
   entries; `single_header/s2s.hpp` is regenerated in the same commit.
+
+## Findings
+
+Recorded at the slice boundary, for the slices that follow:
+
+- An empty `struct_field_list<>` cannot be declared (`has_unique_field_ids`
+  rejects it), so there is no empty-schema or `wire_width == 0` case. The
+  design does not mention this.
+- `memstream<0>` cannot serve as the parser oracle: `max_read_idx` underflows
+  on a zero-size buffer. The empty-span test became a one-byte-span test
+  expecting `failed_at == "b"`.
+- ut's `eq` static-asserts on floating-point operands, so float and double
+  comparisons are written `expect(eq(a == b, true))`. Applies to 076 onward.
+- `unchecked_byte_source` is initialised `{{}, at}` because of its
+  `constexpr_stream` base.
+- The concept's width atom is narrowed to fixed-size, trivial, unconstrained
+  leaves (design §2.5); 077 removes the unconstrained narrowing. The negative
+  `fixed_layout_schema` assertions and `must_not_compile` CASEs 2–10 belong to
+  the later slices the design assigns them to.
+- Verified: default build 217/217; `CXX=g++-14 cmake --workflow --preset ubsan
+  --fresh` 69/69, no sanitizer report. Clang not run.
