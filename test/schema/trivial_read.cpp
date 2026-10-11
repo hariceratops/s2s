@@ -125,3 +125,30 @@ TEST(TrivialRead, ReportsExhaustionOnTheFieldThatRanOut) {
     EXPECT_EQ(err.failed_at, "b");
   });
 }
+
+TEST(TrivialRead, ANarrowFieldReadsItsWireWidthUnderEitherByteOrder) {
+  // Outside the macro: its argument list would split on the initializer's commas.
+  static constexpr unsigned char bytes[] = {0x01, 0x02, 0x03, 0x01, 0x02, 0x03, 0x04, 0x05};
+  PREPARE_INPUT_FILE({
+    file.write(reinterpret_cast<const char*>(bytes), sizeof(bytes));
+    file.close();
+  });
+
+  FIELD_LIST_SCHEMA =
+    s2s::struct_field_list<
+      s2s::basic_field<"three", u32, 3_B>,
+      s2s::basic_field<"five", unsigned long long, 5_B>
+    >;
+
+  FIELD_LIST_BE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["three"_f], 0x010203u);
+    EXPECT_EQ((*result)["five"_f], 0x0102030405ull);
+  });
+
+  FIELD_LIST_LE_READ_CHECK({
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["three"_f], 0x030201u);
+    EXPECT_EQ((*result)["five"_f], 0x0504030201ull);
+  });
+}
