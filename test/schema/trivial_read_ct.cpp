@@ -139,4 +139,32 @@ auto main() -> int {
     expect(eq(res.error().failure_reason, s2s::validation_failure));
     expect(eq(res.error().failed_at, std::string_view{"b"}));
   };
+
+  // A field declared narrower than its type: the bytes on the wire are the
+  // whole value, so 01 02 03 is 0x010203 under big-endian and 0x030201 under
+  // little-endian, not the value shifted up into the unread byte.
+  "a narrow field reads its wire width under either byte order"_test = [] constexpr {
+    using narrow =
+      s2s::struct_field_list<
+        s2s::basic_field<"three", u32, 3_B>,
+        s2s::basic_field<"five", unsigned long long, 5_B>,
+        s2s::basic_field<"one", unsigned short, 1_B>
+      >;
+
+    std::array<u8, 9> buffer{0x01, 0x02, 0x03, 0x01, 0x02, 0x03, 0x04, 0x05, 0x7f};
+
+    memstream<9> be_stream(buffer);
+    auto be = s2s::struct_cast_be<narrow>(be_stream);
+    expect(eq(be.has_value(), true));
+    expect(eq((*be)["three"_f], 0x010203u));
+    expect(eq((*be)["five"_f], 0x0102030405ull));
+    expect(eq((*be)["one"_f], static_cast<unsigned short>(0x7f)));
+
+    memstream<9> le_stream(buffer);
+    auto le = s2s::struct_cast_le<narrow>(le_stream);
+    expect(eq(le.has_value(), true));
+    expect(eq((*le)["three"_f], 0x030201u));
+    expect(eq((*le)["five"_f], 0x0504030201ull));
+    expect(eq((*le)["one"_f], static_cast<unsigned short>(0x7f)));
+  };
 }

@@ -95,3 +95,7 @@ one name, so a nesting chain and a cross-field contradiction cannot both be
 expressed. The project's development backlog records the design discussion under
 "Error ergonomics", including why a shared-length contradiction names the length
 field but not the dependent that disagreed with it.
+
+A [view](views.md) that is handed a span shorter than the record fails with
+`buffer_exhaustion` and names the first top-level field whose end passes the
+span's end, so the invariant above holds for it too.

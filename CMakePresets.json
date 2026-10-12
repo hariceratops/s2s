@@ -1,0 +1,31 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "ubsan",
+      "binaryDir": "${sourceDir}/build-ubsan",
+      "cacheVariables": { "S2S_SANITIZE_UNDEFINED": "ON" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "ubsan", "configurePreset": "ubsan", "jobs": 4 }
+  ],
+  "testPresets": [
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan",
+      "filter": { "include": { "label": "^run_time$" } },
+      "output": { "outputOnFailure": true }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "ubsan",
+      "steps": [
+        { "type": "configure", "name": "ubsan" },
+        { "type": "build", "name": "ubsan" },
+        { "type": "test", "name": "ubsan" }
+      ]
+    }
+  ]
+}

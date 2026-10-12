@@ -13,6 +13,7 @@
 #include <limits>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -39,7 +40,7 @@ struct fixed_string {
   constexpr const char* data() const { return value.data(); }
   constexpr char* data() { return value.data(); }
   constexpr std::size_t size() const { return N; }
-  constexpr auto to_sv() -> std::string_view const {
+  constexpr auto to_sv() const -> std::string_view {
     return std::string_view{data()};
   }
 };
@@ -982,6 +983,11 @@ struct is_eq_constraint<eq<T>> {
 template <typename T>
 inline constexpr bool is_eq_constraint_v = is_eq_constraint<T>::res;
 
+template <typename T>
+struct is_no_constraint {
+  static constexpr bool res = false;
+};
+
 template <equality_comparable T>
 struct neq {
   T v;
@@ -1028,6 +1034,14 @@ struct no_constraint {
     return true; 
   }
 };
+
+template <typename T>
+struct is_no_constraint<no_constraint<T>> {
+  static constexpr bool res = true;
+};
+
+template <typename T>
+inline constexpr bool is_no_constraint_v = is_no_constraint<T>::res;
 
 template <typename T, typename... Ts>
   requires (typelist::all_are_same_v<typelist::list<T, Ts...>>)
@@ -5210,10 +5224,22 @@ constexpr auto read_delimited(stream& s, T& obj, unsigned char delim) -> rw_resu
 
 template <trivial T, input_stream_like stream>
 constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
+  // A field declared narrower than its type fills only the low-addressed
+  // bytes of obj. The swap below is full-width, so on a little-endian host it
+  // would carry those bytes to the top of the value; the zeroing makes the
+  // bytes that were never on the wire deterministic, and the shift brings the
+  // value back down.
+  constexpr bool narrowable = std::is_integral_v<T> && sizeof(T) > 1;
+  if constexpr(narrowable)
+    obj = T{};
   auto res = read_native_impl(s, obj, size_to_read);
   if(res) {
     // todo rollout byteswap if freestanding compiler doesnt provide one
     obj = byteswapped(obj);
+    if constexpr(narrowable && std::endian::native == std::endian::little) {
+      using unsigned_t = std::make_unsigned_t<T>;
+      obj = static_cast<T>(static_cast<unsigned_t>(obj) >> (8 * (sizeof(T) - size_to_read)));
+    }
     return {};
   }
   return res;
@@ -6624,9 +6650,517 @@ template <self_announcing_schema T, output_stream_like stream>
 
 // End api/stream_cast.hpp
 
+// Begin field_list/fixed_layout.hpp
+#ifndef _FIXED_LAYOUT_HPP_
+#define _FIXED_LAYOUT_HPP_
+ 
+ 
+ 
+ 
+namespace s2s {
+// Every _v atom has a primary of false so each sub-concept is pure for any
+// argument. Each concept body is exactly one atom whose name is the rule: gcc
+// prints the failing atom, not the concept, at its default diagnostic depth.
+// The concept is deliberately free of static_assert (unlike fixed_order_schema)
+// so that it can be tested as false.
+
+template <typename T>
+inline constexpr bool is_array_of_trivials_v = false;
+
+template <trivial T, std::size_t N>
+inline constexpr bool is_array_of_trivials_v<std::array<T, N>> = true;
+
+template <typename T>
+inline constexpr bool is_c_array_of_trivials_v = false;
+
+template <trivial T, std::size_t N>
+inline constexpr bool is_c_array_of_trivials_v<T[N]> = true;
+
+template <typename T>
+concept array_of_trivials = is_array_of_trivials_v<T>;
+
+template <typename T>
+concept c_array_of_trivials = is_c_array_of_trivials_v<T>;
+
+template <typename T>
+concept viewable_leaf_value =
+  trivial<T> || array_of_trivials<T> || c_array_of_trivials<T> || fixed_string_like<T>;
+
+template <typename F>
+inline constexpr bool leaf_has_compile_time_width_v =
+  fixed_sized_field_like<F> &&
+  viewable_leaf_value<typename F::field_type>;
+
+template <typename F>
+inline constexpr bool field_is_constrained_v =
+  !is_no_constraint_v<std::remove_cvref_t<decltype(F::constraint_checker)>>;
+
+template <typename S>
+inline constexpr bool any_field_constrained_v = false;
+
+// A record with no constraint of its own still needs a walk when something
+// inside it is constrained.
+template <typename F>
+inline constexpr bool field_needs_check_v = field_is_constrained_v<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_needs_check_v<F> =
+  field_is_constrained_v<F> || any_field_constrained_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_needs_check_v<F> =
+  field_is_constrained_v<F> ||
+  any_field_constrained_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
+// Lets creation skip the constraint walk entirely for a schema with nothing to check.
+template <auto metadata, typename... fields>
+inline constexpr bool any_field_constrained_v<struct_field_list_impl<metadata, fields...>> =
+  (field_needs_check_v<fields> || ...);
+
+template <typename S>
+inline constexpr bool every_field_has_compile_time_width_v = false;
+
+template <typename F>
+inline constexpr bool field_has_compile_time_width_v = leaf_has_compile_time_width_v<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_has_compile_time_width_v<F> =
+  every_field_has_compile_time_width_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_has_compile_time_width_v<F> =
+  every_field_has_compile_time_width_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
+template <auto metadata, typename... fields>
+inline constexpr bool every_field_has_compile_time_width_v<struct_field_list_impl<metadata, fields...>> =
+  (field_has_compile_time_width_v<fields> && ...);
+
+template <typename S>
+concept every_field_has_compile_time_width = every_field_has_compile_time_width_v<S>;
+
+// census_of_list has no primary definition, so the false primary is what keeps
+// this pure for a type that is no schema.
+template <typename S>
+inline constexpr bool has_no_announcing_record_v = false;
+
+template <auto metadata, typename... fields>
+inline constexpr bool has_no_announcing_record_v<struct_field_list_impl<metadata, fields...>> =
+  census_of_list_v<struct_field_list_impl<metadata, fields...>>.on_spine +
+  census_of_list_v<struct_field_list_impl<metadata, fields...>>.off_spine == 0;
+
+template <typename S>
+inline constexpr bool has_no_optional_field_v = false;
+
+template <typename S>
+inline constexpr bool has_no_variant_field_v = false;
+
+// Only struct_field and array_of_records are descended: any other record
+// carrier is already rejected by its own field, so descending would only
+// change which name is reported.
+template <typename F>
+inline constexpr bool field_is_not_optional_v = !optional_field_like<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_is_not_optional_v<F> =
+  has_no_optional_field_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_is_not_optional_v<F> =
+  has_no_optional_field_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
+template <typename F>
+inline constexpr bool field_is_not_variant_v = !union_field_like<F>;
+
+template <struct_field_like F>
+inline constexpr bool field_is_not_variant_v<F> =
+  has_no_variant_field_v<extract_type_from_field_v<F>>;
+
+template <array_of_record_field_like F>
+inline constexpr bool field_is_not_variant_v<F> =
+  has_no_variant_field_v<extract_type_from_array_v<extract_type_from_field_v<F>>>;
+
+template <auto metadata, typename... fields>
+inline constexpr bool has_no_optional_field_v<struct_field_list_impl<metadata, fields...>> =
+  (field_is_not_optional_v<fields> && ...);
+
+template <auto metadata, typename... fields>
+inline constexpr bool has_no_variant_field_v<struct_field_list_impl<metadata, fields...>> =
+  (field_is_not_variant_v<fields> && ...);
+
+template <typename S>
+concept has_no_announcing_record = has_no_announcing_record_v<S>;
+
+template <typename S>
+concept has_no_optional_field = has_no_optional_field_v<S>;
+
+template <typename S>
+concept has_no_variant_field = has_no_variant_field_v<S>;
+
+// The width rule is false for every rejected kind, so it comes last: the first
+// false conjunct is the one the compiler reports, and each specific exclusion
+// must get to name itself first. The composite must not name an atom directly.
+template <typename S>
+concept fixed_layout_schema =
+  field_list_like<S> &&
+  has_no_announcing_record<S> &&
+  has_no_optional_field<S> &&
+  has_no_variant_field<S> &&
+  every_field_has_compile_time_width<S>;
+
+
+template <typename S>
+struct record_layout;
+
+template <typename F>
+constexpr auto field_wire_width() -> std::size_t {
+  if constexpr(struct_field_like<F>)
+    return record_layout<extract_type_from_field_v<F>>::width;
+  else if constexpr(array_of_record_field_like<F>) {
+    using array_type = extract_type_from_field_v<F>;
+    return extract_size_from_array_v<array_type> *
+           record_layout<extract_type_from_array_v<array_type>>::width;
+  } else
+    return deduce_field_size<F::field_size>{}();
+}
+
+template <auto metadata, typename... fields>
+struct record_layout<struct_field_list_impl<metadata, fields...>> {
+  static constexpr std::size_t field_count = sizeof...(fields);
+
+  static constexpr std::array<std::size_t, field_count> widths{
+    field_wire_width<fields>()...
+  };
+
+  static constexpr std::array<std::size_t, field_count> offsets = [] {
+    std::array<std::size_t, field_count> res{};
+    std::size_t running = 0;
+    for(std::size_t idx = 0; idx < field_count; ++idx) {
+      res[idx] = running;
+      running += widths[idx];
+    }
+    return res;
+  }();
+
+  static constexpr std::size_t width = [] {
+    std::size_t sum = 0;
+    for(auto w: widths)
+      sum += w;
+    return sum;
+  }();
+
+  // Same spelling the parser reports in failed_at.
+  static constexpr std::array<std::string_view, field_count> names{
+    std::string_view{fields::field_id.data()}...
+  };
+};
+
+template <fixed_layout_schema S>
+inline constexpr std::size_t wire_width = record_layout<S>::width;
+} /* namespace s2s */
+
+#endif // _FIXED_LAYOUT_HPP_
+
+// End field_list/fixed_layout.hpp
+
+// Begin view/struct_view.hpp
+#ifndef _STRUCT_VIEW_HPP_
+#define _STRUCT_VIEW_HPP_
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+namespace s2s {
+template <typename B>
+concept raw_byte_like =
+  std::is_same_v<std::remove_const_t<B>, char> ||
+  std::is_same_v<std::remove_const_t<B>, unsigned char> ||
+  std::is_same_v<std::remove_const_t<B>, std::byte>;
+
+// Wrapped in an atom so gcc's diagnostic names the rule rather than printing
+// nothing for a bare disjunction.
+template <std::size_t extent, typename S>
+inline constexpr bool span_covers_record_v =
+  extent == std::dynamic_extent || extent >= record_layout<S>::width;
+
+template <std::size_t extent, typename S>
+concept span_covers_record = span_covers_record_v<extent, S>;
+
+
+// Adapts a pointer to the constexpr-stream arm of read_impl, which is the one
+// arm that works both during constant evaluation and at run time. Does not
+// bounds-check: creation has already established the record is inside the span.
+template <raw_byte_like B>
+struct unchecked_byte_source : constexpr_stream {
+  const B* at;
+
+  template <std::size_t N>
+  constexpr auto read(std::array<char, N>& dest, std::size_t size_to_read) -> unchecked_byte_source& {
+    for(std::size_t idx = 0; idx < size_to_read; ++idx)
+      dest[idx] = static_cast<char>(at[idx]);
+    at += size_to_read;
+    return *this;
+  }
+
+  explicit constexpr operator bool() const {
+    return true;
+  }
+};
+
+// Default-constructs F first, as the parser does, so a frozen field's seed is
+// in place and narrow reads match it byte for byte.
+template <typename F, std::endian order, raw_byte_like B>
+constexpr auto decode_field_at(const B* at) -> F {
+  F field;
+  unchecked_byte_source<B> source{{}, at};
+  // Cannot fail: creation placed every byte of the record inside the span.
+  static_cast<void>(read_impl(source, field.value, deduce_field_size<F::field_size>{}(),
+                              deduce_byte_order<order>()));
+  return field;
+}
+
+// A function cannot return a C array, so those come back as the equivalent
+// std::array.
+template <typename T>
+struct view_value {
+  using type = T;
+};
+
+template <typename T, std::size_t N>
+struct view_value<T[N]> {
+  using type = std::array<T, N>;
+};
+
+template <typename S, std::endian order, raw_byte_like B>
+class struct_view;
+
+template <typename F, std::endian order, raw_byte_like B>
+struct view_read {
+  using type = const typename view_value<typename F::field_type>::type;
+};
+
+template <struct_field_like F, std::endian order, raw_byte_like B>
+struct view_read<F, order, B> {
+  using type = const struct_view<typename F::field_type, order, B>;
+};
+
+template <typename S, std::size_t N, std::endian order, raw_byte_like B>
+class array_of_records_view;
+
+template <array_of_record_field_like F, std::endian order, raw_byte_like B>
+struct view_read<F, order, B> {
+  using array_type = typename F::field_type;
+  using type = const array_of_records_view<
+    extract_type_from_array_v<array_type>, extract_size_from_array_v<array_type>, order, B>;
+};
+
+template <typename F, std::endian order, raw_byte_like B>
+using view_read_t = typename view_read<F, order, B>::type;
+
+template <typename F, std::endian order, raw_byte_like B>
+constexpr auto read_leaf_at(const B* at) -> view_read_t<F, order, B> {
+  auto field = decode_field_at<F, order>(at);
+  if constexpr(std::is_array_v<typename F::field_type>)
+    return std::to_array(field.value);
+  else
+    return field.value;
+}
+
+
+template <typename S, std::endian order>
+struct struct_view_impl;
+
+template <auto metadata, typename... fields, std::endian order, raw_byte_like B>
+class struct_view<struct_field_list_impl<metadata, fields...>, order, B> {
+  using S = struct_field_list_impl<metadata, fields...>;
+  using layout = record_layout<S>;
+
+  const B* base;
+
+  constexpr explicit struct_view(const B* first_byte) : base(first_byte) {}
+
+  template <typename, std::endian>
+  friend struct struct_view_impl;
+
+  template <typename, std::endian, raw_byte_like>
+  friend class struct_view;
+
+  template <typename, std::size_t, std::endian, raw_byte_like>
+  friend class array_of_records_view;
+
+public:
+  template <
+    typename accessor,
+    auto res = lookup_field<metadata>(as_sv(accessor::field_id))
+  >
+    requires (res.has_value)
+  constexpr auto operator[](accessor) const -> view_read_t<meta::type_of<res->id>, order, B> {
+    using field_t = meta::type_of<res->id>;
+    const B* at = base + layout::offsets[res->occurs_at_idx];
+    if constexpr(struct_field_like<field_t>)
+      return struct_view<typename field_t::field_type, order, B>{at};
+    else if constexpr(array_of_record_field_like<field_t>)
+      return view_read_t<field_t, order, B>{at};
+    else
+      return read_leaf_at<field_t, order>(at);
+  }
+};
+
+// Indexing takes a size_t, which struct_view's accessor operator[] cannot, so
+// an array of records is its own type.
+template <auto metadata, typename... fields, std::size_t N, std::endian order, raw_byte_like B>
+class array_of_records_view<struct_field_list_impl<metadata, fields...>, N, order, B> {
+  using S = struct_field_list_impl<metadata, fields...>;
+
+  const B* base;
+
+  constexpr explicit array_of_records_view(const B* first_byte) : base(first_byte) {}
+
+  template <typename, std::endian, raw_byte_like>
+  friend class struct_view;
+
+public:
+  static constexpr auto size() -> std::size_t {
+    return N;
+  }
+
+  // Unchecked, like std::array::operator[]: the precondition is i < N.
+  constexpr auto operator[](std::size_t i) const -> const struct_view<S, order, B> {
+    return struct_view<S, order, B>{base + i * record_layout<S>::width};
+  }
+};
+
+template <auto metadata, typename... fields, std::endian order>
+struct struct_view_impl<struct_field_list_impl<metadata, fields...>, order> {
+  using S = struct_field_list_impl<metadata, fields...>;
+  using layout = record_layout<S>;
+
+  template <raw_byte_like B, std::size_t extent>
+  constexpr auto operator()(std::span<B, extent> bytes) const
+      -> std::expected<struct_view<S, order, std::remove_const_t<B>>, cast_error> {
+    if constexpr(extent == std::dynamic_extent) {
+      if(bytes.size() < layout::width) {
+        // A short span always has a first field whose end passes the span's end.
+        std::size_t first_short = 0;
+        while(layout::offsets[first_short] + layout::widths[first_short] <= bytes.size())
+          ++first_short;
+        return std::unexpected(cast_error{error_reason::buffer_exhaustion, layout::names[first_short]});
+      }
+    }
+    if constexpr(any_field_constrained_v<S>) {
+      auto violated = first_violated_field(bytes.data());
+      if(violated != layout::field_count)
+        return std::unexpected(cast_error{error_reason::validation_failure, layout::names[violated]});
+    }
+    return struct_view<S, order, std::remove_const_t<B>>{bytes.data()};
+  }
+
+private:
+  template <typename, std::endian>
+  friend struct struct_view_impl;
+
+  // Same predicate the parser applies, to a value decoded the parser's way. An
+  // unconstrained field is not decoded at all.
+  template <typename F, raw_byte_like B>
+  static constexpr auto violates(const B* at) -> bool {
+    if constexpr(struct_field_like<F>) {
+      using nested = typename F::field_type;
+      if constexpr(field_is_constrained_v<F>) {
+        // A constraint over the whole record needs the whole record, so the
+        // parser itself decodes it.
+        unchecked_byte_source<B> source{{}, at};
+        auto order_cell = deduce_byte_order<order>();
+        auto record = struct_cast_impl<nested, unchecked_byte_source<B>>{}(source, order_cell);
+        return !record || !F::constraint_checker(*record);
+      } else if constexpr(any_field_constrained_v<nested>) {
+        using nested_impl = struct_view_impl<nested, order>;
+        return nested_impl::first_violated_field(at) != nested_impl::layout::field_count;
+      } else {
+        return false;
+      }
+    } else if constexpr(array_of_record_field_like<F>) {
+      using array_type = typename F::field_type;
+      using elem = extract_type_from_array_v<array_type>;
+      constexpr std::size_t count = extract_size_from_array_v<array_type>;
+      if constexpr(field_is_constrained_v<F>) {
+        unchecked_byte_source<B> source{{}, at};
+        auto order_cell = deduce_byte_order<order>();
+        array_type elements;
+        for(std::size_t idx = 0; idx < count; ++idx) {
+          auto record = struct_cast_impl<elem, unchecked_byte_source<B>>{}(source, order_cell);
+          if(!record)
+            return true;
+          elements[idx] = std::move(*record);
+        }
+        return !F::constraint_checker(elements);
+      } else if constexpr(any_field_constrained_v<elem>) {
+        using elem_impl = struct_view_impl<elem, order>;
+        for(std::size_t idx = 0; idx < count; ++idx) {
+          if(elem_impl::first_violated_field(at + idx * elem_impl::layout::width) != elem_impl::layout::field_count)
+            return true;
+        }
+        return false;
+      } else {
+        return false;
+      }
+    } else if constexpr(field_is_constrained_v<F>) {
+      return !F::constraint_checker(decode_field_at<F, order>(at).value);
+    } else {
+      return false;
+    }
+  }
+
+  template <raw_byte_like B>
+  static constexpr auto first_violated_field(const B* base) -> std::size_t {
+    return first_violated_field(std::index_sequence_for<fields...>{}, base);
+  }
+
+  template <std::size_t... idx, raw_byte_like B>
+  static constexpr auto first_violated_field(std::index_sequence<idx...>, const B* base) -> std::size_t {
+    std::size_t found = layout::field_count;
+    static_cast<void>(((violates<fields>(base + layout::offsets[idx]) ? (found = idx, true) : false) || ...));
+    return found;
+  }
+};
+} /* namespace s2s */
+
+#endif // _STRUCT_VIEW_HPP_
+
+// End view/struct_view.hpp
+
+// Begin api/struct_view.hpp
+#ifndef _API_STRUCT_VIEW_HPP_
+#define _API_STRUCT_VIEW_HPP_
+ 
+ 
+ 
+ 
+namespace s2s {
+template <fixed_layout_schema S, raw_byte_like B, std::size_t extent>
+  requires span_covers_record<extent, S>
+[[nodiscard]] constexpr auto struct_view_le(std::span<B, extent> bytes)
+    -> std::expected<struct_view<S, std::endian::little, std::remove_const_t<B>>, cast_error> {
+  return struct_view_impl<S, std::endian::little>{}(bytes);
+}
+
+template <fixed_layout_schema S, raw_byte_like B, std::size_t extent>
+  requires span_covers_record<extent, S>
+[[nodiscard]] constexpr auto struct_view_be(std::span<B, extent> bytes)
+    -> std::expected<struct_view<S, std::endian::big, std::remove_const_t<B>>, cast_error> {
+  return struct_view_impl<S, std::endian::big>{}(bytes);
+}
+} /* namespace s2s */
+
+#endif // _API_STRUCT_VIEW_HPP_
+
+// End api/struct_view.hpp
+
 // Begin s2s.hpp
 #ifndef STRUCT_CAST_HPP
 #define STRUCT_CAST_HPP
+ 
  
  
  

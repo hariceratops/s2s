@@ -127,10 +127,22 @@ constexpr auto read_delimited(stream& s, T& obj, unsigned char delim) -> rw_resu
 
 template <trivial T, input_stream_like stream>
 constexpr auto read_foreign_scalar(stream& s, T& obj, std::size_t size_to_read) -> rw_result {
+  // A field declared narrower than its type fills only the low-addressed
+  // bytes of obj. The swap below is full-width, so on a little-endian host it
+  // would carry those bytes to the top of the value; the zeroing makes the
+  // bytes that were never on the wire deterministic, and the shift brings the
+  // value back down.
+  constexpr bool narrowable = std::is_integral_v<T> && sizeof(T) > 1;
+  if constexpr(narrowable)
+    obj = T{};
   auto res = read_native_impl(s, obj, size_to_read);
   if(res) {
     // todo rollout byteswap if freestanding compiler doesnt provide one
     obj = byteswapped(obj);
+    if constexpr(narrowable && std::endian::native == std::endian::little) {
+      using unsigned_t = std::make_unsigned_t<T>;
+      obj = static_cast<T>(static_cast<unsigned_t>(obj) >> (8 * (sizeof(T) - size_to_read)));
+    }
     return {};
   }
   return res;

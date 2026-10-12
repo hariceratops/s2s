@@ -36,7 +36,8 @@ function(add_struct_cast_test name)
   # gtest says so on stdout; without this the entry is green for a binary that
   # ran nothing. The ut equivalent is ct_coverage_check.cmake.
   set_tests_properties(${name} PROPERTIES
-    FAIL_REGULAR_EXPRESSION "does NOT link in any test case")
+    FAIL_REGULAR_EXPRESSION "does NOT link in any test case"
+    LABELS run_time)
 endfunction()
 
 # One source, two builds. ut's compile-time mode is a static_assert inside the
@@ -71,6 +72,7 @@ function(add_ut_test name)
   # No fixture on this one: it is the build that still links when a
   # compile-time expectation fails, which is exactly when it is wanted.
   add_test(NAME ${name}_run_time COMMAND ${name}_run_time)
+  set_tests_properties(${name}_run_time PROPERTIES LABELS run_time)
 
   add_test(NAME ${name}_coverage
     COMMAND ${CMAKE_COMMAND} -DBINARY=$<TARGET_FILE:${name}_coverage>

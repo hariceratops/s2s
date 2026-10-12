@@ -52,6 +52,7 @@ nav:
       - The byte-order axis: schema/byte-order-axis.md
   - Constraints and validation: constraints.md
   - Reading: reading.md
+  - Views: views.md
   - Writing: writing.md
   - Streams: streams.md
   - Compile time: compile-time.md

@@ -15,7 +15,10 @@ requires gcc 14 or newer, and `CMakeLists.txt` fails configure below it.
 Sources live under `include/` and are amalgamated by `scripts/amalgam.py`
 into the shipped `single_header/s2s.hpp`, which is what consumers include.
 Both directions are complete: stream to struct via `struct_cast_le`/`_be`, and
-struct to stream via `stream_cast_le`/`_be`.
+struct to stream via `stream_cast_le`/`_be`. A third read API, `struct_view_le`/`_be`,
+reads individual fields of a fixed-layout record in place from a `std::span` of
+bytes; it is not zero-copy and its lifetime and bounds are the caller's (see
+`docs/views.md`).
 Tests use two frameworks, both fetched at configure time via CMake
 `FetchContent`. Routing between them is by constant-evaluability, and the
 compiler enforces it: a body the compiler can evaluate on its own belongs to
@@ -26,6 +29,10 @@ object (`ifstream`, `ofstream`, `stringstream`) is not constant-evaluable and
 belongs to GoogleTest, registered with `add_struct_cast_test`. The two never
 share a binary: ut aborts from a static destructor, and its compile-time mode
 is a `static_assert` inside the translation unit.
+
+Run `CXX=g++-14 cmake --workflow --preset ubsan --fresh` (also `clang++-19`) for
+any slice that reads through typed pointers or views: it runs the `run_time`
+label under fatal UBSan.
 
 Both helpers live in `test/CMakeLists.txt`; per-directory files only call
 them. A `ut` CTest entry named `*_compile_time` drives `cmake --build` rather
@@ -50,7 +57,7 @@ named for what it verifies:
 
 | Directory | Verifies |
 |---|---|
-| `test/schema/` | one schema construct per `<feature>_{read,write}.cpp` (GoogleTest) and `_ct.cpp` (ut) pair; mirrors the descriptor table in `docs/schema/index.md` |
+| `test/schema/` | one schema construct per `<feature>_{read,write}.cpp` (GoogleTest) and `_ct.cpp` (ut) pair, mirroring the descriptor table in `docs/schema/index.md`; also the tests of a read API over those constructs, such as `struct_view_read{,_ct}.cpp` |
 | `test/internals/` | machinery that is not a schema construct — traits, containers, field-list metadata |
 | `test/must_not_compile/` | programs that must fail to compile; each is its own target, and `ctest` expects the build to fail |
 | `test/doc_examples/` | every program the documentation shows compiles, runs, and still matches its fenced block |
@@ -73,7 +80,8 @@ built as an mkdocs-material site. Everything needed to render it is confined to
 `docs/`: `docs/mkdocs.yml` holds the nav, `docs/requirements.txt` the one
 dependency. Both commands name that config —
 `mkdocs serve -f docs/mkdocs.yml` — and `.github/workflows/docs.yml` builds on
-every PR and deploys from main. Nothing is documented twice; the site owns the
+every PR and deploys from main. Nothing is documented twice, except the view's unsafe contract, which the spec
+requires on the guide page and in each entry point's reference entry; the site owns the
 schema language, the constraint DSL, both directions, streams and the
 compile-time claims.
 

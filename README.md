@@ -51,6 +51,10 @@ folder can be used for direct inclusion into a project
 * Endianness fixed by the schema and applied at compile time where it is a
   fact about the format, or read from the file itself where the format says so
   — a TIFF-style `II`/`MM` marker decides the order of everything after it
+* Reading a few fields of a fixed-layout record in place from a `std::span` of
+  bytes, with `struct_view_le`/`_be`: fields never touched are never decoded.
+  Not zero-copy, and the view's lifetime and bounds are the caller's to keep —
+  see [Views](docs/views.md)
 * Pluggable interfaces working with custom streams
 
 ## Requirements
@@ -210,11 +214,28 @@ ctest --test-dir build -R '_ct_'           # the compile-time tier only
 ctest --test-dir build --output-on-failure # show output from what failed
 ```
 
+Run the run-time tests under UBSan (`-fsanitize=undefined`, reports fatal).
+One command configures, builds and runs, in `build-ubsan/`; it needs
+CMake 3.25 or newer, and `--fresh` is there because CMake ignores a changed
+`CXX` once it has cached the compiler:
+
+```sh
+CXX=g++-14     cmake --workflow --preset ubsan --fresh
+CXX=clang++-19 cmake --workflow --preset ubsan --fresh
+```
+
+The clang build currently stops at `test/schema/delimited_write_ct.cpp`, which
+clang 19 with libstdc++ 14 cannot constant-evaluate; every other target builds.
+
+It runs the GoogleTest suite and the `*_run_time` ut entries (the `run_time`
+CTest label) and skips `*_compile_time`. x86 does not trap on a misaligned
+typed load, so this is the only thing that catches one.
+
 The test tree is named for what each directory verifies:
 
 | Directory | Verifies |
 |---|---|
-| `test/schema/` | one schema construct per file pair — the descriptor table in [`docs/schema/`](docs/schema/index.md) |
+| `test/schema/` | one schema construct per file pair — the descriptor table in [`docs/schema/`](docs/schema/index.md) — and the read APIs over them, such as `struct_view` |
 | `test/internals/` | traits, containers and field-list metadata |
 | `test/must_not_compile/` | programs that must fail to compile |
 | `test/doc_examples/` | every program shown in the docs compiles, runs, and matches its fenced block |
@@ -252,7 +273,7 @@ Entries under `test/must_not_compile/` are expected to fail to build, and
 - [x] Run-time Endianness Handling
 - [ ] Modules
 - [x] Write struct to stream
-- [ ] struct_view - Zero copy views into buffers
+- [x] struct_view - Views that read only the fields touched, in place (not zero-copy)
 - [ ] Asynchronous Read-Write
 - [ ] Support for seeking
 - [ ] Compile time functions for struct_field_list - 
