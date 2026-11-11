@@ -75,6 +75,14 @@ exist.
 There is no `.clang-format` or `.clang-tidy` in the repo, so formatting
 follows the surrounding file rather than a tool.
 
+The preprocessor only records build-wide choices made once, before
+compilation: the language tier and whether the environment is hosted. A
+namespace-scope `#if` on those choices may decide which declarations exist,
+since a name a tier lacks cannot be named at all. Inside a function, paths are
+selected with `if constexpr`, constant-evaluation checks and concepts, never
+with `#if`, because preprocessor branches are harder to read and to test. This
+holds even where it makes `scripts/amalgam.py` harder to write.
+
 Documentation lives in `README.md` (a pitch) and `docs/` (everything else),
 built as an mkdocs-material site. Everything needed to render it is confined to
 `docs/`: `docs/mkdocs.yml` holds the nav, `docs/requirements.txt` the one

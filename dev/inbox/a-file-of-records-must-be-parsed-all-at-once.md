@@ -70,6 +70,12 @@ straight-line one might not want the same descriptor. A wrapper wants nothing
 from the descriptor whatsoever. With the resumable engine held, bitfields is the
 only remaining real pressure on `field_desc`.
 
+**The generator yields by value (decided 2026-11-08).** References are rejected
+for lifetimes. This rules out reusing caller storage across yields, so the copy
+has to be avoided by moving each record out of the coroutine frame. v1 starts
+with `std::generator`; a hand-written generator follows for the C++20 tier.
+See `a-parsed-record-is-copied-on-its-way-out.md`.
+
 ## Directions rejected
 
 **The resumable engine — the socket case.** Held deliberately rather than
